@@ -133,6 +133,7 @@
     $("opt-voice").checked = !!settings.voice; $("vol-voice").value = settings.voiceVol;
     $("opt-voice").disabled = $("vol-voice").disabled = !BL.speech.supported;
     $("opt-contrast").checked = !!settings.contrast; $("opt-hints").checked = !!settings.hints;
+    renderVoiceTable();
     overlay("ov-options", true);
   }
   $("btn-options").onclick = openOptions;
@@ -147,7 +148,14 @@
   });
   $("opt-voice").onchange = function () { settings.voice = this.checked; applySettings(); saveSettings(); if (settings.voice) BL.speech.say("Bridge: voices on.", "info"); };
   $("vol-voice").oninput = function () { settings.voiceVol = +this.value; applySettings(); saveSettings(); };
-  $("vol-voice").onchange = function () { BL.speech.say("Tactical: voice check.", "info"); };
+  $("btn-voice-test").onclick = function () { BL.audio.init(); BL.speech.test(); renderVoiceTable(); $("voice-details").open = true; };
+  function renderVoiceTable() {
+    var q = ["", "", "Enhanced", "Premium"];
+    $("voice-count").textContent = BL.speech.supported ? "This device offers " + BL.speech.voiceCount() + " usable English voices (joke and robot voices are skipped)." : "This browser can't speak.";
+    $("voice-table").innerHTML = BL.speech.crew().map(function (c) {
+      return "<tr><td>" + c.speaker + "</td><td>" + esc(c.voice) + (q[c.quality] ? " · " + q[c.quality] : "") + "</td></tr>";
+    }).join("");
+  }
   $("opt-contrast").onchange = function () { settings.contrast = this.checked; applySettings(); saveSettings(); };
   $("opt-hints").onchange = function () { settings.hints = this.checked; applySettings(); saveSettings(); };
   function toggleHints() { settings.hints = !settings.hints; applySettings(); saveSettings(); click(); }

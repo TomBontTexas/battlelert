@@ -10,30 +10,54 @@
   var MAX_AGE = 5000;            // ms: a line older than this is no longer worth saying
   var MAX_QUEUE = 3;
 
-  // Pitch and rate per speaker; voice picked from the available English voices.
+  // Each speaker gets its own real voice where the device has enough; pitch and pace only
+  // nudge it (strong shifts make a voice sound broken). order = who gets the best voices first.
   var PROFILE = {
-    "Tactical":       { pitch: 1.0,  rate: 1.2,  slot: 0 },
-    "Helm":           { pitch: 1.15, rate: 1.15, slot: 1 },
-    "Bridge":         { pitch: 0.85, rate: 1.05, slot: 2 },
-    "Captain":        { pitch: 0.8,  rate: 1.0,  slot: 2 },
-    "Navigation":     { pitch: 1.05, rate: 1.1,  slot: 3 },
-    "Damage control": { pitch: 0.9,  rate: 1.25, slot: 4 },
-    "Medical":        { pitch: 1.2,  rate: 1.1,  slot: 5 },
-    "Reactor room":   { pitch: 0.75, rate: 1.2,  slot: 6 },
-    "Failsafe":       { pitch: 0.5,  rate: 1.1,  slot: 7 },
-    "Gunner 1":       { pitch: 1.25, rate: 1.3,  slot: 8 },
-    "Gunner 2":       { pitch: 0.95, rate: 1.3,  slot: 9 },
-    "Gunner 3":       { pitch: 1.1,  rate: 1.3,  slot: 10 },
-    "Coxswain":       { pitch: 0.9,  rate: 1.15, slot: 2 },
-    "Carrier":        { pitch: 1.05, rate: 1.0,  slot: 3 },
-    "Crew":           { pitch: 1.0,  rate: 1.2,  slot: 11 }
+    "Tactical":       { pitch: 1.0,  rate: 1.15, order: 0 },
+    "Helm":           { pitch: 1.05, rate: 1.1,  order: 1 },
+    "Gunner 1":       { pitch: 1.05, rate: 1.2,  order: 2 },
+    "Damage control": { pitch: 0.95, rate: 1.15, order: 3 },
+    "Bridge":         { pitch: 0.95, rate: 1.0,  order: 4 },
+    "Gunner 2":       { pitch: 0.97, rate: 1.2,  order: 5 },
+    "Medical":        { pitch: 1.05, rate: 1.05, order: 6 },
+    "Gunner 3":       { pitch: 1.0,  rate: 1.2,  order: 7 },
+    "Navigation":     { pitch: 1.0,  rate: 1.05, order: 8 },
+    "Reactor room":   { pitch: 0.92, rate: 1.1,  order: 9 },
+    "Coxswain":       { pitch: 0.95, rate: 1.05, order: 10 },
+    "Carrier":        { pitch: 1.0,  rate: 1.0,  order: 11 },
+    "Captain":        { pitch: 0.92, rate: 1.0,  order: 12 },
+    "Failsafe":       { pitch: 0.85, rate: 1.0,  order: 13 },
+    "Crew":           { pitch: 1.0,  rate: 1.1,  order: 14 }
   };
+  var SPEAKERS = Object.keys(PROFILE).sort(function (a, b) { return PROFILE[a].order - PROFILE[b].order; });
+
+  // Apple's joke and robot voices (Wobble, Cellos, Zarvox...) and the old Eloquence voices.
+  var NOVELTY = /^(Albert|Bad News|Bahh|Bells|Boing|Bubbles|Cellos|Good News|Jester|Organ|Pipe Organ|Superstar|Trinoids|Whisper|Wobble|Zarvox|Deranged|Hysterical|Princess|Fred|Junior|Kathy|Ralph|Eddy|Flo|Grandma|Grandpa|Reed|Rocko|Sandy|Shelley)/i;
+  function quality(v) {
+    var id = (v.voiceURI || "") + " " + v.name;
+    if (/premium/i.test(id)) return 3;
+    if (/enhanced|neural|natural/i.test(id)) return 2;
+    return 1;
+  }
+  function usable(v) {
+    var id = v.voiceURI || "";
+    return /^en/i.test(v.lang) && !NOVELTY.test(v.name) && !/speech\.synthesis\.voice|eloquence|novelty/i.test(id);
+  }
 
   function loadVoices() {
     if (!synth) return;
     var all = synth.getVoices() || [];
-    var en = all.filter(function (v) { return /^en/i.test(v.lang); });
-    voices = en.length ? en : all;
+    var good = all.filter(usable);
+    if (!good.length) good = all.filter(function (v) { return /^en/i.test(v.lang) && !NOVELTY.test(v.name); });
+    // Best quality first; among equals, spread the accents so neighbours sound different.
+    good.sort(function (a, b) { return quality(b) - quality(a) || (b.localService ? 1 : 0) - (a.localService ? 1 : 0); });
+    var byLang = {}, spread = [];
+    good.forEach(function (v) { (byLang[v.lang] = byLang[v.lang] || []).push(v); });
+    var langs = Object.keys(byLang).sort(function (a, b) { return quality(byLang[b][0]) - quality(byLang[a][0]); });
+    for (var i = 0; spread.length < good.length; i++) {
+      langs.forEach(function (l) { if (byLang[l][i]) spread.push(byLang[l][i]); });
+    }
+    voices = spread;
     assigned = {};
   }
   if (synth) {
@@ -42,10 +66,13 @@
     else synth.onvoiceschanged = loadVoices;
   }
 
+  // Speakers in order get distinct voices; once they run out, voices are reused with a small
+  // pitch offset so two speakers sharing a voice still sound a little different.
   function voiceFor(speaker) {
-    if (assigned[speaker] !== undefined) return assigned[speaker];
-    var p = PROFILE[speaker] || PROFILE.Crew;
-    assigned[speaker] = voices.length ? voices[p.slot % voices.length] : null;
+    if (assigned[speaker]) return assigned[speaker];
+    var k = SPEAKERS.indexOf(speaker); if (k < 0) k = SPEAKERS.length - 1;
+    var n = voices.length;
+    assigned[speaker] = { voice: n ? voices[k % n] : null, shift: n ? [0, -0.06, 0.06][Math.floor(k / n) % 3] : 0 };
     return assigned[speaker];
   }
 
@@ -70,9 +97,9 @@
     if (!item) return;
     var p = PROFILE[item.speaker] || PROFILE.Crew;
     var u = new SpeechSynthesisUtterance(item.words);
-    var v = voiceFor(item.speaker);
-    if (v) { u.voice = v; u.lang = v.lang; }
-    u.pitch = p.pitch; u.rate = p.rate; u.volume = volume;
+    var a = voiceFor(item.speaker);
+    if (a.voice) { u.voice = a.voice; u.lang = a.voice.lang; }
+    u.pitch = p.pitch + a.shift; u.rate = p.rate; u.volume = volume;
     u.onend = u.onerror = function () { speaking = false; next(); };
     speaking = true;
     synth.speak(u);
@@ -102,6 +129,28 @@
         queue.push(item);
       }
       if (queue.length > MAX_QUEUE) queue.splice(0, queue.length - MAX_QUEUE);
+      next();
+    },
+    // Who speaks with which voice, for the Options screen.
+    crew: function () {
+      if (!voices.length) loadVoices();
+      return SPEAKERS.filter(function (sp) { return sp !== "Crew"; }).map(function (sp) {
+        var a = voiceFor(sp);
+        return { speaker: sp, voice: a.voice ? a.voice.name + " (" + a.voice.lang + ")" : "default voice", quality: a.voice ? quality(a.voice) : 0 };
+      });
+    },
+    voiceCount: function () { if (!voices.length) loadVoices(); return voices.length; },
+    // Each crew member says one line, in turn.
+    test: function () {
+      var self = this; this.stop();
+      var lines = { "Tactical": "Enemy salvo in 6 seconds.", "Helm": "Evasive burn in 4 seconds.", "Gunner 1": "Requesting full battery!",
+        "Damage control": "Shields held.", "Bridge": "Jump window opens in 40 seconds.", "Gunner 2": "Target locked.",
+        "Medical": "Air's getting thin.", "Gunner 3": "Splash one raider!", "Navigation": "Course plotted.",
+        "Reactor room": "Heat is climbing!", "Coxswain": "Launch! We're clear of the carrier.", "Carrier": "Recovery in 30 seconds.",
+        "Captain": "All hands, stand by.", "Failsafe": "Gun 3 tripped offline." };
+      var wasEnabled = enabled; enabled = true;
+      Object.keys(lines).forEach(function (sp) { queue.push({ speaker: sp, words: (/^Gunner/.test(sp) ? sp + ", " : "") + lines[sp], at: Date.now() + 60000, urgent: false }); });
+      enabled = wasEnabled;
       next();
     },
     stop: function () { queue = []; if (synth) synth.cancel(); speaking = false; },

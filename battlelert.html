@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Battlelert</title>
-<link rel="stylesheet" href="css/style.css?b=dbb17c41">
+<link rel="stylesheet" href="css/style.css?b=29fb1595">
 </head>
 <body>
 
@@ -284,6 +284,15 @@
       <label for="vol-chat">Radio clicks</label><input id="vol-chat" type="range" min="0" max="100" step="5">
       <label for="opt-voice">Spoken messages</label><input id="opt-voice" type="checkbox">
       <label for="vol-voice">Voices</label><input id="vol-voice" type="range" min="0" max="100" step="5">
+      <span></span><div><button id="btn-voice-test" class="small">Test crew voices</button></div>
+    </div>
+    <details id="voice-details" class="voice-details">
+      <summary>Which voice each crew member uses</summary>
+      <p id="voice-count" class="muted small-text"></p>
+      <table id="voice-table" class="keys"></table>
+      <p class="muted small-text">For more natural voices on an iPad: Settings &gt; Accessibility &gt; Spoken Content &gt; Voices &gt; English. Download a few voices marked Enhanced or Premium (different accents work well), then reload the game.</p>
+    </details>
+    <div class="opt-grid">
       <label for="opt-contrast">High-contrast theme</label><input id="opt-contrast" type="checkbox">
       <label for="opt-hints">Hint mode</label><input id="opt-hints" type="checkbox">
     </div>
@@ -326,8 +335,8 @@
 <script src="js/sim.js?b=f46dd6b3"></script>
 <script src="js/agents.js?b=464fdf39"></script>
 <script src="js/career.js?b=69baf7e5"></script>
-<script src="js/speech.js?b=f78318e2"></script>
+<script src="js/speech.js?b=6c41d2fe"></script>
 <script src="js/audio.js?b=76c87b2a"></script>
-<script src="js/ui.js?b=3a9f01f5"></script>
+<script src="js/ui.js?b=b2100302"></script>
 </body>
 </html>

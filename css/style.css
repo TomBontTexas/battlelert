@@ -242,6 +242,9 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 .keys { font-size: 14px; border-collapse: collapse; }
 .keys td { padding: 3px 12px 3px 0; vertical-align: top; }
 .keys td:first-child { font-family: var(--mono); color: var(--set); white-space: nowrap; }
+.voice-details { margin: 12px 0; font-size: 14px; }
+.voice-details summary { cursor: pointer; color: var(--charge); }
+.opt-grid + .opt-grid { margin-top: 10px; }
 .grav-list { padding-left: 20px; }
 
 /* -------------------------------------------------------------- Career */
