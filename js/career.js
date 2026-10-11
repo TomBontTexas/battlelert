@@ -55,6 +55,7 @@
     });
     c.name = cleanName(c.name) || "Recruit";
     if (!Array.isArray(c.offers) || !c.offers.length) generateOffers(c);
+    ensureStepUp(c);
     return c;
   }
 
@@ -83,8 +84,8 @@
 
   /* ------------------------------------------------------------ Offers
      Generic postings for now (Phase 2): a ship class, a tech level and a ship name.
-     Always at least one tech-level-1 offer for your current class; offers from the class
-     above appear once you're qualified, more often as your reputation grows. */
+     Always a tech-level-1 offer for the class you're on and, once you're qualified, one
+     for the class above; more offers from the class above come as reputation grows. */
   function makeJob(rng, station, n, tl, serious) {
     var cls = BL.classByN(n);
     return { id: "j" + Math.floor(rng.next() * 1e9).toString(36), station: station, classId: cls.id, n: n, tl: tl,
@@ -100,11 +101,11 @@
     for (var i = 0; i < extra; i++) offers.push(makeJob(rng, station, current, rng.int([2, 6])));
     var next = BL.classByN(q + 1);
     if (q >= 1 && next && next.built) {
+      offers.push(makeJob(rng, station, next.n, 1));
       var rep = c.stations[station].rep;
       var chance = clamp(0.45 + rep / (3 * next.baseRep), 0.45, 0.95);
       if (rng.chance(chance) || c.offersSinceStepUp >= 2) {
-        var k = rng.int([1, 2]);
-        for (var j = 0; j < k; j++) offers.push(makeJob(rng, station, next.n, rng.int([1, 6])));
+        offers.push(makeJob(rng, station, next.n, rng.int([2, 6])));
         c.offersSinceStepUp = 0;
       } else c.offersSinceStepUp++;
     }
@@ -112,6 +113,17 @@
     c.offers = offers;
     return offers;
   }
+  // Careers saved before the step-up rule may lack the guaranteed tech-level-1 offer.
+  function ensureStepUp(c) {
+    var station = "engineer", q = qualified(c, station), next = BL.classByN(q + 1);
+    if (q < 1 || !next || !next.built) return;
+    var has = c.offers.some(function (o) { return o.station === station && o.n === next.n && o.tl === 1; });
+    if (!has) {
+      c.offers.push(makeJob(BL.rng(c.offerSeed + 3), station, next.n, 1));
+      c.offers.sort(function (a, b) { return b.n - a.n || a.tl - b.tl; });
+    }
+  }
+
   // Jobs below your current class: always available, never serious offers.
   function lowerJobs(c, station) {
     var q = qualified(c, station), out = [];

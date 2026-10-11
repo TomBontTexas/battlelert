@@ -775,8 +775,8 @@
     if (mode === "offers") {
       shownJobs = career.offers;
       $("offers-title").textContent = "Job offers";
-      $("offers-lede").textContent = "Postings for engineers at your level. Lower tech levels are harder (smaller reactor and capacitors, weaker guns) and earn more reputation. There's always a tech-level-1 posting for your current class." +
-        (q ? " Offers from the next class up appear as your reputation grows." : "");
+      $("offers-lede").textContent = "Postings for engineers at your level. Lower tech levels are harder (smaller reactor and capacitors, weaker guns) and earn more reputation." +
+        (q ? " There's always a tech-level-1 posting for your class and for the class above it." : " There's always a tech-level-1 posting.");
     } else {
       shownJobs = BL.career.lowerJobs(career, "engineer");
       $("offers-title").textContent = "Lower-class jobs";
