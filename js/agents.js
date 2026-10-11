@@ -60,7 +60,8 @@
     // Main gun and hangar: full power when a call is open or coming soon, else top up slowly.
     ship.systems.forEach(function (s) {
       if (s.kind !== "main" && s.kind !== "hangar") return;
-      var type = s.kind === "main" ? "main" : "launch", room = s.maxMJ - s.mj;
+      var type = s.kind === "main" ? "main" : s.mode === "recover" ? "recover" : "launch", room = s.maxMJ - s.mj;
+      if (s.mode === "lost") { want[s.id] = 0; return; }
       var soon = s.call || fc.some(function (e) { return e.type === type && e.in < room / Math.max(1, s.maxMW) + 4; });
       want[s.id] = soon ? s.maxMW : Math.min(s.maxMW, room / 12);
     });

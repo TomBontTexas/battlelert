@@ -58,7 +58,8 @@
       deliveredMJ: 0, wastedMJ: 0, trips: 0, looks: 0,
       salvos: 0, salvosAnnounced: 0, salvosShielded: 0, surprises: 0, hullLost: 0,
       requests: [], jumps: [], kills: 0, crippledTime: 0,
-      calls: [],                            // main-gun and launch calls: { type, filled }
+      calls: [],                            // main-gun, launch and recovery calls: { type, filled }
+      squadronsLost: 0,
       burns: [],                            // minefield burns: { met }
       mineStrikes: 0, intercepts: 0,
       strikes: 0, strikesAnnounced: 0, strikesStopped: 0, driveDrainedMJ: 0,
@@ -193,8 +194,12 @@
     this.burnUntil = 0;
     this.curBurn = null;
     this.starvedSaid = false;
-    this.squadronUntil = 0;
-    this.nextLaunchAt = this.sys("hangar") && !enc.mines ? this.cfg.arrivalSeconds + r.range(this.data.hangar.firstCall) : Infinity;
+    // Cruiser and up: the squadron launches near the start of each system and must be
+    // recovered before the jump. A squadron left behind is gone for the rest of the mission.
+    if (this.squadron !== "lost") this.squadron = "aboard";
+    this.recoverCalled = false; this.holdSaid = false;
+    this.nextLaunchAt = this.sys("hangar") && !enc.mines && this.squadron === "aboard" ? this.cfg.arrivalSeconds + r.range(this.data.hangar.launchAfter) : Infinity;
+    this.hangarMode("launch");
     this.ship.gTarget = this.data.cruiseG;
     var drive = this.sys("drive"); if (drive) drive.mj = 0;
     // Out of GravSpace, everything is back on its reactor: trips and reactor switches are
@@ -221,7 +226,6 @@
     this.stats.jumps.push(js);
     this.events = []; this.waves = [];
     this.endBurn();
-    this.squadronUntil = 0;
     this.ship.systems.forEach(function (s) { s.request = null; s.call = null; });
     if (this.hasDrive) this.sys("drive").mj = 0;
     this.ship.reactors.forEach(function (rx) { rx.aux.mj = rx.aux.cap; });   // aux refills only in GravSpace
@@ -262,12 +266,18 @@
       this.events.push({ id: this.nextId++, type: "burn", at: at, dur: dur, g: g, announceAt: t, announced: false, visible: true });
       this.nextBurnAt = at + dur + r.range(b.every);
     }
-    // Cruiser and up: the bridge calls a squadron launch; the hangar must be full.
+    // Cruiser and up: the bridge calls the launch (launchers must be full), then, near the end,
+    // the recovery (arresters must be full).
     var hg = this.data.hangar;
-    if (hg && t >= this.nextLaunchAt - hg.lead) {
+    if (hg && this.squadron === "aboard" && t >= this.nextLaunchAt - hg.lead) {
       var la = this.nextLaunchAt;
       this.events.push({ id: this.nextId++, type: "launch", at: la, dur: hg.window, announceAt: t, announced: false, visible: true });
-      this.nextLaunchAt = la + hg.window + hg.outFor + r.range(hg.every);
+      this.nextLaunchAt = Infinity;
+    }
+    if (hg && this.squadron === "out" && !this.recoverCalled && t >= this.windowAt() - hg.recoverBefore - hg.recoverLead) {
+      this.recoverCalled = true;
+      var ra = Math.max(t + hg.recoverLead, this.windowAt() - hg.recoverBefore);
+      this.events.push({ id: this.nextId++, type: "recover", at: ra, dur: hg.recoverWindow, announceAt: t, announced: false, visible: true });
     }
   };
 
@@ -348,6 +358,7 @@
     else if (e.type === "request") { this.chat("request", { n: e.gun }, "warn"); this.cue("request"); }
     else if (e.type === "main") { this.chat("mainCall", { t: lead }, "warn"); this.cue("request"); }
     else if (e.type === "launch") { this.chat("launchCall", { t: lead }, "warn"); this.cue("request"); }
+    else if (e.type === "recover") { this.chat("recoverCall", { t: lead }, "warn"); this.cue("request"); }
     else if (e.type === "jump") { this.chat(this.hasDrive ? "jumpNotice" : "recoveryNotice", { t: lead }, "info"); }
   };
 
@@ -360,7 +371,7 @@
       if (this.encounter().mines) this.curBurn = { short: 0, jump: this.jumpIndex + 1 };
     }
     else if (e.type === "main") { var mg = this.sys("main"); if (mg) mg.call = { until: e.at + e.dur, wave: e.wave, type: "main" }; }
-    else if (e.type === "launch") { var hg = this.sys("hangar"); if (hg) hg.call = { until: e.at + e.dur, type: "launch" }; }
+    else if (e.type === "launch" || e.type === "recover") { var hg = this.sys("hangar"); if (hg) hg.call = { until: e.at + e.dur, type: e.type }; }
     else if (e.type === "request") {
       var s = this.sys("gun" + e.gun);
       if (s) {
@@ -375,7 +386,7 @@
 
   Mission.prototype.salvoHits = function (e) {
     var sh = this.sys("shield"), st = this.stats, js = this.jumpStats;
-    if (this.t < this.squadronUntil && this.rng.chance(this.data.hangar.intercept)) {
+    if (this.squadron === "out" && this.rng.chance(this.data.hangar.intercept)) {
       st.salvos++; js.salvos++; st.intercepts++;
       if (e.visible) { st.salvosAnnounced++; st.salvosShielded++; }
       js.shielded++;
@@ -407,7 +418,7 @@
     var pd = this.sys("pd"), drive = this.sys("drive"), st = this.stats, enc = this.encounter();
     st.strikes++;
     if (e.visible) st.strikesAnnounced++; else this.chat("surprise", null, "bad");
-    if (this.t < this.squadronUntil && this.rng.chance(this.data.hangar.intercept)) {
+    if (this.squadron === "out" && this.rng.chance(this.data.hangar.intercept)) {
       st.intercepts++; if (e.visible) st.strikesStopped++;
       this.cue("kill"); this.chat("intercepted", null, "good"); return;
     }
@@ -478,7 +489,7 @@
   Mission.prototype.runGunners = function (dt) {
     var g = this.data.gun, ship = this.ship, t = this.t;
     var target = this.liveWave();
-    if (target && t < this.squadronUntil) {
+    if (target && this.squadron === "out") {
       target.hp -= this.data.hangar.dps * dt;
       if (target.hp <= 0 && !target.dead) { this.killWave(target, 0); target = this.liveWave(); }
     }
@@ -581,11 +592,11 @@
   };
 
   /* Main gun and hangar calls: the bridge names a window; the capacitor must be full in it.
-     A full main gun fires its whole charge and destroys the target; a full hangar launches
-     the gunboat squadron, which shoots down some salvos and strafes the enemy for a while. */
+     A full main gun fires its whole charge and destroys the target. The hangar capacitor is the
+     launchers while the squadron is aboard (full = launch; the squadron then shoots down some
+     salvos and strafes the enemy) and the arresters while it is out (full = recovered). */
   Mission.prototype.runCalls = function (dt) {
-    var t = this.t, list = this.ship.systems;
-    if (this.squadronUntil && t >= this.squadronUntil) { this.squadronUntil = 0; this.chat("squadronBack", null, "info"); }
+    var t = this.t, list = this.ship.systems, hgd = this.data.hangar;
     for (var i = 0; i < list.length; i++) {
       var s = list[i], q = s.call;
       if (!q) continue;
@@ -598,17 +609,38 @@
           var w = this.waves.filter(function (x) { return x.id === q.wave && !x.dead; })[0];
           this.chat("mainFired", { enemy: w ? w.name : "target" }, "good");
           if (w) this.killWave(w, 0, true);
+        } else if (q.type === "launch") {
+          this.cue("launch");
+          this.squadron = "out"; this.hangarMode("recover");
+          this.chat("launched", null, "good");
         } else {
           this.cue("launch");
-          this.squadronUntil = t + this.data.hangar.outFor;
-          this.chat("launched", null, "good");
+          this.squadron = "aboard"; this.hangarMode("launch");
+          this.chat("recovered2", null, "good");
         }
-      } else if (t >= q.until) {
+        if (q.late) this.stats.calls.pop();          // a late recovery was already scored as missed
+      } else if (t >= q.until && !q.late) {
+        if (q.type === "recover") {
+          // The recovery can't be skipped: the call stays open, but it's scored as missed.
+          q.late = true;
+          this.stats.calls.push({ type: q.type, filled: false, jump: this.jumpIndex + 1 });
+          this.chat("recoverLate", null, "bad");
+          continue;
+        }
         s.call = null;
         this.stats.calls.push({ type: q.type, filled: false, jump: this.jumpIndex + 1 });
         this.chat(q.type === "main" ? "mainMissed" : "launchMissed", null, "bad");
+        // A missed launch is called again, if there's still time before the recovery.
+        if (q.type === "launch" && t + hgd.retry < this.windowAt() - hgd.recoverBefore - 20) this.nextLaunchAt = t + hgd.retry;
       }
     }
+  };
+
+  Mission.prototype.hangarMode = function (mode) {
+    var s = this.sys("hangar"); if (!s) return;
+    s.mode = mode;
+    s.name = mode === "launch" ? "Launchers" : "Arresters";
+    s.short = mode === "launch" ? "LNCH" : "ARST";
   };
 
   Mission.prototype.runCapacitors = function (dt) {
@@ -734,6 +766,17 @@
       if (full && this.phase === "engage" && t >= this.windowAt() && !this.busterSaid) { this.busterSaid = true; this.chat("busterWait", null, "bad"); }
       full = false;
     }
+    // The captain won't jump without the gunboats, unless the hull is down to 20% or less.
+    if (full && this.squadron === "out") {
+      if (this.ship.hull <= this.ship.hullMax * 0.2 && t >= this.windowAt()) {
+        this.squadron = "lost"; this.stats.squadronsLost++;
+        var hs = this.sys("hangar"); if (hs) { hs.call = null; hs.name = "Hangar"; hs.short = "HNGR"; hs.mode = "lost"; }
+        this.chat("squadronLeft", null, "bad");
+      } else {
+        if (t >= this.windowAt() && !this.holdSaid) { this.holdSaid = true; this.chat("holdForSquadron", null, "warn"); }
+        full = false;
+      }
+    }
     if (full && this.driveFullAt === null) this.driveFullAt = t;
     if (this.phase === "engage" && full && t >= this.windowAt()) {
       this.phase = "countdown";
@@ -753,13 +796,13 @@
       var inS = e.at - t;
       if (inS > span) continue;
       if (inS + (e.dur || 0) < -0.6) continue;
-      if (e.done && (e.type === "main" || e.type === "launch")) continue;   // shown below while open
+      if (e.done && (e.type === "main" || e.type === "launch" || e.type === "recover")) continue;   // shown below while open
       out.push({ id: e.id, type: e.type, in: inS, dur: e.dur || 0, g: e.g, gun: e.gun, mj: e.mj });
     }
     // An open main-gun or launch call stays on the strip until it is met or runs out.
     for (var k = 0; k < this.ship.systems.length; k++) {
       var s = this.ship.systems[k];
-      if (s.call) out.push({ id: "call-" + s.id, type: s.call.type, in: 0, dur: Math.max(0, s.call.until - t), open: true });
+      if (s.call) out.push({ id: "call-" + s.id, type: s.call.type, in: 0, dur: Math.max(0, s.call.until - t), open: true, late: !!s.call.late });
     }
     return out;
   };
@@ -809,6 +852,9 @@
         mainFilled: st.calls.filter(function (c) { return c.type === "main" && c.filled; }).length,
         launchCalls: st.calls.filter(function (c) { return c.type === "launch"; }).length,
         launchFilled: st.calls.filter(function (c) { return c.type === "launch" && c.filled; }).length,
+        recoverCalls: st.calls.filter(function (c) { return c.type === "recover"; }).length,
+        recoverFilled: st.calls.filter(function (c) { return c.type === "recover" && c.filled; }).length,
+        squadronsLost: st.squadronsLost,
         intercepts: st.intercepts, mineStrikes: st.mineStrikes,
         burns: st.burns.length, burnsMet: burnsMet,
         strikes: st.strikesAnnounced, strikesStopped: st.strikesStopped, driveDrainedMJ: Math.round(st.driveDrainedMJ),

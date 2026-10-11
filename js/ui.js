@@ -6,7 +6,7 @@
   var $ = function (id) { return document.getElementById(id); };
   var DISPLAY = [];                       // capacitor column order for this ship; keys 1..n
   var KIND_ORDER = { gun: 0, main: 1, pd: 2, shield: 3, life: 4, hangar: 5, buster: 6, drive: 7 };
-  var LANE = { salvo: "salvo", strike: "salvo", burn: "burn", request: "request", main: "request", launch: "request" };
+  var LANE = { salvo: "salvo", strike: "salvo", burn: "burn", request: "request", main: "request", launch: "request", recover: "request" };
   var rxEls = [];
   var SETTINGS_KEY = BL.APP_TAG + "_settings";
   var DEFAULT_HINT = $("hint-bar").textContent;   // rewritten per ship (key range)
@@ -216,6 +216,7 @@
         lvl: el.querySelector(".charge .lvl"), lostC: el.querySelector(".charge .lost"),
         slider: el.querySelector(".slider"), rate: el.querySelector(".slider .rate"), aux: el.querySelector(".slider .aux"),
         set: el.querySelector(".slider .set"), lostR: el.querySelector(".slider .lost"),
+        nmLong: el.querySelector(".nm-long"), nmShort: el.querySelector(".nm-short"),
         mj: el.querySelector(".r-mj"), rset: el.querySelector(".r-set"), rnow: el.querySelector(".r-now"),
         auxBtn: el.querySelector(".aux-btn"), rxBtn: el.querySelector(".rx-btn")
       };
@@ -280,7 +281,7 @@
       s.kind === "main" ? "Fires only when the bridge calls a shot, and only if full: the whole charge in one go, and the target is destroyed." :
       s.kind === "pd" ? "Point defense: each drive strike it stops costs a chunk of charge. Shields don't stop drive strikes." :
       s.kind === "buster" ? "The planet buster: charges from the start, keeps its charge, can't charge in GravSpace. Must be full for the final jump." :
-      s.kind === "hangar" ? "Refuels and rearms the gunboat squadron. When the bridge calls a launch it must be full; the squadron then screens the ship." :
+      s.kind === "hangar" ? "Launchers while the squadron is aboard: full when the bridge calls the launch, to kick the gunboats out. Arresters while it is out: full when the bridge calls the recovery. No jump until the gunboats are aboard." :
       "Must be full for the captain to jump.";
   }
 
@@ -460,6 +461,7 @@
     DISPLAY.forEach(function (id, i) {
       var s = sim.sys(id), r = capEls[id];
       setCls(r.root, "cap" + (i === selected ? " sel" : "") + (s.tripped ? " tripped" : ""));
+      setText(r.nmLong, s.name); setText(r.nmShort, s.short);
       if (r.rxBtn) { setText(r.rxBtn, ship.reactors[s.reactor].name); if (r.root.dataset.rx !== String(s.reactor)) r.root.dataset.rx = s.reactor; }
       setText(r.prio, "P" + (sim.priority.indexOf(id) + 1));
       var st = "", stc = "cap-state";
@@ -467,8 +469,9 @@
       if (s.tripped) { st = "✖ TRIPPED " + Math.ceil(s.tripUntil - sim.t) + " s"; stc += " tripped"; }
       else if (sim.t < s.switchUntil) { st = "⇄ TO " + ship.reactors[s.reactor].name; stc += " request"; }
       else if (s.request) { st = "◆ RAPID FIRE"; stc += " request"; }
-      else if (s.call) { st = (s.kind === "main" ? "◉ SHOT CALLED " : "✈ LAUNCH CALLED ") + Math.max(0, Math.ceil(s.call.until - sim.t)) + " s"; stc += " request"; }
-      else if (s.kind === "hangar" && sim.t < sim.squadronUntil) { st = "✈ SQUADRON OUT " + Math.ceil(sim.squadronUntil - sim.t) + " s"; stc += " full"; }
+      else if (s.call) { st = s.call.late ? "⤓ RECOVER NOW" : (s.kind === "main" ? "◉ SHOT CALLED " : s.call.type === "recover" ? "⤓ RECOVERY " : "✈ LAUNCH ") + Math.max(0, Math.ceil(s.call.until - sim.t)) + " s"; stc += " request"; }
+      else if (s.kind === "hangar" && sim.squadron === "out") { st = "✈ SQUADRON OUT"; stc += " full"; }
+      else if (s.kind === "hangar" && sim.squadron === "lost") { st = "SQUADRON LOST"; stc += " low"; }
       else if (s.kind === "gun" && s.mj < sim.data.gun.shotMJ) { st = "DRY"; stc += " dry"; }
       else if (full) { st = "FULL"; stc += " full"; }
       else if (s.mj < s.maxMJ * 0.25) { st = "⚠ LOW"; stc += " low"; }
@@ -510,6 +513,7 @@
     setText($("jump-drive"), "drive " + Math.floor(dp * 100) + "%");
     $("jump-fill").style.width = pct(dp);
     if (sim.phase === "countdown") { js = "✔ Drive full. Jumping in " + Math.max(1, Math.ceil(sim.jumpAt - sim.t)) + " s"; jc += " go"; }
+    else if (sim.squadron === "out" && wi <= 0) { js = "⚠ Window OPEN: holding the jump until the squadron is aboard"; jc += " late"; }
     else if (sim.jumpIndex === sim.cfg.jumps - 1 && !sim.busterFull() && wi <= 0) { js = "⚠ Window OPEN: the planet buster isn't full · " + Math.floor(sim.sys("buster").mj / sim.sys("buster").maxMJ * 100) + "%"; jc += " late"; }
     else if (wi > 0) {
       var need = (drive.maxMJ - drive.mj) / Math.max(1, wi);
@@ -558,9 +562,10 @@
       } else if (e.type === "burn") {
         label = sim.encounter().mines ? "▲ WEAVE " + e.g + " G · engines need " + Math.round(e.g * sim.perG()) + " MW free for " + e.dur + " s" + secs
           : "▲ BURN " + e.g + " G · +" + Math.round((e.g - sim.data.cruiseG) * sim.perG()) + " MW for " + e.dur + " s" + secs;
-      } else if (e.type === "main" || e.type === "launch") {
+      } else if (e.type === "main" || e.type === "launch" || e.type === "recover") {
         var cs = sim.sys(e.type === "main" ? "main" : "hangar"), pc = Math.floor(cs.mj / cs.maxMJ * 100);
-        label = (e.type === "main" ? "◉ MAIN GUN" : "✈ LAUNCH") + (e.open ? " NOW · must be full · " + pc + "% · " + Math.ceil(e.dur) + " s left" : " · must be full · " + pc + "% now" + secs);
+        var what = e.type === "main" ? "◉ MAIN GUN" : e.type === "launch" ? "✈ LAUNCH · launchers" : "⤓ RECOVERY · arresters";
+        label = what + (e.late ? " OVERDUE · must be full · " + pc + "% · no jump until aboard" : e.open ? " NOW · must be full · " + pc + "% · " + Math.ceil(e.dur) + " s left" : " · must be full · " + pc + "% now" + secs);
         el.classList.toggle("short", pc < 100 && e.in < (cs.maxMJ - cs.mj) / Math.max(1, cs.maxMW));
       } else {
         label = "◆ GUN " + e.gun + " RAPID FIRE · " + Math.round(sim.data.gun.shotMJ / sim.data.gun.fullInterval) + " MW for " + e.dur + " s" + secs;
@@ -668,7 +673,8 @@
       ["Crew crippled", d.crippledTime + " s"],
       ["Damage reports", r.damage.length]
     ].concat(d.mainCalls ? [["Main-gun shots made", d.mainFilled + " / " + d.mainCalls]] : [],
-      d.launchCalls ? [["Squadron launches", d.launchFilled + " / " + d.launchCalls], ["Salvos the squadron shot down", d.intercepts]] : [],
+      d.launchCalls ? [["Squadron launches on time", d.launchFilled + " / " + d.launchCalls], ["Recoveries on time", d.recoverFilled + " / " + d.recoverCalls],
+        ["Salvos the squadron shot down", d.intercepts]].concat(d.squadronsLost ? [["Squadron left behind", "yes"]] : []) : [],
       d.burns ? [["Minefield burns fully powered", d.burnsMet + " / " + d.burns], ["Mine strikes", d.mineStrikes]] : [],
       d.strikes ? [["Drive strikes stopped", d.strikesStopped + " / " + d.strikes], ["Drive charge lost to strikes", d.driveDrainedMJ + " MJ"]] : []);
     $("db-detail").innerHTML = rows.map(function (x) { return "<div><span>" + x[0] + ":</span> " + x[1] + "</div>"; }).join("");

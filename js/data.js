@@ -17,8 +17,10 @@
      maxG: thruster top speed; burns never exceed it, and thruster damage lowers it by 1 G.
      mainGun (light cruiser and up): when a main-gun call comes after a wave spawns (after its
      approach) and how long its window stays open. A full main gun destroys the target.
-     hangar (cruiser and up): launch calls (first, then every) with a lead and a window; a
-     launched squadron stays out outFor s, shoots down `intercept` of salvos and does dps.
+     hangar (cruiser and up): the hangar capacitor is the launchers (full = launch) while the
+     squadron is aboard and the arresters (full = recover) while it is out. The launch is called
+     launchAfter s into each system (again `retry` s after a miss); the recovery recoverBefore s
+     before the jump window. While out, the squadron shoots down `intercept` of salvos and does dps.
      reactors (battleship and up): several reactors, each with its own safe output and aux
      bank; each system's `reactor` (0 = A, 1 = B, 2 = C) is where it starts out wired.
      mission: jumps and when each jump window opens (s after arrival). A ship with no
@@ -93,7 +95,7 @@
       aux: { capacity: 650, rateMW: 50 }, hullPerMJ: 0.19, threat: { dmg: 1.55, hp: 1.9 },
       mission: { jumps: 3, windows: [150, 160, 170] }, encounters: ["raiders", "interceptors", "siege", "minefield"],
       mainGun: { after: [4, 8], window: 6 },
-      hangar: { firstCall: [20, 30], every: [35, 50], lead: 15, window: 8, outFor: 25, intercept: 0.3, dps: 6 },
+      hangar: { launchAfter: [6, 12], lead: 10, window: 8, retry: 15, recoverBefore: 25, recoverLead: 12, recoverWindow: 10, intercept: 0.25, dps: 6 },
       systems: [
         sys("life", "Life support", "LIFE", "life", 80, 16, 80, 4, { drainMW: 4 }),
         sys("shield", "Shields", "SHLD", "shield", 265, 95, 130, 24),
@@ -103,7 +105,7 @@
         sys("gun4", "Gun 4", "GUN4", "gun", 110, 40, 55, 10, { gunner: 4 }),
         sys("gun5", "Gun 5", "GUN5", "gun", 110, 40, 55, 10, { gunner: 5 }),
         sys("main", "Main gun", "MAIN", "main", 520, 50, 170, 8),
-        sys("hangar", "Hangar", "HNGR", "hangar", 600, 40, 300, 6),
+        sys("hangar", "Launchers", "LNCH", "hangar", 600, 40, 300, 6),
         sys("drive", "GravSpace drive", "DRIVE", "drive", 4800, 80, 0, 0)
       ] },
     { n: 7, id: "heavyCruiser", name: "Heavy Cruiser", built: true, baseRep: 775,
@@ -111,7 +113,7 @@
       aux: { capacity: 750, rateMW: 55 }, hullPerMJ: 0.26, threat: { dmg: 1.75, hp: 2.2 },
       mission: { jumps: 3, windows: [160, 170, 180] }, encounters: ["raiders", "interceptors", "siege", "minefield", "hunters"],
       mainGun: { after: [4, 8], window: 6 },
-      hangar: { firstCall: [20, 30], every: [35, 50], lead: 15, window: 8, outFor: 25, intercept: 0.3, dps: 6 },
+      hangar: { launchAfter: [6, 12], lead: 10, window: 8, retry: 15, recoverBefore: 25, recoverLead: 12, recoverWindow: 10, intercept: 0.25, dps: 6 },
       systems: [
         sys("life", "Life support", "LIFE", "life", 90, 18, 90, 5, { drainMW: 4.5 }),
         sys("shield", "Shields", "SHLD", "shield", 300, 105, 150, 26),
@@ -122,7 +124,7 @@
         sys("gun5", "Gun 5", "GUN5", "gun", 115, 42, 57, 10, { gunner: 5 }),
         sys("gun6", "Gun 6", "GUN6", "gun", 115, 42, 57, 10, { gunner: 6 }),
         sys("main", "Main gun", "MAIN", "main", 560, 55, 180, 8),
-        sys("hangar", "Hangar", "HNGR", "hangar", 650, 45, 320, 6),
+        sys("hangar", "Launchers", "LNCH", "hangar", 650, 45, 320, 6),
         sys("pd", "Point defense", "PD", "pd", 180, 45, 90, 8),
         sys("drive", "GravSpace drive", "DRIVE", "drive", 5600, 90, 0, 0)
       ] },
@@ -132,7 +134,7 @@
       hullPerMJ: 0.42, threat: { dmg: 1.6, hp: 3.2 },
       mission: { jumps: 3, windows: [170, 180, 190] }, encounters: ["raiders", "interceptors", "siege", "minefield", "hunters"],
       mainGun: { after: [4, 8], window: 6 },
-      hangar: { firstCall: [20, 30], every: [35, 50], lead: 15, window: 8, outFor: 25, intercept: 0.3, dps: 7 },
+      hangar: { launchAfter: [6, 12], lead: 10, window: 8, retry: 15, recoverBefore: 25, recoverLead: 12, recoverWindow: 10, intercept: 0.25, dps: 7 },
       systems: [
         sys("life", "Life support", "LIFE", "life", 100, 20, 100, 5, { drainMW: 5, reactor: 0 }),
         sys("shield", "Shields", "SHLD", "shield", 280, 110, 140, 28, { reactor: 0 }),
@@ -144,7 +146,7 @@
         sys("gun6", "Gun 6", "GUN6", "gun", 120, 44, 60, 10, { gunner: 6, reactor: 1 }),
         sys("gun7", "Gun 7", "GUN7", "gun", 120, 44, 60, 10, { gunner: 7, reactor: 1 }),
         sys("main", "Main gun", "MAIN", "main", 600, 60, 200, 8, { reactor: 1 }),
-        sys("hangar", "Hangar", "HNGR", "hangar", 700, 48, 350, 6, { reactor: 1 }),
+        sys("hangar", "Launchers", "LNCH", "hangar", 700, 48, 350, 6, { reactor: 1 }),
         sys("pd", "Point defense", "PD", "pd", 200, 50, 100, 8, { reactor: 0 }),
         sys("drive", "GravSpace drive", "DRIVE", "drive", 6400, 100, 0, 0, { reactor: 1 })
       ] },
@@ -155,7 +157,7 @@
       hullPerMJ: 0.48, threat: { dmg: 1.7, hp: 3.6 },
       mission: { jumps: 3, windows: [180, 190, 200] }, encounters: ["raiders", "interceptors", "siege", "minefield", "hunters"],
       mainGun: { after: [4, 8], window: 6 },
-      hangar: { firstCall: [20, 30], every: [35, 50], lead: 15, window: 8, outFor: 25, intercept: 0.3, dps: 8 },
+      hangar: { launchAfter: [6, 12], lead: 10, window: 8, retry: 15, recoverBefore: 25, recoverLead: 12, recoverWindow: 10, intercept: 0.25, dps: 8 },
       systems: [
         sys("life", "Life support", "LIFE", "life", 110, 22, 110, 6, { drainMW: 5.5, reactor: 0 }),
         sys("shield", "Shields", "SHLD", "shield", 300, 115, 150, 30, { reactor: 0 }),
@@ -168,7 +170,7 @@
         sys("gun7", "Gun 7", "GUN7", "gun", 125, 45, 62, 10, { gunner: 7, reactor: 2 }),
         sys("gun8", "Gun 8", "GUN8", "gun", 125, 45, 62, 10, { gunner: 8, reactor: 2 }),
         sys("main", "Main gun", "MAIN", "main", 640, 65, 210, 8, { reactor: 1 }),
-        sys("hangar", "Hangar", "HNGR", "hangar", 750, 50, 370, 6, { reactor: 2 }),
+        sys("hangar", "Launchers", "LNCH", "hangar", 750, 50, 370, 6, { reactor: 2 }),
         sys("pd", "Point defense", "PD", "pd", 220, 55, 110, 8, { reactor: 0 }),
         sys("buster", "Planet buster", "BUSTER", "buster", 9000, 45, 0, 18, { reactor: 2 }),
         sys("drive", "GravSpace drive", "DRIVE", "drive", 7200, 110, 0, 0, { reactor: 1 })
@@ -340,10 +342,14 @@
     mainCall:    ["Gunnery: main gun shot in {t} s. I need it full, Engineering.", "Bridge: main gun target in {t} seconds. Charge it up!", "Gunnery: lining up the main gun, {t} seconds. It has to be full."],
     mainFired:   ["Gunnery: main gun fired! {enemy} gutted.", "Bridge: main gun on target. Scratch one {enemy}.", "Gunnery: direct hit with the main gun!"],
     mainMissed:  ["Gunnery: main gun wasn't full. We lost the shot.", "Bridge: no main gun shot, Engineering. It wasn't charged."],
-    launchCall:  ["Flight deck: squadron launch in {t} s. Hangar must be full.", "Bridge: launching gunboats in {t} seconds. Charge the hangar.", "Flight deck: gunboats to launch in {t}. Need a full hangar."],
+    launchCall:  ["Flight deck: squadron launch in {t} s. Charge the launchers.", "Bridge: launching gunboats in {t} seconds. Launchers must be full.", "Flight deck: gunboats to launch in {t}. Need full launchers."],
     launched:    ["Flight deck: squadron away!", "Flight deck: gunboats launched. They'll screen us."],
-    launchMissed:["Flight deck: hangar wasn't charged. Launch scrubbed.", "Bridge: no launch, Engineering. The hangar was short."],
-    squadronBack:["Flight deck: squadron recovered. Hangar needs recharging.", "Flight deck: gunboats are back aboard."],
+    launchMissed:["Flight deck: launchers weren't charged. Launch scrubbed.", "Bridge: no launch, Engineering. The launchers were short."],
+    recoverCall: ["Flight deck: recovering the squadron in {t} s. Charge the arresters.", "Bridge: gunboats coming home in {t} seconds. Arresters must be full."],
+    recovered2:  ["Flight deck: squadron recovered. All gunboats aboard.", "Flight deck: arresters caught them. Squadron's home."],
+    recoverLate: ["Flight deck: arresters aren't charged! The gunboats are circling.", "Bridge: we can't take the squadron aboard, Engineering. Charge those arresters!"],
+    holdForSquadron: ["Bridge: holding the jump until the squadron is aboard.", "Captain: we don't leave without our gunboats."],
+    squadronLeft:["Captain: we can't wait for the gunboats. Jumping now!", "Bridge: hull's too far gone. We're leaving the squadron behind."],
     intercepted: ["Squadron: we caught that salvo!", "Flight deck: gunboats knocked down a salvo."],
     mineHit:     ["Damage control: mine strike! Hull down {dmg}.", "We clipped a mine! Hull down {dmg}."],
     strike:      ["Tactical: drive strike inbound, {t} s!", "Tactical: hunters are going for the drive. Impact in {t}.", "Tactical: missile on the drive in {t} seconds!"],
