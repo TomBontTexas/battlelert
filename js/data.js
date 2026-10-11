@@ -15,6 +15,10 @@
      threat: multipliers on encounter salvo damage (dmg) and enemy toughness (hp).
      gScale: multiplier on the G of announced burns (small ships burn harder).
      maxG: thruster top speed; burns never exceed it, and thruster damage lowers it by 1 G.
+     mainGun (light cruiser and up): when a main-gun call comes after a wave spawns (after its
+     approach) and how long its window stays open. A full main gun destroys the target.
+     hangar (cruiser and up): launch calls (first, then every) with a lead and a window; a
+     launched squadron stays out outFor s, shoots down `intercept` of salvos and does dps.
      mission: jumps and when each jump window opens (s after arrival). A ship with no
      GravSpace drive flies one timed sortie per carrier jump: the carrier recovers it when
      the sortie timer runs out, carries it through GravSpace, and launches it again. */
@@ -67,8 +71,39 @@
         sys("gun3", "Gun 3", "GUN3", "gun", 100, 40, 50, 10, { gunner: 3 }),
         sys("drive", "GravSpace drive", "DRIVE", "drive", 3200, 60, 0, 0)
       ] },
-    { n: 5, id: "lightCruiser", name: "Light Cruiser", built: false, baseRep: 550 },
-    { n: 6, id: "cruiser", name: "Cruiser", built: false, baseRep: 662 },
+    { n: 5, id: "lightCruiser", name: "Light Cruiser", built: true, baseRep: 550,
+      crew: 7, hull: 120, reactorMW: 125, engineMWperG: 6, cruiseG: 2, maxG: 7, gScale: 0.9,
+      aux: { capacity: 550, rateMW: 45 }, hullPerMJ: 0.17, threat: { dmg: 1.35, hp: 1.6 },
+      mission: { jumps: 3, windows: [140, 150, 160] }, encounters: ["raiders", "interceptors", "siege", "minefield"],
+      mainGun: { after: [4, 8], window: 6 },
+      systems: [
+        sys("life", "Life support", "LIFE", "life", 70, 14, 70, 4, { drainMW: 3.5 }),
+        sys("shield", "Shields", "SHLD", "shield", 225, 85, 110, 22),
+        sys("gun1", "Gun 1", "GUN1", "gun", 105, 40, 52, 10, { gunner: 1 }),
+        sys("gun2", "Gun 2", "GUN2", "gun", 105, 40, 52, 10, { gunner: 2 }),
+        sys("gun3", "Gun 3", "GUN3", "gun", 105, 40, 52, 10, { gunner: 3 }),
+        sys("gun4", "Gun 4", "GUN4", "gun", 105, 40, 52, 10, { gunner: 4 }),
+        sys("main", "Main gun", "MAIN", "main", 480, 45, 160, 8),
+        sys("drive", "GravSpace drive", "DRIVE", "drive", 4000, 70, 0, 0)
+      ] },
+    { n: 6, id: "cruiser", name: "Cruiser", built: true, baseRep: 662,
+      crew: 8, hull: 140, reactorMW: 150, engineMWperG: 7, cruiseG: 2, maxG: 6, gScale: 0.85,
+      aux: { capacity: 650, rateMW: 50 }, hullPerMJ: 0.19, threat: { dmg: 1.55, hp: 1.9 },
+      mission: { jumps: 3, windows: [150, 160, 170] }, encounters: ["raiders", "interceptors", "siege", "minefield"],
+      mainGun: { after: [4, 8], window: 6 },
+      hangar: { firstCall: [20, 30], every: [35, 50], lead: 15, window: 8, outFor: 25, intercept: 0.3, dps: 6 },
+      systems: [
+        sys("life", "Life support", "LIFE", "life", 80, 16, 80, 4, { drainMW: 4 }),
+        sys("shield", "Shields", "SHLD", "shield", 265, 95, 130, 24),
+        sys("gun1", "Gun 1", "GUN1", "gun", 110, 40, 55, 10, { gunner: 1 }),
+        sys("gun2", "Gun 2", "GUN2", "gun", 110, 40, 55, 10, { gunner: 2 }),
+        sys("gun3", "Gun 3", "GUN3", "gun", 110, 40, 55, 10, { gunner: 3 }),
+        sys("gun4", "Gun 4", "GUN4", "gun", 110, 40, 55, 10, { gunner: 4 }),
+        sys("gun5", "Gun 5", "GUN5", "gun", 110, 40, 55, 10, { gunner: 5 }),
+        sys("main", "Main gun", "MAIN", "main", 520, 50, 170, 8),
+        sys("hangar", "Hangar", "HNGR", "hangar", 600, 40, 300, 6),
+        sys("drive", "GravSpace drive", "DRIVE", "drive", 4800, 80, 0, 0)
+      ] },
     { n: 7, id: "heavyCruiser", name: "Heavy Cruiser", built: false, baseRep: 775 },
     { n: 8, id: "battleship", name: "Battleship", built: false, baseRep: 887 },
     { n: 9, id: "dreadnought", name: "Dreadnaught", built: false, baseRep: 1000 }
@@ -93,6 +128,8 @@
       reactorMW: r(c.reactorMW * f), engineMWperG: c.engineMWperG, cruiseG: c.cruiseG, maxG: c.maxG, gScale: c.gScale,
       aux: { capacity: r(c.aux.capacity * f), rateMW: r(c.aux.rateMW * f) },
       hullPerMJ: c.hullPerMJ, threat: c.threat, mission: c.mission, encounters: c.encounters,
+      mainGun: c.mainGun || null,
+      hangar: c.hangar ? Object.assign({}, c.hangar, { dps: c.hangar.dps * f }) : null,
       gun: { shotMJ: GUN.shotMJ, normalInterval: GUN.normalInterval, fullInterval: GUN.fullInterval, hitChance: GUN.hitChance, damage: GUN.damage * f },
       systems: c.systems.map(function (s) {
         var o = {}; for (var k in s) o[k] = s[k];
@@ -140,7 +177,7 @@
       wave: { hp: 300, salvos: [3, 4], approach: [6, 8], salvoGap: [2.5, 4], salvoMJ: [120, 170], requests: 2 },
       request: { lead: 4, duration: [6, 8] },
       burns: { every: [28, 40], g: [5, 6], duration: [3, 4], warning: 5 },
-      surpriseChance: 0.08
+      surpriseChance: 0.08, mainChance: 0.6
     },
     siege: {
       name: "Siege line",
@@ -153,7 +190,7 @@
       wave: { hp: 420, salvos: [11, 14], approach: [6, 7], salvoGap: [2.5, 3.8], salvoMJ: [75, 105], requests: 3 },
       request: { lead: 4, duration: [6, 8] },
       burns: { every: [35, 50], g: [3, 4], duration: [3, 5], warning: 5 },
-      surpriseChance: 0.05
+      surpriseChance: 0.05, mainChance: 0.7
     },
     interceptors: {
       name: "Interceptors",
@@ -166,7 +203,20 @@
       wave: { hp: 130, salvos: [4, 6], approach: [4, 6], salvoGap: [1.8, 2.8], salvoMJ: [45, 70], requests: 1 },
       request: { lead: 3, duration: [5, 7] },
       burns: { every: [9, 14], g: [7, 9], duration: [4, 6], warning: 5 },
-      surpriseChance: 0.1
+      surpriseChance: 0.1, mainChance: 0.4
+    },
+    // No enemy fire. The pilot weaves through the field with long burns, and the engines get
+    // only what the capacitors leave of the reactor. Short of power = drifting = mine strikes.
+    minefield: {
+      name: "Minefield",
+      enemy: "drifting mine",
+      what: "No enemy fire; the helm weaves with long burns, and the engines get only the power you leave them",
+      tests: "Keeping engines fed",
+      firstWave: [0, 0], waveEvery: [999, 999],
+      burns: { every: [7, 11], g: [6, 8], duration: [6, 9], warning: 6 },
+      mines: { strikePerSec: 0.5, mj: [90, 140], engineMult: 2 },   // weaving takes twice the engine power
+      windowScale: 0.7,                // the captain wants out: the jump window comes sooner
+      surpriseChance: 0
     }
   };
 
@@ -198,6 +248,17 @@
     jumpOpen:    ["Navigation: jump window open. Waiting on the drive.", "Bridge: window's open. Where's my drive, Engineering?"],
     jumpGo:      ["Bridge: drive full. Jumping in {t}.", "Bridge: all hands, jump in {t}."],
     damaged:     ["Damage control: {what}."],
+    killedOther: ["Tactical: {enemy} destroyed.", "Tactical: {enemy} breaking up."],
+    mainCall:    ["Gunnery: main gun shot in {t} s. I need it full, Engineering.", "Bridge: main gun target in {t} seconds. Charge it up!", "Gunnery: lining up the main gun, {t} seconds. It has to be full."],
+    mainFired:   ["Gunnery: main gun fired! {enemy} gutted.", "Bridge: main gun on target. Scratch one {enemy}.", "Gunnery: direct hit with the main gun!"],
+    mainMissed:  ["Gunnery: main gun wasn't full. We lost the shot.", "Bridge: no main gun shot, Engineering. It wasn't charged."],
+    launchCall:  ["Flight deck: squadron launch in {t} s. Hangar must be full.", "Bridge: launching gunboats in {t} seconds. Charge the hangar.", "Flight deck: gunboats to launch in {t}. Need a full hangar."],
+    launched:    ["Flight deck: squadron away!", "Flight deck: gunboats launched. They'll screen us."],
+    launchMissed:["Flight deck: hangar wasn't charged. Launch scrubbed.", "Bridge: no launch, Engineering. The hangar was short."],
+    squadronBack:["Flight deck: squadron recovered. Hangar needs recharging.", "Flight deck: gunboats are back aboard."],
+    intercepted: ["Squadron: we caught that salvo!", "Flight deck: gunboats knocked down a salvo."],
+    mineHit:     ["Damage control: mine strike! Hull down {dmg}.", "We clipped a mine! Hull down {dmg}."],
+    starved:     ["Helm: engines are starved! I can't hold the course!", "Helm: not enough power to the engines, we're drifting into the mines!"],
     auxEmpty:    ["Aux bank is empty."]
   };
 
@@ -221,6 +282,8 @@
     chatter:  { ch: "chat",  wave: "square",   f0: 1800, f1: 1700, a: 0.001, s: 0.025, d: 0.01, vol: 0.06, repeat: 3, gap: 0.035, noise: 0.3 },
     jump:     { ch: "fx",    wave: "sine",     f0: 80,   f1: 2400, a: 0.2,   s: 1.0,  d: 0.6,  vol: 0.30, vib: { rate: 8, depth: 0.05 } },
     arrive:   { ch: "fx",    wave: "sine",     f0: 1600, f1: 90,   a: 0.05,  s: 0.5,  d: 0.6,  vol: 0.25 },
+    main:     { ch: "fx",    wave: "noise",    f0: 220,  f1: 30,   a: 0.005, s: 0.25, d: 1.1,  vol: 0.45 },
+    launch:   { ch: "fx",    wave: "sawtooth", f0: 160,  f1: 900,  a: 0.05,  s: 0.5,  d: 0.4,  vol: 0.18, noise: 0.3 },
     win:      { ch: "fx",    wave: "triangle", f0: 523,  f1: 1046, a: 0.01,  s: 0.25, d: 0.4,  vol: 0.22, repeat: 3, gap: 0.18 },
     lose:     { ch: "fx",    wave: "sawtooth", f0: 300,  f1: 50,   a: 0.01,  s: 0.8,  d: 0.8,  vol: 0.25, noise: 0.3 }
   };

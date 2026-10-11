@@ -5,7 +5,8 @@
   var BL = window.BL;
   var $ = function (id) { return document.getElementById(id); };
   var DISPLAY = [];                       // capacitor column order for this ship; keys 1..n
-  var KIND_ORDER = { gun: 0, shield: 1, life: 2, drive: 3 };
+  var KIND_ORDER = { gun: 0, main: 1, shield: 2, life: 3, hangar: 4, drive: 5 };
+  var LANE = { salvo: "salvo", burn: "burn", request: "request", main: "request", launch: "request" };
   var SETTINGS_KEY = BL.APP_TAG + "_settings";
   var DEFAULT_HINT = $("hint-bar").textContent;   // rewritten per ship (key range)
 
@@ -69,7 +70,7 @@
     $("brief-route").innerHTML = sim.route.map(function (id, i) {
       var e = BL.ENCOUNTERS[id];
       return "<li>" + (sim.hasDrive ? "System " : "Sortie ") + (i + 1) + ": <b>" + e.name + "</b>. " + e.what + ". Tests: " + e.tests.toLowerCase() +
-        (sim.hasDrive ? ". Jump window opens " + sim.cfg.jumpWindowAt[i] + " s after arrival." : ". The carrier recovers you " + sim.cfg.jumpWindowAt[i] + " s after launch.") + "</li>";
+        (sim.hasDrive ? ". Jump window opens " + sim.windowFor(i) + " s after arrival." : ". The carrier recovers you " + sim.windowFor(i) + " s after launch.") + "</li>";
     }).join("") + (sim.hasDrive ? "<li>The Archonian world: drop the planet buster.</li>" : "");
     $("brief-ship-title").textContent = "Your ship: " + (j.test ? cls.name : j.ship + ", " + cls.name) + ", tech level " + j.tl;
     var html = [
@@ -83,6 +84,9 @@
     });
     if (!j.test) html.push("<div><span>Reputation if perfect</span> up to " + BL.career.repFor(j, 100) + "</div>");
     $("brief-ship").innerHTML = html.join("");
+    $("brief-main").hidden = !sim.sys("main");
+    $("brief-hangar").hidden = !sim.sys("hangar");
+    $("brief-mines").hidden = sim.route.indexOf("minefield") < 0;
     show("scr-briefing");
   }
   $("btn-brief-back").onclick = function () { click(); if (job.test) show("scr-title"); else showOffers(offersMode); };
@@ -173,18 +177,20 @@
     DISPLAY = sim.ship.systems.slice().sort(function (a, b) { return KIND_ORDER[a.kind] - KIND_ORDER[b.kind] || a.id.localeCompare(b.id); })
       .map(function (s) { return s.id; });
     caps.style.gridTemplateColumns = "repeat(" + DISPLAY.length + ", minmax(0, 1fr))";
+    caps.classList.toggle("dense", DISPLAY.length >= 8);
+    $("trip-order").classList.toggle("trip-two", DISPLAY.length >= 8);
     $("hd-station").textContent = "Main Engineering · " + (job.test ? sim.data.className : job.ship + " (" + sim.data.className + ")") + " · tech level " + sim.data.tl;
     $("jump-label").textContent = sim.hasDrive ? "JUMP" : "RECOVERY";
     $("auxbank").hidden = !sim.hasAux();
     document.body.classList.toggle("no-aux", !sim.hasAux());
-    $("hint-bar").textContent = DEFAULT_HINT = "1–" + DISPLAY.length + " select · ↑↓ charge rate (Shift: ×5) · ←→ next system" + (sim.hasAux() ? " · A aux" : "") + " · [ ] priority · 0 zero · M max · Space pause · H hints";
+    $("hint-bar").textContent = DEFAULT_HINT = "1–" + Math.min(9, DISPLAY.length) + " select · ↑↓ charge rate (Shift: ×5) · ←→ next system" + (sim.hasAux() ? " · A aux" : "") + " · [ ] priority · 0 zero · M max · Space pause · H hints";
     DISPLAY.forEach(function (id, i) {
       var s = sim.sys(id);
       var el = document.createElement("div");
       el.className = "cap"; el.dataset.id = id;
       el.innerHTML =
-        '<div class="cap-head"><span class="cap-key">' + (i + 1) + '</span><span class="cap-name"><span class="nm-long">' + s.name + '</span><span class="nm-short">' + s.short + '</span></span>' +
-        '<span class="prio" data-hint="Priority badge: P1 trips last, P6 trips first. Drag it onto another capacitor to swap places, or press [ and ].">P</span></div>' +
+        '<div class="cap-head"><span class="cap-key">' + (i < 9 ? i + 1 : "") + '</span><span class="cap-name"><span class="nm-long">' + s.name + '</span><span class="nm-short">' + s.short + '</span></span>' +
+        '<span class="prio" data-hint="Priority badge: P1 trips last, the highest number trips first. Drag it onto another capacitor to swap places, or press [ and ].">P</span></div>' +
         '<div class="cap-state"></div>' +
         '<div class="cap-bars">' +
           '<div class="bar-col" data-hint="Stored charge. ' + capHint(s) + ' Hatched = capacity lost to damage."><div class="bar-cap">CHARGE MJ</div>' +
@@ -224,6 +230,8 @@
     return s.kind === "gun" ? "Each shot uses " + sim.data.gun.shotMJ + " MJ." :
       s.kind === "shield" ? "Salvos drain it; what it can't stop hits the hull." :
       s.kind === "life" ? "Drains " + s.drainMW + " MW all the time. Empty = crippled crew." :
+      s.kind === "main" ? "Fires only when the bridge calls a shot, and only if full: the whole charge in one go, and the target is destroyed." :
+      s.kind === "hangar" ? "Refuels and rearms the gunboat squadron. When the bridge calls a launch it must be full; the squadron then screens the ship." :
       "Must be full for the captain to jump.";
   }
 
@@ -292,7 +300,7 @@
     if (k === "h" || k === "H") { toggleHints(); return; }
     if (!canControl()) return;
     var id = DISPLAY[selected], s = sim.sys(id), step = ev.shiftKey ? 10 : 2;
-    if (k >= "1" && k <= String(DISPLAY.length)) { selected = +k - 1; BL.audio.play("tick"); }
+    if (k.length === 1 && k >= "1" && k <= "9" && +k <= DISPLAY.length) { selected = +k - 1; BL.audio.play("tick"); }
     else if (k === "ArrowUp") { sim.setSetpoint(id, s.set + step); BL.audio.play("tick"); }
     else if (k === "ArrowDown") { sim.setSetpoint(id, s.set - step); BL.audio.play("tick"); }
     else if (k === "ArrowLeft") { selected = (selected + DISPLAY.length - 1) % DISPLAY.length; }
@@ -385,7 +393,8 @@
     var hot = ship.heat >= BL.PHYSICS.alarmHeat;
     $("heat-fill").parentNode.parentNode.classList.toggle("hot", hot);
     $("heat-warn").hidden = !hot;
-    setText($("eng-val"), ship.g.toFixed(1) + " of " + ship.maxG + " G · " + Math.round(ship.engineMW) + " MW");
+    setText($("eng-val"), (ship.starved ? "⚠ STARVED · " : "") + ship.g.toFixed(1) + " of " + ship.maxG + " G · " + Math.round(ship.engineMW) + " MW");
+    $("eng-fill").parentNode.parentNode.classList.toggle("hot", !!ship.starved);
     $("eng-fill").style.width = pct(ship.g / sim.data.maxG);
     setText($("aux-val"), Math.round(ship.aux.mj) + " / " + ship.aux.cap + " MJ");
     $("aux-fill").style.width = pct(ship.aux.cap ? ship.aux.mj / ship.aux.cap : 0);
@@ -405,6 +414,8 @@
       var full = s.mj >= s.maxMJ - 0.5;
       if (s.tripped) { st = "✖ TRIPPED " + Math.ceil(s.tripUntil - sim.t) + " s"; stc += " tripped"; }
       else if (s.request) { st = "◆ FULL BATTERY"; stc += " request"; }
+      else if (s.call) { st = (s.kind === "main" ? "◉ SHOT CALLED " : "✈ LAUNCH CALLED ") + Math.max(0, Math.ceil(s.call.until - sim.t)) + " s"; stc += " request"; }
+      else if (s.kind === "hangar" && sim.t < sim.squadronUntil) { st = "✈ SQUADRON OUT " + Math.ceil(sim.squadronUntil - sim.t) + " s"; stc += " full"; }
       else if (s.kind === "gun" && s.mj < sim.data.gun.shotMJ) { st = "DRY"; stc += " dry"; }
       else if (full) { st = "FULL"; stc += " full"; }
       else if (s.mj < s.maxMJ * 0.25) { st = "⚠ LOW"; stc += " low"; }
@@ -417,7 +428,7 @@
       r.aux.style.bottom = pct(s.rate / s.baseMW);
       r.aux.style.height = pct(s.auxRate / s.baseMW);
       r.set.style.bottom = pct(s.set / s.baseMW);
-      setText(r.mj, Math.round(s.mj) + " / " + s.maxMJ);
+      setText(r.mj, Math.round(s.mj) + (DISPLAY.length >= 8 ? "/" : " / ") + s.maxMJ);
       setText(r.rset, "set " + fmt(s.set));
       var ramp = s.rate < Math.min(s.set, s.maxMW) - 1 && !full && !s.tripped ? " ▲" : s.rate > Math.min(s.set, s.maxMW) + 1 ? " ▼" : "";
       setText(r.rnow, "now " + fmt(s.rate) + ramp);
@@ -473,7 +484,7 @@
     items.forEach(function (e) {
       seen[e.id] = true;
       var el = fcEls[e.id];
-      if (!el) { el = document.createElement("div"); el.className = "fc-ev " + e.type; tracks[e.type].appendChild(el); fcEls[e.id] = el; }
+      if (!el) { el = document.createElement("div"); el.className = "fc-ev " + e.type; tracks[LANE[e.type]].appendChild(el); fcEls[e.id] = el; }
       var start = Math.max(0, e.in), end = e.in + e.dur;
       el.style.left = pct(start / span);
       if (e.dur) el.style.width = pct(Math.max(0.4, end - start) / span);
@@ -484,7 +495,12 @@
         label = "⚡ SALVO " + e.mj + " MJ" + secs + (shieldLeft >= 0 ? " · ✔ covered" : " · short " + Math.ceil(Math.min(e.mj, -shieldLeft)) + " MJ");
         el.classList.toggle("short", shieldLeft < 0);
       } else if (e.type === "burn") {
-        label = "▲ BURN " + e.g + " G · +" + Math.round((e.g - sim.data.cruiseG) * sim.data.engineMWperG) + " MW for " + e.dur + " s" + secs;
+        label = sim.encounter().mines ? "▲ WEAVE " + e.g + " G · engines need " + Math.round(e.g * sim.perG()) + " MW free for " + e.dur + " s" + secs
+          : "▲ BURN " + e.g + " G · +" + Math.round((e.g - sim.data.cruiseG) * sim.perG()) + " MW for " + e.dur + " s" + secs;
+      } else if (e.type === "main" || e.type === "launch") {
+        var cs = sim.sys(e.type === "main" ? "main" : "hangar"), pc = Math.floor(cs.mj / cs.maxMJ * 100);
+        label = (e.type === "main" ? "◉ MAIN GUN" : "✈ LAUNCH") + (e.open ? " NOW · must be full · " + pc + "% · " + Math.ceil(e.dur) + " s left" : " · must be full · " + pc + "% now" + secs);
+        el.classList.toggle("short", pc < 100 && e.in < (cs.maxMJ - cs.mj) / Math.max(1, cs.maxMW));
       } else {
         label = "◆ GUN " + e.gun + " FULL · " + Math.round(sim.data.gun.shotMJ / sim.data.gun.fullInterval) + " MW for " + e.dur + " s" + secs;
       }
@@ -494,7 +510,7 @@
     });
     // Pack each lane into two rows so close-together demands don't hide each other.
     Object.keys(tracks).forEach(function (lane) {
-      var els = items.filter(function (e) { return e.type === lane; }).sort(function (a, b) { return a.in - b.in; })
+      var els = items.filter(function (e) { return LANE[e.type] === lane; }).sort(function (a, b) { return a.in - b.in; })
         .map(function (e) { return fcEls[e.id]; });
       var ends = [-1, -1], placed = [];
       els.forEach(function (el) {
@@ -590,7 +606,9 @@
       ["Energy wasted as heat", d.wastedMJ + " MJ"],
       ["Crew crippled", d.crippledTime + " s"],
       ["Damage reports", r.damage.length]
-    ];
+    ].concat(d.mainCalls ? [["Main-gun shots made", d.mainFilled + " / " + d.mainCalls]] : [],
+      d.launchCalls ? [["Squadron launches", d.launchFilled + " / " + d.launchCalls], ["Salvos the squadron shot down", d.intercepts]] : [],
+      d.burns ? [["Minefield burns fully powered", d.burnsMet + " / " + d.burns], ["Mine strikes", d.mineStrikes]] : []);
     $("db-detail").innerHTML = rows.map(function (x) { return "<div><span>" + x[0] + ":</span> " + x[1] + "</div>"; }).join("");
     $("db-career").hidden = !report;
     if (report) renderCareerReport(r);

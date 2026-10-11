@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Battlelert</title>
-<link rel="stylesheet" href="css/style.css?b=fac18566">
+<link rel="stylesheet" href="css/style.css?b=b33736de">
 </head>
 <body>
 
@@ -109,6 +109,9 @@
       <li>Every capacitor's charge rate adds to the <b>reactor load</b>. Above 100% the reactor heats up; at full heat the failsafe trips capacitors off the reactor for 10 s, <b>lowest priority first</b>.</li>
       <li>The <b>aux bank</b> charges any capacitor you switch it onto, without loading the reactor. It refills only in GravSpace.</li>
       <li>Capacitors that are full stop drawing power. When they're drained, they ramp back up to your setting over a second or two.</li>
+      <li id="brief-main" hidden>The <b>main gun</b> fires only when the bridge calls a shot, and only if its capacitor is full. A full shot destroys the target.</li>
+      <li id="brief-hangar" hidden>The <b>hangar</b> must be full when the bridge calls a squadron launch. The gunboats then shoot down some salvos and strafe the enemy.</li>
+      <li id="brief-mines" hidden>In a <b>minefield</b> there is no enemy fire, but the engines get only the power your capacitors leave. Ease off charging during each weave, or the ship drifts into mines.</li>
     </ul>
     <div class="actions">
       <button id="btn-brief-back">Back</button>
@@ -137,7 +140,7 @@
       <div class="fc-lanes" id="fc-lanes">
         <div class="fc-lane" data-lane="salvo"><span class="fc-label">SALVOS</span><div class="fc-track"></div></div>
         <div class="fc-lane" data-lane="burn"><span class="fc-label">ENGINES</span><div class="fc-track"></div></div>
-        <div class="fc-lane" data-lane="request"><span class="fc-label">GUNS</span><div class="fc-track"></div></div>
+        <div class="fc-lane" data-lane="request"><span class="fc-label">CALLS</span><div class="fc-track"></div></div>
       </div>
     </div>
     <div class="panel comms" data-hint="Comms log: the bridge and crew. Warnings come here and on the forecast strip.">
@@ -165,7 +168,7 @@
         <div class="hbar"><div id="heat-fill" class="hbar-fill heat-fill"></div><i class="hbar-mark" style="left:80%"></i></div>
         <div id="heat-warn" class="warn-text" hidden>⚠ OVERHEATING</div>
       </div>
-      <div class="engines" data-hint="Engines are wired straight to the reactor. When the pilot burns hard, less is left for charging.">
+      <div class="engines" data-hint="Engines are wired straight to the reactor. When the pilot burns hard, less is left for charging. In a minefield the engines get only what the capacitors leave; STARVED means the ship is drifting toward the mines.">
         <div class="row-label"><span>ENGINES</span><span id="eng-val"></span></div>
         <div class="hbar"><div id="eng-fill" class="hbar-fill eng-fill"></div></div>
       </div>
@@ -298,7 +301,7 @@
     </div>
     <h2>Keyboard</h2>
     <table class="keys">
-      <tr><td>1 – 6</td><td>Select a system</td></tr>
+      <tr><td>1 – 9</td><td>Select a system</td></tr>
       <tr><td>↑ ↓</td><td>Raise or lower its charge rate (hold Shift for big steps)</td></tr>
       <tr><td>← →</td><td>Select the next system left or right</td></tr>
       <tr><td>0 / M</td><td>Charge rate to zero / to maximum</td></tr>
@@ -322,6 +325,8 @@
       <li><b>Keep heat under the line.</b> Load over 100% heats the reactor. At full heat the failsafe trips capacitors off the reactor for 10 s, lowest priority first. Set the priority order so the right things trip.</li>
       <li><b>Spend aux power to bridge a gap.</b> The aux bank charges a capacitor without loading the reactor. It only refills between jumps.</li>
       <li><b>Charge the GravSpace drive.</b> When the jump window opens and the drive is full, the captain jumps. Three jumps and the planet buster is delivered.</li>
+      <li><b>Bigger ships add calls.</b> Light cruisers and up have a main gun: when the bridge calls a shot, its capacitor must be full, and a full shot destroys the target. Cruisers and up also have a hangar that must be full when the bridge calls a squadron launch.</li>
+      <li><b>Minefields.</b> No enemy fire, but the engines get only what the capacitors leave of the reactor. Ease off charging during each weave, or the ship drifts into mines.</li>
     </ol>
     <p>Shields stop salvos; whatever gets through damages the hull, and damage slows chargers, lowers reactor output and weakens the thrusters. Fed guns kill enemies faster, and a dead enemy fires no more salvos. Keep life support topped up, or the crew falters.</p>
     <p class="muted">Not every salvo is announced; surprises are rare. Pausing is free; looking at the console while paused costs 10% of the mission's score.</p>
@@ -331,12 +336,12 @@
 
 <script src="version.js?b=470f696b"></script>
 <script src="update-banner.js?b=71816d57"></script>
-<script src="js/data.js?b=98162d05"></script>
-<script src="js/sim.js?b=1c0905b3"></script>
-<script src="js/agents.js?b=464fdf39"></script>
+<script src="js/data.js?b=51df788f"></script>
+<script src="js/sim.js?b=8952c97c"></script>
+<script src="js/agents.js?b=60e760e6"></script>
 <script src="js/career.js?b=71affa4d"></script>
-<script src="js/speech.js?b=6c41d2fe"></script>
+<script src="js/speech.js?b=13cc9be7"></script>
 <script src="js/audio.js?b=76c87b2a"></script>
-<script src="js/ui.js?b=125416da"></script>
+<script src="js/ui.js?b=d16b72d8"></script>
 </body>
 </html>

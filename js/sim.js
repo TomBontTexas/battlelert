@@ -58,6 +58,9 @@
       deliveredMJ: 0, wastedMJ: 0, trips: 0, looks: 0,
       salvos: 0, salvosAnnounced: 0, salvosShielded: 0, surprises: 0, hullLost: 0,
       requests: [], jumps: [], kills: 0, crippledTime: 0,
+      calls: [],                            // main-gun and launch calls: { type, filled }
+      burns: [],                            // minefield burns: { met }
+      mineStrikes: 0, intercepts: 0,
       overloadRun: 0, overloadRunStart: 0,
       longestOverload: { dur: 0, jump: 0, t: 0 },
       damageReports: []
@@ -93,7 +96,7 @@
           mj: s.startMJ, set: s.startSet, rate: 0, auxRate: 0, drainMW: s.drainMW || 0,
           tripped: false, tripUntil: 0, aux: false, freshMW: 0,
           // gunner state
-          nextShot: 0, request: null
+          nextShot: 0, request: null, call: null
         };
       })
     };
@@ -110,7 +113,12 @@
     return this.ship.systems.filter(function (s) { return s.kind === "gun"; }).length;
   };
   Mission.prototype.encounter = function () { return BL.ENCOUNTERS[this.route[this.jumpIndex]]; };
-  Mission.prototype.windowAt = function () { return this.cfg.jumpWindowAt[Math.min(this.jumpIndex, this.cfg.jumpWindowAt.length - 1)]; };
+  Mission.prototype.windowAt = function () { return this.windowFor(this.jumpIndex); };
+  // Jump window (or carrier recovery) for system i; a minefield shortens it: the captain wants out.
+  Mission.prototype.windowFor = function (i) {
+    var w = this.cfg.jumpWindowAt[Math.min(i, this.cfg.jumpWindowAt.length - 1)], enc = BL.ENCOUNTERS[this.route[i]];
+    return Math.round(w * ((enc && enc.windowScale) || 1));
+  };
 
   /* ---------------------------------------------------------- Player input */
   Mission.prototype.setSetpoint = function (id, mw) {
@@ -166,9 +174,13 @@
     this.driveFullAt = null;
     this.jumpAt = null;
     this.burnUntil = 0;
+    this.curBurn = null;
+    this.starvedSaid = false;
+    this.squadronUntil = 0;
+    this.nextLaunchAt = this.sys("hangar") && !enc.mines ? this.cfg.arrivalSeconds + r.range(this.data.hangar.firstCall) : Infinity;
     this.ship.gTarget = this.data.cruiseG;
     var drive = this.sys("drive"); if (drive) drive.mj = 0;
-    this.ship.systems.forEach(function (s) { s.request = null; s.nextShot = 0; });
+    this.ship.systems.forEach(function (s) { s.request = null; s.call = null; s.nextShot = 0; });
     this.jumpStats = { salvos: 0, shielded: 0, hullLost: 0, trips: 0, kills: 0, start: this.totalT };
     this.events.push({ id: this.nextId++, type: "jump", at: this.windowAt(), announceAt: this.windowAt() - this.cfg.jumpWindowNotice, announced: false, visible: true });
     this.cue("arrive");
@@ -188,7 +200,9 @@
     js.encounter = this.route[this.jumpIndex];
     this.stats.jumps.push(js);
     this.events = []; this.waves = [];
-    this.ship.systems.forEach(function (s) { s.request = null; });
+    this.endBurn();
+    this.squadronUntil = 0;
+    this.ship.systems.forEach(function (s) { s.request = null; s.call = null; });
     if (this.hasDrive) this.sys("drive").mj = 0;
     this.ship.aux.mj = this.ship.aux.cap;            // aux refills only in GravSpace
     this.ship.gTarget = this.data.cruiseG;
@@ -215,7 +229,7 @@
   /* ----------------------------------------------------------- Scheduler */
   Mission.prototype.schedule = function () {
     var enc = this.encounter(), r = this.rng, t = this.t;
-    if (t >= this.nextWaveAt) {
+    if (!enc.mines && t >= this.nextWaveAt) {
       this.spawnWave(enc);
       this.nextWaveAt = t + r.range(enc.waveEvery);
     }
@@ -224,6 +238,13 @@
       var at = this.nextBurnAt, dur = Math.round(r.range(b.duration)), g = Math.min(this.ship.maxG, Math.round(r.int(b.g) * this.data.gScale));
       this.events.push({ id: this.nextId++, type: "burn", at: at, dur: dur, g: g, announceAt: t, announced: false, visible: true });
       this.nextBurnAt = at + dur + r.range(b.every);
+    }
+    // Cruiser and up: the bridge calls a squadron launch; the hangar must be full.
+    var hg = this.data.hangar;
+    if (hg && t >= this.nextLaunchAt - hg.lead) {
+      var la = this.nextLaunchAt;
+      this.events.push({ id: this.nextId++, type: "launch", at: la, dur: hg.window, announceAt: t, announced: false, visible: true });
+      this.nextLaunchAt = la + hg.window + hg.outFor + r.range(hg.every);
     }
   };
 
@@ -244,6 +265,12 @@
       this.events.push({ id: this.nextId++, type: "request", wave: wave.id, gun: gun, at: start, dur: Math.round(r.range(enc.request.duration)),
         announceAt: start - enc.request.lead, announced: false, visible: true });
     }
+    // Light cruiser and up: some waves get a main-gun call. The gun must be full in the window.
+    var mg = this.data.mainGun;
+    if (mg && this.sys("main") && r.chance(enc.mainChance || 0)) {
+      var ma = t + r.range(w.approach) + r.range(mg.after);
+      this.events.push({ id: this.nextId++, type: "main", wave: wave.id, at: ma, dur: mg.window, announceAt: t, announced: false, visible: true });
+    }
     this.waves.push(wave);
     this.chat("waveIn", { enemy: wave.name }, "info");
   };
@@ -257,6 +284,7 @@
     if (this.phase !== "arrival") this.schedule();
     this.runEvents();
     this.runGunners(dt);
+    this.runCalls(dt);
     this.runPilot(dt);
     this.runCapacitors(dt);
     this.runReactor(dt);
@@ -293,12 +321,20 @@
     if (e.type === "salvo") { this.chat("salvo", { t: lead }, "warn"); this.cue("warn"); }
     else if (e.type === "burn") { this.chat("burn", { t: lead, g: e.g, d: e.dur }, "warn"); this.cue("warnBurn"); }
     else if (e.type === "request") { this.chat("request", { n: e.gun }, "warn"); this.cue("request"); }
+    else if (e.type === "main") { this.chat("mainCall", { t: lead }, "warn"); this.cue("request"); }
+    else if (e.type === "launch") { this.chat("launchCall", { t: lead }, "warn"); this.cue("request"); }
     else if (e.type === "jump") { this.chat(this.hasDrive ? "jumpNotice" : "recoveryNotice", { t: lead }, "info"); }
   };
 
   Mission.prototype.fire = function (e) {
     if (e.type === "salvo") this.salvoHits(e);
-    else if (e.type === "burn") { this.ship.gTarget = e.g; this.burnUntil = e.at + e.dur; }
+    else if (e.type === "burn") {
+      this.endBurn();
+      this.ship.gTarget = e.g; this.burnUntil = e.at + e.dur;
+      if (this.encounter().mines) this.curBurn = { short: 0, jump: this.jumpIndex + 1 };
+    }
+    else if (e.type === "main") { var mg = this.sys("main"); if (mg) mg.call = { until: e.at + e.dur, wave: e.wave, type: "main" }; }
+    else if (e.type === "launch") { var hg = this.sys("hangar"); if (hg) hg.call = { until: e.at + e.dur, type: "launch" }; }
     else if (e.type === "request") {
       var s = this.sys("gun" + e.gun);
       if (s) {
@@ -313,6 +349,14 @@
 
   Mission.prototype.salvoHits = function (e) {
     var sh = this.sys("shield"), st = this.stats, js = this.jumpStats;
+    if (this.t < this.squadronUntil && this.rng.chance(this.data.hangar.intercept)) {
+      st.salvos++; js.salvos++; st.intercepts++;
+      if (e.visible) { st.salvosAnnounced++; st.salvosShielded++; }
+      js.shielded++;
+      this.cue("kill");
+      this.chat("intercepted", null, "good");
+      return;
+    }
     var absorbed = Math.min(sh.mj, e.mj), overflow = e.mj - absorbed;
     sh.mj -= absorbed;
     st.salvos++; js.salvos++;
@@ -378,6 +422,10 @@
   Mission.prototype.runGunners = function (dt) {
     var g = this.data.gun, ship = this.ship, t = this.t;
     var target = this.liveWave();
+    if (target && t < this.squadronUntil) {
+      target.hp -= this.data.hangar.dps * dt;
+      if (target.hp <= 0 && !target.dead) { this.killWave(target, 0); target = this.liveWave(); }
+    }
     for (var i = 0; i < ship.systems.length; i++) {
       var s = ship.systems[i];
       if (s.kind !== "gun") continue;
@@ -412,15 +460,18 @@
     this.stats.requests.push(q);
   };
 
-  Mission.prototype.killWave = function (w, gunner) {
+  // gunner 0 = not a gun battery (main gun or squadron); quiet = the caller already said it.
+  Mission.prototype.killWave = function (w, gunner, quiet) {
     w.dead = true;
     this.stats.kills++; this.jumpStats.kills++;
+    var mg = this.sys("main");
+    if (mg && mg.call && mg.call.wave === w.id) mg.call = null;   // target gone before the shot: no call to score
     // Its remaining salvos and gun requests never come.
     this.events = this.events.filter(function (e) { return e.wave !== w.id || e.done; });
     var self = this;
     this.ship.systems.forEach(function (s) { if (s.request && !self.liveWaveOtherThan(w)) self.closeRequest(s); });
     this.cue("kill");
-    this.chat("killed", { n: gunner, enemy: w.name }, "good");
+    if (!quiet) this.chat(gunner ? "killed" : "killedOther", { n: gunner, enemy: w.name }, "good");
   };
   Mission.prototype.liveWaveOtherThan = function (w) {
     return this.waves.some(function (x) { return x !== w && !x.dead; });
@@ -436,10 +487,71 @@
   };
 
   Mission.prototype.runPilot = function (dt) {
-    var ship = this.ship;
-    if (this.burnUntil && this.t >= this.burnUntil) { ship.gTarget = this.data.cruiseG; this.burnUntil = 0; }
-    ship.g += (ship.gTarget - ship.g) * (1 - Math.exp(-dt / 0.5));
-    ship.engineMW = ship.g * this.data.engineMWperG;
+    var ship = this.ship, perG = this.perG(), enc = this.encounter();
+    if (this.burnUntil && this.t >= this.burnUntil) { ship.gTarget = this.data.cruiseG; this.burnUntil = 0; this.endBurn(); }
+    if (ship.gWant === undefined) ship.gWant = ship.g;
+    ship.gWant += (ship.gTarget - ship.gWant) * (1 - Math.exp(-dt / 0.5));
+    ship.g = ship.gWant; ship.starved = false;
+    if (enc.mines) {
+      // In a minefield the engines get what the capacitors leave of the reactor's safe output.
+      var charging = 0;
+      for (var i = 0; i < ship.systems.length; i++) charging += ship.systems[i].rate;
+      var avail = Math.max(0, ship.reactorMax - charging);
+      if (ship.gWant * perG > avail) ship.g = avail / perG;
+      var short = ship.gWant - ship.g;
+      if (short > 0.25 && this.phase !== "arrival") {
+        ship.starved = true;
+        if (this.curBurn) this.curBurn.short += dt;
+        if (!this.starvedSaid) { this.starvedSaid = true; this.chat("starved", null, "bad"); }
+        if (this.rng.chance(enc.mines.strikePerSec * Math.min(1, short / Math.max(1, ship.gWant)) * dt)) this.mineStrike(enc);
+      } else if (short < 0.05) this.starvedSaid = false;
+    }
+    ship.engineMW = ship.g * perG;
+  };
+  Mission.prototype.endBurn = function () {
+    if (!this.curBurn) return;
+    this.stats.burns.push({ met: this.curBurn.short < 0.5, jump: this.curBurn.jump });
+    this.curBurn = null;
+  };
+  // Mines hit the hull directly; shields don't stop them.
+  Mission.prototype.mineStrike = function (enc) {
+    var dmg = Math.max(1, Math.round(this.rng.range(enc.mines.mj) * this.data.threat.dmg * this.data.hullPerMJ));
+    this.ship.hull -= dmg; this.ship.fresh.hull += dmg;
+    this.stats.hullLost += dmg; this.jumpStats.hullLost += dmg; this.stats.mineStrikes++;
+    this.cue("hullHit");
+    this.chat("mineHit", { dmg: dmg }, "bad");
+    if (this.rng.chance(0.4)) this.damageSystem();
+  };
+
+  /* Main gun and hangar calls: the bridge names a window; the capacitor must be full in it.
+     A full main gun fires its whole charge and destroys the target; a full hangar launches
+     the gunboat squadron, which shoots down some salvos and strafes the enemy for a while. */
+  Mission.prototype.runCalls = function (dt) {
+    var t = this.t, list = this.ship.systems;
+    if (this.squadronUntil && t >= this.squadronUntil) { this.squadronUntil = 0; this.chat("squadronBack", null, "info"); }
+    for (var i = 0; i < list.length; i++) {
+      var s = list[i], q = s.call;
+      if (!q) continue;
+      var full = s.mj >= s.maxMJ - 0.5;
+      if (full) {
+        s.mj = 0; s.call = null;
+        this.stats.calls.push({ type: q.type, filled: true, jump: this.jumpIndex + 1 });
+        if (q.type === "main") {
+          this.cue("main");
+          var w = this.waves.filter(function (x) { return x.id === q.wave && !x.dead; })[0];
+          this.chat("mainFired", { enemy: w ? w.name : "target" }, "good");
+          if (w) this.killWave(w, 0, true);
+        } else {
+          this.cue("launch");
+          this.squadronUntil = t + this.data.hangar.outFor;
+          this.chat("launched", null, "good");
+        }
+      } else if (t >= q.until) {
+        s.call = null;
+        this.stats.calls.push({ type: q.type, filled: false, jump: this.jumpIndex + 1 });
+        this.chat(q.type === "main" ? "mainMissed" : "launchMissed", null, "bad");
+      }
+    }
   };
 
   Mission.prototype.runCapacitors = function (dt) {
@@ -559,9 +671,20 @@
       var inS = e.at - t;
       if (inS > span) continue;
       if (inS + (e.dur || 0) < -0.6) continue;
+      if (e.done && (e.type === "main" || e.type === "launch")) continue;   // shown below while open
       out.push({ id: e.id, type: e.type, in: inS, dur: e.dur || 0, g: e.g, gun: e.gun, mj: e.mj });
     }
+    // An open main-gun or launch call stays on the strip until it is met or runs out.
+    for (var k = 0; k < this.ship.systems.length; k++) {
+      var s = this.ship.systems[k];
+      if (s.call) out.push({ id: "call-" + s.id, type: s.call.type, in: 0, dur: Math.max(0, s.call.until - t), open: true });
+    }
     return out;
+  };
+  // Engine MW per G right now: weaving through a minefield is harder work.
+  Mission.prototype.perG = function () {
+    var enc = this.encounter();
+    return this.data.engineMWperG * (enc && enc.mines ? enc.mines.engineMult : 1);
   };
   Mission.prototype.windowIn = function () { return this.windowAt() - this.t; };
 
@@ -573,9 +696,11 @@
     var efficiency = st.deliveredMJ > 0 ? st.deliveredMJ / (st.deliveredMJ + 4 * st.wastedMJ) : 0;
     var reqFilled = st.requests.filter(function (q) { return q.filled; }).length;
     var onTime = st.jumps.filter(function (j) { return j.onTime; }).length;
-    var asked = st.salvosAnnounced + st.requests.length + (m.hasDrive ? jumpsDone : 0);
+    var callsFilled = st.calls.filter(function (c) { return c.filled; }).length;
+    var burnsMet = st.burns.filter(function (b) { return b.met; }).length;
+    var asked = st.salvosAnnounced + st.requests.length + (m.hasDrive ? jumpsDone : 0) + st.calls.length + st.burns.length;
     if (!m.hasDrive) onTime = 0;
-    var met = asked ? (st.salvosShielded + reqFilled + onTime) / asked : 0;
+    var met = asked ? (st.salvosShielded + reqFilled + onTime + callsFilled + burnsMet) / asked : 0;
     var parts = {
       objective: Math.round(25 * objective),
       condition: Math.round(25 * condition),
@@ -594,6 +719,12 @@
       detail: {
         salvos: st.salvos, salvosAnnounced: st.salvosAnnounced, salvosShielded: st.salvosShielded, surprises: st.surprises,
         requests: st.requests.length, requestsFilled: reqFilled, jumpsOnTime: onTime,
+        mainCalls: st.calls.filter(function (c) { return c.type === "main"; }).length,
+        mainFilled: st.calls.filter(function (c) { return c.type === "main" && c.filled; }).length,
+        launchCalls: st.calls.filter(function (c) { return c.type === "launch"; }).length,
+        launchFilled: st.calls.filter(function (c) { return c.type === "launch" && c.filled; }).length,
+        intercepts: st.intercepts, mineStrikes: st.mineStrikes,
+        burns: st.burns.length, burnsMet: burnsMet,
         trips: st.trips, kills: st.kills, hullLost: st.hullLost, crippledTime: Math.round(st.crippledTime),
         deliveredMJ: Math.round(st.deliveredMJ), wastedMJ: Math.round(st.wastedMJ), efficiencyPct: Math.round(efficiency * 100),
         minutes: Math.round(m.totalT / 6) / 10

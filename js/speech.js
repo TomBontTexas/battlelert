@@ -27,7 +27,12 @@
     "Carrier":        { pitch: 1.0,  rate: 1.0,  order: 11 },
     "Captain":        { pitch: 0.92, rate: 1.0,  order: 12 },
     "Failsafe":       { pitch: 0.85, rate: 1.0,  order: 13 },
-    "Crew":           { pitch: 1.0,  rate: 1.1,  order: 14 }
+    "Gunnery":        { pitch: 0.9,  rate: 1.05, order: 14 },
+    "Flight deck":    { pitch: 1.05, rate: 1.1,  order: 15 },
+    "Gunner 4":       { pitch: 1.02, rate: 1.2,  order: 16 },
+    "Gunner 5":       { pitch: 0.98, rate: 1.2,  order: 17 },
+    "Squadron":       { pitch: 1.08, rate: 1.2,  order: 18 },
+    "Crew":           { pitch: 1.0,  rate: 1.1,  order: 19 }
   };
   var SPEAKERS = Object.keys(PROFILE).sort(function (a, b) { return PROFILE[a].order - PROFILE[b].order; });
 
@@ -147,7 +152,8 @@
         "Damage control": "Shields held.", "Bridge": "Jump window opens in 40 seconds.", "Gunner 2": "Target locked.",
         "Medical": "Air's getting thin.", "Gunner 3": "Splash one raider!", "Navigation": "Course plotted.",
         "Reactor room": "Heat is climbing!", "Coxswain": "Launch! We're clear of the carrier.", "Carrier": "Recovery in 30 seconds.",
-        "Captain": "All hands, stand by.", "Failsafe": "Gun 3 tripped offline." };
+        "Captain": "All hands, stand by.", "Failsafe": "Gun 3 tripped offline.", "Gunnery": "Main gun shot in 12 seconds.",
+        "Flight deck": "Squadron away!", "Gunner 4": "Need full power!", "Gunner 5": "Capacitor empty!", "Squadron": "We caught that salvo!" };
       var wasEnabled = enabled; enabled = true;
       Object.keys(lines).forEach(function (sp) { queue.push({ speaker: sp, words: (/^Gunner/.test(sp) ? sp + ", " : "") + lines[sp], at: Date.now() + 60000, urgent: false }); });
       enabled = wasEnabled;

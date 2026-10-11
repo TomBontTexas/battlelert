@@ -115,6 +115,9 @@ h2 { font-size: 17px; margin: 18px 0 6px; color: var(--charge); }
 .fc-ev.salvo.short { background: #5a1a14; border-style: dashed; }
 .fc-ev.burn { background: #3a2716; border: 1px solid var(--heat); color: var(--text); }
 .fc-ev.request { background: #173528; border: 1px solid var(--rate); color: var(--text); }
+.fc-ev.main, .fc-ev.launch { background: #2a2140; border: 1px solid #a98bff; color: var(--text); }
+.fc-ev.main.short, .fc-ev.launch.short { border-style: dashed; border-color: var(--bad); }
+.engines.hot .eng-fill { background: var(--bad); animation: blink .4s steps(2) infinite; }
 .fc-ev.now { animation: blink .5s steps(2) infinite; }
 
 .comms { display: flex; flex-direction: column; }
@@ -176,6 +179,20 @@ h2 { font-size: 17px; margin: 18px 0 6px; color: var(--charge); }
   border: 1px solid var(--line); border-radius: 8px; padding: 6px; min-height: 0; min-width: 0; position: relative;
 }
 .cap.sel { border-color: var(--sel); box-shadow: 0 0 0 1px var(--sel) inset; }
+/* Eight or more columns (light cruiser and up): stack the head, drop captions, one readout per line. */
+.caps.dense { gap: 4px; }
+.trip-list.trip-two { display: grid; grid-template-columns: 1fr 1fr; align-content: start; column-gap: 22px; font-size: 12px; }
+.caps.dense .cap { padding: 4px 3px; gap: 4px; }
+.caps.dense .cap-head { flex-direction: column; gap: 2px; }
+.caps.dense .cap-key, .caps.dense .nm-long, .caps.dense .bar-cap { display: none; }
+.caps.dense .nm-short { display: inline; }
+.caps.dense .cap-name { font-size: 12px; text-align: center; width: 100%; }
+.caps.dense .prio { font-size: 11px; padding: 0 6px; }
+.caps.dense .cap-state { font-size: 9.5px; letter-spacing: 0; white-space: normal; line-height: 1.15; }
+.caps.dense .cap-bars { gap: 3px; }
+.caps.dense .cap-read { grid-template-columns: minmax(0, 1fr); font-size: 10px; text-align: center; }
+.caps.dense .cap-read .r-mj { grid-column: auto !important; }
+.caps.dense .aux-btn { font-size: 11px; padding: 4px 1px; }
 .cap.tripped { border-color: var(--bad); }
 .cap.tripped .cap-bars { opacity: .55; }
 .cap-head { display: flex; align-items: center; gap: 6px; }

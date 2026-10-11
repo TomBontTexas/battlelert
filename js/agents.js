@@ -20,11 +20,14 @@
     var ship = m.ship, fc = m.forecast(), d = m.data;
     var targetLoad = (0.9 + 0.2 * this.temper) * ship.reactorMax;
     if (ship.heat > 50 + 30 * this.temper) targetLoad = 0.85 * ship.reactorMax;
+    // In a minefield the engines only get what's left under 100%, so never plan past it.
+    var mines = !!(m.encounter() && m.encounter().mines);
+    if (mines) targetLoad = Math.min(targetLoad, 0.97 * ship.reactorMax);
 
     // Expected engine draw over the next couple of seconds.
     var g = ship.gTarget;
     fc.forEach(function (e) { if (e.type === "burn" && e.in < 1.5 && e.in + e.dur > 0) g = Math.max(g, e.g); });
-    var budget = targetLoad - g * d.engineMWperG;
+    var budget = targetLoad - g * m.perG();
 
     var shield = m.sys("shield"), life = m.sys("life"), drive = m.sys("drive");
     var salvos = fc.filter(function (e) { return e.type === "salvo" && e.in > -0.2; });
@@ -42,6 +45,13 @@
       var req = s.request || fc.some(function (e) { return e.type === "request" && e.gun === s.gunner && e.in < 2.5; });
       var room = s.maxMJ - s.mj;
       want[s.id] = req ? s.maxMW : wavesUp ? Math.min(s.maxMW, 9 + room / 6) : room / 8;
+    });
+    // Main gun and hangar: full power when a call is open or coming soon, else top up slowly.
+    ship.systems.forEach(function (s) {
+      if (s.kind !== "main" && s.kind !== "hangar") return;
+      var type = s.kind === "main" ? "main" : "launch", room = s.maxMJ - s.mj;
+      var soon = s.call || fc.some(function (e) { return e.type === type && e.in < room / Math.max(1, s.maxMW) + 4; });
+      want[s.id] = soon ? s.maxMW : Math.min(s.maxMW, room / 12);
     });
 
     // Fill in priority order; the drive takes whatever is left.
@@ -76,7 +86,7 @@
   function StaticEngineer() { this.done = false; }
   BL.StaticEngineer = StaticEngineer;
   // Shares (of the reactor's safe output) a sensible player might set and forget.
-  var STATIC_SHARE = { life: 0.04, shield: 0.25, gun: 0.1, drive: 0.26 };
+  var STATIC_SHARE = { life: 0.04, shield: 0.25, gun: 0.1, drive: 0.26, main: 0.06, hangar: 0.05 };
   StaticEngineer.prototype.think = function (m) {
     if (this.done) return;
     this.done = true;
