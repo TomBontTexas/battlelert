@@ -8,11 +8,39 @@
   var lastPlayed = {};
   var MIN_GAP = { shot: 0.09, tick: 0.05, chatter: 0.25, shieldHit: 0.08 };
 
+  // iPad/iPhone: Safari mutes Web Audio in silent mode unless the page counts as media
+  // playback. Newer Safari has navigator.audioSession; older ones switch over once an
+  // <audio> element plays, so play a tiny silent clip on the first tap.
+  var unlocked = false;
+  function silentWavUrl() {
+    var n = 800, buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
+    function str(o, s) { for (var i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); }
+    str(0, "RIFF"); v.setUint32(4, 36 + n * 2, true); str(8, "WAVE"); str(12, "fmt ");
+    v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+    v.setUint32(24, 8000, true); v.setUint32(28, 16000, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+    str(36, "data"); v.setUint32(40, n * 2, true);
+    return URL.createObjectURL(new Blob([buf], { type: "audio/wav" }));
+  }
+  function unlockMediaPlayback() {
+    if (unlocked) return;
+    unlocked = true;
+    try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch (e) {}
+    try {
+      var el = document.createElement("audio");
+      el.setAttribute("playsinline", ""); el.src = silentWavUrl(); el.volume = 0.01;
+      var p = el.play(); if (p && p.catch) p.catch(function () { unlocked = false; });
+    } catch (e) { unlocked = false; }
+  }
+
+  // Safe to call from any tap or keypress: creates the audio engine the first time and
+  // wakes it again after Safari suspends or interrupts it (backgrounding, screen lock).
   function init() {
-    if (ctx) { if (ctx.state === "suspended") ctx.resume(); return; }
+    unlockMediaPlayback();
+    if (ctx) { if (ctx.state !== "running" && ctx.state !== "closed") ctx.resume(); return; }
     var AC = root.AudioContext || root.webkitAudioContext;
     if (!AC) return;
     ctx = new AC();
+    if (ctx.state !== "running") ctx.resume();
     master = ctx.createGain(); master.gain.value = 0.9; master.connect(ctx.destination);
     noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
     var ch = noiseBuf.getChannelData(0);
@@ -87,6 +115,10 @@
     hum.flt.frequency.setTargetAtTime(160 + 380 * p, t, 0.3);
     hum.g.gain.setTargetAtTime(on ? 0.05 * vols.fx * (0.6 + 0.6 * p) : 0, t, 0.15);
   }
+
+  ["pointerdown", "touchend", "keydown"].forEach(function (type) {
+    document.addEventListener(type, function () { if (!ctx || ctx.state !== "running") init(); }, true);
+  });
 
   BL.audio = {
     init: init,
