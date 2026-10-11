@@ -5,8 +5,9 @@
   var BL = window.BL;
   var $ = function (id) { return document.getElementById(id); };
   var DISPLAY = [];                       // capacitor column order for this ship; keys 1..n
-  var KIND_ORDER = { gun: 0, main: 1, shield: 2, life: 3, hangar: 4, drive: 5 };
-  var LANE = { salvo: "salvo", burn: "burn", request: "request", main: "request", launch: "request" };
+  var KIND_ORDER = { gun: 0, main: 1, pd: 2, shield: 3, life: 4, hangar: 5, buster: 6, drive: 7 };
+  var LANE = { salvo: "salvo", strike: "salvo", burn: "burn", request: "request", main: "request", launch: "request" };
+  var rxEls = [];
   var SETTINGS_KEY = BL.APP_TAG + "_settings";
   var DEFAULT_HINT = $("hint-bar").textContent;   // rewritten per ship (key range)
 
@@ -74,9 +75,10 @@
     }).join("") + (sim.hasDrive ? "<li>The Archonian world: drop the planet buster.</li>" : "");
     $("brief-ship-title").textContent = "Your ship: " + (j.test ? cls.name : j.ship + ", " + cls.name) + ", tech level " + j.tl;
     var html = [
-      "<div><span>Reactor safe output</span> " + d.reactorMW + " MW</div>",
+      d.reactors.length > 1 ? "<div><span>Reactors</span> " + d.reactors.map(function (x) { return x.name + " " + x.mw + " MW"; }).join(", ") + "</div>"
+        : "<div><span>Reactor safe output</span> " + d.reactorMW + " MW</div>",
       "<div><span>Hull</span> " + d.hull + "</div>",
-      "<div><span>Aux bank</span> " + (d.aux.capacity ? d.aux.capacity + " MJ, " + d.aux.rateMW + " MW" : "none (destroyers and up)") + "</div>",
+      "<div><span>" + (d.reactors.length > 1 ? "Aux banks" : "Aux bank") + "</span> " + (d.aux.capacity ? d.aux.capacity + " MJ, " + d.aux.rateMW + " MW" + (d.reactors.length > 1 ? " each, one per reactor" : "") : "none (destroyers and up)") + "</div>",
       "<div><span>Engines</span> " + d.engineMWperG + " MW per G, cruise " + d.cruiseG + " G, top " + d.maxG + " G</div>"
     ];
     d.systems.forEach(function (s) {
@@ -87,6 +89,9 @@
     $("brief-main").hidden = !sim.sys("main");
     $("brief-hangar").hidden = !sim.sys("hangar");
     $("brief-mines").hidden = sim.route.indexOf("minefield") < 0;
+    $("brief-pd").hidden = !sim.sys("pd");
+    $("brief-rx").hidden = d.reactors.length < 2;
+    $("brief-buster").hidden = !sim.sys("buster");
     show("scr-briefing");
   }
   $("btn-brief-back").onclick = function () { click(); if (job.test) show("scr-title"); else showOffers(offersMode); };
@@ -176,21 +181,26 @@
     var caps = $("caps"); caps.innerHTML = ""; capEls = {};
     DISPLAY = sim.ship.systems.slice().sort(function (a, b) { return KIND_ORDER[a.kind] - KIND_ORDER[b.kind] || a.id.localeCompare(b.id); })
       .map(function (s) { return s.id; });
-    caps.style.gridTemplateColumns = "repeat(" + DISPLAY.length + ", minmax(0, 1fr))";
+    // More than ten columns: stack them in two rows.
+    var stacked = DISPLAY.length > 10, perRow = stacked ? Math.ceil(DISPLAY.length / 2) : DISPLAY.length;
+    caps.style.gridTemplateColumns = "repeat(" + perRow + ", minmax(0, 1fr))";
+    caps.classList.toggle("stacked", stacked);
+    buildReactors();
     caps.classList.toggle("dense", DISPLAY.length >= 8);
     $("trip-order").classList.toggle("trip-two", DISPLAY.length >= 8);
     $("hd-station").textContent = "Main Engineering · " + (job.test ? sim.data.className : job.ship + " (" + sim.data.className + ")") + " · tech level " + sim.data.tl;
     $("jump-label").textContent = sim.hasDrive ? "JUMP" : "RECOVERY";
-    $("auxbank").hidden = !sim.hasAux();
+    $("auxbank").hidden = !sim.hasAux() || multiRx();
     document.body.classList.toggle("no-aux", !sim.hasAux());
-    $("hint-bar").textContent = DEFAULT_HINT = "1–" + Math.min(9, DISPLAY.length) + " select · ↑↓ charge rate (Shift: ×5) · ←→ next system" + (sim.hasAux() ? " · A aux" : "") + " · [ ] priority · 0 zero · M max · Space pause · H hints";
+    $("hint-bar").textContent = DEFAULT_HINT = "1–" + Math.min(9, DISPLAY.length) + " select · ↑↓ charge rate (Shift: ×5) · ←→ next system" + (sim.hasAux() ? " · A aux" : "") + (multiRx() ? " · R reactor" : "") + " · [ ] priority · 0 zero · M max · Space pause · H hints";
     DISPLAY.forEach(function (id, i) {
       var s = sim.sys(id);
       var el = document.createElement("div");
       el.className = "cap"; el.dataset.id = id;
       el.innerHTML =
         '<div class="cap-head"><span class="cap-key">' + (i < 9 ? i + 1 : "") + '</span><span class="cap-name"><span class="nm-long">' + s.name + '</span><span class="nm-short">' + s.short + '</span></span>' +
-        '<span class="prio" data-hint="Priority badge: P1 trips last, the highest number trips first. Drag it onto another capacitor to swap places, or press [ and ].">P</span></div>' +
+        '<span class="prio" data-hint="Priority badge: P1 trips last, the highest number trips first. Drag it onto another capacitor to swap places, or press [ and ].">P</span>' +
+        (multiRx() ? '<button class="rx-btn" data-hint="The reactor this capacitor draws from. Tap (or press R) to move it to the next reactor; it draws nothing for 2 s while it switches.">A</button>' : "") + '</div>' +
         '<div class="cap-state"></div>' +
         '<div class="cap-bars">' +
           '<div class="bar-col" data-hint="Stored charge. ' + capHint(s) + ' Hatched = capacity lost to damage."><div class="bar-cap">CHARGE MJ</div>' +
@@ -207,13 +217,14 @@
         slider: el.querySelector(".slider"), rate: el.querySelector(".slider .rate"), aux: el.querySelector(".slider .aux"),
         set: el.querySelector(".slider .set"), lostR: el.querySelector(".slider .lost"),
         mj: el.querySelector(".r-mj"), rset: el.querySelector(".r-set"), rnow: el.querySelector(".r-now"),
-        auxBtn: el.querySelector(".aux-btn")
+        auxBtn: el.querySelector(".aux-btn"), rxBtn: el.querySelector(".rx-btn")
       };
       capEls[id] = refs;
       el.addEventListener("pointerdown", function () { selected = i; });
       wireSlider(id, refs.slider);
       wirePrio(id, refs.prio);
       refs.auxBtn.onclick = function () { selected = i; toggleAux(id); };
+      if (refs.rxBtn) refs.rxBtn.onclick = function (ev) { ev.stopPropagation(); selected = i; moveRx(id); };
     });
     $("route").innerHTML = sim.route.map(function (r, i) { return '<li data-i="' + i + '">' + (i + 1) + ". " + BL.ENCOUNTERS[r].name + "</li>"; }).join("") +
       (sim.hasDrive ? '<li data-i="' + sim.route.length + '">Archonian world</li>' : '<li data-i="' + sim.route.length + '">Carrier: final recovery</li>');
@@ -226,11 +237,49 @@
     $("g-100").setAttribute("x1", 100 + 66 * c); $("g-100").setAttribute("y1", 105 - 66 * s2);
     $("g-100").setAttribute("x2", 100 + 94 * c); $("g-100").setAttribute("y2", 105 - 94 * s2);
   }
+  function multiRx() { return sim.ship.reactors.length > 1; }
+  function moveRx(id) { if (canControl() && sim.moveReactor(id)) BL.audio.play("toggle"); }
+  // Battleship and up: one small panel per reactor (load, heat, aux bank) instead of the gauge.
+  function buildReactors() {
+    var multi = multiRx(), box = $("rx-multi");
+    box.hidden = !multi; $("reactor-title").textContent = multi ? "REACTORS" : "REACTOR";
+    document.querySelector(".gauge-wrap").hidden = $("heat-box").hidden = multi;
+    $("auxbank").hidden = multi || !sim.hasAux();
+    box.innerHTML = ""; rxEls = [];
+    if (!multi) return;
+    sim.ship.reactors.forEach(function (rx, k) {
+      var el = document.createElement("div");
+      el.className = "rx-box"; el.dataset.rx = k;
+      el.setAttribute("data-hint", "Reactor " + rx.name + ": its own load (over 100% builds heat), heat and failsafe, and its own aux bank, which feeds only capacitors on this reactor.");
+      el.innerHTML = '<div class="row-label"><span>REACTOR ' + rx.name + '</span><span class="rx-load"></span></div>' +
+        '<div class="hbar"><div class="hbar-fill rx-load-fill"></div><i class="hbar-mark" style="left:66.67%"></i></div>' +
+        '<div class="row-label"><span>heat</span><span class="rx-heat"></span></div>' +
+        '<div class="hbar"><div class="hbar-fill heat-fill"></div><i class="hbar-mark" style="left:80%"></i></div>' +
+        (rx.aux.cap ? '<div class="row-label"><span>aux ' + rx.name + '</span><span class="rx-aux"></span></div><div class="hbar"><div class="hbar-fill aux-fill"></div></div>' : "");
+      box.appendChild(el);
+      rxEls.push({ root: el, load: el.querySelector(".rx-load"), loadFill: el.querySelector(".rx-load-fill"), heat: el.querySelector(".rx-heat"),
+        heatFill: el.querySelector(".heat-fill"), aux: el.querySelector(".rx-aux"), auxFill: el.querySelector(".aux-fill") });
+    });
+  }
+  function renderReactors() {
+    sim.ship.reactors.forEach(function (rx, k) {
+      var r = rxEls[k]; if (!r) return;
+      setText(r.load, Math.round(rx.loadPct) + "% · " + Math.round(rx.load) + "/" + rx.max + " MW");
+      r.loadFill.style.width = pct(rx.loadPct / 150);
+      setCls(r.loadFill, "hbar-fill rx-load-fill" + (rx.loadPct > 100 ? " over" : ""));
+      setText(r.heat, Math.round(rx.heat) + " / 100");
+      r.heatFill.style.width = pct(rx.heat / 100);
+      r.root.classList.toggle("hot", rx.heat >= BL.PHYSICS.alarmHeat);
+      if (r.aux) { setText(r.aux, Math.round(rx.aux.mj) + " / " + rx.aux.cap + " MJ" + (rx.aux.out > 0.1 ? " · " + Math.round(rx.aux.out) + " MW" : "")); r.auxFill.style.width = pct(rx.aux.mj / rx.aux.cap); }
+    });
+  }
   function capHint(s) {
     return s.kind === "gun" ? "Each shot uses " + sim.data.gun.shotMJ + " MJ." :
       s.kind === "shield" ? "Salvos drain it; what it can't stop hits the hull." :
       s.kind === "life" ? "Drains " + s.drainMW + " MW all the time. Empty = crippled crew." :
       s.kind === "main" ? "Fires only when the bridge calls a shot, and only if full: the whole charge in one go, and the target is destroyed." :
+      s.kind === "pd" ? "Point defense: each drive strike it stops costs a chunk of charge. Shields don't stop drive strikes." :
+      s.kind === "buster" ? "The planet buster: charges from the start, keeps its charge, can't charge in GravSpace. Must be full for the final jump." :
       s.kind === "hangar" ? "Refuels and rearms the gunboat squadron. When the bridge calls a launch it must be full; the squadron then screens the ship." :
       "Must be full for the captain to jump.";
   }
@@ -308,6 +357,7 @@
     else if (k === "0") { sim.setSetpoint(id, 0); BL.audio.play("tick"); }
     else if (k === "m" || k === "M") { sim.setSetpoint(id, s.baseMW); BL.audio.play("tick"); }
     else if (k === "a" || k === "A") toggleAux(id);
+    else if ((k === "r" || k === "R") && multiRx()) moveRx(id);
     else if (k === "[") { sim.movePriority(id, -1); click(); }
     else if (k === "]") { sim.movePriority(id, 1); click(); }
     else return;
@@ -382,6 +432,7 @@
     renderComms();
 
     // Reactor
+    if (multiRx()) renderReactors();
     var lp = ship.loadPct;
     $("g-val").setAttribute("d", lp > 0.2 ? arc(0, lp) : "");
     $("g-val").setAttribute("class", "g-val" + (lp > 100 ? " over" : ""));
@@ -401,7 +452,7 @@
     var feeding = ship.systems.filter(function (s) { return s.aux; }).map(function (s) { return s.short; });
     setText($("aux-out"), feeding.length ? "Switched to " + feeding.join(", ") + (ship.aux.out > 0.1 ? " · " + Math.round(ship.aux.out) + " MW" : "") : "Not switched on");
     var trip = sim.priority.slice().reverse().map(function (id) {
-      var s = sim.sys(id); return '<li class="' + (s.tripped ? "tripped" : "") + '">' + s.name + (s.tripped ? " ✖" : "") + "</li>";
+      var s = sim.sys(id); return '<li class="' + (s.tripped ? "tripped" : "") + '">' + (multiRx() ? s.short + " (" + ship.reactors[s.reactor].name + ")" : s.name) + (s.tripped ? " ✖" : "") + "</li>";
     }).join("");
     if ($("trip-order").innerHTML !== trip) $("trip-order").innerHTML = trip;
 
@@ -409,10 +460,12 @@
     DISPLAY.forEach(function (id, i) {
       var s = sim.sys(id), r = capEls[id];
       setCls(r.root, "cap" + (i === selected ? " sel" : "") + (s.tripped ? " tripped" : ""));
+      if (r.rxBtn) { setText(r.rxBtn, ship.reactors[s.reactor].name); if (r.root.dataset.rx !== String(s.reactor)) r.root.dataset.rx = s.reactor; }
       setText(r.prio, "P" + (sim.priority.indexOf(id) + 1));
       var st = "", stc = "cap-state";
       var full = s.mj >= s.maxMJ - 0.5;
       if (s.tripped) { st = "✖ TRIPPED " + Math.ceil(s.tripUntil - sim.t) + " s"; stc += " tripped"; }
+      else if (sim.t < s.switchUntil) { st = "⇄ TO " + ship.reactors[s.reactor].name; stc += " request"; }
       else if (s.request) { st = "◆ RAPID FIRE"; stc += " request"; }
       else if (s.call) { st = (s.kind === "main" ? "◉ SHOT CALLED " : "✈ LAUNCH CALLED ") + Math.max(0, Math.ceil(s.call.until - sim.t)) + " s"; stc += " request"; }
       else if (s.kind === "hangar" && sim.t < sim.squadronUntil) { st = "✈ SQUADRON OUT " + Math.ceil(sim.squadronUntil - sim.t) + " s"; stc += " full"; }
@@ -457,9 +510,12 @@
     setText($("jump-drive"), "drive " + Math.floor(dp * 100) + "%");
     $("jump-fill").style.width = pct(dp);
     if (sim.phase === "countdown") { js = "✔ Drive full. Jumping in " + Math.max(1, Math.ceil(sim.jumpAt - sim.t)) + " s"; jc += " go"; }
+    else if (sim.jumpIndex === sim.cfg.jumps - 1 && !sim.busterFull() && wi <= 0) { js = "⚠ Window OPEN: the planet buster isn't full · " + Math.floor(sim.sys("buster").mj / sim.sys("buster").maxMJ * 100) + "%"; jc += " late"; }
     else if (wi > 0) {
       var need = (drive.maxMJ - drive.mj) / Math.max(1, wi);
       js = "Window opens in " + Math.ceil(wi) + " s" + (dp < 1 ? " · drive needs ~" + Math.ceil(need) + " MW from now" : " · drive ready");
+      var bst = sim.sys("buster");
+      if (bst) js += " · buster " + Math.floor(bst.mj / bst.maxMJ * 100) + "%";
       if (need > drive.maxMW * 0.8) jc += " late";
     } else { js = "⚠ Window OPEN: the bridge is waiting on the drive"; jc += " late"; }
     setText($("jump-status"), js); setCls($("jump-status"), jc);
@@ -480,6 +536,7 @@
     var tracks = {};
     document.querySelectorAll(".fc-lane").forEach(function (l) { tracks[l.dataset.lane] = l.querySelector(".fc-track"); });
     var shieldLeft = sim.sys("shield").mj;   // salvos land in order; each eats what's left
+    var pdLeft = sim.sys("pd") ? sim.sys("pd").mj : 0;
     items.sort(function (a, b) { return a.in - b.in; });
     items.forEach(function (e) {
       seen[e.id] = true;
@@ -494,6 +551,10 @@
         shieldLeft -= e.mj;
         label = "⚡ SALVO " + e.mj + " MJ" + secs + (shieldLeft >= 0 ? " · ✔ covered" : " · short " + Math.ceil(Math.min(e.mj, -shieldLeft)) + " MJ");
         el.classList.toggle("short", shieldLeft < 0);
+      } else if (e.type === "strike") {
+        pdLeft -= e.mj;
+        label = "✈ DRIVE STRIKE · PD " + e.mj + " MJ" + secs + (pdLeft >= 0 ? " · ✔ covered" : " · PD short");
+        el.classList.toggle("short", pdLeft < 0);
       } else if (e.type === "burn") {
         label = sim.encounter().mines ? "▲ WEAVE " + e.g + " G · engines need " + Math.round(e.g * sim.perG()) + " MW free for " + e.dur + " s" + secs
           : "▲ BURN " + e.g + " G · +" + Math.round((e.g - sim.data.cruiseG) * sim.perG()) + " MW for " + e.dur + " s" + secs;
@@ -608,7 +669,8 @@
       ["Damage reports", r.damage.length]
     ].concat(d.mainCalls ? [["Main-gun shots made", d.mainFilled + " / " + d.mainCalls]] : [],
       d.launchCalls ? [["Squadron launches", d.launchFilled + " / " + d.launchCalls], ["Salvos the squadron shot down", d.intercepts]] : [],
-      d.burns ? [["Minefield burns fully powered", d.burnsMet + " / " + d.burns], ["Mine strikes", d.mineStrikes]] : []);
+      d.burns ? [["Minefield burns fully powered", d.burnsMet + " / " + d.burns], ["Mine strikes", d.mineStrikes]] : [],
+      d.strikes ? [["Drive strikes stopped", d.strikesStopped + " / " + d.strikes], ["Drive charge lost to strikes", d.driveDrainedMJ + " MJ"]] : []);
     $("db-detail").innerHTML = rows.map(function (x) { return "<div><span>" + x[0] + ":</span> " + x[1] + "</div>"; }).join("");
     $("db-career").hidden = !report;
     if (report) renderCareerReport(r);

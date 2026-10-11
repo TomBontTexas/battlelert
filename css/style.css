@@ -115,6 +115,8 @@ h2 { font-size: 17px; margin: 18px 0 6px; color: var(--charge); }
 .fc-ev.salvo.short { background: #5a1a14; border-style: dashed; }
 .fc-ev.burn { background: #3a2716; border: 1px solid var(--heat); color: var(--text); }
 .fc-ev.request { background: #173528; border: 1px solid var(--rate); color: var(--text); }
+.fc-ev.strike { background: #3a1d33; border: 2px solid #ff6ec7; color: var(--text); transform: translateX(-4px); }
+.fc-ev.strike.short { background: #5a1a3a; border-style: dashed; }
 .fc-ev.main, .fc-ev.launch { background: #2a2140; border: 1px solid #a98bff; color: var(--text); }
 .fc-ev.main.short, .fc-ev.launch.short { border-style: dashed; border-color: var(--bad); }
 .engines.hot .eng-fill { background: var(--bad); animation: blink .4s steps(2) infinite; }
@@ -181,6 +183,21 @@ h2 { font-size: 17px; margin: 18px 0 6px; color: var(--charge); }
 .cap.sel { border-color: var(--sel); box-shadow: 0 0 0 1px var(--sel) inset; }
 /* Eight or more columns (light cruiser and up): stack the head, drop captions, one readout per line. */
 .caps.dense { gap: 4px; }
+.caps.stacked { grid-auto-rows: minmax(0, 1fr); }
+.trip-list.trip-two li { line-height: 1.2; }
+.caps.stacked .cap-bars { min-height: 60px; }
+.rx-btn { font: 800 11px var(--font); padding: 0 6px; border-radius: 10px; min-width: 22px; }
+.cap[data-rx="0"] { border-top: 3px solid #4fc3f7; }
+.cap[data-rx="1"] { border-top: 3px solid #ffb74d; }
+.cap[data-rx="2"] { border-top: 3px solid #ba68c8; }
+.rx-multi { display: grid; gap: 8px; }
+.rx-box { border-left: 3px solid var(--line); padding-left: 6px; display: grid; gap: 2px; }
+.rx-box[data-rx="0"] { border-color: #4fc3f7; } .rx-box[data-rx="1"] { border-color: #ffb74d; } .rx-box[data-rx="2"] { border-color: #ba68c8; }
+.rx-box .hbar { height: 9px; }
+.rx-box .rx-load-fill { background: var(--rate); }
+.rx-box .rx-load-fill.over { background: var(--bad); }
+.rx-box.hot .heat-fill { background: var(--bad); animation: blink .4s steps(2) infinite; }
+.rx-box .row-label { margin-bottom: 0; font-size: 11px; }
 .trip-list.trip-two { display: grid; grid-template-columns: 1fr 1fr; align-content: start; column-gap: 22px; font-size: 12px; }
 .caps.dense .cap { padding: 4px 3px; gap: 4px; }
 .caps.dense .cap-head { flex-direction: column; gap: 2px; }

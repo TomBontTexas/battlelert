@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Battlelert</title>
-<link rel="stylesheet" href="css/style.css?b=b33736de">
+<link rel="stylesheet" href="css/style.css?b=10c68112">
 </head>
 <body>
 
@@ -111,6 +111,9 @@
       <li>Capacitors that are full stop drawing power. When they're drained, they ramp back up to your setting over a second or two.</li>
       <li id="brief-main" hidden>The <b>main gun</b> fires only when the bridge calls a shot, and only if its capacitor is full. A full shot destroys the target.</li>
       <li id="brief-hangar" hidden>The <b>hangar</b> must be full when the bridge calls a squadron launch. The gunboats then shoot down some salvos and strafe the enemy.</li>
+      <li id="brief-pd" hidden><b>Point defense</b> is the only thing that stops a drive strike from drive hunters. Each strike it stops costs a chunk of its charge; one that gets through drains part of the GravSpace drive.</li>
+      <li id="brief-rx" hidden>This ship has <b>several reactors</b>, each with its own load, heat, failsafe and aux bank. Every capacitor is wired to one reactor (the letter on its column); tap the letter or press R to move it to the next reactor. It draws nothing for 2 s while it switches. Aux banks can't be moved: each feeds only its own reactor's capacitors.</li>
+      <li id="brief-buster" hidden>The <b>planet buster</b> charges from the start of the mission and keeps its charge, but it can't charge in GravSpace. It must be full, as well as the drive, before the final jump.</li>
       <li id="brief-mines" hidden>In a <b>minefield</b> there is no enemy fire, but the engines get only the power your capacitors leave. Ease off charging during each weave, or the ship drifts into mines.</li>
     </ul>
     <div class="actions">
@@ -151,7 +154,8 @@
 
   <div class="con-main">
     <aside class="panel left">
-      <div class="panel-title">REACTOR</div>
+      <div class="panel-title" id="reactor-title">REACTOR</div>
+      <div id="rx-multi" class="rx-multi" hidden></div>
       <div class="gauge-wrap" data-hint="Reactor load: engines plus every capacitor's charge rate, against the reactor's safe output. Over 100% builds heat.">
         <svg id="gauge" viewBox="0 0 200 120" class="gauge" aria-label="Reactor load">
           <path class="g-bg" d="M20 105 A80 80 0 0 1 180 105" />
@@ -163,7 +167,7 @@
         </svg>
         <div class="load-detail" id="load-detail"></div>
       </div>
-      <div class="heat" data-hint="Reactor heat. Load above 100% builds it, load below 100% sheds it. At full heat the failsafe trips a capacitor off the reactor for 10 s, lowest priority first.">
+      <div class="heat" id="heat-box" data-hint="Reactor heat. Load above 100% builds it, load below 100% sheds it. At full heat the failsafe trips a capacitor off the reactor for 10 s, lowest priority first.">
         <div class="row-label"><span>HEAT</span><span id="heat-val">0</span></div>
         <div class="hbar"><div id="heat-fill" class="hbar-fill heat-fill"></div><i class="hbar-mark" style="left:80%"></i></div>
         <div id="heat-warn" class="warn-text" hidden>⚠ OVERHEATING</div>
@@ -307,6 +311,7 @@
       <tr><td>0 / M</td><td>Charge rate to zero / to maximum</td></tr>
       <tr><td>A</td><td>Switch the aux bank onto or off the selected capacitor</td></tr>
       <tr><td>[ ]</td><td>Raise or lower its priority (what trips first)</td></tr>
+      <tr><td>R</td><td>Move it to the next reactor (battleship and up)</td></tr>
       <tr><td>Space</td><td>Pause</td></tr>
       <tr><td>H</td><td>Hint mode</td></tr>
     </table>
@@ -326,6 +331,7 @@
       <li><b>Spend aux power to bridge a gap.</b> The aux bank charges a capacitor without loading the reactor. It only refills between jumps.</li>
       <li><b>Charge the GravSpace drive.</b> When the jump window opens and the drive is full, the captain jumps. Three jumps and the planet buster is delivered.</li>
       <li><b>Bigger ships add calls.</b> Light cruisers and up have a main gun: when the bridge calls a shot, its capacitor must be full, and a full shot destroys the target. Cruisers and up also have a hangar that must be full when the bridge calls a squadron launch.</li>
+      <li><b>The biggest ships.</b> Heavy cruisers and up have point defense, the only thing that stops drive hunters' strikes on the GravSpace drive. Battleships have two reactors and dreadnoughts three: move capacitors between them to balance the load. The dreadnought also carries the planet buster, which must be full before the final jump.</li>
       <li><b>Minefields.</b> No enemy fire, but the engines get only what the capacitors leave of the reactor. Ease off charging during each weave, or the ship drifts into mines.</li>
     </ol>
     <p>Shields stop salvos; whatever gets through damages the hull, and damage slows chargers, lowers reactor output and weakens the thrusters. Fed guns kill enemies faster, and a dead enemy fires no more salvos. Keep life support topped up, or the crew falters.</p>
@@ -336,12 +342,12 @@
 
 <script src="version.js?b=1456e027"></script>
 <script src="update-banner.js?b=71816d57"></script>
-<script src="js/data.js?b=f2e3d363"></script>
-<script src="js/sim.js?b=8952c97c"></script>
-<script src="js/agents.js?b=60e760e6"></script>
+<script src="js/data.js?b=3dcacc69"></script>
+<script src="js/sim.js?b=9f08e0e6"></script>
+<script src="js/agents.js?b=34dda5d0"></script>
 <script src="js/career.js?b=71affa4d"></script>
-<script src="js/speech.js?b=143de8de"></script>
+<script src="js/speech.js?b=bc038836"></script>
 <script src="js/audio.js?b=76c87b2a"></script>
-<script src="js/ui.js?b=70ec7ba4"></script>
+<script src="js/ui.js?b=0dd890af"></script>
 </body>
 </html>

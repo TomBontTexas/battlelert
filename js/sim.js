@@ -61,6 +61,7 @@
       calls: [],                            // main-gun and launch calls: { type, filled }
       burns: [],                            // minefield burns: { met }
       mineStrikes: 0, intercepts: 0,
+      strikes: 0, strikesAnnounced: 0, strikesStopped: 0, driveDrainedMJ: 0,
       overloadRun: 0, overloadRunStart: 0,
       longestOverload: { dur: 0, jump: 0, t: 0 },
       damageReports: []
@@ -83,23 +84,29 @@
     this.ship = {
       name: d.name,
       hull: d.hull, hullMax: d.hull,
+      // One or more reactors, each with its own load, heat, failsafe and aux bank. The ship-wide
+      // numbers below (reactorMax, load, loadPct, heat) are totals / the worst reactor, for displays.
+      reactors: d.reactors.map(function (r) {
+        return { name: r.name, base: r.mw, max: r.mw, load: 0, loadPct: 0, heat: 0, lastTrip: -99, heatAlarm: false, fresh: 0,
+          aux: { mj: r.aux.capacity, cap: r.aux.capacity, rateMW: r.aux.rateMW, out: 0, emptySaid: false } };
+      }),
       reactorBase: d.reactorMW, reactorMax: d.reactorMW,
-      load: 0, loadPct: 0, heat: 0, lastTrip: -99, heatAlarm: false,
+      load: 0, loadPct: 0, heat: 0,
       g: d.cruiseG, gTarget: d.cruiseG, engineMW: d.cruiseG * d.engineMWperG, maxG: d.maxG,
-      aux: { mj: d.aux.capacity, cap: d.aux.capacity, rateMW: d.aux.rateMW, out: 0 },
       crippled: false, lifeLowSaid: false,
-      fresh: { hull: 0, g: 0, reactor: 0 },          // damage taken since the last GravSpace repair
+      fresh: { hull: 0, g: 0 },          // damage taken since the last GravSpace repair
       systems: d.systems.map(function (s) {
         return {
           id: s.id, name: s.name, short: s.short, kind: s.kind, gunner: s.gunner || 0,
           baseMJ: s.maxMJ, maxMJ: s.maxMJ, baseMW: s.maxMW, maxMW: s.maxMW,
           mj: s.startMJ, set: s.startSet, rate: 0, auxRate: 0, drainMW: s.drainMW || 0,
-          tripped: false, tripUntil: 0, aux: false, freshMW: 0,
+          tripped: false, tripUntil: 0, aux: false, freshMW: 0, reactor: s.reactor || 0, switchUntil: 0,
           // gunner state
           nextShot: 0, request: null, call: null
         };
       })
     };
+    this.ship.aux = this.ship.reactors[0].aux;      // single-reactor ships: the aux bank
     this.priority = d.systems.map(function (s) { return s.id; });
   };
 
@@ -125,7 +132,17 @@
     var s = this.sys(id); if (!s) return;
     s.set = clamp(Math.round(mw * 2) / 2, 0, s.baseMW);
   };
-  Mission.prototype.hasAux = function () { return this.ship.aux.cap > 0; };
+  Mission.prototype.hasAux = function () { return this.ship.reactors.some(function (r) { return r.aux.cap > 0; }); };
+  Mission.prototype.auxFor = function (s) { return this.ship.reactors[s.reactor].aux; };
+  // Rewire a capacitor to the next reactor. It draws nothing for 2 s while it switches.
+  // Aux banks can't be moved: each feeds only the capacitors on its own reactor.
+  Mission.prototype.moveReactor = function (id, to) {
+    var n = this.ship.reactors.length, s = this.sys(id);
+    if (n < 2 || !s) return false;
+    s.reactor = to === undefined ? (s.reactor + 1) % n : clamp(to, 0, n - 1);
+    s.switchUntil = this.t + this.phys.switchSeconds; s.rate = 0;
+    return true;
+  };
   Mission.prototype.toggleAux = function (id) {
     if (!this.hasAux()) return false;
     var s = this.sys(id); if (s) s.aux = !s.aux;
@@ -204,7 +221,7 @@
     this.squadronUntil = 0;
     this.ship.systems.forEach(function (s) { s.request = null; s.call = null; });
     if (this.hasDrive) this.sys("drive").mj = 0;
-    this.ship.aux.mj = this.ship.aux.cap;            // aux refills only in GravSpace
+    this.ship.reactors.forEach(function (rx) { rx.aux.mj = rx.aux.cap; });   // aux refills only in GravSpace
     this.ship.gTarget = this.data.cruiseG;
     this.closeOverloadRun();
     this.cue("jump");
@@ -229,7 +246,10 @@
   /* ----------------------------------------------------------- Scheduler */
   Mission.prototype.schedule = function () {
     var enc = this.encounter(), r = this.rng, t = this.t;
-    if (!enc.mines && t >= this.nextWaveAt) {
+    // Once the jump window has been open a while, the enemy breaks off (drive hunters at once),
+    // so a drive that can't keep up never stalls the mission forever.
+    var cutoff = this.windowAt() + (enc.breakOff === undefined ? this.cfg.breakOff : enc.breakOff);
+    if (!enc.mines && t >= this.nextWaveAt && t < cutoff) {
       this.spawnWave(enc);
       this.nextWaveAt = t + r.range(enc.waveEvery);
     }
@@ -256,7 +276,8 @@
     for (var i = 0; i < n; i++) {
       if (i > 0) at += r.range(w.salvoGap);
       var surprise = r.chance(enc.surpriseChance);
-      this.events.push({ id: this.nextId++, type: "salvo", wave: wave.id, at: at, mj: Math.round(r.range(w.salvoMJ) * th.dmg),
+      // Drive hunters fire drive strikes (mj = point-defense charge needed to stop one).
+      this.events.push({ id: this.nextId++, type: w.strikes ? "strike" : "salvo", wave: wave.id, at: at, mj: Math.round(r.range(w.salvoMJ) * th.dmg),
         announceAt: Math.max(t, at - enc.salvoWarning), announced: false, visible: !surprise });
     }
     wave.lastAt = at;
@@ -319,6 +340,7 @@
   Mission.prototype.announce = function (e) {
     var lead = Math.max(1, Math.round(e.at - this.t));
     if (e.type === "salvo") { this.chat("salvo", { t: lead }, "warn"); this.cue("warn"); }
+    else if (e.type === "strike") { this.chat("strike", { t: lead }, "warn"); this.cue("warn"); }
     else if (e.type === "burn") { this.chat("burn", { t: lead, g: e.g, d: e.dur }, "warn"); this.cue("warnBurn"); }
     else if (e.type === "request") { this.chat("request", { n: e.gun }, "warn"); this.cue("request"); }
     else if (e.type === "main") { this.chat("mainCall", { t: lead }, "warn"); this.cue("request"); }
@@ -328,6 +350,7 @@
 
   Mission.prototype.fire = function (e) {
     if (e.type === "salvo") this.salvoHits(e);
+    else if (e.type === "strike") this.strikeHits(e);
     else if (e.type === "burn") {
       this.endBurn();
       this.ship.gTarget = e.g; this.burnUntil = e.at + e.dur;
@@ -375,6 +398,32 @@
     if (this.rng.chance(Math.min(0.85, overflow / 110))) this.damageSystem();
   };
 
+  // A drive strike: point defense stops it if it holds the charge; shields don't help.
+  // One that gets through drains a slice of the GravSpace drive (the hull is untouched).
+  Mission.prototype.strikeHits = function (e) {
+    var pd = this.sys("pd"), drive = this.sys("drive"), st = this.stats, enc = this.encounter();
+    st.strikes++;
+    if (e.visible) st.strikesAnnounced++; else this.chat("surprise", null, "bad");
+    if (this.t < this.squadronUntil && this.rng.chance(this.data.hangar.intercept)) {
+      st.intercepts++; if (e.visible) st.strikesStopped++;
+      this.cue("kill"); this.chat("intercepted", null, "good"); return;
+    }
+    if (pd && pd.mj >= e.mj - 0.5) {
+      pd.mj -= e.mj;
+      if (e.visible) st.strikesStopped++;
+      this.cue("pd");
+      if (this.rng.chance(0.4)) this.chat("pdStopped", null, "good");
+      return;
+    }
+    if (pd) pd.mj = 0;                              // it fired everything it had and missed
+    if (drive) {
+      var loss = Math.min(drive.mj, drive.maxMJ * enc.driveDrain);
+      drive.mj -= loss; st.driveDrainedMJ += loss;
+      this.cue("hullHit");
+      this.chat("driveHit", { pct: Math.round(enc.driveDrain * 100) }, "bad");
+    }
+  };
+
   Mission.prototype.damageSystem = function () {
     var r = this.rng, ship = this.ship, what;
     // Thrusters 20%, a charger 40%, the reactor 40%. Capacitors never shrink: a smaller
@@ -389,9 +438,10 @@
       c.freshMW += c.maxMW - mw; c.maxMW = mw;
       what = c.name + " charger damaged, max rate now " + c.maxMW + " MW";
     } else {
-      var out = Math.round(ship.reactorMax * 0.95);
-      ship.fresh.reactor += ship.reactorMax - out; ship.reactorMax = out;
-      what = "reactor damaged, safe output now " + ship.reactorMax + " MW";
+      var rx = r.pick(ship.reactors), out = Math.round(rx.max * 0.95);
+      rx.fresh += rx.max - out; rx.max = out;
+      what = (ship.reactors.length > 1 ? "reactor " + rx.name : "reactor") + " damaged, safe output now " + rx.max + " MW";
+      this.totalReactors();
     }
     this.stats.damageReports.push({ jump: this.jumpIndex + 1, what: what });
     this.chat("damaged", { what: what }, "bad");
@@ -403,12 +453,15 @@
     var ship = this.ship, f = ship.fresh, done = [];
     function half(v) { return Math.round(v / 2 * 2) / 2; }
     if (f.hull > 0) { var h = half(f.hull); ship.hull = Math.min(ship.hullMax, ship.hull + h); done.push("hull +" + h + ", now " + Math.round(ship.hull) + " / " + ship.hullMax); }
-    if (f.reactor > 0) { ship.reactorMax += half(f.reactor); done.push("reactor safe output now " + ship.reactorMax + " MW"); }
+    ship.reactors.forEach(function (rx) {
+      if (rx.fresh > 0) { rx.max += half(rx.fresh); rx.fresh = 0; done.push((ship.reactors.length > 1 ? "reactor " + rx.name : "reactor") + " safe output now " + rx.max + " MW"); }
+    });
+    this.totalReactors();
     ship.systems.forEach(function (s) {
       if (s.freshMW > 0) { s.maxMW = Math.min(s.baseMW, s.maxMW + half(s.freshMW)); s.freshMW = 0; done.push(s.name + " charger max rate now " + s.maxMW + " MW"); }
     });
     if (f.g > 0) { ship.maxG += f.g / 2; done.push("thrusters top speed now " + ship.maxG + " G"); }
-    ship.fresh = { hull: 0, g: 0, reactor: 0 };
+    ship.fresh = { hull: 0, g: 0 };
     this.lastRepairs = done;
     if (done.length) this.say("Damage control: repairs complete. Half the damage is fixed; the rest needs a shipyard.", "good");
     return done;
@@ -494,9 +547,10 @@
     ship.g = ship.gWant; ship.starved = false;
     if (enc.mines) {
       // In a minefield the engines get what the capacitors leave of the reactor's safe output.
-      var charging = 0;
-      for (var i = 0; i < ship.systems.length; i++) charging += ship.systems[i].rate;
-      var avail = Math.max(0, ship.reactorMax - charging);
+      var R = ship.reactors, charging = R.map(function () { return 0; });
+      for (var i = 0; i < ship.systems.length; i++) charging[ship.systems[i].reactor] += ship.systems[i].rate;
+      var avail = Infinity;
+      for (var k = 0; k < R.length; k++) avail = Math.min(avail, Math.max(0, R[k].max - charging[k]) * R.length);
       if (ship.gWant * perG > avail) ship.g = avail / perG;
       var short = ship.gWant - ship.g;
       if (short > 0.25 && this.phase !== "arrival") {
@@ -555,17 +609,20 @@
   };
 
   Mission.prototype.runCapacitors = function (dt) {
-    var P = this.phys, ship = this.ship, aux = ship.aux, list = ship.systems;
-    // Aux bank: split its output across the switched capacitors that still have room.
-    var takers = 0;
-    for (var i = 0; i < list.length; i++) if (list[i].aux && list[i].mj < list[i].maxMJ) takers++;
-    var share = takers && aux.mj > 0 ? Math.min(aux.rateMW, aux.mj / dt) / takers : 0;
-    aux.out = 0;
+    var P = this.phys, ship = this.ship, R = ship.reactors, list = ship.systems, t = this.t;
+    // Each aux bank splits its output across the switched capacitors on its reactor that have room.
+    var takers = R.map(function () { return 0; }), share = [];
+    function feeding(s) { return s.aux && s.mj < s.maxMJ && t >= s.switchUntil; }
+    for (var i = 0; i < list.length; i++) if (feeding(list[i])) takers[list[i].reactor]++;
+    for (var k = 0; k < R.length; k++) {
+      var a = R[k].aux; a.out = 0;
+      share[k] = takers[k] && a.mj > 0 ? Math.min(a.rateMW, a.mj / dt) / takers[k] : 0;
+    }
     var upK = 1 - Math.exp(-dt / P.rampUpTau), downK = 1 - Math.exp(-dt / P.rampDownTau);
     for (i = 0; i < list.length; i++) {
       var s = list[i];
       var sp = Math.min(s.set, s.maxMW), target;
-      if (s.tripped) { s.rate = 0; target = 0; }
+      if (s.tripped || t < s.switchUntil) { s.rate = 0; target = 0; }
       else if (s.mj >= s.maxMJ - 1e-6) target = Math.min(sp, s.drainMW);
       else {
         var wb = s.kind === "drive" ? 0.99 : P.windBackAt;
@@ -575,7 +632,8 @@
       if (target > s.rate) s.rate += Math.min((target - s.rate) * upK + 0.02, P.rampUpSlew * dt, target - s.rate);
       else s.rate += (target - s.rate) * downK;
       if (s.rate < 0.01) s.rate = 0;
-      s.auxRate = (s.aux && s.mj < s.maxMJ) ? share : 0;
+      var aux = R[s.reactor].aux;
+      s.auxRate = feeding(s) ? share[s.reactor] : 0;
       var room = s.maxMJ - s.mj + s.drainMW * dt;
       var fromAux = Math.min(s.auxRate * dt, Math.max(0, room));
       var fromReactor = Math.min(s.rate * dt, Math.max(0, room - fromAux));
@@ -584,48 +642,64 @@
       aux.out += fromAux / dt;
       this.stats.deliveredMJ += fromReactor;
     }
-    if (takers && aux.mj <= 0 && !this.auxEmptySaid) { this.auxEmptySaid = true; this.chat("auxEmpty", null, "warn"); }
-    if (aux.mj > 0) this.auxEmptySaid = false;
+    for (k = 0; k < R.length; k++) {
+      var b = R[k].aux;
+      if (takers[k] && b.mj <= 0 && !b.emptySaid) { b.emptySaid = true; this.chat(R.length > 1 ? "auxEmptyR" : "auxEmpty", { r: R[k].name }, "warn"); }
+      if (b.mj > 0) b.emptySaid = false;
+    }
   };
 
   Mission.prototype.runReactor = function (dt) {
-    var P = this.phys, ship = this.ship, t = this.t, list = ship.systems;
-    var load = ship.engineMW;
-    for (var i = 0; i < list.length; i++) load += list[i].rate;
-    ship.load = load;
-    ship.loadPct = load / ship.reactorMax * 100;
-    if (ship.loadPct > 100) {
-      ship.heat += (ship.loadPct - 100) * P.heatUpPerPct * dt;
-      this.stats.wastedMJ += (load - ship.reactorMax) * dt;
+    var P = this.phys, ship = this.ship, t = this.t, list = ship.systems, R = ship.reactors, multi = R.length > 1;
+    var over = false;
+    for (var k = 0; k < R.length; k++) {
+      var rx = R[k], load = ship.engineMW / R.length;      // engines draw evenly from every reactor
+      for (var i = 0; i < list.length; i++) if (list[i].reactor === k) load += list[i].rate;
+      rx.load = load;
+      rx.loadPct = load / rx.max * 100;
+      if (rx.loadPct > 100) {
+        rx.heat += (rx.loadPct - 100) * P.heatUpPerPct * dt;
+        this.stats.wastedMJ += (load - rx.max) * dt;
+        over = true;
+      } else rx.heat -= ((100 - rx.loadPct) * P.heatDownPerPct + P.heatDownBase) * dt;
+      rx.heat = clamp(rx.heat, 0, 100);
+      if (!rx.heatAlarm && rx.heat >= P.alarmHeat) { rx.heatAlarm = true; this.chat(multi ? "heatR" : "heat", { r: rx.name }, "warn"); }
+      if (rx.heatAlarm && rx.heat < P.alarmHeat - 15) rx.heatAlarm = false;
+      // Failsafe: at max heat, trip the lowest-priority capacitor still drawing on this reactor.
+      if (rx.heat >= 100 && t - rx.lastTrip >= P.tripCooldown) {
+        var victim = null;
+        for (var j = this.priority.length - 1; j >= 0 && !victim; j--) {
+          var s = this.sys(this.priority[j]);
+          if (s.reactor === k && !s.tripped && s.rate > 0.5) victim = s;
+        }
+        if (victim) {
+          victim.tripped = true; victim.tripUntil = t + P.tripSeconds; victim.rate = 0;
+          rx.lastTrip = t;
+          this.stats.trips++; this.jumpStats.trips++;
+          this.cue("trip");
+          this.chat("trip", { sys: victim.name }, "bad");
+        }
+      }
+    }
+    if (over) {
       if (this.stats.overloadRun === 0) this.stats.overloadRunStart = t;
       this.stats.overloadRun += dt;
-    } else {
-      ship.heat -= ((100 - ship.loadPct) * P.heatDownPerPct + P.heatDownBase) * dt;
-      this.closeOverloadRun();
-    }
-    ship.heat = clamp(ship.heat, 0, 100);
+    } else this.closeOverloadRun();
+    this.totalReactors();
     if (this.phase !== "arrival") { this.stats.heatSum += ship.heat * dt; this.stats.heatTime += dt; }
-    if (!ship.heatAlarm && ship.heat >= P.alarmHeat) { ship.heatAlarm = true; this.chat("heat", null, "warn"); }
-    if (ship.heatAlarm && ship.heat < P.alarmHeat - 15) ship.heatAlarm = false;
-
-    // Failsafe: at max heat, trip the lowest-priority capacitor still on the reactor.
-    if (ship.heat >= 100 && t - ship.lastTrip >= P.tripCooldown) {
-      var victim = null;
-      for (var k = this.priority.length - 1; k >= 0 && !victim; k--) {
-        var s = this.sys(this.priority[k]);
-        if (!s.tripped && s.rate > 0.5) victim = s;
-      }
-      if (victim) {
-        victim.tripped = true; victim.tripUntil = t + P.tripSeconds; victim.rate = 0;
-        ship.lastTrip = t;
-        this.stats.trips++; this.jumpStats.trips++;
-        this.cue("trip");
-        this.chat("trip", { sys: victim.name }, "bad");
-      }
-    }
     for (var j = 0; j < list.length; j++) {
       var c = list[j];
       if (c.tripped && t >= c.tripUntil) { c.tripped = false; this.cue("reclose"); this.chat("reclose", { sys: c.name }, "info"); }
+    }
+  };
+
+  // Ship-wide reactor numbers for displays and AI: total output and load, worst load % and heat.
+  Mission.prototype.totalReactors = function () {
+    var ship = this.ship, R = ship.reactors;
+    ship.reactorMax = 0; ship.load = 0; ship.loadPct = 0; ship.heat = 0;
+    for (var k = 0; k < R.length; k++) {
+      ship.reactorMax += R[k].max; ship.load += R[k].load;
+      ship.loadPct = Math.max(ship.loadPct, R[k].loadPct); ship.heat = Math.max(ship.heat, R[k].heat);
     }
   };
 
@@ -652,6 +726,11 @@
       return;
     }
     var full = drive.mj >= drive.maxMJ - 0.5;
+    // Dreadnought: the planet buster must be full too before the final jump.
+    if (this.jumpIndex === this.cfg.jumps - 1 && !this.busterFull()) {
+      if (full && this.phase === "engage" && t >= this.windowAt() && !this.busterSaid) { this.busterSaid = true; this.chat("busterWait", null, "bad"); }
+      full = false;
+    }
     if (full && this.driveFullAt === null) this.driveFullAt = t;
     if (this.phase === "engage" && full && t >= this.windowAt()) {
       this.phase = "countdown";
@@ -686,6 +765,10 @@
     var enc = this.encounter();
     return this.data.engineMWperG * (enc && enc.mines ? enc.mines.engineMult : 1);
   };
+  Mission.prototype.busterFull = function () {
+    var b = this.sys("buster");
+    return !b || b.mj >= b.maxMJ - 0.5;
+  };
   Mission.prototype.windowIn = function () { return this.windowAt() - this.t; };
 
   /* ---------------------------------------------------------------- Score */
@@ -698,9 +781,9 @@
     var onTime = st.jumps.filter(function (j) { return j.onTime; }).length;
     var callsFilled = st.calls.filter(function (c) { return c.filled; }).length;
     var burnsMet = st.burns.filter(function (b) { return b.met; }).length;
-    var asked = st.salvosAnnounced + st.requests.length + (m.hasDrive ? jumpsDone : 0) + st.calls.length + st.burns.length;
+    var asked = st.salvosAnnounced + st.requests.length + (m.hasDrive ? jumpsDone : 0) + st.calls.length + st.burns.length + st.strikesAnnounced;
     if (!m.hasDrive) onTime = 0;
-    var met = asked ? (st.salvosShielded + reqFilled + onTime + callsFilled + burnsMet) / asked : 0;
+    var met = asked ? (st.salvosShielded + reqFilled + onTime + callsFilled + burnsMet + st.strikesStopped) / asked : 0;
     var parts = {
       objective: Math.round(25 * objective),
       condition: Math.round(25 * condition),
@@ -725,6 +808,7 @@
         launchFilled: st.calls.filter(function (c) { return c.type === "launch" && c.filled; }).length,
         intercepts: st.intercepts, mineStrikes: st.mineStrikes,
         burns: st.burns.length, burnsMet: burnsMet,
+        strikes: st.strikesAnnounced, strikesStopped: st.strikesStopped, driveDrainedMJ: Math.round(st.driveDrainedMJ),
         trips: st.trips, kills: st.kills, hullLost: st.hullLost, crippledTime: Math.round(st.crippledTime),
         deliveredMJ: Math.round(st.deliveredMJ), wastedMJ: Math.round(st.wastedMJ), efficiencyPct: Math.round(efficiency * 100),
         minutes: Math.round(m.totalT / 6) / 10

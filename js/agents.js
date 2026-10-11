@@ -18,27 +18,38 @@
     if (m.totalT < this.next) return;
     this.next = m.totalT + this.every;
     var ship = m.ship, fc = m.forecast(), d = m.data;
-    var targetLoad = (0.9 + 0.2 * this.temper) * ship.reactorMax;
-    if (ship.heat > 50 + 30 * this.temper) targetLoad = 0.85 * ship.reactorMax;
+    var self = this, R = ship.reactors, n = R.length;
     // In a minefield the engines only get what's left under 100%, so never plan past it.
     var mines = !!(m.encounter() && m.encounter().mines);
-    if (mines) targetLoad = Math.min(targetLoad, 0.97 * ship.reactorMax);
 
-    // Expected engine draw over the next couple of seconds.
+    // Expected engine draw over the next couple of seconds; it comes evenly off every reactor.
     var g = ship.gTarget;
     fc.forEach(function (e) { if (e.type === "burn" && e.in < 1.5 && e.in + e.dur > 0) g = Math.max(g, e.g); });
-    var budget = targetLoad - g * m.perG();
+    // Budget per reactor: each has its own heat and failsafe.
+    var left = R.map(function (rx) {
+      var target = (0.9 + 0.2 * self.temper) * rx.max;
+      if (rx.heat > 50 + 30 * self.temper) target = 0.85 * rx.max;
+      if (mines) target = Math.min(target, 0.97 * rx.max);
+      return target - g * m.perG() / n;
+    });
 
-    var shield = m.sys("shield"), life = m.sys("life"), drive = m.sys("drive");
-    var salvos = fc.filter(function (e) { return e.type === "salvo" && e.in > -0.2; });
-    var nextSalvo = salvos.length ? salvos[0].in : 99;
-    var incoming = salvos.filter(function (e) { return e.in < 8; }).reduce(function (a, e) { return a + e.mj; }, 0);
+    var shield = m.sys("shield"), life = m.sys("life"), drive = m.sys("drive"), pd = m.sys("pd"), buster = m.sys("buster");
+    function incomingOf(type) {
+      var list = fc.filter(function (e) { return e.type === type && e.in > -0.2; });
+      return { next: list.length ? list[0].in : 99, mj: list.filter(function (e) { return e.in < 8; }).reduce(function (a, e) { return a + e.mj; }, 0) };
+    }
+    // Shields and point defense: enough charge for what's announced, refilled before it lands.
+    function guard(s, inc) {
+      var need = Math.max(s.maxMJ - s.mj, inc.mj - s.mj);
+      var w = need <= 0 ? 0 : Math.min(s.maxMW, need / Math.max(1.2, inc.next - 0.8));
+      return inc.next > 8 ? Math.min(w, (s.maxMJ - s.mj) / 6) : w;
+    }
+    var salvos = incomingOf("salvo"), strikes = incomingOf("strike");
 
     var want = {};
     want.life = life.mj < life.maxMJ * 0.9 ? 7 : 3.5;
-    var shieldNeed = Math.max(shield.maxMJ - shield.mj, incoming - shield.mj);
-    want.shield = shieldNeed <= 0 ? 0 : Math.min(shield.maxMW, shieldNeed / Math.max(1.2, nextSalvo - 0.8));
-    if (nextSalvo > 8) want.shield = Math.min(want.shield, (shield.maxMJ - shield.mj) / 6);
+    want.shield = guard(shield, salvos);
+    if (pd) want.pd = guard(pd, strikes);
     var wavesUp = m.waves && m.waves.some(function (w) { return !w.dead; });
     ship.systems.forEach(function (s) {
       if (s.kind !== "gun") return;
@@ -54,31 +65,40 @@
       want[s.id] = soon ? s.maxMW : Math.min(s.maxMW, room / 12);
     });
 
-    // Fill in priority order; the drive takes whatever is left.
-    var left = budget;
+    // Fill in priority order, each from its own reactor; the drive and buster take what's left.
     m.priority.forEach(function (id) {
       var s = m.sys(id);
-      if (s.kind === "drive") return;
+      if (s.kind === "drive" || s.kind === "buster") return;
       var full = s.mj >= s.maxMJ - 0.5;
       var w = Math.min(want[id] || 0, s.maxMW);
       var draw = full ? Math.min(w, s.drainMW) : w;
-      var give = Math.max(0, Math.min(w, left + (full ? w : 0)));
+      var give = Math.max(0, Math.min(w, left[s.reactor] + (full ? w : 0)));
       m.setSetpoint(id, give);
-      left -= Math.min(draw, give);
+      left[s.reactor] -= Math.min(draw, give);
     });
     if (drive) {
       var behind = m.windowIn() < (drive.maxMJ - drive.mj) / Math.max(1, drive.maxMW) + 5;
-      m.setSetpoint("drive", Math.max(behind ? 12 : 0, Math.min(drive.maxMW, left)));
+      var dg = Math.max(behind ? 12 : 0, Math.min(drive.maxMW, left[drive.reactor]));
+      m.setSetpoint("drive", dg);
+      left[drive.reactor] -= dg;
+    }
+    if (buster) {
+      // Spread the buster's charge over the time left in the mission, with a margin.
+      var timeLeft = Math.max(0, m.windowIn());
+      for (var j = m.jumpIndex + 1; j < m.cfg.jumps; j++) timeLeft += m.windowFor(j);
+      var needRate = (buster.maxMJ - buster.mj) / Math.max(10, timeLeft - 15);
+      m.setSetpoint("buster", Math.min(buster.maxMW, Math.max(needRate * 1.2, left[buster.reactor])));
     }
 
-    // Aux: bridge shield gaps right before a salvo, and dry guns during a request.
-    var aux = ship.aux.mj > 0;
-    var shieldAux = aux && nextSalvo < 3.5 && shield.mj < incoming;
-    if (shield.aux !== shieldAux) m.toggleAux("shield");
+    // Aux: bridge shield and point-defense gaps right before a hit, and dry guns during a request.
+    function auxOn(s, on) { if (s && s.aux !== on) m.toggleAux(s.id); }
+    function bank(s) { return m.auxFor(s); }
+    auxOn(shield, bank(shield).mj > 0 && salvos.next < 3.5 && shield.mj < salvos.mj);
+    if (pd) auxOn(pd, bank(pd).mj > 0 && strikes.next < 3.5 && pd.mj < strikes.mj);
     ship.systems.forEach(function (s) {
       if (s.kind !== "gun") return;
-      var on = aux && !!s.request && s.mj < 40 && ship.aux.mj > ship.aux.cap * 0.3;
-      if (s.aux !== on) m.toggleAux(s.id);
+      var b = bank(s);
+      auxOn(s, b.mj > 0 && !!s.request && s.mj < 40 && b.mj > b.cap * 0.3);
     });
   };
 
@@ -86,7 +106,7 @@
   function StaticEngineer() { this.done = false; }
   BL.StaticEngineer = StaticEngineer;
   // Shares (of the reactor's safe output) a sensible player might set and forget.
-  var STATIC_SHARE = { life: 0.04, shield: 0.25, gun: 0.1, drive: 0.26, main: 0.06, hangar: 0.05 };
+  var STATIC_SHARE = { life: 0.04, shield: 0.25, gun: 0.1, drive: 0.26, main: 0.06, hangar: 0.05, pd: 0.05, buster: 0.06 };
   StaticEngineer.prototype.think = function (m) {
     if (this.done) return;
     this.done = true;

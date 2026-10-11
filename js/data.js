@@ -19,6 +19,8 @@
      approach) and how long its window stays open. A full main gun destroys the target.
      hangar (cruiser and up): launch calls (first, then every) with a lead and a window; a
      launched squadron stays out outFor s, shoots down `intercept` of salvos and does dps.
+     reactors (battleship and up): several reactors, each with its own safe output and aux
+     bank; each system's `reactor` (0 = A, 1 = B, 2 = C) is where it starts out wired.
      mission: jumps and when each jump window opens (s after arrival). A ship with no
      GravSpace drive flies one timed sortie per carrier jump: the carrier recovers it when
      the sortie timer runs out, carries it through GravSpace, and launches it again. */
@@ -104,9 +106,73 @@
         sys("hangar", "Hangar", "HNGR", "hangar", 600, 40, 300, 6),
         sys("drive", "GravSpace drive", "DRIVE", "drive", 4800, 80, 0, 0)
       ] },
-    { n: 7, id: "heavyCruiser", name: "Heavy Cruiser", built: false, baseRep: 775 },
-    { n: 8, id: "battleship", name: "Battleship", built: false, baseRep: 887 },
-    { n: 9, id: "dreadnought", name: "Dreadnaught", built: false, baseRep: 1000 }
+    { n: 7, id: "heavyCruiser", name: "Heavy Cruiser", built: true, baseRep: 775,
+      crew: 9, hull: 160, reactorMW: 175, engineMWperG: 8, cruiseG: 2, maxG: 5, gScale: 0.8,
+      aux: { capacity: 750, rateMW: 55 }, hullPerMJ: 0.26, threat: { dmg: 1.75, hp: 2.2 },
+      mission: { jumps: 3, windows: [160, 170, 180] }, encounters: ["raiders", "interceptors", "siege", "minefield", "hunters"],
+      mainGun: { after: [4, 8], window: 6 },
+      hangar: { firstCall: [20, 30], every: [35, 50], lead: 15, window: 8, outFor: 25, intercept: 0.3, dps: 6 },
+      systems: [
+        sys("life", "Life support", "LIFE", "life", 90, 18, 90, 5, { drainMW: 4.5 }),
+        sys("shield", "Shields", "SHLD", "shield", 300, 105, 150, 26),
+        sys("gun1", "Gun 1", "GUN1", "gun", 115, 42, 57, 10, { gunner: 1 }),
+        sys("gun2", "Gun 2", "GUN2", "gun", 115, 42, 57, 10, { gunner: 2 }),
+        sys("gun3", "Gun 3", "GUN3", "gun", 115, 42, 57, 10, { gunner: 3 }),
+        sys("gun4", "Gun 4", "GUN4", "gun", 115, 42, 57, 10, { gunner: 4 }),
+        sys("gun5", "Gun 5", "GUN5", "gun", 115, 42, 57, 10, { gunner: 5 }),
+        sys("gun6", "Gun 6", "GUN6", "gun", 115, 42, 57, 10, { gunner: 6 }),
+        sys("main", "Main gun", "MAIN", "main", 560, 55, 180, 8),
+        sys("hangar", "Hangar", "HNGR", "hangar", 650, 45, 320, 6),
+        sys("pd", "Point defense", "PD", "pd", 180, 45, 90, 8),
+        sys("drive", "GravSpace drive", "DRIVE", "drive", 5600, 90, 0, 0)
+      ] },
+    { n: 8, id: "battleship", name: "Battleship", built: true, baseRep: 887,
+      crew: 10, hull: 180, engineMWperG: 9, cruiseG: 2, maxG: 4, gScale: 0.75,
+      reactors: [{ name: "A", mw: 122, aux: { capacity: 450, rateMW: 35 } }, { name: "B", mw: 122, aux: { capacity: 450, rateMW: 35 } }],
+      hullPerMJ: 0.42, threat: { dmg: 1.6, hp: 3.2 },
+      mission: { jumps: 3, windows: [170, 180, 190] }, encounters: ["raiders", "interceptors", "siege", "minefield", "hunters"],
+      mainGun: { after: [4, 8], window: 6 },
+      hangar: { firstCall: [20, 30], every: [35, 50], lead: 15, window: 8, outFor: 25, intercept: 0.3, dps: 7 },
+      systems: [
+        sys("life", "Life support", "LIFE", "life", 100, 20, 100, 5, { drainMW: 5, reactor: 0 }),
+        sys("shield", "Shields", "SHLD", "shield", 280, 110, 140, 28, { reactor: 0 }),
+        sys("gun1", "Gun 1", "GUN1", "gun", 120, 44, 60, 10, { gunner: 1, reactor: 0 }),
+        sys("gun2", "Gun 2", "GUN2", "gun", 120, 44, 60, 10, { gunner: 2, reactor: 0 }),
+        sys("gun3", "Gun 3", "GUN3", "gun", 120, 44, 60, 10, { gunner: 3, reactor: 1 }),
+        sys("gun4", "Gun 4", "GUN4", "gun", 120, 44, 60, 10, { gunner: 4, reactor: 1 }),
+        sys("gun5", "Gun 5", "GUN5", "gun", 120, 44, 60, 10, { gunner: 5, reactor: 1 }),
+        sys("gun6", "Gun 6", "GUN6", "gun", 120, 44, 60, 10, { gunner: 6, reactor: 1 }),
+        sys("gun7", "Gun 7", "GUN7", "gun", 120, 44, 60, 10, { gunner: 7, reactor: 1 }),
+        sys("main", "Main gun", "MAIN", "main", 600, 60, 200, 8, { reactor: 1 }),
+        sys("hangar", "Hangar", "HNGR", "hangar", 700, 48, 350, 6, { reactor: 1 }),
+        sys("pd", "Point defense", "PD", "pd", 200, 50, 100, 8, { reactor: 0 }),
+        sys("drive", "GravSpace drive", "DRIVE", "drive", 6400, 100, 0, 0, { reactor: 1 })
+      ] },
+    { n: 9, id: "dreadnought", name: "Dreadnaught", built: true, baseRep: 1000,
+      crew: 12, hull: 220, engineMWperG: 10, cruiseG: 2, maxG: 3, gScale: 0.7,
+      reactors: [{ name: "A", mw: 112, aux: { capacity: 380, rateMW: 30 } }, { name: "B", mw: 112, aux: { capacity: 380, rateMW: 30 } },
+        { name: "C", mw: 112, aux: { capacity: 380, rateMW: 30 } }],
+      hullPerMJ: 0.48, threat: { dmg: 1.7, hp: 3.6 },
+      mission: { jumps: 3, windows: [180, 190, 200] }, encounters: ["raiders", "interceptors", "siege", "minefield", "hunters"],
+      mainGun: { after: [4, 8], window: 6 },
+      hangar: { firstCall: [20, 30], every: [35, 50], lead: 15, window: 8, outFor: 25, intercept: 0.3, dps: 8 },
+      systems: [
+        sys("life", "Life support", "LIFE", "life", 110, 22, 110, 6, { drainMW: 5.5, reactor: 0 }),
+        sys("shield", "Shields", "SHLD", "shield", 300, 115, 150, 30, { reactor: 0 }),
+        sys("gun1", "Gun 1", "GUN1", "gun", 125, 45, 62, 10, { gunner: 1, reactor: 0 }),
+        sys("gun2", "Gun 2", "GUN2", "gun", 125, 45, 62, 10, { gunner: 2, reactor: 1 }),
+        sys("gun3", "Gun 3", "GUN3", "gun", 125, 45, 62, 10, { gunner: 3, reactor: 1 }),
+        sys("gun4", "Gun 4", "GUN4", "gun", 125, 45, 62, 10, { gunner: 4, reactor: 1 }),
+        sys("gun5", "Gun 5", "GUN5", "gun", 125, 45, 62, 10, { gunner: 5, reactor: 2 }),
+        sys("gun6", "Gun 6", "GUN6", "gun", 125, 45, 62, 10, { gunner: 6, reactor: 2 }),
+        sys("gun7", "Gun 7", "GUN7", "gun", 125, 45, 62, 10, { gunner: 7, reactor: 2 }),
+        sys("gun8", "Gun 8", "GUN8", "gun", 125, 45, 62, 10, { gunner: 8, reactor: 2 }),
+        sys("main", "Main gun", "MAIN", "main", 640, 65, 210, 8, { reactor: 1 }),
+        sys("hangar", "Hangar", "HNGR", "hangar", 750, 50, 370, 6, { reactor: 2 }),
+        sys("pd", "Point defense", "PD", "pd", 220, 55, 110, 8, { reactor: 0 }),
+        sys("buster", "Planet buster", "BUSTER", "buster", 9000, 45, 0, 18, { reactor: 2 }),
+        sys("drive", "GravSpace drive", "DRIVE", "drive", 7200, 110, 0, 0, { reactor: 1 })
+      ] }
   ];
   BL.classById = function (id) { return BL.CLASSES.filter(function (c) { return c.id === id; })[0]; };
   BL.classByN = function (n) { return BL.CLASSES[n - 1]; };
@@ -122,11 +188,14 @@
   BL.shipFor = function (classId, tl) {
     var c = BL.classById(classId), f = BL.TECH.factor(tl || 4);
     function r(v) { return Math.round(v); }
+    var reactors = (c.reactors || [{ name: "", mw: c.reactorMW, aux: c.aux }]).map(function (x) {
+      return { name: x.name, mw: r(x.mw * f), aux: { capacity: r(x.aux.capacity * f), rateMW: r(x.aux.rateMW * f) } };
+    });
     return {
-      classId: c.id, className: c.name, n: c.n, tl: tl || 4,
+      classId: c.id, className: c.name, n: c.n, tl: tl || 4, reactors: reactors,
       name: c.name, hull: c.hull, crew: c.crew,
-      reactorMW: r(c.reactorMW * f), engineMWperG: c.engineMWperG, cruiseG: c.cruiseG, maxG: c.maxG, gScale: c.gScale,
-      aux: { capacity: r(c.aux.capacity * f), rateMW: r(c.aux.rateMW * f) },
+      reactorMW: reactors.reduce(function (a, x) { return a + x.mw; }, 0), engineMWperG: c.engineMWperG, cruiseG: c.cruiseG, maxG: c.maxG, gScale: c.gScale,
+      aux: reactors[0].aux,
       hullPerMJ: c.hullPerMJ, threat: c.threat, mission: c.mission, encounters: c.encounters,
       mainGun: c.mainGun || null,
       hangar: c.hangar ? Object.assign({}, c.hangar, { dps: c.hangar.dps * f }) : null,
@@ -149,7 +218,8 @@
     heatDownPerPct: 0.3,    // heat points per second shed for each % below 100...
     heatDownBase: 1.0,      // ...plus this
     tripSeconds: 10,        // a tripped capacitor stays off the reactor this long
-    tripCooldown: 1.5,      // min seconds between failsafe trips
+    tripCooldown: 1.5,      // min seconds between failsafe trips (per reactor)
+    switchSeconds: 2,       // a capacitor moved to another reactor draws nothing this long
     alarmHeat: 80           // heat alarm sounds above this
   };
 
@@ -160,6 +230,7 @@
     jumpOnTimeGrace: 5,                // drive full within this many seconds of the window = on time
     jumpCountdown: 3,
     forecastSpan: 15,                  // seconds shown on the forecast strip
+    breakOff: 60,                      // no new enemy waves this long after the jump window opens
     lookCostPct: 10                    // looking at the console while paused
   };
 
@@ -204,6 +275,22 @@
       request: { lead: 3, duration: [5, 7] },
       burns: { every: [9, 14], g: [7, 9], duration: [4, 6], warning: 5 },
       surpriseChance: 0.1, mainChance: 0.4
+    },
+    // Heavy cruiser and up. Hunters fire drive strikes: point defense stops them if it has the
+    // charge (mj = PD charge per strike); one that gets through drains `driveDrain` of the drive.
+    hunters: {
+      name: "Drive hunters",
+      enemy: "Drive hunter",
+      what: "They fire at the GravSpace drive; only point defense stops them",
+      tests: "Priority order, shielding the drive",
+      salvoWarning: 6,
+      firstWave: [3, 5],
+      waveEvery: [20, 28],
+      wave: { hp: 200, salvos: [4, 6], approach: [5, 7], salvoGap: [2.5, 4], salvoMJ: [30, 45], requests: 2, strikes: true },
+      request: { lead: 4, duration: [6, 8] },
+      burns: { every: [20, 30], g: [4, 5], duration: [3, 5], warning: 5 },
+      surpriseChance: 0.05, mainChance: 0.5, driveDrain: 0.15,
+      breakOff: 0                      // hunters send no new waves once the jump window is open
     },
     // No enemy fire. The pilot weaves through the field with long burns, and the engines get
     // only what the capacitors leave of the reactor. Short of power = drifting = mine strikes.
@@ -259,6 +346,12 @@
     squadronBack:["Flight deck: squadron recovered. Hangar needs recharging.", "Flight deck: gunboats are back aboard."],
     intercepted: ["Squadron: we caught that salvo!", "Flight deck: gunboats knocked down a salvo."],
     mineHit:     ["Damage control: mine strike! Hull down {dmg}.", "We clipped a mine! Hull down {dmg}."],
+    strike:      ["Tactical: drive strike inbound, {t} s!", "Tactical: hunters are going for the drive. Impact in {t}.", "Tactical: missile on the drive in {t} seconds!"],
+    pdStopped:   ["Point defense: splash one missile.", "Point defense: got it."],
+    driveHit:    ["Damage control: drive strike! We lost {pct}% of the drive charge.", "Navigation: they hit the drive. Charge down {pct}%!"],
+    heatR:       ["Reactor room: reactor {r} is running hot!", "Reactor room: heat's climbing on reactor {r}!"],
+    auxEmptyR:   ["Aux bank {r} is empty."],
+    busterWait:  ["Bridge: the planet buster isn't charged. We can't make the final jump!", "Weapons: buster's not ready, Captain. Holding the jump."],
     starved:     ["Helm: engines are starved! I can't hold the course!", "Helm: not enough power to the engines, we're drifting into the mines!"],
     auxEmpty:    ["Aux bank is empty."]
   };
@@ -283,6 +376,7 @@
     chatter:  { ch: "chat",  wave: "square",   f0: 1800, f1: 1700, a: 0.001, s: 0.025, d: 0.01, vol: 0.06, repeat: 3, gap: 0.035, noise: 0.3 },
     jump:     { ch: "fx",    wave: "sine",     f0: 80,   f1: 2400, a: 0.2,   s: 1.0,  d: 0.6,  vol: 0.30, vib: { rate: 8, depth: 0.05 } },
     arrive:   { ch: "fx",    wave: "sine",     f0: 1600, f1: 90,   a: 0.05,  s: 0.5,  d: 0.6,  vol: 0.25 },
+    pd:       { ch: "fx",    wave: "square",   f0: 2200, f1: 600,  a: 0.001, s: 0.04, d: 0.1,  vol: 0.12, repeat: 3, gap: 0.05 },
     main:     { ch: "fx",    wave: "noise",    f0: 220,  f1: 30,   a: 0.005, s: 0.25, d: 1.1,  vol: 0.45 },
     launch:   { ch: "fx",    wave: "sawtooth", f0: 160,  f1: 900,  a: 0.05,  s: 0.5,  d: 0.4,  vol: 0.18, noise: 0.3 },
     win:      { ch: "fx",    wave: "triangle", f0: 523,  f1: 1046, a: 0.01,  s: 0.25, d: 0.4,  vol: 0.22, repeat: 3, gap: 0.18 },
