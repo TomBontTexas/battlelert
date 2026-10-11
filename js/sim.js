@@ -85,12 +85,13 @@
       g: d.cruiseG, gTarget: d.cruiseG, engineMW: d.cruiseG * d.engineMWperG, maxG: d.maxG,
       aux: { mj: d.aux.capacity, cap: d.aux.capacity, rateMW: d.aux.rateMW, out: 0 },
       crippled: false, lifeLowSaid: false,
+      fresh: { hull: 0, g: 0, reactor: 0 },          // damage taken since the last GravSpace repair
       systems: d.systems.map(function (s) {
         return {
           id: s.id, name: s.name, short: s.short, kind: s.kind, gunner: s.gunner || 0,
           baseMJ: s.maxMJ, maxMJ: s.maxMJ, baseMW: s.maxMW, maxMW: s.maxMW,
           mj: s.startMJ, set: s.startSet, rate: 0, auxRate: 0, drainMW: s.drainMW || 0,
-          tripped: false, tripUntil: 0, aux: false,
+          tripped: false, tripUntil: 0, aux: false, freshMW: 0,
           // gunner state
           nextShot: 0, request: null
         };
@@ -202,6 +203,7 @@
     } else {
       this.phase = "gravspace";
       this.jumpIndex++;
+      this.repairInGravSpace();
     }
   };
 
@@ -325,7 +327,7 @@
       return;
     }
     var dmg = Math.max(1, Math.round(overflow * this.data.hullPerMJ));
-    this.ship.hull -= dmg; st.hullLost += dmg; js.hullLost += dmg;
+    this.ship.hull -= dmg; this.ship.fresh.hull += dmg; st.hullLost += dmg; js.hullLost += dmg;
     this.cue("hullHit");
     this.chat("hit", { dmg: dmg }, "bad");
     if (this.rng.chance(Math.min(0.85, overflow / 110))) this.damageSystem();
@@ -337,18 +339,37 @@
     // GravSpace capacitor would fill sooner and make damage speed up the jump.
     var roll = r.next();
     if (roll < 0.2 && ship.maxG > 1) {
-      ship.maxG -= 1;
+      ship.maxG -= 1; ship.fresh.g += 1;
       what = "thrusters damaged, top speed now " + ship.maxG + " G";
     } else if (roll < 0.6) {
       var c = r.pick(ship.systems);
-      c.maxMW = Math.round(c.maxMW * 0.88 * 2) / 2;
+      var mw = Math.round(c.maxMW * 0.88 * 2) / 2;
+      c.freshMW += c.maxMW - mw; c.maxMW = mw;
       what = c.name + " charger damaged, max rate now " + c.maxMW + " MW";
     } else {
-      ship.reactorMax = Math.round(ship.reactorMax * 0.95);
+      var out = Math.round(ship.reactorMax * 0.95);
+      ship.fresh.reactor += ship.reactorMax - out; ship.reactorMax = out;
       what = "reactor damaged, safe output now " + ship.reactorMax + " MW";
     }
     this.stats.damageReports.push({ jump: this.jumpIndex + 1, what: what });
     this.chat("damaged", { what: what }, "bad");
+  };
+
+  /* Damage control: automatic, during GravSpace transit, on every class. Each transit
+     restores half of the damage taken since the last one; the other half is permanent. */
+  Mission.prototype.repairInGravSpace = function () {
+    var ship = this.ship, f = ship.fresh, done = [];
+    function half(v) { return Math.round(v / 2 * 2) / 2; }
+    if (f.hull > 0) { var h = half(f.hull); ship.hull = Math.min(ship.hullMax, ship.hull + h); done.push("hull +" + h + ", now " + Math.round(ship.hull) + " / " + ship.hullMax); }
+    if (f.reactor > 0) { ship.reactorMax += half(f.reactor); done.push("reactor safe output now " + ship.reactorMax + " MW"); }
+    ship.systems.forEach(function (s) {
+      if (s.freshMW > 0) { s.maxMW = Math.min(s.baseMW, s.maxMW + half(s.freshMW)); s.freshMW = 0; done.push(s.name + " charger max rate now " + s.maxMW + " MW"); }
+    });
+    if (f.g > 0) { ship.maxG += f.g / 2; done.push("thrusters top speed now " + ship.maxG + " G"); }
+    ship.fresh = { hull: 0, g: 0, reactor: 0 };
+    this.lastRepairs = done;
+    if (done.length) this.say("Damage control: repairs complete. Half the damage is fixed; the rest needs a shipyard.", "good");
+    return done;
   };
 
   Mission.prototype.liveWave = function () {

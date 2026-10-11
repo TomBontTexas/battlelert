@@ -543,11 +543,12 @@
       "<p>Fighting has stopped." + (sim.hasAux() ? " The aux bank is refilled." : "") + "</p>" +
       "<ul class='grav-list'>" +
       "<li>Salvos stopped by shields: " + js.shielded + " of " + js.salvos + "</li>" +
-      "<li>Hull damage taken: " + js.hullLost + " (hull now " + Math.round(sim.ship.hull) + " / " + sim.ship.hullMax + ")</li>" +
+      "<li>Hull damage taken: " + js.hullLost + "</li>" +
       "<li>Failsafe trips: " + js.trips + "</li>" +
       "<li>Enemies destroyed: " + js.kills + "</li>" +
       "<li>Jump " + (js.onTime ? "on time" : "late: the drive wasn't full when the window opened") + "</li>" +
       (dmg.length ? "<li>Damage: " + dmg.map(function (d) { return d.what; }).join("; ") + "</li>" : "") +
+      (sim.lastRepairs && sim.lastRepairs.length ? "<li>Damage control repaired half of it: " + sim.lastRepairs.join("; ") + "</li>" : "") +
       "</ul>" +
       "<h2>Next: " + next.name + "</h2><p>" + next.what + ". Tests: " + next.tests.toLowerCase() + ". The drive will be empty again on arrival.</p>" +
       "<p class='muted'>Take a breath; the clock is stopped. You can adjust the priority order once you're back on the console.</p>";
