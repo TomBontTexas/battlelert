@@ -197,7 +197,10 @@
     this.nextLaunchAt = this.sys("hangar") && !enc.mines ? this.cfg.arrivalSeconds + r.range(this.data.hangar.firstCall) : Infinity;
     this.ship.gTarget = this.data.cruiseG;
     var drive = this.sys("drive"); if (drive) drive.mj = 0;
-    this.ship.systems.forEach(function (s) { s.request = null; s.call = null; s.nextShot = 0; });
+    // Out of GravSpace, everything is back on its reactor: trips and reactor switches are
+    // timed on this system's clock (t restarts at 0), so clear them rather than carry them over.
+    this.ship.systems.forEach(function (s) { s.request = null; s.call = null; s.nextShot = 0; s.tripped = false; s.tripUntil = 0; s.switchUntil = 0; });
+    this.ship.reactors.forEach(function (rx) { rx.lastTrip = -99; });
     this.jumpStats = { salvos: 0, shielded: 0, hullLost: 0, trips: 0, kills: 0, start: this.totalT };
     this.events.push({ id: this.nextId++, type: "jump", at: this.windowAt(), announceAt: this.windowAt() - this.cfg.jumpWindowNotice, announced: false, visible: true });
     this.cue("arrive");
