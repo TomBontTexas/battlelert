@@ -75,7 +75,7 @@
     var html = [
       "<div><span>Reactor safe output</span> " + d.reactorMW + " MW</div>",
       "<div><span>Hull</span> " + d.hull + "</div>",
-      "<div><span>Aux bank</span> " + d.aux.capacity + " MJ, " + d.aux.rateMW + " MW</div>",
+      "<div><span>Aux bank</span> " + (d.aux.capacity ? d.aux.capacity + " MJ, " + d.aux.rateMW + " MW" : "none (destroyers and up)") + "</div>",
       "<div><span>Engines</span> " + d.engineMWperG + " MW per G, cruise " + d.cruiseG + " G</div>"
     ];
     d.systems.forEach(function (s) {
@@ -175,7 +175,9 @@
     caps.style.gridTemplateColumns = "repeat(" + DISPLAY.length + ", minmax(0, 1fr))";
     $("hd-station").textContent = "Main Engineering · " + (job.test ? sim.data.className : job.ship + " (" + sim.data.className + ")") + " · tech level " + sim.data.tl;
     $("jump-label").textContent = sim.hasDrive ? "JUMP" : "RECOVERY";
-    $("hint-bar").textContent = DEFAULT_HINT = "1–" + DISPLAY.length + " select · ↑↓ charge rate (Shift: ×5) · ←→ next system · A aux · [ ] priority · 0 zero · M max · Space pause · H hints";
+    $("auxbank").hidden = !sim.hasAux();
+    document.body.classList.toggle("no-aux", !sim.hasAux());
+    $("hint-bar").textContent = DEFAULT_HINT = "1–" + DISPLAY.length + " select · ↑↓ charge rate (Shift: ×5) · ←→ next system" + (sim.hasAux() ? " · A aux" : "") + " · [ ] priority · 0 zero · M max · Space pause · H hints";
     DISPLAY.forEach(function (id, i) {
       var s = sim.sys(id);
       var el = document.createElement("div");
@@ -386,7 +388,7 @@
     setText($("eng-val"), ship.g.toFixed(1) + " G · " + Math.round(ship.engineMW) + " MW");
     $("eng-fill").style.width = pct(ship.g / 10);
     setText($("aux-val"), Math.round(ship.aux.mj) + " / " + ship.aux.cap + " MJ");
-    $("aux-fill").style.width = pct(ship.aux.mj / ship.aux.cap);
+    $("aux-fill").style.width = pct(ship.aux.cap ? ship.aux.mj / ship.aux.cap : 0);
     var feeding = ship.systems.filter(function (s) { return s.aux; }).map(function (s) { return s.short; });
     setText($("aux-out"), feeding.length ? "Switched to " + feeding.join(", ") + (ship.aux.out > 0.1 ? " · " + Math.round(ship.aux.out) + " MW" : "") : "Not switched on");
     var trip = sim.priority.slice().reverse().map(function (id) {
@@ -538,7 +540,7 @@
     var dmg = sim.stats.damageReports.filter(function (d) { return d.jump === sim.jumpIndex; });
     $("grav-title").textContent = "In GravSpace: jump " + sim.jumpIndex + " of " + sim.cfg.jumps + " complete";
     $("grav-body").innerHTML =
-      "<p>Fighting has stopped. The aux bank is refilled.</p>" +
+      "<p>Fighting has stopped." + (sim.hasAux() ? " The aux bank is refilled." : "") + "</p>" +
       "<ul class='grav-list'>" +
       "<li>Salvos stopped by shields: " + js.shielded + " of " + js.salvos + "</li>" +
       "<li>Hull damage taken: " + js.hullLost + " (hull now " + Math.round(sim.ship.hull) + " / " + sim.ship.hullMax + ")</li>" +

@@ -66,7 +66,7 @@
   BL.Mission = Mission;
 
   Mission.prototype.planRoute = function () {
-    var types = Object.keys(BL.ENCOUNTERS), route = [];
+    var types = (this.data.encounters || Object.keys(BL.ENCOUNTERS)).slice(), route = [];
     for (var i = 0; i < this.cfg.jumps; i++) route.push(this.rng.pick(types));
     // On longer routes every encounter type appears at least once.
     if (route.length >= types.length) types.forEach(function (ty, k) {
@@ -116,7 +116,9 @@
     var s = this.sys(id); if (!s) return;
     s.set = clamp(Math.round(mw * 2) / 2, 0, s.baseMW);
   };
+  Mission.prototype.hasAux = function () { return this.ship.aux.cap > 0; };
   Mission.prototype.toggleAux = function (id) {
+    if (!this.hasAux()) return false;
     var s = this.sys(id); if (s) s.aux = !s.aux;
     return s ? s.aux : false;
   };

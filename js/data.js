@@ -25,8 +25,8 @@
   BL.CLASSES = [
     { n: 1, id: "gunboat", name: "Gunboat", built: true, baseRep: 100,
       crew: 4, hull: 30, reactorMW: 40, engineMWperG: 2, cruiseG: 4, gScale: 1.5,
-      aux: { capacity: 150, rateMW: 20 }, hullPerMJ: 0.3, threat: { dmg: 0.45, hp: 0.4 },
-      mission: { jumps: 1, windows: [180] },
+      aux: { capacity: 0, rateMW: 0 }, hullPerMJ: 0.3, threat: { dmg: 0.45, hp: 0.4 },
+      mission: { jumps: 1, windows: [180] }, encounters: ["raiders", "interceptors"],
       systems: [
         sys("life", "Life support", "LIFE", "life", 25, 6, 25, 2, { drainMW: 1.2 }),
         sys("shield", "Shields", "SHLD", "shield", 90, 35, 45, 4),
@@ -34,19 +34,29 @@
       ] },
     { n: 2, id: "picket", name: "Picket Ship", built: true, baseRep: 212,
       crew: 4, hull: 60, reactorMW: 60, engineMWperG: 3, cruiseG: 2, gScale: 1.2,
-      aux: { capacity: 250, rateMW: 30 }, hullPerMJ: 0.16, threat: { dmg: 0.6, hp: 0.55 },
-      mission: { jumps: 3, windows: [110, 120, 130] },
+      aux: { capacity: 0, rateMW: 0 }, hullPerMJ: 0.16, threat: { dmg: 0.6, hp: 0.55 },
+      mission: { jumps: 3, windows: [110, 120, 130] }, encounters: ["raiders", "interceptors", "siege"],
       systems: [
         sys("life", "Life support", "LIFE", "life", 35, 8, 35, 2, { drainMW: 1.5 }),
         sys("shield", "Shields", "SHLD", "shield", 120, 45, 60, 12),
         sys("gun1", "Gun 1", "GUN1", "gun", 70, 30, 35, 8, { gunner: 1 }),
         sys("drive", "GravSpace drive", "DRIVE", "drive", 1800, 40, 0, 0)
       ] },
-    { n: 3, id: "destroyerEscort", name: "Destroyer Escort", built: false, baseRep: 325 },
+    { n: 3, id: "destroyerEscort", name: "Destroyer Escort", built: true, baseRep: 325,
+      crew: 5, hull: 80, reactorMW: 80, engineMWperG: 4, cruiseG: 2, gScale: 1.1,
+      aux: { capacity: 0, rateMW: 0 }, hullPerMJ: 0.14, threat: { dmg: 0.8, hp: 0.75 },
+      mission: { jumps: 3, windows: [120, 130, 140] }, encounters: ["raiders", "interceptors", "siege"],
+      systems: [
+        sys("life", "Life support", "LIFE", "life", 45, 10, 45, 3, { drainMW: 2.2 }),
+        sys("shield", "Shields", "SHLD", "shield", 140, 55, 70, 16),
+        sys("gun1", "Gun 1", "GUN1", "gun", 85, 35, 42, 9, { gunner: 1 }),
+        sys("gun2", "Gun 2", "GUN2", "gun", 85, 35, 42, 9, { gunner: 2 }),
+        sys("drive", "GravSpace drive", "DRIVE", "drive", 2400, 50, 0, 0)
+      ] },
     { n: 4, id: "destroyer", name: "Destroyer", built: true, baseRep: 437,
       crew: 6, hull: 100, reactorMW: 100, engineMWperG: 5, cruiseG: 2, gScale: 1,
       aux: { capacity: 450, rateMW: 40 }, hullPerMJ: 0.12, threat: { dmg: 1, hp: 1 },
-      mission: { jumps: 3, windows: [130, 140, 150] },
+      mission: { jumps: 3, windows: [130, 140, 150] }, encounters: ["raiders", "interceptors", "siege"],
       systems: [
         sys("life", "Life support", "LIFE", "life", 60, 12, 60, 4, { drainMW: 3 }),
         sys("shield", "Shields", "SHLD", "shield", 160, 70, 80, 20),
@@ -80,7 +90,7 @@
       name: c.name, hull: c.hull, crew: c.crew,
       reactorMW: r(c.reactorMW * f), engineMWperG: c.engineMWperG, cruiseG: c.cruiseG, gScale: c.gScale,
       aux: { capacity: r(c.aux.capacity * f), rateMW: r(c.aux.rateMW * f) },
-      hullPerMJ: c.hullPerMJ, threat: c.threat, mission: c.mission,
+      hullPerMJ: c.hullPerMJ, threat: c.threat, mission: c.mission, encounters: c.encounters,
       gun: { shotMJ: GUN.shotMJ, normalInterval: GUN.normalInterval, fullInterval: GUN.fullInterval, hitChance: GUN.hitChance, damage: GUN.damage * f },
       systems: c.systems.map(function (s) {
         var o = {}; for (var k in s) o[k] = s[k];
@@ -129,6 +139,19 @@
       request: { lead: 4, duration: [6, 8] },
       burns: { every: [28, 40], g: [5, 6], duration: [3, 4], warning: 5 },
       surpriseChance: 0.08
+    },
+    siege: {
+      name: "Siege line",
+      enemy: "Siege battery",
+      what: "Steady fire for the whole engagement",
+      tests: "Sustained efficiency, heat control",
+      salvoWarning: 6,
+      firstWave: [3, 5],
+      waveEvery: [38, 48],
+      wave: { hp: 420, salvos: [11, 14], approach: [6, 7], salvoGap: [2.5, 3.8], salvoMJ: [75, 105], requests: 3 },
+      request: { lead: 4, duration: [6, 8] },
+      burns: { every: [35, 50], g: [3, 4], duration: [3, 5], warning: 5 },
+      surpriseChance: 0.05
     },
     interceptors: {
       name: "Interceptors",
