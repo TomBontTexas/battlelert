@@ -24,6 +24,8 @@
     "Gunner 1":       { pitch: 1.25, rate: 1.3,  slot: 8 },
     "Gunner 2":       { pitch: 0.95, rate: 1.3,  slot: 9 },
     "Gunner 3":       { pitch: 1.1,  rate: 1.3,  slot: 10 },
+    "Coxswain":       { pitch: 0.9,  rate: 1.15, slot: 2 },
+    "Carrier":        { pitch: 1.05, rate: 1.0,  slot: 3 },
     "Crew":           { pitch: 1.0,  rate: 1.2,  slot: 11 }
   };
 

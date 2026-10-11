@@ -36,8 +36,8 @@
     opts = opts || {};
     this.seed = opts.seed || BL.randomSeed();
     this.rng = BL.rng(this.seed);
-    this.data = BL.SHIPS[opts.ship || "destroyer"];
-    this.cfg = BL.MISSION;
+    this.data = BL.shipFor(opts.classId || "destroyer", opts.tl || 4);
+    this.cfg = Object.assign({}, BL.MISSION, { jumps: this.data.mission.jumps, jumpWindowAt: this.data.mission.windows });
     this.phys = BL.PHYSICS;
     this.dt = 1 / BL.TICK_RATE;
     this.quiet = !!opts.quiet;              // harness: skip chatter text and sound cues
@@ -52,7 +52,9 @@
     this.fx = [];                           // sound cues for the display layer
     this.result = null;
     this.buildShip();
+    this.hasDrive = !!this.sys("drive");
     this.stats = {
+      heatSum: 0, heatTime: 0,
       deliveredMJ: 0, wastedMJ: 0, trips: 0, looks: 0,
       salvos: 0, salvosAnnounced: 0, salvosShielded: 0, surprises: 0, hullLost: 0,
       requests: [], jumps: [], kills: 0, crippledTime: 0,
@@ -66,8 +68,8 @@
   Mission.prototype.planRoute = function () {
     var types = Object.keys(BL.ENCOUNTERS), route = [];
     for (var i = 0; i < this.cfg.jumps; i++) route.push(this.rng.pick(types));
-    // Every encounter type appears at least once.
-    types.forEach(function (ty, k) {
+    // On longer routes every encounter type appears at least once.
+    if (route.length >= types.length) types.forEach(function (ty, k) {
       if (route.indexOf(ty) < 0) route[(k + this.seed) % route.length] = ty;
     }, this);
     return route;
@@ -103,6 +105,9 @@
     return null;
   };
 
+  Mission.prototype.gunCount = function () {
+    return this.ship.systems.filter(function (s) { return s.kind === "gun"; }).length;
+  };
   Mission.prototype.encounter = function () { return BL.ENCOUNTERS[this.route[this.jumpIndex]]; };
   Mission.prototype.windowAt = function () { return this.cfg.jumpWindowAt[Math.min(this.jumpIndex, this.cfg.jumpWindowAt.length - 1)]; };
 
@@ -159,12 +164,12 @@
     this.jumpAt = null;
     this.burnUntil = 0;
     this.ship.gTarget = this.data.cruiseG;
-    var drive = this.sys("drive"); drive.mj = 0;
+    var drive = this.sys("drive"); if (drive) drive.mj = 0;
     this.ship.systems.forEach(function (s) { s.request = null; s.nextShot = 0; });
     this.jumpStats = { salvos: 0, shielded: 0, hullLost: 0, trips: 0, kills: 0, start: this.totalT };
     this.events.push({ id: this.nextId++, type: "jump", at: this.windowAt(), announceAt: this.windowAt() - this.cfg.jumpWindowNotice, announced: false, visible: true });
     this.cue("arrive");
-    this.chat("arrival", null, "info");
+    this.chat(this.hasDrive ? "arrival" : "launch", null, "info");
     this.chat("briefing", { enemy: enc.enemy, what: enc.what }, "info");
   };
 
@@ -176,17 +181,20 @@
   Mission.prototype.doJump = function () {
     var js = this.jumpStats;
     js.duration = this.totalT - js.start;
-    js.onTime = this.driveFullAt !== null && this.driveFullAt <= this.windowAt() + this.cfg.jumpOnTimeGrace;
+    js.onTime = !this.hasDrive || (this.driveFullAt !== null && this.driveFullAt <= this.windowAt() + this.cfg.jumpOnTimeGrace);
     js.encounter = this.route[this.jumpIndex];
     this.stats.jumps.push(js);
     this.events = []; this.waves = [];
     this.ship.systems.forEach(function (s) { s.request = null; });
-    this.sys("drive").mj = 0;
+    if (this.hasDrive) this.sys("drive").mj = 0;
     this.ship.aux.mj = this.ship.aux.cap;            // aux refills only in GravSpace
     this.ship.gTarget = this.data.cruiseG;
     this.closeOverloadRun();
     this.cue("jump");
-    if (this.jumpIndex >= this.cfg.jumps - 1) {
+    if (!this.hasDrive) {
+      this.chat("recovered", null, "good");
+      this.finish("success");
+    } else if (this.jumpIndex >= this.cfg.jumps - 1) {
       this.say("Bridge: Archonian world dead ahead. Planet buster away!", "good");
       this.finish("success");
     } else {
@@ -211,7 +219,7 @@
     }
     var b = enc.burns;
     if (t >= this.nextBurnAt - b.warning) {
-      var at = this.nextBurnAt, dur = Math.round(r.range(b.duration)), g = r.int(b.g);
+      var at = this.nextBurnAt, dur = Math.round(r.range(b.duration)), g = Math.round(r.int(b.g) * this.data.gScale);
       this.events.push({ id: this.nextId++, type: "burn", at: at, dur: dur, g: g, announceAt: t, announced: false, visible: true });
       this.nextBurnAt = at + dur + r.range(b.every);
     }
@@ -219,17 +227,18 @@
 
   Mission.prototype.spawnWave = function (enc) {
     var r = this.rng, w = enc.wave, t = this.t;
-    var wave = { id: this.nextId++, type: this.route[this.jumpIndex], name: enc.enemy, hp: w.hp, hpMax: w.hp, spawn: t, lastAt: 0, dead: false };
+    var th = this.data.threat, hp = Math.round(w.hp * th.hp);
+    var wave = { id: this.nextId++, type: this.route[this.jumpIndex], name: enc.enemy, hp: hp, hpMax: hp, spawn: t, lastAt: 0, dead: false };
     var n = r.int(w.salvos), at = t + r.range(w.approach);
     for (var i = 0; i < n; i++) {
       if (i > 0) at += r.range(w.salvoGap);
       var surprise = r.chance(enc.surpriseChance);
-      this.events.push({ id: this.nextId++, type: "salvo", wave: wave.id, at: at, mj: Math.round(r.range(w.salvoMJ)),
+      this.events.push({ id: this.nextId++, type: "salvo", wave: wave.id, at: at, mj: Math.round(r.range(w.salvoMJ) * th.dmg),
         announceAt: Math.max(t, at - enc.salvoWarning), announced: false, visible: !surprise });
     }
     wave.lastAt = at;
     for (var k = 0; k < w.requests; k++) {
-      var gun = 1 + (this.gunRotor++ % 3), start = t + enc.request.lead + k * 3;
+      var gun = 1 + (this.gunRotor++ % this.gunCount()), start = t + enc.request.lead + k * 3;
       this.events.push({ id: this.nextId++, type: "request", wave: wave.id, gun: gun, at: start, dur: Math.round(r.range(enc.request.duration)),
         announceAt: start - enc.request.lead, announced: false, visible: true });
     }
@@ -282,7 +291,7 @@
     if (e.type === "salvo") { this.chat("salvo", { t: lead }, "warn"); this.cue("warn"); }
     else if (e.type === "burn") { this.chat("burn", { t: lead, g: e.g, d: e.dur }, "warn"); this.cue("warnBurn"); }
     else if (e.type === "request") { this.chat("request", { n: e.gun }, "warn"); this.cue("request"); }
-    else if (e.type === "jump") { this.chat("jumpNotice", { t: lead }, "info"); }
+    else if (e.type === "jump") { this.chat(this.hasDrive ? "jumpNotice" : "recoveryNotice", { t: lead }, "info"); }
   };
 
   Mission.prototype.fire = function (e) {
@@ -296,7 +305,7 @@
         s.nextShot = Math.min(s.nextShot, this.t);
       }
     } else if (e.type === "jump") {
-      if (this.phase !== "countdown") this.chat("jumpOpen", null, "warn");
+      if (this.hasDrive && this.phase !== "countdown") this.chat("jumpOpen", null, "warn");
     }
   };
 
@@ -461,6 +470,7 @@
       this.closeOverloadRun();
     }
     ship.heat = clamp(ship.heat, 0, 100);
+    if (this.phase !== "arrival") { this.stats.heatSum += ship.heat * dt; this.stats.heatTime += dt; }
     if (!ship.heatAlarm && ship.heat >= P.alarmHeat) { ship.heatAlarm = true; this.chat("heat", null, "warn"); }
     if (ship.heatAlarm && ship.heat < P.alarmHeat - 15) ship.heatAlarm = false;
 
@@ -503,6 +513,10 @@
 
   Mission.prototype.runJump = function () {
     var drive = this.sys("drive"), t = this.t;
+    if (!drive) {                       // gunboat: the carrier recovers it when the sortie timer runs out
+      if (this.phase === "engage" && t >= this.windowAt()) this.doJump();
+      return;
+    }
     var full = drive.mj >= drive.maxMJ - 0.5;
     if (full && this.driveFullAt === null) this.driveFullAt = t;
     if (this.phase === "engage" && full && t >= this.windowAt()) {
@@ -537,7 +551,8 @@
     var efficiency = st.deliveredMJ > 0 ? st.deliveredMJ / (st.deliveredMJ + 4 * st.wastedMJ) : 0;
     var reqFilled = st.requests.filter(function (q) { return q.filled; }).length;
     var onTime = st.jumps.filter(function (j) { return j.onTime; }).length;
-    var asked = st.salvosAnnounced + st.requests.length + jumpsDone;
+    var asked = st.salvosAnnounced + st.requests.length + (m.hasDrive ? jumpsDone : 0);
+    if (!m.hasDrive) onTime = 0;
     var met = asked ? (st.salvosShielded + reqFilled + onTime) / asked : 0;
     var parts = {
       objective: Math.round(25 * objective),
@@ -549,7 +564,9 @@
     var lookFactor = Math.pow(1 - m.cfg.lookCostPct / 100, st.looks);
     var worstReq = st.requests.reduce(function (a, q) { return (!a || q.missed > a.missed) ? q : a; }, null);
     return {
-      outcome: outcome, seed: m.seed, route: m.route.slice(), jumpsDone: jumpsDone,
+      outcome: outcome, seed: m.seed, route: m.route.slice(), jumpsDone: jumpsDone, jumpsTotal: total,
+      classId: m.data.classId, className: m.data.className, tl: m.data.tl, hasDrive: m.hasDrive,
+      aggression: st.heatTime > 0 ? Math.min(1, st.heatSum / st.heatTime / 50) : 0,
       parts: parts, raw: raw, looks: st.looks, score: Math.round(raw * lookFactor),
       hull: Math.max(0, Math.round(ship.hull)), hullMax: ship.hullMax,
       detail: {

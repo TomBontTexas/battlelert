@@ -14,14 +14,16 @@
 </head>
 <body>
 <h1>Battlelert headless test harness</h1>
-<p>Plays missions with AI engineers and no screen. Add <code>?n=500</code> to change the number of seeds.</p>
+<p>Plays missions with AI engineers and no screen. Options: <code>?n=500</code> seeds, <code>&amp;ship=gunboat|picket|destroyer</code>, <code>&amp;tl=1..6</code>.</p>
 <div id="out">Running…</div>
 <script src="../js/data.js"></script>
 <script src="../js/sim.js"></script>
 <script src="../js/agents.js"></script>
 <script>
 (function () {
-  var n = +(new URLSearchParams(location.search).get("n")) || 200;
+  var q = new URLSearchParams(location.search);
+  var n = +q.get("n") || 200;
+  var classId = q.get("ship") || "destroyer", tl = +q.get("tl") || 4;
   var policies = {
     "AI conservative": function () { return new BL.AIEngineer(0); },
     "AI balanced": function () { return new BL.AIEngineer(0.5); },
@@ -37,7 +39,7 @@
     var agg = { n: 0, win: 0, destroyed: 0, timeout: 0, score: 0, hull: 0, trips: 0, eff: 0, shielded: 0, req: 0, onTime: 0, kills: 0, min: 0, crippled: 0 };
     for (var s = 1; s <= n; s++) {
       try {
-        var r = BL.runHeadless(s * 7919, policies[name]());
+        var r = BL.runHeadless(s * 7919, policies[name](), classId, tl);
         if (!isFinite(r.score)) throw new Error("score is not a number, seed " + s * 7919);
         agg.n++;
         if (r.outcome === "success") agg.win++;
@@ -65,7 +67,7 @@
   Object.keys(summary).forEach(function (name) {
     html += "<tr><td>" + name + "</td>" + cols.map(function (c) { return "<td>" + summary[name][c] + "</td>"; }).join("") + "</tr>";
   });
-  html += "</table><p>" + n + " seeds per engineer, " + Math.round(performance.now() - t0) + " ms.</p>";
+  html += "</table><p>" + BL.classById(classId).name + ", tech level " + tl + ". " + n + " seeds per engineer, " + Math.round(performance.now() - t0) + " ms.</p>";
   if (errors.length) html += "<pre class='bad'>" + errors.slice(0, 20).join("\n") + "</pre>";
   // Determinism: the same seed and engineer must give the same result.
   var a = JSON.stringify(BL.runHeadless(4242, new BL.AIEngineer(0.5)));

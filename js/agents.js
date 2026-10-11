@@ -56,8 +56,10 @@
       m.setSetpoint(id, give);
       left -= Math.min(draw, give);
     });
-    var behind = m.windowIn() < (drive.maxMJ - drive.mj) / Math.max(1, drive.maxMW) + 5;
-    m.setSetpoint("drive", Math.max(behind ? 12 : 0, Math.min(drive.maxMW, left)));
+    if (drive) {
+      var behind = m.windowIn() < (drive.maxMJ - drive.mj) / Math.max(1, drive.maxMW) + 5;
+      m.setSetpoint("drive", Math.max(behind ? 12 : 0, Math.min(drive.maxMW, left)));
+    }
 
     // Aux: bridge shield gaps right before a salvo, and dry guns during a request.
     var aux = ship.aux.mj > 0;
@@ -73,17 +75,21 @@
   // Sets moderate charge rates once and never touches them again.
   function StaticEngineer() { this.done = false; }
   BL.StaticEngineer = StaticEngineer;
+  // Shares (of the reactor's safe output) a sensible player might set and forget.
+  var STATIC_SHARE = { life: 0.04, shield: 0.25, gun: 0.1, drive: 0.26 };
   StaticEngineer.prototype.think = function (m) {
     if (this.done) return;
     this.done = true;
-    m.setSetpoint("life", 4); m.setSetpoint("shield", 25);
-    m.setSetpoint("gun1", 10); m.setSetpoint("gun2", 10); m.setSetpoint("gun3", 10);
-    m.setSetpoint("drive", 26);
+    var out = m.ship.reactorMax, guns = m.gunCount();
+    m.ship.systems.forEach(function (s) {
+      var share = s.kind === "gun" ? STATIC_SHARE.gun * 3 / guns : STATIC_SHARE[s.kind];
+      m.setSetpoint(s.id, s.kind === "life" ? s.drainMW + 1 : Math.round(out * share));
+    });
   };
 
   // Plays a whole mission with no screen. Returns the score object.
-  BL.runHeadless = function (seed, engineer) {
-    var m = new BL.Mission({ seed: seed, quiet: true });
+  BL.runHeadless = function (seed, engineer, classId, tl) {
+    var m = new BL.Mission({ seed: seed, quiet: true, classId: classId, tl: tl });
     m.beginJump();
     var guard = 0;
     while (m.phase !== "done" && guard++ < BL.TICK_RATE * 60 * 30) {

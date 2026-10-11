@@ -244,6 +244,46 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 .keys td:first-child { font-family: var(--mono); color: var(--set); white-space: nowrap; }
 .grav-list { padding-left: 20px; }
 
+/* -------------------------------------------------------------- Career */
+.sheet.narrow { max-width: 560px; }
+.field-label { display: block; font-weight: 700; margin: 14px 0 6px; }
+.text-input { width: 100%; font: 18px var(--font); padding: 9px 12px; background: var(--panel-2); color: var(--text); border: 1px solid var(--line); border-radius: 6px; }
+.warn-note { color: var(--warn); }
+.hub-summary { display: flex; flex-wrap: wrap; gap: 8px 22px; font-size: 15px; }
+.hub-summary b { color: var(--charge); }
+.hub-actions { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; margin-top: 18px; }
+.hub-actions .big { grid-column: 1 / -1; }
+.grid-wrap, .table-wrap { overflow-x: auto; }
+.cgrid { border-collapse: collapse; font-size: 13px; min-width: 620px; width: 100%; }
+.cgrid th, .cgrid td { border: 1px solid var(--line); padding: 6px 4px; text-align: center; }
+.cgrid th { color: var(--muted); font-weight: 700; font-size: 12px; }
+.cgrid td:first-child, .cgrid th:first-child { text-align: left; padding-left: 8px; white-space: nowrap; }
+.cgrid td.q { background: #16402c; color: var(--good); font-weight: 800; }
+.cgrid td.next { outline: 2px solid var(--warn); outline-offset: -2px; color: var(--warn); font-weight: 800; }
+.cgrid td.off { color: var(--muted); opacity: .55; }
+.cgrid td.later { color: var(--muted); font-style: italic; }
+.offers { display: grid; gap: 10px; }
+.offer { display: grid; grid-template-columns: 1fr auto; gap: 6px 16px; align-items: center; background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; }
+.offer.stepup { border-color: var(--warn); }
+.offer h3 { margin: 0; font-size: 17px; }
+.offer .meta { color: var(--muted); font-size: 14px; }
+.offer .tag { display: inline-block; font: 800 11px var(--font); letter-spacing: .08em; padding: 2px 7px; border-radius: 4px; margin-left: 8px; vertical-align: 2px; }
+.offer .tag.up { background: var(--warn); color: #000; }
+.offer .tag.low { border: 1px solid var(--muted); color: var(--muted); }
+.offer button { grid-row: 1 / span 2; grid-column: 2; }
+.profile { display: grid; gap: 12px; max-width: 560px; }
+.pf { display: grid; grid-template-columns: 130px 1fr; gap: 2px 10px; align-items: center; font-size: 14px; }
+.pf-track { position: relative; height: 12px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; }
+.pf-fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--charge-dim); border-radius: 6px; }
+.pf-mark { position: absolute; top: -4px; width: 4px; height: 18px; margin-left: -2px; background: var(--charge); border-radius: 2px; }
+.pf-mark.before { background: var(--muted); opacity: .7; }
+.pf-ends { grid-column: 2; display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); }
+.db-career { margin-top: 18px; padding: 12px 16px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; }
+.db-career h2 { margin-top: 0; }
+.db-career .big-line { font-size: 17px; margin: 4px 0; }
+.db-career .promo { color: var(--good); font-weight: 800; }
+.db-career .demo { color: var(--bad); font-weight: 800; }
+
 /* ---------------------------------------------------------- Debriefing */
 .score-row { display: flex; flex-wrap: wrap; gap: 24px; align-items: center; margin: 14px 0; }
 .score-big { font: 800 64px/1 var(--font); color: var(--charge); display: flex; flex-direction: column; align-items: center; }

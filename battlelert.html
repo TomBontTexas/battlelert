@@ -13,14 +13,18 @@
   <div class="title-card">
     <div class="logo">BATTLELERT</div>
     <div class="subtitle">Main Engineering</div>
-    <p class="phase-note">Phase 1: the engine-room test. One Destroyer, one 3-jump mission.</p>
+    <p class="phase-note">The engineer path: gunboat and picket ship are open so far.</p>
     <div class="menu">
-      <button id="btn-start" class="big primary">Start test mission</button>
+      <button id="btn-continue" class="big primary" hidden>Continue career</button>
+      <button id="btn-enlist" class="big">Enlist (new career)</button>
+      <button id="btn-import">Import career</button>
       <button id="btn-how">How to play</button>
       <button id="btn-options-title">Options</button>
+      <input id="import-file" type="file" accept=".json,application/json" hidden>
     </div>
     <div class="seed-row">
-      <label for="seed-input">Mission seed</label>
+      <button id="btn-start" class="small">Engine-room test (Destroyer)</button>
+      <label for="seed-input">seed</label>
       <input id="seed-input" type="number" min="1" max="999999" inputmode="numeric">
       <button id="btn-seed-new" class="small" title="Roll a new seed">New</button>
       <span class="muted">Same seed, same mission. Share it to compare runs.</span>
@@ -29,16 +33,75 @@
   </div>
 </section>
 
+<!-- =========================================================== Enlist -->
+<section id="scr-enlist" class="screen page" hidden>
+  <div class="sheet narrow">
+    <h1>Enlist</h1>
+    <p class="lede">Every career starts in a gunboat's engine room. Choose the name your crews will know you by.</p>
+    <label class="field-label" for="hero-name">Hero name</label>
+    <input id="hero-name" class="text-input" type="text" maxlength="24" autocomplete="off" placeholder="e.g. Plasma Pete">
+    <p class="muted small-text">Shown on your career hub and service record, and used for your save file (BATTLELERT_<i>name</i>.json).</p>
+    <p id="enlist-warn" class="warn-note" hidden></p>
+    <div class="actions">
+      <button id="btn-enlist-back">Back</button>
+      <button id="btn-enlist-go" class="big primary">Enlist</button>
+    </div>
+  </div>
+</section>
+
+<!-- ======================================================== Career hub -->
+<section id="scr-hub" class="screen page" hidden>
+  <div class="sheet">
+    <h1 id="hub-name"></h1>
+    <div id="hub-summary" class="hub-summary"></div>
+    <h2>Career</h2>
+    <div id="hub-grid" class="grid-wrap"></div>
+    <p id="hub-last" class="muted"></p>
+    <div class="hub-actions">
+      <button id="btn-hub-offers" class="big primary">Job offers</button>
+      <button id="btn-hub-lower">Lower-class jobs</button>
+      <button id="btn-hub-signoffs">Rapid sign-offs</button>
+      <button id="btn-hub-record">Service record</button>
+      <button id="btn-hub-export">Export career</button>
+      <button id="btn-hub-options">Options</button>
+      <button id="btn-hub-title">Title screen</button>
+    </div>
+  </div>
+</section>
+
+<!-- ======================================================== Job offers -->
+<section id="scr-offers" class="screen page" hidden>
+  <div class="sheet">
+    <h1 id="offers-title">Job offers</h1>
+    <p id="offers-lede" class="lede"></p>
+    <div id="offers-list" class="offers"></div>
+    <div class="actions"><button id="btn-offers-back">Career hub</button></div>
+  </div>
+</section>
+
+<!-- ===================================================== Service record -->
+<section id="scr-record" class="screen page" hidden>
+  <div class="sheet">
+    <h1 id="rec-title">Service record</h1>
+    <div id="rec-summary" class="hub-summary"></div>
+    <h2>Reputation profile</h2>
+    <div id="rec-profile" class="profile"></div>
+    <h2>Career</h2>
+    <div id="rec-grid" class="grid-wrap"></div>
+    <h2>Mission history</h2>
+    <div class="table-wrap"><table id="rec-history" class="db-table"></table></div>
+    <div class="actions"><button id="btn-record-back">Career hub</button></div>
+  </div>
+</section>
+
 <!-- ========================================================= Briefing -->
 <section id="scr-briefing" class="screen page" hidden>
   <div class="sheet">
     <h1>Mission briefing</h1>
-    <p class="lede">Escort the planet buster's route through three Archonian-held systems. In each one the
-      GravSpace drive starts empty: keep the ship alive, charge the drive, and the captain jumps once the
-      jump window opens.</p>
+    <p class="lede" id="brief-lede"></p>
     <h2>Route <span class="muted" id="brief-seed"></span></h2>
     <ol id="brief-route" class="route-list"></ol>
-    <h2>Your ship: Destroyer</h2>
+    <h2 id="brief-ship-title">Your ship</h2>
     <div id="brief-ship" class="brief-ship"></div>
     <h2>Your station: Main Engineering</h2>
     <ul class="tight">
@@ -127,7 +190,7 @@
       </div>
       <div id="crew-status" class="crew-status" data-hint="Crew. If life support runs dry, the crew is crippled: gunners fire slower and miss more."></div>
       <div class="jump-box" data-hint="Jump progress. The captain jumps when the window is open and the GravSpace drive is full.">
-        <div class="row-label"><span>JUMP</span><span id="jump-drive"></span></div>
+        <div class="row-label"><span id="jump-label">JUMP</span><span id="jump-drive"></span></div>
         <div class="hbar tall"><div id="jump-fill" class="hbar-fill drive-fill"></div></div>
         <div id="jump-status" class="jump-status"></div>
       </div>
@@ -165,6 +228,15 @@
   </div>
 </section>
 
+<!-- ===================================================== Rapid sign-offs -->
+<section id="ov-signoffs" class="overlay" hidden>
+  <div class="ov-card">
+    <h1>Rapid sign-offs</h1>
+    <div id="signoffs-body"></div>
+    <div class="menu"><button id="btn-signoffs-close" class="primary">Done</button></div>
+  </div>
+</section>
+
 <!-- ========================================================= GravSpace -->
 <section id="ov-grav" class="overlay" hidden>
   <div class="ov-card wide">
@@ -191,8 +263,9 @@
     <table class="db-table" id="db-jumps"></table>
     <h2>Details</h2>
     <div id="db-detail" class="db-detail"></div>
-    <div class="gate-q">Phase 1 question: was balancing power against announced demands fun for 10 minutes?</div>
+    <div id="db-career" class="db-career" hidden></div>
     <div class="actions">
+      <button id="btn-db-hub" class="primary" hidden>Career hub</button>
       <button id="btn-db-again">Fly again (same seed)</button>
       <button id="btn-db-new" class="primary">New mission</button>
       <button id="btn-db-save">Save debriefing</button>
@@ -252,6 +325,7 @@
 <script src="js/data.js"></script>
 <script src="js/sim.js"></script>
 <script src="js/agents.js"></script>
+<script src="js/career.js"></script>
 <script src="js/speech.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/ui.js"></script>

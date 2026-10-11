@@ -4,14 +4,16 @@
   "use strict";
   var BL = window.BL;
   var $ = function (id) { return document.getElementById(id); };
-  var DISPLAY = ["gun1", "gun2", "gun3", "shield", "life", "drive"];   // column order; keys 1-6
+  var DISPLAY = [];                       // capacitor column order for this ship; keys 1..n
+  var KIND_ORDER = { gun: 0, shield: 1, life: 2, drive: 3 };
   var SETTINGS_KEY = BL.APP_TAG + "_settings";
-  var DEFAULT_HINT = $("hint-bar").textContent;
+  var DEFAULT_HINT = $("hint-bar").textContent;   // rewritten per ship (key range)
 
   var settings = loadSettings();
   var sim = null, running = false, paused = false, looking = false;
   var selected = 0, capEls = {}, fcEls = {}, lastLogKey = "", lastDamageLen = -1, lastSpoken = 0;
   var gravShown = false, doneShown = false, lastAlarm = 0, lastTs = 0, acc = 0;
+  var career = BL.career.load(), job = null, report = null, offersMode = "offers";
 
   /* ------------------------------------------------------------ Settings */
   function loadSettings() {
@@ -20,7 +22,8 @@
     return s;
   }
   function saveSettings() { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) {} }
-  window.saveBeforeRefresh = saveSettings;
+  function saveCareer() { if (career) BL.career.save(career); }
+  window.saveBeforeRefresh = function () { saveSettings(); saveCareer(); };
 
   function applySettings() {
     BL.audio.setVolume("fx", settings.fx / 100);
@@ -35,7 +38,7 @@
   }
 
   /* ------------------------------------------------------------- Screens */
-  var SCREENS = ["scr-title", "scr-briefing", "scr-console", "scr-debrief"];
+  var SCREENS = ["scr-title", "scr-enlist", "scr-hub", "scr-offers", "scr-record", "scr-briefing", "scr-console", "scr-debrief"];
   function show(id) { SCREENS.forEach(function (s) { $(s).hidden = s !== id; }); }
   function overlay(id, on) { $(id).hidden = !on; }
   function inConsole() { return !$("scr-console").hidden; }
@@ -47,22 +50,29 @@
   $("btn-start").onclick = function () {
     BL.audio.init(); click();
     var seed = parseInt($("seed-input").value, 10);
-    startBriefing(seed > 0 ? seed : BL.randomSeed());
+    startBriefing(testJob(seed > 0 ? seed : BL.randomSeed()));
   };
+  function testJob(seed) { return { test: true, station: "engineer", classId: "destroyer", n: 4, tl: 4, ship: "Destroyer", seed: seed }; }
   $("btn-how").onclick = function () { BL.audio.init(); click(); overlay("ov-how", true); };
   $("btn-how-close").onclick = function () { click(); overlay("ov-how", false); };
 
   /* ------------------------------------------------------------ Briefing */
-  function startBriefing(seed) {
-    sim = new BL.Mission({ seed: seed });
-    $("seed-input").value = seed;
-    $("brief-seed").textContent = "· seed " + seed;
+  function startBriefing(j) {
+    job = j;
+    sim = new BL.Mission({ seed: j.seed, classId: j.classId, tl: j.tl });
+    if (j.test) $("seed-input").value = j.seed;
+    var d = sim.data, cls = BL.classById(j.classId);
+    $("brief-seed").textContent = "· seed " + j.seed;
+    $("brief-lede").textContent = sim.hasDrive
+      ? "Escort the planet buster's route through " + sim.cfg.jumps + " Archonian-held systems. In each one the GravSpace drive starts empty: keep the ship alive, charge the drive, and the captain jumps once the jump window opens."
+      : "Gunboats have no GravSpace drive: the carrier launches you into the fight and recovers you when the sortie timer runs out. Keep the gunboat alive until then.";
     $("brief-route").innerHTML = sim.route.map(function (id, i) {
       var e = BL.ENCOUNTERS[id];
-      return "<li>System " + (i + 1) + ": <b>" + e.name + "</b>. " + e.what + ". Tests: " + e.tests.toLowerCase() +
-        ". Jump window opens " + BL.MISSION.jumpWindowAt[i] + " s after arrival.</li>";
-    }).join("") + "<li>The Archonian world: drop the planet buster.</li>";
-    var d = sim.data, html = [
+      return "<li>" + (sim.hasDrive ? "System " + (i + 1) : "Sortie") + ": <b>" + e.name + "</b>. " + e.what + ". Tests: " + e.tests.toLowerCase() +
+        (sim.hasDrive ? ". Jump window opens " + sim.cfg.jumpWindowAt[i] + " s after arrival." : ". The carrier recovers you " + sim.cfg.jumpWindowAt[i] + " s after launch.") + "</li>";
+    }).join("") + (sim.hasDrive ? "<li>The Archonian world: drop the planet buster.</li>" : "");
+    $("brief-ship-title").textContent = "Your ship: " + (j.test ? cls.name : j.ship + ", " + cls.name) + ", tech level " + j.tl;
+    var html = [
       "<div><span>Reactor safe output</span> " + d.reactorMW + " MW</div>",
       "<div><span>Hull</span> " + d.hull + "</div>",
       "<div><span>Aux bank</span> " + d.aux.capacity + " MJ, " + d.aux.rateMW + " MW</div>",
@@ -71,10 +81,11 @@
     d.systems.forEach(function (s) {
       html.push("<div><span>" + s.name + "</span> " + s.maxMJ + " MJ, up to " + s.maxMW + " MW</div>");
     });
+    if (!j.test) html.push("<div><span>Reputation if perfect</span> up to " + BL.career.repFor(j, 100) + "</div>");
     $("brief-ship").innerHTML = html.join("");
     show("scr-briefing");
   }
-  $("btn-brief-back").onclick = function () { click(); show("scr-title"); };
+  $("btn-brief-back").onclick = function () { click(); if (job.test) show("scr-title"); else showOffers(offersMode); };
   $("btn-brief-go").onclick = function () { click(); startMission(); };
 
   /* ------------------------------------------------------------- Mission */
@@ -151,6 +162,12 @@
   /* ------------------------------------------------------- Build console */
   function buildConsole() {
     var caps = $("caps"); caps.innerHTML = ""; capEls = {};
+    DISPLAY = sim.ship.systems.slice().sort(function (a, b) { return KIND_ORDER[a.kind] - KIND_ORDER[b.kind] || a.id.localeCompare(b.id); })
+      .map(function (s) { return s.id; });
+    caps.style.gridTemplateColumns = "repeat(" + DISPLAY.length + ", minmax(0, 1fr))";
+    $("hd-station").textContent = "Main Engineering · " + (job.test ? sim.data.className : job.ship + " (" + sim.data.className + ")") + " · tech level " + sim.data.tl;
+    $("jump-label").textContent = sim.hasDrive ? "JUMP" : "RECOVERY";
+    $("hint-bar").textContent = DEFAULT_HINT = "1–" + DISPLAY.length + " select · ↑↓ charge rate (Shift: ×5) · ←→ next system · A aux · [ ] priority · 0 zero · M max · Space pause · H hints";
     DISPLAY.forEach(function (id, i) {
       var s = sim.sys(id);
       var el = document.createElement("div");
@@ -183,7 +200,7 @@
       refs.auxBtn.onclick = function () { selected = i; toggleAux(id); };
     });
     $("route").innerHTML = sim.route.map(function (r, i) { return '<li data-i="' + i + '">' + (i + 1) + ". " + BL.ENCOUNTERS[r].name + "</li>"; }).join("") +
-      '<li data-i="' + sim.route.length + '">Archonian world</li>';
+      (sim.hasDrive ? '<li data-i="' + sim.route.length + '">Archonian world</li>' : '<li data-i="1">Carrier recovery</li>');
     $("comms-log").innerHTML = "";
     $("damage-list").innerHTML = '<li class="muted">None</li>';
     Object.keys(fcEls).forEach(function (k) { fcEls[k].remove(); }); fcEls = {};
@@ -265,7 +282,7 @@
     if (k === "h" || k === "H") { toggleHints(); return; }
     if (!canControl()) return;
     var id = DISPLAY[selected], s = sim.sys(id), step = ev.shiftKey ? 10 : 2;
-    if (k >= "1" && k <= "6") { selected = +k - 1; BL.audio.play("tick"); }
+    if (k >= "1" && k <= String(DISPLAY.length)) { selected = +k - 1; BL.audio.play("tick"); }
     else if (k === "ArrowUp") { sim.setSetpoint(id, s.set + step); BL.audio.play("tick"); }
     else if (k === "ArrowDown") { sim.setSetpoint(id, s.set - step); BL.audio.play("tick"); }
     else if (k === "ArrowLeft") { selected = (selected + DISPLAY.length - 1) % DISPLAY.length; }
@@ -309,6 +326,8 @@
     } else if (sim.phase !== "gravspace") gravShown = false;
     if (sim.phase === "done" && !doneShown) {
       doneShown = true; running = false;
+      report = null;
+      if (!job.test && career) { report = BL.career.applyResult(career, job, sim.result); saveCareer(); }
       if (sim.result.outcome === "success") flashJump();
       setTimeout(showDebrief, sim.result.outcome === "abandoned" ? 400 : 1600);
     }
@@ -335,7 +354,7 @@
   function render() {
     var ship = sim.ship, enc = sim.encounter() || {};
     // Header
-    $("hd-jump").innerHTML = "Jump <b>" + (sim.jumpIndex + 1) + "</b> of " + sim.cfg.jumps + " · <b>" + (enc.name || "") + "</b>";
+    $("hd-jump").innerHTML = (sim.hasDrive ? "Jump <b>" + (sim.jumpIndex + 1) + "</b> of " + sim.cfg.jumps : "Sortie") + " · <b>" + (enc.name || "") + "</b>";
     var ph = sim.phase === "arrival" ? "Engagement in " + Math.ceil(sim.cfg.arrivalSeconds - sim.t) + " s" :
       sim.phase === "countdown" ? "JUMPING IN " + Math.max(1, Math.ceil(sim.jumpAt - sim.t)) :
       sim.phase === "engage" ? "T+" + mmss(sim.t) : "";
@@ -404,10 +423,18 @@
     var crew = ship.crippled ? ["✖ CREW CRIPPLED: life support out", "crew-status bad"] :
       life.mj < life.maxMJ * 0.3 ? ["⚠ Air running low", "crew-status bad"] : ["✔ Crew OK", "crew-status"];
     setText($("crew-status"), crew[0]); setCls($("crew-status"), crew[1]);
-    var drive = sim.sys("drive"), dp = drive.mj / drive.maxMJ;
+    var drive = sim.sys("drive"), wi = sim.windowIn(), js, jc = "jump-status";
+    if (!drive) {
+      var sp = clampN(sim.t / sim.windowAt(), 0, 1);
+      setText($("jump-drive"), Math.max(0, Math.ceil(wi)) + " s");
+      $("jump-fill").style.width = pct(sp);
+      setText($("jump-status"), sim.phase === "arrival" ? "Launching from the carrier" : "Carrier recovers you in " + Math.max(0, Math.ceil(wi)) + " s");
+      setCls($("jump-status"), "jump-status");
+    }
+    var dp = drive ? drive.mj / drive.maxMJ : 0;
+    if (drive) {
     setText($("jump-drive"), "drive " + Math.floor(dp * 100) + "%");
     $("jump-fill").style.width = pct(dp);
-    var wi = sim.windowIn(), js, jc = "jump-status";
     if (sim.phase === "countdown") { js = "✔ Drive full. Jumping in " + Math.max(1, Math.ceil(sim.jumpAt - sim.t)) + " s"; jc += " go"; }
     else if (wi > 0) {
       var need = (drive.maxMJ - drive.mj) / Math.max(1, wi);
@@ -415,6 +442,7 @@
       if (need > drive.maxMW * 0.8) jc += " late";
     } else { js = "⚠ Window OPEN: the bridge is waiting on the drive"; jc += " late"; }
     setText($("jump-status"), js); setCls($("jump-status"), jc);
+    }
     Array.prototype.forEach.call($("route").children, function (li, i) {
       setCls(li, i < sim.jumpIndex ? "done" : i === sim.jumpIndex ? "here" : "");
     });
@@ -468,7 +496,8 @@
     });
     Object.keys(fcEls).forEach(function (id) { if (!seen[id]) { fcEls[id].remove(); delete fcEls[id]; } });
     var wi = sim.windowIn(), fj = $("fc-jump");
-    if (sim.phase === "countdown") { setText(fj, "JUMPING"); setCls(fj, "fc-jump"); }
+    if (!sim.hasDrive) { setText(fj, wi <= sim.cfg.jumpWindowNotice ? "Recovery in " + Math.max(0, Math.ceil(wi)) + " s ▶" : ""); setCls(fj, "fc-jump"); }
+    else if (sim.phase === "countdown") { setText(fj, "JUMPING"); setCls(fj, "fc-jump"); }
     else if (wi > 0) { setText(fj, wi <= sim.cfg.jumpWindowNotice ? "Jump window in " + Math.ceil(wi) + " s ▶" : ""); setCls(fj, "fc-jump"); }
     else { setText(fj, "JUMP WINDOW OPEN · drive " + Math.floor(sim.sys("drive").mj / sim.sys("drive").maxMJ * 100) + "%"); setCls(fj, "fc-jump open"); }
   }
@@ -520,9 +549,10 @@
   function showDebrief() {
     var r = sim.result, d = r.detail;
     show("scr-debrief");
-    $("db-title").textContent = r.outcome === "success" ? "Mission complete: planet buster delivered" :
+    $("db-title").textContent = r.outcome === "success" ? (r.hasDrive ? "Mission complete: planet buster delivered" : "Sortie complete: recovered by the carrier") :
       r.outcome === "destroyed" ? "Ship destroyed" : "Abandoned ship";
-    $("db-lede").textContent = "Seed " + r.seed + " · " + r.jumpsDone + " of " + sim.cfg.jumps + " jumps · " + d.minutes + " minutes · hull " + r.hull + " / " + r.hullMax +
+    $("db-lede").textContent = (job.test ? "" : job.ship + ", " + r.className + ", tech level " + r.tl + " · ") + "Seed " + r.seed + " · " +
+      (r.hasDrive ? r.jumpsDone + " of " + sim.cfg.jumps + " jumps · " : (r.outcome === "success" ? "recovered · " : "not recovered · ")) + d.minutes + " minutes · hull " + r.hull + " / " + r.hullMax +
       (r.looks ? " · looked at the paused console " + r.looks + (r.looks === 1 ? " time" : " times") + " (−" + (100 - Math.round(100 * r.score / Math.max(1, r.raw))) + "%)" : "");
     $("db-score").textContent = r.score;
     var names = { objective: "Objective", condition: "Ship condition", efficiency: "Efficiency", demands: "Demands met" };
@@ -549,7 +579,26 @@
       ["Damage reports", r.damage.length]
     ];
     $("db-detail").innerHTML = rows.map(function (x) { return "<div><span>" + x[0] + ":</span> " + x[1] + "</div>"; }).join("");
+    $("db-career").hidden = !report;
+    if (report) renderCareerReport(r);
+    $("btn-db-hub").hidden = !!job.test;
+    $("btn-db-again").hidden = $("btn-db-new").hidden = $("btn-db-title").hidden = !job.test;
   }
+
+  function renderCareerReport(r) {
+    var st = career.stations[job.station], rows = [];
+    if (r.outcome === "success") {
+      rows.push('<p class="big-line">Reputation earned: <b>+' + report.rep + "</b> (" + BL.career.STATION_NAME[job.station].toLowerCase() + " path, now " + st.rep + ")</p>");
+      rows.push('<p class="muted">' + BL.classByN(job.n).baseRep + " base for a " + r.className.toLowerCase() + " × score " + r.score + "% × " + BL.TECH.repMult(job.tl).toFixed(1) + " for tech level " + job.tl + "</p>");
+    } else rows.push('<p class="big-line">No reputation and no promotion for a failed mission.</p>');
+    if (report.promoted) rows.push('<p class="big-line promo">Qualified: ' + BL.career.rank(career, job.station) + " (" + r.className + ")</p>");
+    if (report.failuresAtPost === 1) rows.push('<p class="big-line">Failure 1 of 2 at this post. A second failure here sends you back a class.</p>');
+    if (report.sentBack) rows.push('<p class="big-line demo">Second failure at this post: sent back to ' + (report.qualifiedAfter ? BL.career.rank(career, job.station) : "the gunboat, unqualified") +
+      ". Requalify with a real mission.</p>");
+    rows.push("<h2>Reputation profile</h2>" + profileHtml(report.profileAfter, report.profileBefore));
+    $("db-career").innerHTML = "<h2>Career: " + esc(career.name) + "</h2>" + rows.join("");
+  }
+  $("btn-db-hub").onclick = function () { click(); showHub(); };
 
   function wentWell(r) {
     var d = r.detail, notes = [];
@@ -586,15 +635,173 @@
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
   }
-  $("btn-db-again").onclick = function () { click(); startBriefing(sim.seed); };
-  $("btn-db-new").onclick = function () { click(); startBriefing(BL.randomSeed()); };
+  $("btn-db-again").onclick = function () { click(); startBriefing(testJob(sim.seed)); };
+  $("btn-db-new").onclick = function () { click(); startBriefing(testJob(BL.randomSeed())); };
   $("btn-db-save").onclick = function () { click(); saveDebrief(); };
-  $("btn-db-title").onclick = function () { click(); newSeedInput(); show("scr-title"); };
+  $("btn-db-title").onclick = function () { click(); newSeedInput(); refreshTitle(); show("scr-title"); };
+
+  /* -------------------------------------------------------------- Career */
+  var PROFILE_ROWS = [
+    ["aggression", "Aggression", "conservative", "aggressive"],
+    ["winloss", "Win/loss", "losses", "wins"],
+    ["efficiency", "Efficiency", "wasteful", "efficient"],
+    ["demands", "Demands met", "few", "all"],
+    ["condition", "Ship condition", "wrecked", "untouched"]
+  ];
+  function profileHtml(p, before) {
+    return PROFILE_ROWS.map(function (row) {
+      var v = clampN(p[row[0]], 0, 1) * 100;
+      var b = before ? '<i class="pf-mark before" style="left:' + clampN(before[row[0]], 0, 1) * 100 + '%"></i>' : "";
+      return '<div class="pf"><span>' + row[1] + '</span><div class="pf-track"><div class="pf-fill" style="width:' + v + '%"></div>' + b +
+        '<i class="pf-mark" style="left:' + v + '%"></i></div><div class="pf-ends"><span>' + row[2] + "</span><span>" + row[3] + "</span></div></div>";
+    }).join("") + (before ? '<p class="muted small-text">Grey mark: before this mission.</p>' : "");
+  }
+  function gridHtml(c) {
+    var head = "<tr><th></th>" + BL.CLASSES.map(function (k) { return "<th>" + k.n + ". " + k.name + "</th>"; }).join("") + "</tr>";
+    var later = { gunner: "Phase 3", pilot: "Phase 4" };
+    var rows = BL.career.STATIONS.map(function (st) {
+      var q = BL.career.qualified(c, st), target = BL.career.targetClass(c, st);
+      return "<tr><td>" + BL.career.STATION_NAME[st] + "</td>" + BL.CLASSES.map(function (k) {
+        if (!BL.career.PLAYABLE[st]) return k.n === 1 ? '<td class="later" colspan="9">' + later[st] + "</td>" : "";
+        if (k.n <= q) return '<td class="q" title="Qualified">✔</td>';
+        if (k.n === target && k.built) return '<td class="next" title="Working toward">▶</td>';
+        return '<td class="off">' + (k.built ? "" : "·") + "</td>";
+      }).join("") + "</tr>";
+    }).join("");
+    rows += '<tr><td>Command</td><td class="later" colspan="9">Phase 5: needs all three stations on a class</td></tr>';
+    return '<table class="cgrid">' + head + rows + "</table><p class=\"muted small-text\">✔ qualified · ▶ working toward · dot = not built yet</p>";
+  }
+  function summaryHtml(c) {
+    var e = c.stations.engineer;
+    return "<span>Rank <b>" + BL.career.rank(c, "engineer") + "</b></span>" +
+      "<span>Engineer reputation <b>" + e.rep + "</b></span>" +
+      "<span>Rapid sign-offs <b>" + BL.career.signoffsHeld(c) + "</b></span>" +
+      "<span>Missions <b>" + c.profile.missions + "</b> (" + c.profile.wins + " won)</span>";
+  }
+
+  function refreshTitle() {
+    var b = $("btn-continue");
+    b.hidden = !career;
+    if (career) b.textContent = "Continue as " + career.name + " (" + BL.career.rank(career, "engineer") + ")";
+  }
+  $("btn-continue").onclick = function () { BL.audio.init(); click(); showHub(); };
+  $("btn-enlist").onclick = function () {
+    BL.audio.init(); click();
+    $("hero-name").value = "";
+    $("enlist-warn").hidden = !career;
+    if (career) $("enlist-warn").textContent = "This replaces " + career.name + "'s career on this device. Export it first from the career hub if you want to keep it.";
+    show("scr-enlist");
+    setTimeout(function () { $("hero-name").focus(); }, 50);
+  };
+  $("btn-enlist-back").onclick = function () { click(); show("scr-title"); };
+  function enlist() {
+    var name = $("hero-name").value.trim();
+    if (!name) { $("hero-name").focus(); $("enlist-warn").hidden = false; $("enlist-warn").textContent = "Your crew needs a name to call you."; return; }
+    career = BL.career.create(name); saveCareer(); click();
+    showHub();
+  }
+  $("btn-enlist-go").onclick = enlist;
+  $("hero-name").addEventListener("keydown", function (ev) { if (ev.key === "Enter") enlist(); });
+
+  $("btn-import").onclick = function () { BL.audio.init(); click(); $("import-file").value = ""; $("import-file").click(); };
+  $("import-file").onchange = function () {
+    var f = this.files && this.files[0]; if (!f) return;
+    var rd = new FileReader();
+    rd.onload = function () {
+      try {
+        var c = BL.career.importText(String(rd.result));
+        if (career && !confirm("Replace " + career.name + "'s career on this device with " + c.name + "'s?")) return;
+        career = c; saveCareer(); showHub();
+      } catch (e) { alert(e.message); }
+    };
+    rd.readAsText(f);
+  };
+
+  function showHub() {
+    $("hub-name").textContent = career.name;
+    $("hub-summary").innerHTML = summaryHtml(career);
+    $("hub-grid").innerHTML = gridHtml(career);
+    var last = career.history[0];
+    $("hub-last").textContent = last ? "Last mission: " + last.ship + " (" + BL.classById(last.classId).name + ", tech level " + last.tl + "), " +
+      (last.outcome === "success" ? "success, +" + last.rep + " reputation" : last.outcome) + "." : "No missions yet. Your first job offers are waiting.";
+    $("btn-hub-offers").textContent = "Job offers (" + career.offers.length + ")";
+    show("scr-hub");
+  }
+  $("btn-hub-offers").onclick = function () { click(); showOffers("offers"); };
+  $("btn-hub-lower").onclick = function () { click(); showOffers("lower"); };
+  $("btn-hub-record").onclick = function () { click(); showRecord(); };
+  $("btn-hub-options").onclick = function () { click(); openOptions(); };
+  $("btn-hub-title").onclick = function () { click(); refreshTitle(); show("scr-title"); };
+  $("btn-hub-export").onclick = function () {
+    click();
+    var blob = new Blob([BL.career.exportText(career)], { type: "application/json" });
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = BL.career.fileName(career);
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
+  };
+  $("btn-hub-signoffs").onclick = function () {
+    click();
+    var held = BL.career.signoffsHeld(career), total = BL.career.signoffsTotal(career);
+    $("signoffs-body").innerHTML = "<p>You hold <b>" + held + "</b> rapid sign-off" + (held === 1 ? "" : "s") + ".</p>" +
+      "<p>Once you're qualified at a station on ship class N, you hold N − 2 sign-offs in total (" + total + " now). Each qualifies you at another station on a class no higher than N − 2, without flying a mission. They earn no reputation and can't be used to requalify after being sent back.</p>" +
+      "<p class=\"muted\">There's nothing to spend them on yet: they become usable when the gunner and pilot stations arrive (Phases 3 and 4). Unused ones stay available.</p>";
+    overlay("ov-signoffs", true);
+  };
+  $("btn-signoffs-close").onclick = function () { click(); overlay("ov-signoffs", false); };
+
+  function offerHtml(j, i) {
+    var cls = BL.classByN(j.n), q = BL.career.qualified(career, j.station), up = j.n > q;
+    var tag = up ? '<span class="tag up">' + (q ? "STEP UP" : "FIRST QUALIFICATION") + "</span>" : !j.serious ? '<span class="tag low">LOWER CLASS</span>' : "";
+    return '<div class="offer' + (up ? " stepup" : "") + '"><h3>' + cls.name + " · " + j.ship + tag + "</h3>" +
+      '<button class="primary" data-i="' + i + '">Accept</button>' +
+      '<div class="meta">Engineer · tech level ' + j.tl + " (reputation ×" + BL.TECH.repMult(j.tl).toFixed(1) + ") · up to " + BL.career.repFor(j, 100) + " reputation" +
+      (up ? " · success qualifies you as Engineer-" + j.n : "") + "</div></div>";
+  }
+  var shownJobs = [];
+  function showOffers(mode) {
+    offersMode = mode;
+    var q = BL.career.qualified(career, "engineer");
+    if (mode === "offers") {
+      shownJobs = career.offers;
+      $("offers-title").textContent = "Job offers";
+      $("offers-lede").textContent = "Postings for engineers at your level. Lower tech levels are harder (smaller reactor and capacitors, weaker guns) and earn more reputation. There's always a tech-level-1 posting for your current class." +
+        (q ? " Offers from the next class up appear as your reputation grows." : "");
+    } else {
+      shownJobs = BL.career.lowerJobs(career, "engineer");
+      $("offers-title").textContent = "Lower-class jobs";
+      $("offers-lede").textContent = shownJobs.length ? "Jobs below your current class. You're welcome aboard, but they aren't serious offers: they earn that class's lower reputation." :
+        "Nothing below your current class yet. Qualify on a bigger ship and the smaller ones show up here.";
+    }
+    $("offers-list").innerHTML = shownJobs.map(offerHtml).join("");
+    show("scr-offers");
+  }
+  $("offers-list").addEventListener("click", function (ev) {
+    var b = ev.target.closest("button[data-i]"); if (!b) return;
+    click(); startBriefing(shownJobs[+b.dataset.i]);
+  });
+  $("btn-offers-back").onclick = function () { click(); showHub(); };
+
+  function showRecord() {
+    var c = career;
+    $("rec-title").textContent = "Service record: " + c.name;
+    $("rec-summary").innerHTML = "<span>Enlisted <b>" + c.created + "</b></span>" + summaryHtml(c);
+    $("rec-profile").innerHTML = profileHtml(BL.career.profile(c));
+    $("rec-grid").innerHTML = gridHtml(c);
+    $("rec-history").innerHTML = "<tr><th>Date</th><th>Ship</th><th>Class</th><th>Tech</th><th>Outcome</th><th>Score</th><th>Reputation</th></tr>" +
+      (c.history.length ? c.history.map(function (h) {
+        return "<tr><td>" + h.date + "</td><td>" + esc(h.ship) + "</td><td>" + BL.classById(h.classId).name + "</td><td>" + h.tl + "</td><td>" + h.outcome +
+          "</td><td>" + h.score + "</td><td>" + (h.rep ? "+" + h.rep : "0") + "</td></tr>";
+      }).join("") : '<tr><td colspan="7" class="muted">No missions yet.</td></tr>');
+    show("scr-record");
+  }
+  $("btn-record-back").onclick = function () { click(); showHub(); };
 
   /* ---------------------------------------------------------------- Boot */
   document.querySelectorAll(".app-version").forEach(function (el) { el.textContent = window.APP_VERSION || ""; });
   applySettings();
   newSeedInput();
+  refreshTitle();
   show("scr-title");
   requestAnimationFrame(frame);
   window.__bl = { get sim() { return sim; } };   // for automated tests

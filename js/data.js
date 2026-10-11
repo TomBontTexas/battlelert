@@ -1,4 +1,4 @@
-/* Battlelert data: ship, encounters, chatter lines and sound recipes.
+/* Battlelert data: ship classes, encounters, chatter lines and sound recipes.
    Balance lives here so tuning never touches the simulation code.
    Units: power in MW (MJ per second), stored energy in MJ, time in seconds. */
 (function (root) {
@@ -8,28 +8,86 @@
   BL.APP_TAG = "BATTLELERT";
   BL.TICK_RATE = 20;                       // simulation ticks per second
 
-  /* ---------------------------------------------------------------- Ship */
-  BL.SHIPS = {
-    destroyer: {
-      name: "Destroyer",
-      hull: 100,
-      crew: 6,
-      reactorMW: 100,                      // safe output; load above this builds heat
-      engineMWperG: 5,                     // engines are wired straight to the reactor
-      cruiseG: 2,
-      aux: { capacity: 450, rateMW: 40 },  // reserve bank; refills only in GravSpace
-      // Systems, listed in their starting priority order (first = highest).
+  /* ------------------------------------------------------- Ship classes
+     Nine classes, smallest to largest. `built` classes can be offered as jobs; the rest
+     arrive in later steps. Each ship's numbers are its tech-level-4 values: BL.shipFor()
+     scales them for the tech level on the job offer.
+     threat: multipliers on encounter salvo damage (dmg) and enemy toughness (hp).
+     gScale: multiplier on the G of announced burns (small ships burn harder).
+     mission: jumps and when each jump window opens (s after arrival). A ship with no
+     GravSpace drive flies one timed sortie and the carrier recovers it at that time. */
+  var GUN = { shotMJ: 15, normalInterval: 2.0, fullInterval: 0.5, hitChance: 0.7, damage: 10 };
+  function sys(id, name, short, kind, maxMJ, maxMW, startMJ, startSet, extra) {
+    var o = { id: id, name: name, short: short, kind: kind, maxMJ: maxMJ, maxMW: maxMW, startMJ: startMJ, startSet: startSet };
+    for (var k in extra || {}) o[k] = extra[k];
+    return o;
+  }
+  BL.CLASSES = [
+    { n: 1, id: "gunboat", name: "Gunboat", built: true, baseRep: 100,
+      crew: 4, hull: 30, reactorMW: 40, engineMWperG: 2, cruiseG: 4, gScale: 1.5,
+      aux: { capacity: 150, rateMW: 20 }, hullPerMJ: 0.3, threat: { dmg: 0.45, hp: 0.4 },
+      mission: { jumps: 1, windows: [180] },
       systems: [
-        { id: "life",   name: "Life support", short: "LIFE", kind: "life",   maxMJ: 60,   maxMW: 12, startMJ: 60,  startSet: 4,  drainMW: 3 },
-        { id: "shield", name: "Shields",      short: "SHLD", kind: "shield", maxMJ: 160,  maxMW: 70, startMJ: 80,  startSet: 20 },
-        { id: "gun1",   name: "Gun 1",        short: "GUN1", kind: "gun",    maxMJ: 100,  maxMW: 40, startMJ: 50,  startSet: 10, gunner: 1 },
-        { id: "gun2",   name: "Gun 2",        short: "GUN2", kind: "gun",    maxMJ: 100,  maxMW: 40, startMJ: 50,  startSet: 10, gunner: 2 },
-        { id: "gun3",   name: "Gun 3",        short: "GUN3", kind: "gun",    maxMJ: 100,  maxMW: 40, startMJ: 50,  startSet: 10, gunner: 3 },
-        { id: "drive",  name: "GravSpace drive", short: "DRIVE", kind: "drive", maxMJ: 3200, maxMW: 60, startMJ: 0, startSet: 0 }
-      ],
-      gun: { shotMJ: 15, normalInterval: 2.0, fullInterval: 0.5, hitChance: 0.7, damage: 10 },
-      hullPerMJ: 0.12                      // hull points lost per MJ of salvo the shields don't stop
-    }
+        sys("life", "Life support", "LIFE", "life", 25, 6, 25, 2, { drainMW: 1.2 }),
+        sys("shield", "Shields", "SHLD", "shield", 90, 35, 45, 4),
+        sys("gun1", "Gun 1", "GUN1", "gun", 60, 30, 30, 4, { gunner: 1 })
+      ] },
+    { n: 2, id: "picket", name: "Picket Ship", built: true, baseRep: 212,
+      crew: 4, hull: 60, reactorMW: 60, engineMWperG: 3, cruiseG: 2, gScale: 1.2,
+      aux: { capacity: 250, rateMW: 30 }, hullPerMJ: 0.16, threat: { dmg: 0.6, hp: 0.55 },
+      mission: { jumps: 3, windows: [110, 120, 130] },
+      systems: [
+        sys("life", "Life support", "LIFE", "life", 35, 8, 35, 2, { drainMW: 1.5 }),
+        sys("shield", "Shields", "SHLD", "shield", 120, 45, 60, 12),
+        sys("gun1", "Gun 1", "GUN1", "gun", 70, 30, 35, 8, { gunner: 1 }),
+        sys("drive", "GravSpace drive", "DRIVE", "drive", 1800, 40, 0, 0)
+      ] },
+    { n: 3, id: "destroyerEscort", name: "Destroyer Escort", built: false, baseRep: 325 },
+    { n: 4, id: "destroyer", name: "Destroyer", built: true, baseRep: 437,
+      crew: 6, hull: 100, reactorMW: 100, engineMWperG: 5, cruiseG: 2, gScale: 1,
+      aux: { capacity: 450, rateMW: 40 }, hullPerMJ: 0.12, threat: { dmg: 1, hp: 1 },
+      mission: { jumps: 3, windows: [130, 140, 150] },
+      systems: [
+        sys("life", "Life support", "LIFE", "life", 60, 12, 60, 4, { drainMW: 3 }),
+        sys("shield", "Shields", "SHLD", "shield", 160, 70, 80, 20),
+        sys("gun1", "Gun 1", "GUN1", "gun", 100, 40, 50, 10, { gunner: 1 }),
+        sys("gun2", "Gun 2", "GUN2", "gun", 100, 40, 50, 10, { gunner: 2 }),
+        sys("gun3", "Gun 3", "GUN3", "gun", 100, 40, 50, 10, { gunner: 3 }),
+        sys("drive", "GravSpace drive", "DRIVE", "drive", 3200, 60, 0, 0)
+      ] },
+    { n: 5, id: "lightCruiser", name: "Light Cruiser", built: false, baseRep: 550 },
+    { n: 6, id: "cruiser", name: "Cruiser", built: false, baseRep: 662 },
+    { n: 7, id: "heavyCruiser", name: "Heavy Cruiser", built: false, baseRep: 775 },
+    { n: 8, id: "battleship", name: "Battleship", built: false, baseRep: 887 },
+    { n: 9, id: "dreadnought", name: "Dreadnaught", built: false, baseRep: 1000 }
+  ];
+  BL.classById = function (id) { return BL.CLASSES.filter(function (c) { return c.id === id; })[0]; };
+  BL.classByN = function (n) { return BL.CLASSES[n - 1]; };
+
+  /* Tech level: lower tech = smaller reactor, capacitors and chargers, weaker guns,
+     and more reputation. The class numbers above are tech level 4. */
+  BL.TECH = {
+    factor: function (tl) { return 0.85 + 0.05 * (tl - 1); },     // TL1 0.85 ... TL6 1.10
+    repMult: function (tl) { return 2.0 - 0.2 * (tl - 1); }       // TL1 x2.0 ... TL6 x1.0
+  };
+
+  // A ship of class `classId` at tech level `tl`, ready for BL.Mission.
+  BL.shipFor = function (classId, tl) {
+    var c = BL.classById(classId), f = BL.TECH.factor(tl || 4);
+    function r(v) { return Math.round(v); }
+    return {
+      classId: c.id, className: c.name, n: c.n, tl: tl || 4,
+      name: c.name, hull: c.hull, crew: c.crew,
+      reactorMW: r(c.reactorMW * f), engineMWperG: c.engineMWperG, cruiseG: c.cruiseG, gScale: c.gScale,
+      aux: { capacity: r(c.aux.capacity * f), rateMW: r(c.aux.rateMW * f) },
+      hullPerMJ: c.hullPerMJ, threat: c.threat, mission: c.mission,
+      gun: { shotMJ: GUN.shotMJ, normalInterval: GUN.normalInterval, fullInterval: GUN.fullInterval, hitChance: GUN.hitChance, damage: GUN.damage * f },
+      systems: c.systems.map(function (s) {
+        var o = {}; for (var k in s) o[k] = s[k];
+        if (s.kind !== "life") { o.maxMJ = r(s.maxMJ * f); o.maxMW = r(s.maxMW * f); o.startMJ = r(s.startMJ * f); }
+        return o;
+      })
+    };
   };
 
   /* ------------------------------------------------------- Power physics */
@@ -48,9 +106,7 @@
 
   /* ------------------------------------------------------------ Mission */
   BL.MISSION = {
-    jumps: 3,
     arrivalSeconds: 8,                 // calm before the first wave of each jump
-    jumpWindowAt: [130, 140, 150],     // seconds after arrival the jump window opens, per jump
     jumpWindowNotice: 40,              // "Jump window in 40 s"
     jumpOnTimeGrace: 5,                // drive full within this many seconds of the window = on time
     jumpCountdown: 3,
@@ -92,6 +148,9 @@
   /* ------------------------------------------------------------ Chatter
      Several lines per event; {placeholders} are filled in by the simulation. */
   BL.CHATTER = {
+    launch:      ["Coxswain: launch! We're clear of the carrier.", "Carrier: gunboat away. Good hunting.", "Coxswain: off the deck and into it."],
+    recoveryNotice: ["Carrier: recovery in {t} s. Hold on out there.", "Coxswain: carrier picks us up in {t} seconds."],
+    recovered:   ["Carrier: gunboat recovered. Well flown.", "Coxswain: we're on the deck. Nice work, Engineering."],
     arrival:     ["Bridge: dropping out of GravSpace. Drive is empty.", "Bridge: we're out of GravSpace. Start charging the drive, Engineering.", "Helm: normal space. Drive reads empty."],
     briefing:    ["Tactical: expect {enemy}s. {what}.", "Tactical: scopes show {enemy}s on approach."],
     waveIn:      ["Tactical: {enemy} on scope.", "Tactical: new contacts, {enemy}.", "Tactical: {enemy} closing."],
