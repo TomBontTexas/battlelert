@@ -133,7 +133,8 @@
   /* ------------------------------------------------------------ Messaging */
   Mission.prototype.say = function (text, kind) {
     if (this.quiet) return;
-    this.log.push({ t: this.totalT, jump: this.jumpIndex + 1, text: text, kind: kind || "info" });
+    this.logSeq = (this.logSeq || 0) + 1;
+    this.log.push({ seq: this.logSeq, t: this.totalT, jump: this.jumpIndex + 1, text: text, kind: kind || "info" });
     if (this.log.length > 80) this.log.shift();
   };
   Mission.prototype.chat = function (key, vars, kind) {

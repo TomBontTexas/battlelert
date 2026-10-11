@@ -112,6 +112,7 @@ h2 { font-size: 17px; margin: 18px 0 6px; color: var(--charge); }
 .fc-ev.row1 { top: calc(50% + 1px); }
 .fc-ev.solo { height: calc(100% - 4px); }
 .fc-ev.salvo { background: #3a1d1d; border: 2px solid var(--bad); color: var(--text); transform: translateX(-4px); }
+.fc-ev.salvo.short { background: #5a1a14; border-style: dashed; }
 .fc-ev.burn { background: #3a2716; border: 1px solid var(--heat); color: var(--text); }
 .fc-ev.request { background: #173528; border: 1px solid var(--rate); color: var(--text); }
 .fc-ev.now { animation: blink .5s steps(2) infinite; }

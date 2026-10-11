@@ -36,6 +36,7 @@
   // wakes it again after Safari suspends or interrupts it (backgrounding, screen lock).
   function init() {
     unlockMediaPlayback();
+    if (BL.speech) BL.speech.unlock();
     if (ctx) { if (ctx.state !== "running" && ctx.state !== "closed") ctx.resume(); return; }
     var AC = root.AudioContext || root.webkitAudioContext;
     if (!AC) return;

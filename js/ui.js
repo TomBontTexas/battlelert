@@ -10,12 +10,12 @@
 
   var settings = loadSettings();
   var sim = null, running = false, paused = false, looking = false;
-  var selected = 0, capEls = {}, fcEls = {}, lastLogKey = "", lastDamageLen = -1;
+  var selected = 0, capEls = {}, fcEls = {}, lastLogKey = "", lastDamageLen = -1, lastSpoken = 0;
   var gravShown = false, doneShown = false, lastAlarm = 0, lastTs = 0, acc = 0;
 
   /* ------------------------------------------------------------ Settings */
   function loadSettings() {
-    var s = { fx: 80, alarm: 80, chat: 60, contrast: false, hints: false };
+    var s = { fx: 80, alarm: 80, chat: 60, voice: true, voiceVol: 80, contrast: false, hints: false };
     try { var raw = localStorage.getItem(SETTINGS_KEY); if (raw) Object.assign(s, JSON.parse(raw)); } catch (e) {}
     return s;
   }
@@ -26,6 +26,8 @@
     BL.audio.setVolume("fx", settings.fx / 100);
     BL.audio.setVolume("alarm", settings.alarm / 100);
     BL.audio.setVolume("chat", settings.chat / 100);
+    BL.speech.setEnabled(settings.voice);
+    BL.speech.setVolume(settings.voiceVol / 100);
     document.body.dataset.theme = settings.contrast ? "contrast" : "";
     document.body.classList.toggle("hints", !!settings.hints);
     $("btn-hints").classList.toggle("on", !!settings.hints);
@@ -81,7 +83,7 @@
     buildConsole();
     show("scr-console");
     gravShown = false; doneShown = false; paused = false; looking = false;
-    lastLogKey = ""; lastDamageLen = -1; selected = 0; acc = 0;
+    lastLogKey = ""; lastDamageLen = -1; lastSpoken = 0; selected = 0; acc = 0;
     sim.beginJump();
     running = true;
   }
@@ -89,6 +91,7 @@
   function pause() {
     if (!running || !sim || sim.phase === "done" || paused) return;
     paused = true; looking = false;
+    BL.speech.stop();
     overlay("ov-pause", true); $("planning-banner").hidden = true;
     click();
   }
@@ -116,6 +119,8 @@
   function openOptions() {
     if (inConsole()) pause();
     $("vol-fx").value = settings.fx; $("vol-alarm").value = settings.alarm; $("vol-chat").value = settings.chat;
+    $("opt-voice").checked = !!settings.voice; $("vol-voice").value = settings.voiceVol;
+    $("opt-voice").disabled = $("vol-voice").disabled = !BL.speech.supported;
     $("opt-contrast").checked = !!settings.contrast; $("opt-hints").checked = !!settings.hints;
     overlay("ov-options", true);
   }
@@ -129,6 +134,9 @@
       BL.audio.play(ch === "fx" ? "click" : ch === "alarm" ? "warn" : "chatter");
     };
   });
+  $("opt-voice").onchange = function () { settings.voice = this.checked; applySettings(); saveSettings(); if (settings.voice) BL.speech.say("Bridge: voices on.", "info"); };
+  $("vol-voice").oninput = function () { settings.voiceVol = +this.value; applySettings(); saveSettings(); };
+  $("vol-voice").onchange = function () { BL.speech.say("Tactical: voice check.", "info"); };
   $("opt-contrast").onchange = function () { settings.contrast = this.checked; applySettings(); saveSettings(); };
   $("opt-hints").onchange = function () { settings.hints = this.checked; applySettings(); saveSettings(); };
   function toggleHints() { settings.hints = !settings.hints; applySettings(); saveSettings(); click(); }
@@ -422,6 +430,8 @@
     var items = sim.forecast(), span = sim.cfg.forecastSpan, seen = {};
     var tracks = {};
     document.querySelectorAll(".fc-lane").forEach(function (l) { tracks[l.dataset.lane] = l.querySelector(".fc-track"); });
+    var shieldLeft = sim.sys("shield").mj;   // salvos land in order; each eats what's left
+    items.sort(function (a, b) { return a.in - b.in; });
     items.forEach(function (e) {
       seen[e.id] = true;
       var el = fcEls[e.id];
@@ -430,9 +440,16 @@
       el.style.left = pct(start / span);
       if (e.dur) el.style.width = pct(Math.max(0.4, end - start) / span);
       var secs = e.in > 0 ? " · " + Math.ceil(e.in) + " s" : "";
-      var label = e.type === "salvo" ? "⚡ SALVO " + e.mj + " MJ" + secs :
-        e.type === "burn" ? "▲ BURN " + e.g + " G for " + e.dur + " s" + secs :
-        "◆ GUN " + e.gun + " FULL BATTERY" + secs;
+      var label;
+      if (e.type === "salvo") {
+        shieldLeft -= e.mj;
+        label = "⚡ SALVO " + e.mj + " MJ" + secs + (shieldLeft >= 0 ? " · ✔ covered" : " · short " + Math.ceil(Math.min(e.mj, -shieldLeft)) + " MJ");
+        el.classList.toggle("short", shieldLeft < 0);
+      } else if (e.type === "burn") {
+        label = "▲ BURN " + e.g + " G · +" + Math.round((e.g - sim.data.cruiseG) * sim.data.engineMWperG) + " MW for " + e.dur + " s" + secs;
+      } else {
+        label = "◆ GUN " + e.gun + " FULL · " + Math.round(sim.data.gun.shotMJ / sim.data.gun.fullInterval) + " MW for " + e.dur + " s" + secs;
+      }
       setText(el, label);
       el.classList.toggle("now", e.in <= 1);
       el.style.zIndex = String(100 - Math.round(Math.max(0, e.in) * 4));
@@ -456,7 +473,17 @@
     else { setText(fj, "JUMP WINDOW OPEN · drive " + Math.floor(sim.sys("drive").mj / sim.sys("drive").maxMJ * 100) + "%"); setCls(fj, "fc-jump open"); }
   }
 
+  function speakNew() {
+    var live = running && !paused && sim.phase !== "done";
+    sim.log.forEach(function (l) {
+      if (l.seq <= lastSpoken) return;
+      lastSpoken = l.seq;
+      if (live) BL.speech.say(l.text, l.kind);
+    });
+  }
+
   function renderComms() {
+    speakNew();
     var log = sim.log, last = log[log.length - 1];
     var key = log.length + ":" + (last ? last.t + last.text : "");
     if (key === lastLogKey) return;
