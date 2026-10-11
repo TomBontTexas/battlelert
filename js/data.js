@@ -16,7 +16,8 @@
      gScale: multiplier on the G of announced burns (small ships burn harder).
      maxG: thruster top speed; burns never exceed it, and thruster damage lowers it by 1 G.
      mission: jumps and when each jump window opens (s after arrival). A ship with no
-     GravSpace drive flies one timed sortie and the carrier recovers it at that time. */
+     GravSpace drive flies one timed sortie per carrier jump: the carrier recovers it when
+     the sortie timer runs out, carries it through GravSpace, and launches it again. */
   var GUN = { shotMJ: 15, normalInterval: 2.0, fullInterval: 0.5, hitChance: 0.7, damage: 10 };
   function sys(id, name, short, kind, maxMJ, maxMW, startMJ, startSet, extra) {
     var o = { id: id, name: name, short: short, kind: kind, maxMJ: maxMJ, maxMW: maxMW, startMJ: startMJ, startSet: startSet };
@@ -26,8 +27,8 @@
   BL.CLASSES = [
     { n: 1, id: "gunboat", name: "Gunboat", built: true, baseRep: 100,
       crew: 4, hull: 30, reactorMW: 40, engineMWperG: 2, cruiseG: 4, maxG: 16, gScale: 1.5,
-      aux: { capacity: 0, rateMW: 0 }, hullPerMJ: 0.3, threat: { dmg: 0.45, hp: 0.4 },
-      mission: { jumps: 1, windows: [180] }, encounters: ["raiders", "interceptors"],
+      aux: { capacity: 0, rateMW: 0 }, hullPerMJ: 0.3, threat: { dmg: 0.35, hp: 0.4 },
+      mission: { jumps: 3, windows: [70, 80, 90] }, encounters: ["raiders", "interceptors"],
       systems: [
         sys("life", "Life support", "LIFE", "life", 25, 6, 25, 2, { drainMW: 1.2 }),
         sys("shield", "Shields", "SHLD", "shield", 90, 35, 45, 4),

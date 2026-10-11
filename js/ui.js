@@ -65,10 +65,10 @@
     $("brief-seed").textContent = "· seed " + j.seed;
     $("brief-lede").textContent = sim.hasDrive
       ? "Escort the planet buster's route through " + sim.cfg.jumps + " Archonian-held systems. In each one the GravSpace drive starts empty: keep the ship alive, charge the drive, and the captain jumps once the jump window opens."
-      : "Gunboats have no GravSpace drive: the carrier launches you into the fight and recovers you when the sortie timer runs out. Keep the gunboat alive until then.";
+      : "Gunboats have no GravSpace drive. In each of the carrier's " + sim.cfg.jumps + " systems it launches you into the fight and recovers you when the sortie timer runs out, then carries you through GravSpace to the next one. Keep the gunboat alive through every sortie.";
     $("brief-route").innerHTML = sim.route.map(function (id, i) {
       var e = BL.ENCOUNTERS[id];
-      return "<li>" + (sim.hasDrive ? "System " + (i + 1) : "Sortie") + ": <b>" + e.name + "</b>. " + e.what + ". Tests: " + e.tests.toLowerCase() +
+      return "<li>" + (sim.hasDrive ? "System " : "Sortie ") + (i + 1) + ": <b>" + e.name + "</b>. " + e.what + ". Tests: " + e.tests.toLowerCase() +
         (sim.hasDrive ? ". Jump window opens " + sim.cfg.jumpWindowAt[i] + " s after arrival." : ". The carrier recovers you " + sim.cfg.jumpWindowAt[i] + " s after launch.") + "</li>";
     }).join("") + (sim.hasDrive ? "<li>The Archonian world: drop the planet buster.</li>" : "");
     $("brief-ship-title").textContent = "Your ship: " + (j.test ? cls.name : j.ship + ", " + cls.name) + ", tech level " + j.tl;
@@ -210,7 +210,7 @@
       refs.auxBtn.onclick = function () { selected = i; toggleAux(id); };
     });
     $("route").innerHTML = sim.route.map(function (r, i) { return '<li data-i="' + i + '">' + (i + 1) + ". " + BL.ENCOUNTERS[r].name + "</li>"; }).join("") +
-      (sim.hasDrive ? '<li data-i="' + sim.route.length + '">Archonian world</li>' : '<li data-i="1">Carrier recovery</li>');
+      (sim.hasDrive ? '<li data-i="' + sim.route.length + '">Archonian world</li>' : '<li data-i="' + sim.route.length + '">Carrier: final recovery</li>');
     $("comms-log").innerHTML = "";
     $("damage-list").innerHTML = '<li class="muted">None</li>';
     Object.keys(fcEls).forEach(function (k) { fcEls[k].remove(); }); fcEls = {};
@@ -364,7 +364,7 @@
   function render() {
     var ship = sim.ship, enc = sim.encounter() || {};
     // Header
-    $("hd-jump").innerHTML = (sim.hasDrive ? "Jump <b>" + (sim.jumpIndex + 1) + "</b> of " + sim.cfg.jumps : "Sortie") + " · <b>" + (enc.name || "") + "</b>";
+    $("hd-jump").innerHTML = (sim.hasDrive ? "Jump" : "Sortie") + " <b>" + (sim.jumpIndex + 1) + "</b> of " + sim.cfg.jumps + " · <b>" + (enc.name || "") + "</b>";
     var ph = sim.phase === "arrival" ? "Engagement in " + Math.ceil(sim.cfg.arrivalSeconds - sim.t) + " s" :
       sim.phase === "countdown" ? "JUMPING IN " + Math.max(1, Math.ceil(sim.jumpAt - sim.t)) :
       sim.phase === "engage" ? "T+" + mmss(sim.t) : "";
@@ -538,20 +538,22 @@
   function showGrav() {
     var js = sim.stats.jumps[sim.stats.jumps.length - 1], next = sim.encounter();
     var dmg = sim.stats.damageReports.filter(function (d) { return d.jump === sim.jumpIndex; });
-    $("grav-title").textContent = "In GravSpace: jump " + sim.jumpIndex + " of " + sim.cfg.jumps + " complete";
+    $("grav-title").textContent = sim.hasDrive ? "In GravSpace: jump " + sim.jumpIndex + " of " + sim.cfg.jumps + " complete"
+      : "Aboard the carrier: sortie " + sim.jumpIndex + " of " + sim.cfg.jumps + " complete";
     $("grav-body").innerHTML =
-      "<p>Fighting has stopped." + (sim.hasAux() ? " The aux bank is refilled." : "") + "</p>" +
+      "<p>Fighting has stopped." + (sim.hasDrive ? "" : " The carrier has you on deck and is carrying you through GravSpace.") + (sim.hasAux() ? " The aux bank is refilled." : "") + "</p>" +
       "<ul class='grav-list'>" +
       "<li>Salvos stopped by shields: " + js.shielded + " of " + js.salvos + "</li>" +
       "<li>Hull damage taken: " + js.hullLost + "</li>" +
       "<li>Failsafe trips: " + js.trips + "</li>" +
       "<li>Enemies destroyed: " + js.kills + "</li>" +
-      "<li>Jump " + (js.onTime ? "on time" : "late: the drive wasn't full when the window opened") + "</li>" +
+      (sim.hasDrive ? "<li>Jump " + (js.onTime ? "on time" : "late: the drive wasn't full when the window opened") + "</li>" : "") +
       (dmg.length ? "<li>Damage: " + dmg.map(function (d) { return d.what; }).join("; ") + "</li>" : "") +
       (sim.lastRepairs && sim.lastRepairs.length ? "<li>Damage control repaired half of it: " + sim.lastRepairs.join("; ") + "</li>" : "") +
       "</ul>" +
-      "<h2>Next: " + next.name + "</h2><p>" + next.what + ". Tests: " + next.tests.toLowerCase() + ". The drive will be empty again on arrival.</p>" +
+      "<h2>Next: " + next.name + "</h2><p>" + next.what + ". Tests: " + next.tests.toLowerCase() + (sim.hasDrive ? ". The drive will be empty again on arrival." : ". The carrier launches you again on arrival.") + "</p>" +
       "<p class='muted'>Take a breath; the clock is stopped. You can adjust the priority order once you're back on the console.</p>";
+    $("btn-grav-go").textContent = sim.hasDrive ? "Drop out of GravSpace" : "Launch";
     overlay("ov-grav", true);
   }
   $("btn-grav-go").onclick = function () { click(); overlay("ov-grav", false); sim.beginJump(); };
@@ -563,7 +565,7 @@
     $("db-title").textContent = r.outcome === "success" ? (r.hasDrive ? "Mission complete: planet buster delivered" : "Sortie complete: recovered by the carrier") :
       r.outcome === "destroyed" ? "Ship destroyed" : "Abandoned ship";
     $("db-lede").textContent = (job.test ? "" : job.ship + ", " + r.className + ", tech level " + r.tl + " · ") + "Seed " + r.seed + " · " +
-      (r.hasDrive ? r.jumpsDone + " of " + sim.cfg.jumps + " jumps · " : (r.outcome === "success" ? "recovered · " : "not recovered · ")) + d.minutes + " minutes · hull " + r.hull + " / " + r.hullMax +
+      r.jumpsDone + " of " + sim.cfg.jumps + (r.hasDrive ? " jumps · " : " sorties · ") + d.minutes + " minutes · hull " + r.hull + " / " + r.hullMax +
       (r.looks ? " · looked at the paused console " + r.looks + (r.looks === 1 ? " time" : " times") + " (−" + (100 - Math.round(100 * r.score / Math.max(1, r.raw))) + "%)" : "");
     $("db-score").textContent = r.score;
     var names = { objective: "Objective", condition: "Ship condition", efficiency: "Efficiency", demands: "Demands met" };
@@ -572,7 +574,7 @@
     }).join("");
     $("db-good").textContent = wentWell(r);
     $("db-worst").textContent = worstMoment(r);
-    $("db-jumps").innerHTML = "<tr><th>Jump</th><th>Encounter</th><th>Salvos shielded</th><th>Hull lost</th><th>Trips</th><th>Kills</th><th>On time</th><th>Seconds</th></tr>" +
+    $("db-jumps").innerHTML = "<tr><th>" + (r.hasDrive ? "Jump" : "Sortie") + "</th><th>Encounter</th><th>Salvos shielded</th><th>Hull lost</th><th>Trips</th><th>Kills</th><th>On time</th><th>Seconds</th></tr>" +
       r.jumps.map(function (j, i) {
         return "<tr><td>" + (i + 1) + "</td><td>" + BL.ENCOUNTERS[j.encounter].name + "</td><td>" + j.shielded + " / " + j.salvos + "</td><td>" + j.hullLost +
           "</td><td>" + j.trips + "</td><td>" + j.kills + "</td><td>" + (j.onTime ? "yes" : "no") + "</td><td>" + j.seconds + "</td></tr>";

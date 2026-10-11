@@ -194,11 +194,9 @@
     this.ship.gTarget = this.data.cruiseG;
     this.closeOverloadRun();
     this.cue("jump");
-    if (!this.hasDrive) {
-      this.chat("recovered", null, "good");
-      this.finish("success");
-    } else if (this.jumpIndex >= this.cfg.jumps - 1) {
-      this.say("Bridge: Archonian world dead ahead. Planet buster away!", "good");
+    if (!this.hasDrive) this.chat("recovered", null, "good");
+    if (this.jumpIndex >= this.cfg.jumps - 1) {
+      if (this.hasDrive) this.say("Bridge: Archonian world dead ahead. Planet buster away!", "good");
       this.finish("success");
     } else {
       this.phase = "gravspace";
