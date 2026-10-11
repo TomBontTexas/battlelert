@@ -5,4 +5,4 @@
      bug fix up         -> just that number
    Bump with:  python ~/.claude/tools/bump_version.py product|feature|bugfix|set X.YY.ZZ
    `var`, not `const`: update-banner.js re-loads this file to detect new deploys. */
-var LATEST_APP_VERSION = "0.03.00";
+var LATEST_APP_VERSION = "0.04.00";
