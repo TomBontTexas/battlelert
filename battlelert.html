@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Battlelert</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ============================================================ Title -->
+<section id="scr-title" class="screen page">
+  <div class="title-card">
+    <div class="logo">BATTLELERT</div>
+    <div class="subtitle">Main Engineering</div>
+    <p class="phase-note">Phase 1: the engine-room test. One Destroyer, one 3-jump mission.</p>
+    <div class="menu">
+      <button id="btn-start" class="big primary">Start test mission</button>
+      <button id="btn-how">How to play</button>
+      <button id="btn-options-title">Options</button>
+    </div>
+    <div class="seed-row">
+      <label for="seed-input">Mission seed</label>
+      <input id="seed-input" type="number" min="1" max="999999" inputmode="numeric">
+      <button id="btn-seed-new" class="small" title="Roll a new seed">New</button>
+      <span class="muted">Same seed, same mission. Share it to compare runs.</span>
+    </div>
+    <div class="version-line">v<span class="app-version"></span></div>
+  </div>
+</section>
+
+<!-- ========================================================= Briefing -->
+<section id="scr-briefing" class="screen page" hidden>
+  <div class="sheet">
+    <h1>Mission briefing</h1>
+    <p class="lede">Escort the planet buster's route through three Archonian-held systems. In each one the
+      GravSpace drive starts empty: keep the ship alive, charge the drive, and the captain jumps once the
+      jump window opens.</p>
+    <h2>Route <span class="muted" id="brief-seed"></span></h2>
+    <ol id="brief-route" class="route-list"></ol>
+    <h2>Your ship: Destroyer</h2>
+    <div id="brief-ship" class="brief-ship"></div>
+    <h2>Your station: Main Engineering</h2>
+    <ul class="tight">
+      <li>The <b>forecast strip</b> at the top shows what the bridge needs in the next 15 seconds. Charge for it before it lands.</li>
+      <li>Every capacitor's charge rate adds to the <b>reactor load</b>. Above 100% the reactor heats up; at full heat the failsafe trips capacitors off the reactor for 10 s, <b>lowest priority first</b>.</li>
+      <li>The <b>aux bank</b> charges any capacitor you switch it onto, without loading the reactor. It refills only in GravSpace.</li>
+      <li>Capacitors that are full stop drawing power. When they're drained, they ramp back up to your setting over a second or two.</li>
+    </ul>
+    <div class="actions">
+      <button id="btn-brief-back">Back</button>
+      <button id="btn-brief-go" class="big primary">Take your station</button>
+    </div>
+  </div>
+</section>
+
+<!-- ========================================================== Console -->
+<section id="scr-console" class="screen" hidden>
+  <header class="con-head">
+    <span class="brand">BATTLELERT</span>
+    <span class="hd-item" id="hd-station">Main Engineering · Destroyer</span>
+    <span class="hd-item" id="hd-jump"></span>
+    <span class="hd-item hd-phase" id="hd-phase"></span>
+    <span class="hd-spacer"></span>
+    <button id="btn-hints" class="small" data-hint="Hint mode: point at any control to see what it does. Key: H.">Hints</button>
+    <button id="btn-options" class="small" data-hint="Volumes, high-contrast theme, keyboard help.">Options</button>
+    <button id="btn-pause" class="small" data-hint="Pause and blank the screen. Key: Space.">Pause</button>
+    <span class="hd-ver">v<span class="app-version"></span></span>
+  </header>
+
+  <div class="con-top">
+    <div class="panel forecast" data-hint="Forecast strip: announced demands for the next 15 seconds. 'Now' is the left edge; things slide toward it. Salvos hit the shields, burns load the engines, gun requests drain a gun.">
+      <div class="fc-head"><span>FORECAST</span><span class="muted">now</span><span class="fc-ticks"><i>5 s</i><i>10 s</i><i>15 s</i></span><span id="fc-jump" class="fc-jump"></span></div>
+      <div class="fc-lanes" id="fc-lanes">
+        <div class="fc-lane" data-lane="salvo"><span class="fc-label">SALVOS</span><div class="fc-track"></div></div>
+        <div class="fc-lane" data-lane="burn"><span class="fc-label">ENGINES</span><div class="fc-track"></div></div>
+        <div class="fc-lane" data-lane="request"><span class="fc-label">GUNS</span><div class="fc-track"></div></div>
+      </div>
+    </div>
+    <div class="panel comms" data-hint="Comms log: the bridge and crew. Warnings come here and on the forecast strip.">
+      <div class="panel-title">COMMS</div>
+      <div id="comms-log" class="comms-log" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <div class="con-main">
+    <aside class="panel left">
+      <div class="panel-title">REACTOR</div>
+      <div class="gauge-wrap" data-hint="Reactor load: engines plus every capacitor's charge rate, against the reactor's safe output. Over 100% builds heat.">
+        <svg id="gauge" viewBox="0 0 200 120" class="gauge" aria-label="Reactor load">
+          <path class="g-bg" d="M20 105 A80 80 0 0 1 180 105" />
+          <path id="g-over" class="g-over" d="" />
+          <path id="g-val" class="g-val" d="" />
+          <line id="g-100" class="g-100" x1="0" y1="0" x2="0" y2="0" />
+          <text id="g-pct" x="100" y="92" text-anchor="middle" class="g-pct">0%</text>
+          <text x="100" y="112" text-anchor="middle" class="g-sub">LOAD</text>
+        </svg>
+        <div class="load-detail" id="load-detail"></div>
+      </div>
+      <div class="heat" data-hint="Reactor heat. Load above 100% builds it, load below 100% sheds it. At full heat the failsafe trips a capacitor off the reactor for 10 s, lowest priority first.">
+        <div class="row-label"><span>HEAT</span><span id="heat-val">0</span></div>
+        <div class="hbar"><div id="heat-fill" class="hbar-fill heat-fill"></div><i class="hbar-mark" style="left:80%"></i></div>
+        <div id="heat-warn" class="warn-text" hidden>⚠ OVERHEATING</div>
+      </div>
+      <div class="engines" data-hint="Engines are wired straight to the reactor. When the pilot burns hard, less is left for charging.">
+        <div class="row-label"><span>ENGINES</span><span id="eng-val"></span></div>
+        <div class="hbar"><div id="eng-fill" class="hbar-fill eng-fill"></div></div>
+      </div>
+      <div class="auxbank" data-hint="Aux bank: a reserve you switch onto capacitors with their AUX buttons (key A). It charges them without loading the reactor. Refills only in GravSpace.">
+        <div class="row-label"><span>AUX BANK</span><span id="aux-val"></span></div>
+        <div class="hbar"><div id="aux-fill" class="hbar-fill aux-fill"></div></div>
+        <div id="aux-out" class="muted small-text"></div>
+      </div>
+      <div class="triporder" data-hint="Trip order: when the reactor overheats, the failsafe trips these first. Drag the P badges on the capacitors, or select one and press [ or ] to change it.">
+        <div class="row-label"><span>TRIPS FIRST</span></div>
+        <ol id="trip-order" class="trip-list"></ol>
+      </div>
+    </aside>
+
+    <div class="caps" id="caps"></div>
+
+    <aside class="panel right">
+      <div class="panel-title">SHIP</div>
+      <div data-hint="Hull. Salvos the shields don't stop damage the hull. At 0 the ship is lost.">
+        <div class="row-label"><span>HULL</span><span id="hull-val"></span></div>
+        <div class="hbar tall"><div id="hull-fill" class="hbar-fill hull-fill"></div></div>
+      </div>
+      <div id="crew-status" class="crew-status" data-hint="Crew. If life support runs dry, the crew is crippled: gunners fire slower and miss more."></div>
+      <div class="jump-box" data-hint="Jump progress. The captain jumps when the window is open and the GravSpace drive is full.">
+        <div class="row-label"><span>JUMP</span><span id="jump-drive"></span></div>
+        <div class="hbar tall"><div id="jump-fill" class="hbar-fill drive-fill"></div></div>
+        <div id="jump-status" class="jump-status"></div>
+      </div>
+      <div class="route-box" data-hint="Mission route: three systems, then the Archonian world.">
+        <div class="row-label"><span>ROUTE</span></div>
+        <ol id="route" class="route"></ol>
+      </div>
+      <div class="damage-box" data-hint="Damage report. Damage shrinks capacitors, slows chargers and lowers reactor output.">
+        <div class="row-label"><span>DAMAGE</span></div>
+        <ul id="damage-list" class="damage-list"><li class="muted">None</li></ul>
+      </div>
+    </aside>
+  </div>
+
+  <footer class="con-foot">
+    <span id="hint-bar" class="hint-bar">1–6 select · ↑↓ charge rate (Shift: ×5) · ←→ next system · A aux · [ ] priority · 0 zero · M max · Space pause · H hints</span>
+  </footer>
+
+  <div id="planning-banner" class="planning-banner" hidden>PAUSED: planning view (cost 10% of this mission's score). Space resumes.</div>
+  <div id="jump-flash" class="jump-flash" hidden>JUMP</div>
+  <div id="narrow-note" class="narrow-note">The engine room needs a tablet or desktop screen. Turn the device sideways or use a wider window.</div>
+</section>
+
+<!-- ============================================================ Pause -->
+<section id="ov-pause" class="overlay blank" hidden>
+  <div class="ov-card">
+    <h1>Paused</h1>
+    <p>The screen is blank, so a break costs nothing.</p>
+    <div class="menu">
+      <button id="btn-resume" class="big primary">Resume (Space)</button>
+      <button id="btn-look">Show the console for planning (costs 10% of the mission's score)</button>
+      <button id="btn-options-pause">Options</button>
+      <button id="btn-abandon" class="danger">Abandon ship</button>
+    </div>
+  </div>
+</section>
+
+<!-- ========================================================= GravSpace -->
+<section id="ov-grav" class="overlay" hidden>
+  <div class="ov-card wide">
+    <h1 id="grav-title">In GravSpace</h1>
+    <div id="grav-body"></div>
+    <div class="menu"><button id="btn-grav-go" class="big primary">Drop out of GravSpace</button></div>
+  </div>
+</section>
+
+<!-- ========================================================= Debriefing -->
+<section id="scr-debrief" class="screen page" hidden>
+  <div class="sheet">
+    <h1 id="db-title">Debriefing</h1>
+    <p id="db-lede" class="lede"></p>
+    <div class="score-row">
+      <div class="score-big"><span id="db-score">0</span><small>score</small></div>
+      <div id="db-parts" class="score-parts"></div>
+    </div>
+    <div class="two-col">
+      <div><h2>What went well</h2><p id="db-good"></p></div>
+      <div><h2>Worst moment</h2><p id="db-worst"></p></div>
+    </div>
+    <h2>Jump by jump</h2>
+    <table class="db-table" id="db-jumps"></table>
+    <h2>Details</h2>
+    <div id="db-detail" class="db-detail"></div>
+    <div class="gate-q">Phase 1 question: was balancing power against announced demands fun for 10 minutes?</div>
+    <div class="actions">
+      <button id="btn-db-again">Fly again (same seed)</button>
+      <button id="btn-db-new" class="primary">New mission</button>
+      <button id="btn-db-save">Save debriefing</button>
+      <button id="btn-db-title">Title screen</button>
+    </div>
+  </div>
+</section>
+
+<!-- =========================================================== Options -->
+<section id="ov-options" class="overlay" hidden>
+  <div class="ov-card">
+    <h1>Options</h1>
+    <div class="opt-grid">
+      <label for="vol-fx">Effects</label><input id="vol-fx" type="range" min="0" max="100" step="5">
+      <label for="vol-alarm">Alarms</label><input id="vol-alarm" type="range" min="0" max="100" step="5">
+      <label for="vol-chat">Chatter</label><input id="vol-chat" type="range" min="0" max="100" step="5">
+      <label for="opt-contrast">High-contrast theme</label><input id="opt-contrast" type="checkbox">
+      <label for="opt-hints">Hint mode</label><input id="opt-hints" type="checkbox">
+    </div>
+    <h2>Keyboard</h2>
+    <table class="keys">
+      <tr><td>1 – 6</td><td>Select a system</td></tr>
+      <tr><td>↑ ↓</td><td>Raise or lower its charge rate (hold Shift for big steps)</td></tr>
+      <tr><td>← →</td><td>Select the next system left or right</td></tr>
+      <tr><td>0 / M</td><td>Charge rate to zero / to maximum</td></tr>
+      <tr><td>A</td><td>Switch the aux bank onto or off the selected capacitor</td></tr>
+      <tr><td>[ ]</td><td>Raise or lower its priority (what trips first)</td></tr>
+      <tr><td>Space</td><td>Pause</td></tr>
+      <tr><td>H</td><td>Hint mode</td></tr>
+    </table>
+    <div class="menu"><button id="btn-options-close" class="primary">Done</button></div>
+  </div>
+</section>
+
+<!-- ========================================================= How to play -->
+<section id="ov-how" class="overlay" hidden>
+  <div class="ov-card wide">
+    <h1>How to play</h1>
+    <p>You are the Destroyer's engineer. The reactor can't feed everything at once, so you decide where the power goes, second by second.</p>
+    <ol class="tight">
+      <li><b>Read the forecast strip.</b> Salvos, evasive burns and gun requests are announced seconds before they land.</li>
+      <li><b>Shift charge to meet the next demand.</b> Drag a capacitor's charge-rate slider, or select it with 1–6 and use ↑↓. The controller ramps toward your setting over a second or two, so start early.</li>
+      <li><b>Keep heat under the line.</b> Load over 100% heats the reactor. At full heat the failsafe trips capacitors off the reactor for 10 s, lowest priority first. Set the priority order so the right things trip.</li>
+      <li><b>Spend aux power to bridge a gap.</b> The aux bank charges a capacitor without loading the reactor. It only refills between jumps.</li>
+      <li><b>Charge the GravSpace drive.</b> When the jump window opens and the drive is full, the captain jumps. Three jumps and the planet buster is delivered.</li>
+    </ol>
+    <p>Shields stop salvos; whatever gets through damages the hull, and damage shrinks capacitors, slows chargers and lowers reactor output. Fed guns kill enemies faster, and a dead enemy fires no more salvos. Keep life support topped up, or the crew falters.</p>
+    <p class="muted">Not every salvo is announced; surprises are rare. Pausing is free; looking at the console while paused costs 10% of the mission's score.</p>
+    <div class="menu"><button id="btn-how-close" class="primary">Got it</button></div>
+  </div>
+</section>
+
+<script src="version.js"></script>
+<script src="update-banner.js"></script>
+<script src="js/data.js"></script>
+<script src="js/sim.js"></script>
+<script src="js/agents.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/ui.js"></script>
+</body>
+</html>

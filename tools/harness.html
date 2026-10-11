@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Battlelert Test Harness</title>
+<style>
+  body { background: #10151b; color: #d8e2ea; font: 14px/1.4 Consolas, monospace; margin: 16px; }
+  table { border-collapse: collapse; margin: 12px 0; }
+  td, th { border: 1px solid #34404c; padding: 4px 10px; text-align: right; }
+  th { background: #1c242d; }
+  td:first-child, th:first-child { text-align: left; }
+  .bad { color: #ff8a7a; }
+</style>
+</head>
+<body>
+<h1>Battlelert headless test harness</h1>
+<p>Plays missions with AI engineers and no screen. Add <code>?n=500</code> to change the number of seeds.</p>
+<div id="out">Running…</div>
+<script src="../js/data.js"></script>
+<script src="../js/sim.js"></script>
+<script src="../js/agents.js"></script>
+<script>
+(function () {
+  var n = +(new URLSearchParams(location.search).get("n")) || 200;
+  var policies = {
+    "AI conservative": function () { return new BL.AIEngineer(0); },
+    "AI balanced": function () { return new BL.AIEngineer(0.5); },
+    "AI aggressive": function () { return new BL.AIEngineer(1); },
+    "AI slow (1.5 s)": function () { return new BL.AIEngineer(0.5, 1.5); },
+    "AI slower (3 s)": function () { return new BL.AIEngineer(0.5, 3); },
+    "Static settings": function () { return new BL.StaticEngineer(); },
+    "Hands off": function () { return { think: function () {} }; }
+  };
+  var rows = [], errors = [], summary = {};
+  var t0 = performance.now();
+  Object.keys(policies).forEach(function (name) {
+    var agg = { n: 0, win: 0, destroyed: 0, timeout: 0, score: 0, hull: 0, trips: 0, eff: 0, shielded: 0, req: 0, onTime: 0, kills: 0, min: 0, crippled: 0 };
+    for (var s = 1; s <= n; s++) {
+      try {
+        var r = BL.runHeadless(s * 7919, policies[name]());
+        if (!isFinite(r.score)) throw new Error("score is not a number, seed " + s * 7919);
+        agg.n++;
+        if (r.outcome === "success") agg.win++;
+        if (r.outcome === "destroyed") agg.destroyed++;
+        if (r.outcome === "timeout") agg.timeout++;
+        agg.score += r.score; agg.hull += r.hull; agg.trips += r.detail.trips; agg.eff += r.detail.efficiencyPct;
+        agg.shielded += r.detail.salvosAnnounced ? r.detail.salvosShielded / r.detail.salvosAnnounced : 1;
+        agg.req += r.detail.requests ? r.detail.requestsFilled / r.detail.requests : 1;
+        agg.onTime += r.jumpsDone ? r.detail.jumpsOnTime / r.jumpsDone : 0;
+        agg.kills += r.detail.kills; agg.min += r.detail.minutes; agg.crippled += r.detail.crippledTime;
+      } catch (e) { errors.push(name + ": " + e.message); }
+    }
+    var k = agg.n || 1;
+    summary[name] = {
+      win: Math.round(100 * agg.win / k), destroyed: Math.round(100 * agg.destroyed / k), timeout: agg.timeout,
+      score: Math.round(agg.score / k), hull: Math.round(agg.hull / k), trips: +(agg.trips / k).toFixed(1),
+      eff: Math.round(agg.eff / k), shielded: Math.round(100 * agg.shielded / k), req: Math.round(100 * agg.req / k),
+      onTime: Math.round(100 * agg.onTime / k), kills: +(agg.kills / k).toFixed(1), minutes: +(agg.min / k).toFixed(1),
+      crippled: Math.round(agg.crippled / k)
+    };
+  });
+  var cols = ["win", "destroyed", "timeout", "score", "hull", "trips", "eff", "shielded", "req", "onTime", "kills", "minutes", "crippled"];
+  var heads = ["Win %", "Destroyed %", "Timeouts", "Score", "Hull left", "Trips", "Efficiency %", "Salvos shielded %", "Gun requests filled %", "Jumps on time %", "Kills", "Minutes", "Crippled s"];
+  var html = "<table><tr><th>Engineer</th>" + heads.map(function (h) { return "<th>" + h + "</th>"; }).join("") + "</tr>";
+  Object.keys(summary).forEach(function (name) {
+    html += "<tr><td>" + name + "</td>" + cols.map(function (c) { return "<td>" + summary[name][c] + "</td>"; }).join("") + "</tr>";
+  });
+  html += "</table><p>" + n + " seeds per engineer, " + Math.round(performance.now() - t0) + " ms.</p>";
+  if (errors.length) html += "<pre class='bad'>" + errors.slice(0, 20).join("\n") + "</pre>";
+  // Determinism: the same seed and engineer must give the same result.
+  var a = JSON.stringify(BL.runHeadless(4242, new BL.AIEngineer(0.5)));
+  var b = JSON.stringify(BL.runHeadless(4242, new BL.AIEngineer(0.5)));
+  html += "<p>Determinism check: " + (a === b ? "same seed, same result" : "<span class='bad'>MISMATCH</span>") + "</p>";
+  document.getElementById("out").innerHTML = html;
+  window.__results = { summary: summary, errors: errors, deterministic: a === b };
+})();
+</script>
+</body>
+</html>
