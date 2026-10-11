@@ -14,6 +14,7 @@
      scales them for the tech level on the job offer.
      threat: multipliers on encounter salvo damage (dmg) and enemy toughness (hp).
      gScale: multiplier on the G of announced burns (small ships burn harder).
+     maxG: thruster top speed; burns never exceed it, and thruster damage lowers it by 1 G.
      mission: jumps and when each jump window opens (s after arrival). A ship with no
      GravSpace drive flies one timed sortie and the carrier recovers it at that time. */
   var GUN = { shotMJ: 15, normalInterval: 2.0, fullInterval: 0.5, hitChance: 0.7, damage: 10 };
@@ -24,7 +25,7 @@
   }
   BL.CLASSES = [
     { n: 1, id: "gunboat", name: "Gunboat", built: true, baseRep: 100,
-      crew: 4, hull: 30, reactorMW: 40, engineMWperG: 2, cruiseG: 4, gScale: 1.5,
+      crew: 4, hull: 30, reactorMW: 40, engineMWperG: 2, cruiseG: 4, maxG: 16, gScale: 1.5,
       aux: { capacity: 0, rateMW: 0 }, hullPerMJ: 0.3, threat: { dmg: 0.45, hp: 0.4 },
       mission: { jumps: 1, windows: [180] }, encounters: ["raiders", "interceptors"],
       systems: [
@@ -33,7 +34,7 @@
         sys("gun1", "Gun 1", "GUN1", "gun", 60, 30, 30, 4, { gunner: 1 })
       ] },
     { n: 2, id: "picket", name: "Picket Ship", built: true, baseRep: 212,
-      crew: 4, hull: 60, reactorMW: 60, engineMWperG: 3, cruiseG: 2, gScale: 1.2,
+      crew: 4, hull: 60, reactorMW: 60, engineMWperG: 3, cruiseG: 2, maxG: 11, gScale: 1.2,
       aux: { capacity: 0, rateMW: 0 }, hullPerMJ: 0.16, threat: { dmg: 0.6, hp: 0.55 },
       mission: { jumps: 3, windows: [110, 120, 130] }, encounters: ["raiders", "interceptors", "siege"],
       systems: [
@@ -43,7 +44,7 @@
         sys("drive", "GravSpace drive", "DRIVE", "drive", 1800, 40, 0, 0)
       ] },
     { n: 3, id: "destroyerEscort", name: "Destroyer Escort", built: true, baseRep: 325,
-      crew: 5, hull: 80, reactorMW: 80, engineMWperG: 4, cruiseG: 2, gScale: 1.1,
+      crew: 5, hull: 80, reactorMW: 80, engineMWperG: 4, cruiseG: 2, maxG: 10, gScale: 1.1,
       aux: { capacity: 0, rateMW: 0 }, hullPerMJ: 0.14, threat: { dmg: 0.8, hp: 0.75 },
       mission: { jumps: 3, windows: [120, 130, 140] }, encounters: ["raiders", "interceptors", "siege"],
       systems: [
@@ -54,7 +55,7 @@
         sys("drive", "GravSpace drive", "DRIVE", "drive", 2400, 50, 0, 0)
       ] },
     { n: 4, id: "destroyer", name: "Destroyer", built: true, baseRep: 437,
-      crew: 6, hull: 100, reactorMW: 100, engineMWperG: 5, cruiseG: 2, gScale: 1,
+      crew: 6, hull: 100, reactorMW: 100, engineMWperG: 5, cruiseG: 2, maxG: 9, gScale: 1,
       aux: { capacity: 450, rateMW: 40 }, hullPerMJ: 0.12, threat: { dmg: 1, hp: 1 },
       mission: { jumps: 3, windows: [130, 140, 150] }, encounters: ["raiders", "interceptors", "siege"],
       systems: [
@@ -88,7 +89,7 @@
     return {
       classId: c.id, className: c.name, n: c.n, tl: tl || 4,
       name: c.name, hull: c.hull, crew: c.crew,
-      reactorMW: r(c.reactorMW * f), engineMWperG: c.engineMWperG, cruiseG: c.cruiseG, gScale: c.gScale,
+      reactorMW: r(c.reactorMW * f), engineMWperG: c.engineMWperG, cruiseG: c.cruiseG, maxG: c.maxG, gScale: c.gScale,
       aux: { capacity: r(c.aux.capacity * f), rateMW: r(c.aux.rateMW * f) },
       hullPerMJ: c.hullPerMJ, threat: c.threat, mission: c.mission, encounters: c.encounters,
       gun: { shotMJ: GUN.shotMJ, normalInterval: GUN.normalInterval, fullInterval: GUN.fullInterval, hitChance: GUN.hitChance, damage: GUN.damage * f },

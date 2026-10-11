@@ -82,7 +82,7 @@
       hull: d.hull, hullMax: d.hull,
       reactorBase: d.reactorMW, reactorMax: d.reactorMW,
       load: 0, loadPct: 0, heat: 0, lastTrip: -99, heatAlarm: false,
-      g: d.cruiseG, gTarget: d.cruiseG, engineMW: d.cruiseG * d.engineMWperG,
+      g: d.cruiseG, gTarget: d.cruiseG, engineMW: d.cruiseG * d.engineMWperG, maxG: d.maxG,
       aux: { mj: d.aux.capacity, cap: d.aux.capacity, rateMW: d.aux.rateMW, out: 0 },
       crippled: false, lifeLowSaid: false,
       systems: d.systems.map(function (s) {
@@ -221,7 +221,7 @@
     }
     var b = enc.burns;
     if (t >= this.nextBurnAt - b.warning) {
-      var at = this.nextBurnAt, dur = Math.round(r.range(b.duration)), g = Math.round(r.int(b.g) * this.data.gScale);
+      var at = this.nextBurnAt, dur = Math.round(r.range(b.duration)), g = Math.min(this.ship.maxG, Math.round(r.int(b.g) * this.data.gScale));
       this.events.push({ id: this.nextId++, type: "burn", at: at, dur: dur, g: g, announceAt: t, announced: false, visible: true });
       this.nextBurnAt = at + dur + r.range(b.every);
     }
@@ -333,12 +333,13 @@
 
   Mission.prototype.damageSystem = function () {
     var r = this.rng, ship = this.ship, what;
+    // Thrusters 20%, a charger 40%, the reactor 40%. Capacitors never shrink: a smaller
+    // GravSpace capacitor would fill sooner and make damage speed up the jump.
     var roll = r.next();
-    if (roll < 0.4) {
-      var s = r.pick(ship.systems);
-      s.maxMJ = Math.round(s.maxMJ * 0.9); s.mj = Math.min(s.mj, s.maxMJ);
-      what = s.name + " capacitor damaged, 10% smaller";
-    } else if (roll < 0.8) {
+    if (roll < 0.2 && ship.maxG > 1) {
+      ship.maxG -= 1;
+      what = "thrusters damaged, top speed now " + ship.maxG + " G";
+    } else if (roll < 0.6) {
       var c = r.pick(ship.systems);
       c.maxMW = Math.round(c.maxMW * 0.88 * 2) / 2;
       what = c.name + " charger damaged, max rate now " + c.maxMW + " MW";

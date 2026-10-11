@@ -76,7 +76,7 @@
       "<div><span>Reactor safe output</span> " + d.reactorMW + " MW</div>",
       "<div><span>Hull</span> " + d.hull + "</div>",
       "<div><span>Aux bank</span> " + (d.aux.capacity ? d.aux.capacity + " MJ, " + d.aux.rateMW + " MW" : "none (destroyers and up)") + "</div>",
-      "<div><span>Engines</span> " + d.engineMWperG + " MW per G, cruise " + d.cruiseG + " G</div>"
+      "<div><span>Engines</span> " + d.engineMWperG + " MW per G, cruise " + d.cruiseG + " G, top " + d.maxG + " G</div>"
     ];
     d.systems.forEach(function (s) {
       html.push("<div><span>" + s.name + "</span> " + s.maxMJ + " MJ, up to " + s.maxMW + " MW</div>");
@@ -385,8 +385,8 @@
     var hot = ship.heat >= BL.PHYSICS.alarmHeat;
     $("heat-fill").parentNode.parentNode.classList.toggle("hot", hot);
     $("heat-warn").hidden = !hot;
-    setText($("eng-val"), ship.g.toFixed(1) + " G · " + Math.round(ship.engineMW) + " MW");
-    $("eng-fill").style.width = pct(ship.g / 10);
+    setText($("eng-val"), ship.g.toFixed(1) + " of " + ship.maxG + " G · " + Math.round(ship.engineMW) + " MW");
+    $("eng-fill").style.width = pct(ship.g / sim.data.maxG);
     setText($("aux-val"), Math.round(ship.aux.mj) + " / " + ship.aux.cap + " MJ");
     $("aux-fill").style.width = pct(ship.aux.cap ? ship.aux.mj / ship.aux.cap : 0);
     var feeding = ship.systems.filter(function (s) { return s.aux; }).map(function (s) { return s.short; });
