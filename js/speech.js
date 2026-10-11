@@ -148,7 +148,7 @@
     // Each crew member says one line, in turn.
     test: function () {
       var self = this; this.stop();
-      var lines = { "Tactical": "Enemy salvo in 6 seconds.", "Helm": "Evasive burn in 4 seconds.", "Gunner 1": "Requesting full battery!",
+      var lines = { "Tactical": "Enemy salvo in 6 seconds.", "Helm": "Evasive burn in 4 seconds.", "Gunner 1": "Gonna need that capacitor!",
         "Damage control": "Shields held.", "Bridge": "Jump window opens in 40 seconds.", "Gunner 2": "Target locked.",
         "Medical": "Air's getting thin.", "Gunner 3": "Splash one raider!", "Navigation": "Course plotted.",
         "Reactor room": "Heat is climbing!", "Coxswain": "Launch! We're clear of the carrier.", "Carrier": "Recovery in 30 seconds.",

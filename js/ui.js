@@ -413,7 +413,7 @@
       var st = "", stc = "cap-state";
       var full = s.mj >= s.maxMJ - 0.5;
       if (s.tripped) { st = "✖ TRIPPED " + Math.ceil(s.tripUntil - sim.t) + " s"; stc += " tripped"; }
-      else if (s.request) { st = "◆ FULL BATTERY"; stc += " request"; }
+      else if (s.request) { st = "◆ RAPID FIRE"; stc += " request"; }
       else if (s.call) { st = (s.kind === "main" ? "◉ SHOT CALLED " : "✈ LAUNCH CALLED ") + Math.max(0, Math.ceil(s.call.until - sim.t)) + " s"; stc += " request"; }
       else if (s.kind === "hangar" && sim.t < sim.squadronUntil) { st = "✈ SQUADRON OUT " + Math.ceil(sim.squadronUntil - sim.t) + " s"; stc += " full"; }
       else if (s.kind === "gun" && s.mj < sim.data.gun.shotMJ) { st = "DRY"; stc += " dry"; }
@@ -502,7 +502,7 @@
         label = (e.type === "main" ? "◉ MAIN GUN" : "✈ LAUNCH") + (e.open ? " NOW · must be full · " + pc + "% · " + Math.ceil(e.dur) + " s left" : " · must be full · " + pc + "% now" + secs);
         el.classList.toggle("short", pc < 100 && e.in < (cs.maxMJ - cs.mj) / Math.max(1, cs.maxMW));
       } else {
-        label = "◆ GUN " + e.gun + " FULL · " + Math.round(sim.data.gun.shotMJ / sim.data.gun.fullInterval) + " MW for " + e.dur + " s" + secs;
+        label = "◆ GUN " + e.gun + " RAPID FIRE · " + Math.round(sim.data.gun.shotMJ / sim.data.gun.fullInterval) + " MW for " + e.dur + " s" + secs;
       }
       setText(el, label);
       el.classList.toggle("now", e.in <= 1);
@@ -652,7 +652,7 @@
     var oSev = o.dur / 8, qSev = q ? q.missed / 6 : 0;
     if (o.dur < 1 && (!q || q.missed === 0)) return "Nothing stands out. Clean run.";
     if (oSev >= qSev) return "The longest overload: " + o.dur + " s above 100% load in jump " + o.jump + ", starting at T+" + mmss(o.t) + ".";
-    return "Gunner " + q.gun + " in jump " + q.jump + " (T+" + mmss(q.t) + "): asked for full battery and missed " + q.missed + " of " + q.wanted + " shots for lack of charge.";
+    return "Gunner " + q.gun + " in jump " + q.jump + " (T+" + mmss(q.t) + "): called for rapid fire and missed " + q.missed + " of " + q.wanted + " shots for lack of charge.";
   }
 
   function saveDebrief() {
