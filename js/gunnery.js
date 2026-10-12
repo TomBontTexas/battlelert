@@ -19,7 +19,9 @@
     this.bats = list.map(function (id, i) {
       var wid = BL.WEAPONS[id] ? id : "pulse", x = n === 1 ? 0.5 : 0.2 + 0.6 * i / (n - 1);
       return { i: i, gunNo: i + 1, gunId: "gun" + (i + 1), weaponId: wid, w: BL.WEAPONS[wid], x: x, aimX: x, dir: 0,
-        firing: false, nextShot: 0, dryCueAt: 0, callReadyAt: 0, aiNext: 0, aiJitter: 0 };
+        firing: false, nextShot: 0, dryCueAt: 0, callReadyAt: 0, aiNext: 0, aiJitter: 0,
+        // hit rate on this gun for the whole mission: yours, and the AI gunner's when it has the gun
+        shots: 0, hits: 0, aiShots: 0, aiHits: 0 };
     });
     this.sel = 0;
     this.rng = BL.rng((m.seed ^ 0x5bd1e995) >>> 0);
@@ -265,7 +267,7 @@
       b.nextShot = t + this.interval(b);
       if (s.request) { s.request.wanted++; s.request.fired++; }
       this.bolts.push({ id: this.nextId++, bat: b.i, weaponId: b.weaponId, mine: mine, x: b.x, y: this.G.turretY - 0.03, y0: this.G.turretY - 0.03, born: m.totalT });
-      if (mine) bump(this, "shots");
+      if (mine) { bump(this, "shots"); b.shots++; } else b.aiShots++;
       m.cue(b.weaponId);
     } else {
       if (mine) this.stats.dryTime += dt;
@@ -314,7 +316,7 @@
         if (Math.abs(s.x - b.x) <= s.w / 2 + 0.004 && s.y + s.h / 2 >= Math.max(yNew, top) && s.y - s.h / 2 <= yOld && s.y > bestY) { best = { ship: s }; bestY = s.y; }
       }
       if (best) {
-        if (b.mine) bump(this, "hits");
+        if (b.mine) { bump(this, "hits"); this.bats[b.bat].hits++; } else this.bats[b.bat].aiHits++;
         if (best.torp) this.downTorpedo(best.torp, b);
         else this.hitShip(best.ship, b);
         continue;
@@ -479,6 +481,7 @@
       shots: st.shots, hits: st.hits, accuracyPct: Math.round(accuracy * 100), ships: st.ships, kills: st.kills,
       torps: st.torps, downed: st.downed, hullTorps: st.hullTorps, damage: Math.round(st.damage), dryTime: Math.round(st.dryTime), calls: st.calls,
       ptFired: st.ptFired, ptHits: st.ptHits, ptDowned: st.ptDowned, ptMissed: st.ptMissed,
+      guns: m.turret.bats.map(function (b) { return { gun: b.gunNo, weapon: b.weaponId, shots: b.shots, hits: b.hits, aiShots: b.aiShots, aiHits: b.aiHits }; }),
       jumps: m.turret.jumps.map(function (j) { return j ? Object.assign({}, j) : null; })
     };
     return r;

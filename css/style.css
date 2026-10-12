@@ -375,6 +375,10 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 .tu-big { font: 700 22px var(--mono); }
 .tu-med { font: 600 16px var(--mono); }
 .tu-gap { margin-top: 10px; }
+.tu-acc { font: 13px/1.45 var(--mono); }
+.tu-acc b { font-weight: 600; color: var(--text); }
+.tu-acc .ai { color: var(--muted); }
+.tu-bat .acc { font: 11px var(--mono); color: var(--muted); }
 .tu-state { margin-top: 10px; font: 700 13px var(--font); letter-spacing: .06em; }
 .tu-state.dry { color: var(--bad); }
 .tu-state.ready { color: var(--good); }

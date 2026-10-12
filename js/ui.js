@@ -676,7 +676,7 @@
     // Battery buttons (two or more guns): tap to take that gun; the AI gunner takes the other.
     $("tu-bats").hidden = tu.bats.length < 2;
     $("tu-bats").innerHTML = tu.bats.map(function (b, i) {
-      return '<button class="tu-bat" data-i="' + i + '"><span>GUN ' + b.gunNo + " · " + b.w.short + " <small>(" + (i + 1) + ')</small></span><span class="mini"><i></i></span></button>';
+      return '<button class="tu-bat" data-i="' + i + '"><span>GUN ' + b.gunNo + " · " + b.w.short + " <small>(" + (i + 1) + ')</small></span><span class="mini"><i></i></span><span class="acc"></span></button>';
     }).join("");
     shownSel = -1; showBattery();
     $("tu-comms").innerHTML = "";
@@ -744,6 +744,13 @@
     setText($("tu-mj"), Math.floor(gun.mj) + " / " + gun.maxMJ + " MJ");
     var nShots = Math.floor(gun.mj / w.shotMJ);
     setText($("tu-shots"), nShots + (nShots === 1 ? " shot · " : " shots · ") + w.shotMJ + " MJ each");
+    // Hit rate on this gun this mission: yours, and the AI gunner's when it has had the gun.
+    var bt = tu.bat(), accHtml = '<div>you <b>' + rate(bt.hits, bt.shots) + "</b> " + frac(bt.hits, bt.shots) + "</div>" +
+      (tu.bats.length > 1 ? '<div class="ai">AI ' + rate(bt.aiHits, bt.aiShots) + " " + frac(bt.aiHits, bt.aiShots) + "</div>" : "");
+    if ($("tu-acc").innerHTML !== accHtml) $("tu-acc").innerHTML = accHtml;
+    Array.prototype.forEach.call($("tu-bats").children, function (el, i) {
+      var b = tu.bats[i]; setText(el.querySelector(".acc"), "you " + rate(b.hits, b.shots) + " · AI " + rate(b.aiHits, b.aiShots));
+    });
     setText($("tu-feed"), Math.round(gun.rate) + " MW" + (gun.tripped ? " · TRIPPED" : gun.maxMW < gun.baseMW ? " · max " + gun.maxMW + " (damaged)" : ""));
     var td = ["slide", "rate", "reach"].filter(function (k) { return gun.tdmg[k] > 0.005; });
     var tdHtml = td.length ? td.map(function (k) { return '<div class="hurt">⚠ ' + BL.turretWords(k, gun.tdmg[k]).replace(/^now /, "") + "</div>"; }).join("") : '<div class="ok">✔ No damage</div>';
@@ -790,6 +797,8 @@
       "</b><span>Hits</span><b>" + (g.hits || 0) + " / " + (g.shots || 0) + "</b>" + (ship.crippled ? '<span class="bad">✖ Crew crippled: slow fire</span><b></b>' : "");
   }
 
+  function rate(h, s) { return s ? Math.round(100 * h / s) + "%" : "–"; }
+  function frac(h, s) { return s ? "(" + h + "/" + s + ")" : ""; }
   function turretActive() { return running && sim && sim.turret && !paused && sim.phase !== "done" && $("ov-grav").hidden; }
   function setFireBtn(on) { $("btn-tu-fire").classList.toggle("on", !!on); }
   function releaseTurret() { sim.turret.trigger(false); sim.turret.setDir(0); keysHeld = {}; setFireBtn(false); $("tu-aimpad").classList.remove("on"); }
@@ -1003,7 +1012,10 @@
     var rows = [
       [(r.weapons || [r.weapon]).length > 1 ? "Guns" : "Gun", (r.weapons || [r.weapon]).map(function (id) { return BL.WEAPONS[id].name; }).join(" and ")],
       ["Engineer", esc(r.engineer.name) + ", " + r.engineer.label + " (skill " + Math.round(r.engineer.skill * 100) + ")"],
-      ["Accuracy", g.hits + " hits of " + g.shots + " shots (" + g.accuracyPct + "%)"],
+      ["Accuracy", g.hits + " hits of " + g.shots + " shots (" + g.accuracyPct + "%)"]].concat((g.guns || []).map(function (x) {
+        return ["Gun " + x.gun + " (" + BL.WEAPONS[x.weapon].name.toLowerCase() + ")", "you " + rate(x.hits, x.shots) + " " + frac(x.hits, x.shots) +
+          (r.weapons && r.weapons.length > 1 ? " · AI " + rate(x.aiHits, x.aiShots) + " " + frac(x.aiHits, x.aiShots) : "")];
+      }), [
       ["Enemy ships destroyed", g.kills + " / " + g.ships],
       ["Torpedoes shot down", g.downed + " / " + g.torps],
       ["Torpedoes that hit the hull", g.hullTorps],
@@ -1013,7 +1025,7 @@
       ["Torpedoes", g.ptFired ? g.ptHits + " hits of " + g.ptFired + " launched (" + g.ptDowned + " shot down, " + g.ptMissed + " missed)" : "none launched"],
       ["Hull lost", d.hullLost],
       ["Damage reports", r.damage.length]
-    ];
+    ]);
     $("db-detail").innerHTML = rows.map(function (x) { return "<div><span>" + x[0] + ":</span> " + x[1] + "</div>"; }).join("");
     $("db-career").hidden = !report;
     if (report) renderCareerReport(r);
