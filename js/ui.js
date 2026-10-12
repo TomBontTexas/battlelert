@@ -1022,10 +1022,10 @@
       ["Damage dealt", g.damage],
       ["Time holding FIRE with a dry gun", g.dryTime + " s"],
       ["Calls for power", g.calls],
-      ["Torpedoes", g.ptFired ? g.ptHits + " hits of " + g.ptFired + " launched (" + g.ptDowned + " shot down, " + g.ptMissed + " missed)" : "none launched"],
       ["Hull lost", d.hullLost],
       ["Damage reports", r.damage.length]
     ]);
+    if (r.classId === "gunboat") rows.push(["Torpedoes", g.ptFired ? g.ptHits + " hits of " + g.ptFired + " launched (" + g.ptDowned + " shot down, " + g.ptMissed + " missed)" : "none launched"]);
     $("db-detail").innerHTML = rows.map(function (x) { return "<div><span>" + x[0] + ":</span> " + x[1] + "</div>"; }).join("");
     $("db-career").hidden = !report;
     if (report) renderCareerReport(r);
