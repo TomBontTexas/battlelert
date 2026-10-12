@@ -7,6 +7,9 @@
   var BL = root.BL = root.BL || {};
   var synth = root.speechSynthesis;
   var voices = [], assigned = {}, queue = [], speaking = false, enabled = true, volume = 0.8, unlocked = false;
+  // The line being spoken. Holding it keeps Safari from discarding it, which would lose its
+  // "finished" event and leave every later line waiting forever (silence, beeps still playing).
+  var current = null, startedAt = 0, expectMs = 0;
   var MAX_AGE = 5000;            // ms: a line older than this is no longer worth saying
   var MAX_QUEUE = 3;
 
@@ -99,8 +102,19 @@
     return { speaker: speaker, words: words };
   }
 
+  // Watchdog: if the browser never reports the line finished, let the queue move on anyway.
+  function unstick() {
+    if (!speaking) return;
+    var elapsed = Date.now() - startedAt;
+    var idle = !synth.speaking && !synth.pending && elapsed > 1500;
+    if (idle || elapsed > expectMs) { speaking = false; current = null; if (synth.speaking) synth.cancel(); }
+  }
+
   function next() {
-    if (!synth || speaking) return;
+    if (!synth) return;
+    unstick();
+    if (speaking) return;
+    if (synth.paused) synth.resume();
     var now = Date.now();
     while (queue.length && now - queue[0].at > MAX_AGE) queue.shift();
     var item = queue.shift();
@@ -110,10 +124,13 @@
     var a = voiceFor(item.speaker);
     if (a.voice) { u.voice = a.voice; u.lang = a.voice.lang; }
     u.pitch = p.pitch + a.shift; u.rate = p.rate; u.volume = volume;
-    u.onend = u.onerror = function () { speaking = false; next(); };
-    speaking = true;
+    u.onend = u.onerror = function () { if (current !== u) return; speaking = false; current = null; next(); };
+    current = u; speaking = true; startedAt = Date.now();
+    expectMs = 3000 + item.words.length * 110 / Math.max(0.5, u.rate);
     synth.speak(u);
   }
+
+  if (synth) setInterval(function () { if (queue.length || speaking) next(); }, 1000);
 
   BL.speech = {
     supported: !!synth,
@@ -164,7 +181,7 @@
       enabled = wasEnabled;
       next();
     },
-    stop: function () { queue = []; if (synth) synth.cancel(); speaking = false; },
+    stop: function () { queue = []; current = null; if (synth) synth.cancel(); speaking = false; },
     setEnabled: function (on) { enabled = !!on; if (!enabled) this.stop(); },
     setVolume: function (v) { volume = v; }
   };
