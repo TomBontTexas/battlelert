@@ -308,6 +308,8 @@
       firstWave: [3, 5],
       waveEvery: [70, 80],
       wave: { hp: 360, salvos: [8, 10], approach: [6, 8], salvoGap: [6, 8], salvoMJ: [70, 100], requests: 3, pairs: true },
+      // Light attack craft keep coming while the frigate fights: stragglers from another quadrant.
+      stragglers: { first: [12, 16], every: [18, 26], types: ["interceptors", "interceptors", "interceptors", "raiders", "raiders"] },
       request: { lead: 4, duration: [6, 8] },
       burns: { every: [24, 34], g: [5, 6], duration: [3, 4], warning: 5 },
       surpriseChance: 0.05
@@ -442,6 +444,7 @@
     ptAway:      ["Coxswain: torpedo {n} away!", "Torpedo {n} running hot and straight!", "Coxswain: fish {n} in the water!"],
     ptHit:       ["Tactical: torpedo hit! {enemy} is burning!", "Coxswain: direct hit on the {enemy}!", "Tactical: that one hurt the {enemy}!"],
     ptDowned:    ["Tactical: their point defense got our torpedo.", "Tactical: torpedo intercepted."],
+    straggler:   ["Tactical: stragglers from another quadrant. {enemy} inbound!", "Tactical: more contacts, {enemy} breaking off from another fight.", "Tactical: {enemy} joining in from the flank!"],
     ptMiss:      ["Tactical: torpedo missed.", "Coxswain: it slipped the torpedo."]
   };
 

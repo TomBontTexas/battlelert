@@ -192,6 +192,7 @@
     this.waves = [];
     this.gunRotor = 0;
     this.nextWaveAt = this.cfg.arrivalSeconds + r.range(enc.firstWave);
+    this.nextStragglerAt = enc.stragglers ? this.cfg.arrivalSeconds + r.range(enc.stragglers.first) : Infinity;
     this.nextBurnAt = this.cfg.arrivalSeconds + r.range(enc.burns.every) * 0.6;
     this.driveFullAt = null;
     this.jumpAt = null;
@@ -266,6 +267,12 @@
       this.spawnWave(enc);
       this.nextWaveAt = t + r.range(enc.waveEvery);
     }
+    // Stragglers: light waves of another encounter type that join the fight (frigate groups).
+    if (enc.stragglers && t >= this.nextStragglerAt && t < cutoff) {
+      var sty = r.pick(enc.stragglers.types);
+      this.spawnWave(BL.ENCOUNTERS[sty], sty, "straggler");
+      this.nextStragglerAt = t + r.range(enc.stragglers.every);
+    }
     var b = enc.burns;
     if (t >= this.nextBurnAt - b.warning) {
       var at = this.nextBurnAt, dur = Math.round(r.range(b.duration)), g = Math.min(this.ship.maxG, Math.round(r.int(b.g) * this.data.gScale));
@@ -287,10 +294,11 @@
     }
   };
 
-  Mission.prototype.spawnWave = function (enc) {
+  // typeId: the encounter this wave belongs to (default: this system's); line: its chatter.
+  Mission.prototype.spawnWave = function (enc, typeId, line) {
     var r = this.rng, w = enc.wave, t = this.t;
     var th = this.data.threat, hp = Math.round(w.hp * th.hp);
-    var wave = { id: this.nextId++, type: this.route[this.jumpIndex], name: enc.enemy, hp: hp, hpMax: hp, spawn: t, lastAt: 0, dead: false };
+    var wave = { id: this.nextId++, type: typeId || this.route[this.jumpIndex], name: enc.enemy, hp: hp, hpMax: hp, spawn: t, lastAt: 0, dead: false };
     var n = r.int(w.salvos), at = t + r.range(w.approach);
     for (var i = 0; i < n; i++) {
       if (i > 0) at += r.range(w.salvoGap);
@@ -309,7 +317,7 @@
         announceAt: start - enc.request.lead, announced: false, visible: true });
     }
     this.waves.push(wave);
-    this.chat("waveIn", { enemy: wave.name }, "info");
+    this.chat(line || "waveIn", { enemy: wave.name }, "info");
   };
 
   /* ------------------------------------------------------------ The tick */
