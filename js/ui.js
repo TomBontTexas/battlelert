@@ -21,7 +21,7 @@
 
   /* ------------------------------------------------------------ Settings */
   function loadSettings() {
-    var s = { fx: 80, alarm: 80, chat: 60, voice: true, voiceVol: 80, contrast: false, hints: false, gunPick: "pulse" };
+    var s = { fx: 80, alarm: 80, chat: 60, voice: true, voiceVol: 80, contrast: false, hints: false, gunPick: "pulse", gunOrders: {} };
     try { var raw = localStorage.getItem(SETTINGS_KEY); if (raw) Object.assign(s, JSON.parse(raw)); } catch (e) {}
     return s;
   }
@@ -76,6 +76,8 @@
     job = j;
     // The turret test fires the gun picked on the title screen; a real gunner job, the ship's own guns.
     var guns = j.station !== "gunner" ? null : j.weapons ? { weapons: j.weapons } : j.weapon && j.test ? { weapon: j.weapon } : { weapons: BL.GUNNERY.loadout[j.classId] || ["pulse"] };
+    // Standing orders for the AI gunners, remembered per gun number between missions.
+    if (guns) guns.orders = [1, 2, 3, 4, 5, 6, 7, 8].map(function (n) { return (settings.gunOrders || {})[n] || "auto"; });
     sim = new BL.Mission({ seed: j.seed, classId: j.classId, tl: j.tl, gunner: guns });
     if (j.test) $("seed-input").value = j.seed;
     var d = sim.data, cls = BL.classById(j.classId);
@@ -124,6 +126,7 @@
         : "You command " + bats.map(function (b) { return "<b>Gun " + b.gunNo + "</b> (" + b.w.name.toLowerCase() + ")"; }).join(" and ") +
           ". You aim one; an AI gunner works the other. Both turrets ride one rail and slide past each other. Tap a turret or press 1 or 2 to switch. " +
           bats.map(function (b) { return b.w.name + ": " + b.w.what; }).join(" ");
+      renderBriefOrders();
       $("brief-engineer").innerHTML = "Your engineer: <b>" + esc(en.name) + "</b>, " + en.label + " (skill " + Math.round(en.skill * 100) + "). " + ENGINEER_NOTE[en.label];
     }
     show("scr-briefing");
@@ -671,12 +674,12 @@
     $("tu-station").textContent = "Gunnery · " + (job.test ? sim.data.className : job.ship + " (" + sim.data.className + ")") + " · tech level " + sim.data.tl;
     $("tu-rec-label").textContent = sim.hasDrive ? "JUMP" : "RECOVERY";
     lastJolt = 0;
-    $("tu-keys").textContent = "← → slide · Space fire (hold) · " + (tu.bats.length > 1 ? "1–" + tu.bats.length + " or tap a turret: switch guns · " : sim.data.torpedoes ? "1 2 torpedoes · " : "") +
+    $("tu-keys").textContent = "← → slide · Space fire (hold) · " + (tu.bats.length > 1 ? "1–" + tu.bats.length + " or tap a turret: switch guns · O orders · " : sim.data.torpedoes ? "1 2 torpedoes · " : "") +
       "C call for power · P pause · Mouse: move to aim, hold button to fire · Touch: drag to aim, hold FIRE";
     // Battery buttons (two or more guns): tap to take that gun; the AI gunner takes the other.
     $("tu-bats").hidden = tu.bats.length < 2;
     $("tu-bats").innerHTML = tu.bats.map(function (b, i) {
-      return '<button class="tu-bat" data-i="' + i + '"><span>GUN ' + b.gunNo + " · " + b.w.short + " <small>(" + (i + 1) + ')</small></span><span class="mini"><i></i></span><span class="acc"></span></button>';
+      return '<button class="tu-bat" data-i="' + i + '"><span>GUN ' + b.gunNo + " · " + b.w.short + " <small>(" + (i + 1) + ')</small></span><span class="mini"><i></i></span><span class="acc"></span><span class="ord" data-ord="' + i + '"></span></button>';
     }).join("");
     shownSel = -1; showBattery();
     $("tu-comms").innerHTML = "";
@@ -703,6 +706,8 @@
     showBattery();
   }
   $("tu-bats").addEventListener("click", function (ev) {
+    var o = ev.target.closest("[data-ord]");
+    if (o && turretActive()) { cycleOrder(+o.dataset.ord); return; }   // tapping ORDERS changes the order, not the gun
     var b = ev.target.closest("button[data-i]"); if (b && turretActive()) selectBattery(+b.dataset.i);
   });
   function sizeTurret() {
@@ -749,7 +754,11 @@
       (tu.bats.length > 1 ? '<div class="ai">AI ' + rate(bt.aiHits, bt.aiShots) + " " + frac(bt.aiHits, bt.aiShots) + "</div>" : "");
     if ($("tu-acc").innerHTML !== accHtml) $("tu-acc").innerHTML = accHtml;
     Array.prototype.forEach.call($("tu-bats").children, function (el, i) {
-      var b = tu.bats[i]; setText(el.querySelector(".acc"), "you " + rate(b.hits, b.shots) + " · AI " + rate(b.aiHits, b.aiShots));
+      var b = tu.bats[i], o = tu.orderFor(b);
+      setText(el.querySelector(".acc"), "you " + rate(b.hits, b.shots) + " · AI " + rate(b.aiHits, b.aiShots));
+      var ord = el.querySelector(".ord");
+      setText(ord, "ORDERS: " + (o.auto ? "suggested · " : "") + BL.GUNNERY.orders[o.order].short);
+      ord.title = (o.auto ? "Suggested: " : "") + BL.GUNNERY.orders[o.order].name + ". " + (o.auto ? o.why : "Shoots " + o.why) + ". Tap to change.";
     });
     setText($("tu-feed"), Math.round(gun.rate) + " MW" + (gun.tripped ? " · TRIPPED" : gun.maxMW < gun.baseMW ? " · max " + gun.maxMW + " (damaged)" : ""));
     var td = ["slide", "rate", "reach"].filter(function (k) { return gun.tdmg[k] > 0.005; });
@@ -818,6 +827,8 @@
       return;
     }
     if (down && kl === "c" && turretActive()) { ev.preventDefault(); tu.callPower(); }
+    // O: change the standing order of the gun the AI gunner has (the first one you aren't aiming).
+    if (down && kl === "o" && turretActive() && tu.bats.length > 1) { ev.preventDefault(); cycleOrder(tu.sel === 0 ? 1 : 0); }
     // Number keys: with several batteries they pick a gun; on a gunboat, 1 and 2 fire torpedoes.
     if (down && k.length === 1 && k >= "1" && k <= "9" && turretActive()) {
       if (tu.bats.length > 1) { if (+k <= tu.bats.length) { ev.preventDefault(); selectBattery(+k - 1); } }
@@ -927,13 +938,36 @@
     green: "New to the job: the shields may be short when a torpedo lands, and your calls take a moment.",
     sloppy: "Expect torpedoes to get through. Shoot them down yourself."
   };
+  // Briefing: an order for each gun, used whenever the AI gunner has it.
+  function renderBriefOrders() {
+    var tu = sim.turret, el = $("brief-orders"), O = BL.GUNNERY.orders;
+    el.hidden = tu.bats.length < 2;
+    if (el.hidden) return;
+    el.innerHTML = "<b>Standing orders</b> for each gun whenever the AI gunner has it. Suggested picks for you: hunt if the gun is best against the enemy in this fight, else defend against torpedoes. You can change them during the fight too (tap ORDERS on a battery button, or press O)." +
+      '<div class="brief-orders">' + tu.bats.map(function (b, i) {
+        return '<label>Gun ' + b.gunNo + " (" + b.w.name.toLowerCase() + ')<select data-i="' + i + '">' + BL.GUNNERY.orderCycle.map(function (k) {
+          return '<option value="' + k + '"' + (b.order === k ? " selected" : "") + ">" + O[k].name + (k === "auto" ? "" : ": " + O[k].what) + "</option>";
+        }).join("") + "</select></label>";
+      }).join("") + "</div>";
+  }
+  $("brief-orders").addEventListener("change", function (ev) {
+    var sel = ev.target.closest("select[data-i]"); if (!sel) return;
+    var b = sim.turret.bats[+sel.dataset.i];
+    b.order = sel.value;
+    settings.gunOrders = settings.gunOrders || {}; settings.gunOrders[b.gunNo] = b.order; saveSettings();
+  });
+  function cycleOrder(i) {
+    var tu = sim.turret, b = tu.bats[i];
+    tu.setOrder(b);
+    settings.gunOrders = settings.gunOrders || {}; settings.gunOrders[b.gunNo] = b.order; saveSettings();
+  }
   function an(x) { return (/^[aeiou]/.test(x) ? "an " : "a ") + x; }
   // What the gunner should expect from an encounter, and which of their guns has the edge.
   function gunnerTip(encId) {
     var look = BL.GUNNERY.looks[encId] || {}, bats = sim.turret.bats;
     var good = bats.filter(function (b) { return b.w.best.indexOf(encId) >= 0; }).map(function (b) { return b.w.name.toLowerCase(); });
     var gun = bats.length === 1 ? "Your " + bats[0].w.name.toLowerCase() : "None of your guns";
-    return (look.ship ? "Expect " + look.ship + "s: " + look.what + ". " : "") +
+    return (look.ship ? "Expect " + BL.plural(look.ship) + ": " + look.what + ". " : "") +
       (good.length ? "Your " + good.join(" and ") + " does extra damage to them." : gun + (bats.length === 1 ? " gets" : " get") + " no bonus against them.");
   }
   $("btn-grav-go").onclick = function () { click(); overlay("ov-grav", false); sim.beginJump(); };

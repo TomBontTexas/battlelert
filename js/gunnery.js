@@ -15,13 +15,14 @@
   function Turret(m, opts) {
     this.m = m;
     this.G = BL.GUNNERY;
-    var list = opts.weapons || [opts.weapon || "pulse"], n = list.length;
+    var list = opts.weapons || [opts.weapon || "pulse"], n = list.length, orders = opts.orders || [];
     this.bats = list.map(function (id, i) {
       var wid = BL.WEAPONS[id] ? id : "pulse", x = n === 1 ? 0.5 : 0.2 + 0.6 * i / (n - 1);
       return { i: i, gunNo: i + 1, gunId: "gun" + (i + 1), weaponId: wid, w: BL.WEAPONS[wid], x: x, aimX: x, dir: 0,
         firing: false, nextShot: 0, dryCueAt: 0, callReadyAt: 0, aiNext: 0, aiJitter: 0,
         // hit rate on this gun for the whole mission: yours, and the AI gunner's when it has the gun
-        shots: 0, hits: 0, aiShots: 0, aiHits: 0 };
+        shots: 0, hits: 0, aiShots: 0, aiHits: 0,
+        order: BL.GUNNERY.orders[orders[i]] ? orders[i] : "auto" };
     });
     this.sel = 0;
     this.rng = BL.rng((m.seed ^ 0x5bd1e995) >>> 0);
@@ -276,22 +277,72 @@
     }
   };
 
-  // The AI gunner on a battery the player isn't aiming: shoots down a torpedo about to land,
-  // else goes for the ship in reach its weapon does best against, nearest first.
+  /* Standing orders. setOrder cycles or sets a gun's order; orderFor says what the gun is
+     actually doing ("auto" resolves to the suggestion for this fight) and why. */
+  Turret.prototype.setOrder = function (b, order) {
+    b = this.bat(b);
+    var cyc = this.G.orderCycle;
+    b.order = order || cyc[(cyc.indexOf(b.order) + 1) % cyc.length];
+    var o = this.orderFor(b);
+    this.m.say("Gunner " + b.gunNo + ": " + (b.order === "auto" ? "suggested orders, " : "") + this.G.orders[o.order].ack, "good");
+    this.m.cue("toggle");
+    return b.order;
+  };
+  Turret.prototype.suggestOrder = function (b) {
+    b = this.bat(b);
+    var m = this.m, types = {}, enc = m.route[m.jumpIndex];
+    this.ships.forEach(function (s) { if (!s.dead && s.state !== "leave") types[s.type] = (types[s.type] || 0) + (s.lockable ? 3 : 1); });
+    var main = Object.keys(types).sort(function (a, c) { return types[c] - types[a]; })[0] || enc;
+    var look = this.G.looks[main] || {}, foe = look.ship ? BL.plural(look.ship) : "the enemy";
+    if (b.w.best.indexOf(main) >= 0) return { order: "hunt", why: "the " + b.w.name.toLowerCase() + " is best against " + foe };
+    return { order: "defend", why: "the " + b.w.name.toLowerCase() + " has no edge on " + foe + ", so it guards against torpedoes" };
+  };
+  Turret.prototype.orderFor = function (b) {
+    b = this.bat(b);
+    if (b.order !== "auto") return { order: b.order, auto: false, why: this.G.orders[b.order].what };
+    var s = this.suggestOrder(b); s.auto = true; return s;
+  };
+
+  // The AI gunner on a battery the player isn't aiming, following that gun's standing order.
   Turret.prototype.aiBattery = function (b) {
     var m = this.m, G = this.G, r = this.rng, skill = G.aiGunner;
     if (m.totalT < b.aiNext) return;
     b.aiNext = m.totalT + 0.12;
+    var order = this.orderFor(b).order;
     var top = G.turretY - this.reach(b), target = null, tx = b.x, best = 1e9;
-    this.torps.forEach(function (tp) {
-      var left = tp.t1 - m.t;
-      if (left < 1.6 && tp.y > top && left < best) { best = left; target = tp; tx = tp.x1 + (tp.x - tp.x1) * 0.3; }
-    });
-    if (!target) this.ships.forEach(function (s) {
-      if (s.dead || s.state === "leave" || s.y + s.h / 2 < top || s.y < 0) return;
-      var d = Math.abs(s.x - b.x) + (b.w.best.indexOf(s.type) >= 0 ? 0 : 0.35);
-      if (d < best) { best = d; target = s; tx = s.x; }
-    });
+    function inReach(s) { return !s.dead && s.state !== "leave" && s.y + s.h / 2 >= top && s.y >= 0; }
+    // Torpedoes closer than `within` seconds to landing, soonest first.
+    function torps(within) {
+      this.torps.forEach(function (tp) {
+        var left = tp.t1 - m.t;
+        if (left < within && tp.y > top && left < best) { best = left; target = tp; tx = tp.x1 + (tp.x - tp.x1) * 0.3; }
+      });
+    }
+    // Ships charging to fire, the one that fires soonest first.
+    function charging() {
+      this.ships.forEach(function (s) {
+        if (!inReach(s) || !(s.chargeAt > m.t)) return;
+        var d = s.chargeAt - m.t + Math.abs(s.x - b.x) * 0.5;
+        if (d < best) { best = d; target = s; tx = s.x; }
+      });
+    }
+    // Ships, nearest first; with `matched`, only those this weapon is best against.
+    function ships(matched, penalty) {
+      this.ships.forEach(function (s) {
+        if (!inReach(s)) return;
+        var good = b.w.best.indexOf(s.type) >= 0;
+        if (matched && !good) return;
+        var d = Math.abs(s.x - b.x) + (good ? 0 : penalty);
+        if (d < best) { best = d; target = s; tx = s.x; }
+      });
+    }
+    var plans = {
+      defend: [[torps, 2.4], [charging], [ships, false, 0.35]],
+      stop:   [[charging], [torps, 1.2], [ships, false, 0.35]],
+      hunt:   [[torps, 0.8], [ships, true], [ships, false, 0.35]],
+      free:   [[torps, 1.6], [ships, false, 0.35]]
+    }[order] || [[torps, 1.6], [ships, false, 0.35]];
+    for (var k = 0; k < plans.length && !target; k++) { best = 1e9; plans[k][0].call(this, plans[k][1], plans[k][2]); }
     if (r.chance(0.2)) b.aiJitter = (r.next() - 0.5) * 0.06 * (1 - skill);
     b.aimX = clamp(tx + b.aiJitter, 0.03, 0.97); b.dir = 0;
     var half = target ? (target.w ? target.w / 2 : G.torpedo.size) : 0, gun = this.gun(b);

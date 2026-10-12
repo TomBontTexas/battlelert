@@ -217,7 +217,7 @@
     this.cue("arrive");
     if (this.turret) this.turret.reset();
     this.chat(this.hasDrive ? "arrival" : "launch", null, "info");
-    this.chat("briefing", { enemy: enc.enemy, what: enc.what }, "info");
+    this.chat("briefing", { enemies: BL.plural(enc.enemy), what: enc.what }, "info");
   };
 
   // Called by the display after the GravSpace report (or by the harness).

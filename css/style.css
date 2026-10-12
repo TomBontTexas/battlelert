@@ -379,6 +379,11 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 .tu-acc b { font-weight: 600; color: var(--text); }
 .tu-acc .ai { color: var(--muted); }
 .tu-bat .acc { font: 11px var(--mono); color: var(--muted); }
+.tu-bat .ord { font: 600 10px var(--font); letter-spacing: .04em; color: var(--warn); border-top: 1px solid var(--line); padding-top: 3px; margin-top: 1px; }
+.tu-bat.on .ord { color: var(--muted); }
+.brief-orders { display: grid; gap: 6px; margin-top: 6px; }
+.brief-orders label { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.brief-orders select { font: 14px var(--font); padding: 4px 6px; background: var(--panel-2); color: var(--text); border: 1px solid var(--line); border-radius: 5px; }
 .tu-state { margin-top: 10px; font: 700 13px var(--font); letter-spacing: .06em; }
 .tu-state.dry { color: var(--bad); }
 .tu-state.ready { color: var(--good); }

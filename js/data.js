@@ -7,6 +7,8 @@
   var BL = root.BL = root.BL || {};
 
   BL.APP_TAG = "BATTLELERT";
+  // "siege battery" -> "siege batteries", "raider" -> "raiders".
+  BL.plural = function (w) { return /[^aeiou]y$/i.test(w) ? w.slice(0, -1) + "ies" : w + "s"; };
   BL.TICK_RATE = 20;                       // simulation ticks per second
 
   /* ------------------------------------------------------- Ship classes
@@ -359,6 +361,16 @@
     // the player aims one and an AI gunner works the others; turrets share one rail and pass freely.
     loadout: { gunboat: ["pulse"], picket: ["rail"], destroyerEscort: ["pulse", "rail"] },
     aiGunner: 0.75,                    // skill of the AI gunner on the batteries you aren't aiming
+    // Standing orders for AI gunners, one per gun. "auto" follows the suggestion: hunt if the
+    // gun's weapon is best against the enemy in this fight, else defend against torpedoes.
+    orders: {
+      auto:   { name: "Suggested", short: "SUGGESTED" },
+      defend: { name: "Defend", short: "DEFEND", what: "torpedoes about to land, then ships charging to fire", ack: "defending, aye!" },
+      stop:   { name: "Stop launches", short: "STOP LAUNCHES", what: "ships charging to fire, then torpedoes", ack: "going after the launchers!" },
+      hunt:   { name: "Hunt", short: "HUNT", what: "ships its weapon is best against; torpedoes only at the last second", ack: "hunting, aye!" },
+      free:   { name: "Free fire", short: "FREE FIRE", what: "its own judgment", ack: "free fire, aye!" }
+    },
+    orderCycle: ["auto", "defend", "stop", "hunt", "free"],
     // Our torpedoes (gunboats carry two; the carrier reloads them every sortie). No energy.
     // Slow and homing on the nearest siege battery or capital ship; damage x the class's threat
     // hp. A target sidesteps (jink, fields/s) when one gets within jinkAt, and its point defense
@@ -401,7 +413,7 @@
     recoveryNotice: ["Carrier: recovery in {t} s. Hold on out there.", "Coxswain: carrier picks us up in {t} seconds."],
     recovered:   ["Carrier: gunboat recovered. Well flown.", "Coxswain: we're on the deck. Nice work, Engineering."],
     arrival:     ["Bridge: dropping out of GravSpace. Drive is empty.", "Bridge: we're out of GravSpace. Start charging the drive, Engineering.", "Helm: normal space. Drive reads empty."],
-    briefing:    ["Tactical: expect {enemy}s. {what}.", "Tactical: scopes show {enemy}s on approach."],
+    briefing:    ["Tactical: expect {enemies}. {what}.", "Tactical: scopes show {enemies} on approach."],
     waveIn:      ["Tactical: {enemy} on scope.", "Tactical: new contacts, {enemy}.", "Tactical: {enemy} closing."],
     salvo:       ["Tactical: enemy salvo in {t} s.", "Tactical: incoming fire, {t} seconds.", "Tactical: they're locking on. Salvo in {t}."],
     burn:        ["Helm: evasive burn in {t} s, {g} G for {d} s.", "Helm: hard burn coming, {g} G in {t} seconds.", "Helm: evading in {t}. {g} G, {d} seconds."],
@@ -445,6 +457,7 @@
     starved:     ["Helm: engines are starved! I can't hold the course!", "Helm: not enough power to the engines, we're drifting into the mines!"],
     auxEmpty:    ["Aux bank is empty."],
     // Gunner station. A key ending in G replaces the plain one while the player is at a gun.
+    arrivalG:    ["Bridge: dropping out of GravSpace. Guns, stand by.", "Bridge: normal space. Gunnery, weapons free.", "Helm: we're out of GravSpace. Guns up!"],
     recoveredG:  ["Carrier: gunboat recovered. Good shooting.", "Coxswain: we're on the deck. Nice shooting, Guns."],
     burnG:       [],                     // the helm's burns matter to the engineer, not the gunner
     surpriseG:   ["Tactical: torpedo out of nowhere!", "Tactical: didn't see that one launch!"],
