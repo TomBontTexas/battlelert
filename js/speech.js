@@ -43,7 +43,8 @@
     "Gunner 6":       { pitch: 1.03, rate: 1.2,  order: 21 },
     "Gunner 7":       { pitch: 0.96, rate: 1.2,  order: 22 },
     "Gunner 8":       { pitch: 1.01, rate: 1.2,  order: 23 },
-    "Crew":           { pitch: 1.0,  rate: 1.1,  order: 24 }
+    "Engineering":    { pitch: 0.97, rate: 1.15, order: 24 },
+    "Crew":           { pitch: 1.0,  rate: 1.1,  order: 25 }
   };
   var SPEAKERS = Object.keys(PROFILE).sort(function (a, b) { return PROFILE[a].order - PROFILE[b].order; });
 

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Battlelert</title>
-<link rel="stylesheet" href="css/style.css?b=10c68112">
+<link rel="stylesheet" href="css/style.css?b=ff721bc0">
 </head>
 <body>
 
@@ -13,7 +13,7 @@
   <div class="title-card">
     <div class="logo">BATTLELERT</div>
     <div class="subtitle">Main Engineering</div>
-    <p class="phase-note">The engineer path: gunboat and picket ship are open so far.</p>
+    <p class="phase-note">The engineer path is open on every class. The gunner path starts here with a turret test.</p>
     <div class="menu">
       <button id="btn-continue" class="big primary" hidden>Continue career</button>
       <button id="btn-enlist" class="big">Enlist (new career)</button>
@@ -22,12 +22,23 @@
       <button id="btn-options-title">Options</button>
       <input id="import-file" type="file" accept=".json,application/json" hidden>
     </div>
-    <div class="seed-row">
-      <button id="btn-start" class="small">Engine-room test (Destroyer)</button>
-      <label for="seed-input">seed</label>
-      <input id="seed-input" type="number" min="1" max="999999" inputmode="numeric">
-      <button id="btn-seed-new" class="small" title="Roll a new seed">New</button>
-      <span class="muted">Same seed, same mission. Share it to compare runs.</span>
+    <div class="test-rows">
+      <div class="seed-row"><button id="btn-start" class="small">Engine-room test (Destroyer)</button></div>
+      <div class="seed-row">
+        <button id="btn-gunner" class="small">Gunner turret test (Gunboat)</button>
+        <label for="gun-pick">gun</label>
+        <select id="gun-pick">
+          <option value="pulse">Pulse cannon</option>
+          <option value="rail">Rail gun</option>
+          <option value="ion">Ion gun</option>
+        </select>
+      </div>
+      <div class="seed-row">
+        <label for="seed-input">seed</label>
+        <input id="seed-input" type="number" min="1" max="999999" inputmode="numeric">
+        <button id="btn-seed-new" class="small" title="Roll a new seed">New</button>
+        <span class="muted">Same seed, same mission. Share it to compare runs.</span>
+      </div>
     </div>
     <div class="version-line">v<span class="app-version"></span></div>
   </div>
@@ -103,8 +114,15 @@
     <ol id="brief-route" class="route-list"></ol>
     <h2 id="brief-ship-title">Your ship</h2>
     <div id="brief-ship" class="brief-ship"></div>
-    <h2>Your station: Main Engineering</h2>
-    <ul class="tight">
+    <h2 id="brief-station">Your station: Main Engineering</h2>
+    <ul class="tight" id="brief-gun" hidden>
+      <li>You're at <b>Gun 1</b>, a <b id="brief-weapon">pulse cannon</b>: <span id="brief-weapon-what"></span></li>
+      <li><b>Slide the turret</b> left and right and fire straight up. A bolt hits the first ship or torpedo it reaches; it flies only as far as the gun's range line.</li>
+      <li>Enemy salvos come down as <b>torpedoes</b>. The shields take them, but you can shoot one down before it lands. Killing a ship stops the torpedoes it hasn't fired yet.</li>
+      <li><b>Every shot drains your gun's capacitor.</b> Hold FIRE and the gun fires as fast as it can while the charge lasts. <b>Call for power</b> and the engineer pours charge into your gun for a few seconds.</li>
+      <li><b>Touch:</b> drag on the view or the aim pad to slide; hold FIRE. <b>Mouse:</b> move to aim, hold the button to fire. <b>Keys:</b> ← → slide, Space fires, C calls for power, P pauses.</li>
+    </ul>
+    <ul class="tight" id="brief-eng">
       <li>The <b>forecast strip</b> at the top shows what the bridge needs in the next 15 seconds. Charge for it before it lands.</li>
       <li>Every capacitor's charge rate adds to the <b>reactor load</b>. Above 100% the reactor heats up; at full heat the failsafe trips capacitors off the reactor for 10 s, <b>lowest priority first</b>.</li>
       <li>The <b>aux bank</b> charges any capacitor you switch it onto, without loading the reactor. It refills only in GravSpace.</li>
@@ -221,6 +239,54 @@
   <div id="narrow-note" class="narrow-note">The engine room needs a tablet or desktop screen. Turn the device sideways or use a wider window.</div>
 </section>
 
+<!-- ==================================================== Gunner turret -->
+<section id="scr-turret" class="screen" hidden>
+  <header class="con-head">
+    <span class="brand">BATTLELERT</span>
+    <span class="hd-item" id="tu-station">Gun 1 · Gunboat</span>
+    <span class="hd-item" id="tu-jump"></span>
+    <span class="hd-item hd-phase" id="tu-phase"></span>
+    <span class="hd-spacer"></span>
+    <button id="btn-tu-options" class="small">Options</button>
+    <button id="btn-tu-pause" class="small">Pause</button>
+    <span class="hd-ver">v<span class="app-version"></span></span>
+  </header>
+  <div class="tu-main">
+    <aside class="panel tu-side">
+      <div class="panel-title" id="tu-weapon">GUN 1</div>
+      <div class="tu-what muted small-text" id="tu-weapon-what"></div>
+      <div class="tu-charge-wrap">
+        <div class="tu-vbar"><div class="tu-ticks" id="tu-ticks"></div><div id="tu-charge" class="tu-lvl"></div></div>
+        <div class="tu-readout">
+          <div class="row-label"><span>CHARGE</span></div>
+          <div class="tu-big" id="tu-mj"></div>
+          <div class="muted small-text" id="tu-shots"></div>
+          <div class="row-label tu-gap"><span>FEED</span></div>
+          <div class="tu-med" id="tu-feed"></div>
+          <div id="tu-state" class="tu-state"></div>
+        </div>
+      </div>
+      <div id="tu-aimpad" class="tu-pad">◀ drag to aim ▶</div>
+    </aside>
+    <div class="tu-field" id="tu-field"><canvas id="tu-canvas"></canvas></div>
+    <aside class="panel tu-side">
+      <div class="panel-title">SHIP</div>
+      <div class="row-label"><span>HULL</span><span id="tu-hull-val"></span></div>
+      <div class="hbar tall"><div id="tu-hull" class="hbar-fill hull-fill"></div></div>
+      <div class="row-label"><span>SHIELDS</span><span id="tu-shield-val"></span></div>
+      <div class="hbar"><div id="tu-shield" class="hbar-fill tu-shield-fill"></div></div>
+      <div class="row-label"><span id="tu-rec-label">RECOVERY</span><span id="tu-rec-val"></span></div>
+      <div class="hbar"><div id="tu-rec" class="hbar-fill drive-fill"></div></div>
+      <div id="tu-tally" class="tu-tally"></div>
+      <div id="tu-comms" class="comms-log tu-comms" aria-live="polite"></div>
+      <button id="btn-tu-call" class="tu-call">CALL FOR POWER <small>(C)</small></button>
+      <button id="btn-tu-fire" class="tu-fire">FIRE</button>
+    </aside>
+  </div>
+  <footer class="con-foot"><span class="hint-bar">← → slide · Space fire (hold) · C call for power · P pause · Mouse: move to aim, hold button to fire · Touch: drag to aim, hold FIRE</span></footer>
+  <div class="narrow-note">The turret needs a tablet or desktop screen. Turn the device sideways or use a wider window.</div>
+</section>
+
 <!-- ============================================================ Pause -->
 <section id="ov-pause" class="overlay blank" hidden>
   <div class="ov-card">
@@ -267,7 +333,7 @@
       <div><h2>What went well</h2><p id="db-good"></p></div>
       <div><h2>Worst moment</h2><p id="db-worst"></p></div>
     </div>
-    <h2>Jump by jump</h2>
+    <h2 id="db-jumps-title">Jump by jump</h2>
     <table class="db-table" id="db-jumps"></table>
     <h2>Details</h2>
     <div id="db-detail" class="db-detail"></div>
@@ -317,6 +383,14 @@
       <tr><td>Space</td><td>Pause</td></tr>
       <tr><td>H</td><td>Hint mode</td></tr>
     </table>
+    <h2>Gunner turret</h2>
+    <table class="keys">
+      <tr><td>← → (or A D)</td><td>Slide the turret</td></tr>
+      <tr><td>Space (or ↑)</td><td>Fire (hold)</td></tr>
+      <tr><td>C</td><td>Call for power</td></tr>
+      <tr><td>P / Esc</td><td>Pause</td></tr>
+      <tr><td>Mouse</td><td>Move to aim, hold the button to fire</td></tr>
+    </table>
     <div class="menu"><button id="btn-options-close" class="primary">Done</button></div>
   </div>
 </section>
@@ -345,13 +419,15 @@
 
 <script src="version.js?b=1c62101f"></script>
 <script src="update-banner.js?b=71816d57"></script>
-<script src="js/data.js?b=d9c70d0e"></script>
-<script src="js/sim.js?b=395d07bf"></script>
+<script src="js/data.js?b=b0a021a3"></script>
+<script src="js/sim.js?b=5fc5250b"></script>
 <script src="js/agents.js?b=eb9ead9e"></script>
+<script src="js/gunnery.js?b=faf8244c"></script>
+<script src="js/turretview.js?b=7486578c"></script>
 <script src="js/names.js?b=fa2e0d88"></script>
 <script src="js/career.js?b=3ffe969c"></script>
-<script src="js/speech.js?b=4bc6bb7f"></script>
-<script src="js/audio.js?b=76c87b2a"></script>
-<script src="js/ui.js?b=8455fe0a"></script>
+<script src="js/speech.js?b=9fa3cdb3"></script>
+<script src="js/audio.js?b=c07997e5"></script>
+<script src="js/ui.js?b=d67b96a5"></script>
 </body>
 </html>

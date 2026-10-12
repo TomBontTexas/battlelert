@@ -339,13 +339,54 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 .db-detail span { color: var(--muted); }
 .gate-q { margin-top: 22px; padding: 10px 14px; border-left: 4px solid var(--warn); background: var(--panel-2); }
 
+/* -------------------------------------------------------- Gunner turret */
+.test-rows { margin-top: 28px; }
+.test-rows .seed-row { margin-top: 8px; }
+.seed-row select { font: 14px var(--font); padding: 5px 8px; background: var(--panel-2); color: var(--text); border: 1px solid var(--line); border-radius: 5px; }
+#scr-turret {
+  display: grid; grid-template-rows: auto 1fr auto; gap: 6px; padding: 6px;
+  user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+}
+#scr-turret[hidden] { display: none; }
+.tu-main { display: grid; grid-template-columns: minmax(170px, 230px) minmax(0, 1fr) minmax(190px, 260px); gap: 6px; min-height: 0; }
+.tu-side { display: flex; flex-direction: column; gap: 8px; }
+.tu-field { position: relative; min-width: 0; min-height: 0; display: flex; align-items: center; justify-content: center; touch-action: none; }
+#tu-canvas { display: block; border: 1px solid var(--line); border-radius: 8px; touch-action: none; cursor: crosshair; }
+.tu-what { line-height: 1.3; }
+.tu-charge-wrap { display: flex; gap: 10px; flex: 1; min-height: 120px; }
+.tu-vbar { position: relative; width: 34px; flex: none; background: var(--panel-2); border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
+.tu-lvl { position: absolute; left: 0; right: 0; bottom: 0; height: 0; background: var(--charge); }
+.tu-lvl.low { background: var(--bad); }
+.tu-ticks { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+.tu-ticks i { position: absolute; left: 0; right: 0; height: 1px; background: rgba(0,0,0,.55); }
+.tu-readout { display: flex; flex-direction: column; min-width: 0; }
+.tu-big { font: 700 22px var(--mono); }
+.tu-med { font: 600 16px var(--mono); }
+.tu-gap { margin-top: 10px; }
+.tu-state { margin-top: 10px; font: 700 13px var(--font); letter-spacing: .06em; }
+.tu-state.dry { color: var(--bad); }
+.tu-state.ready { color: var(--good); }
+.tu-state.call { color: var(--warn); }
+.tu-pad { height: 22%; min-height: 70px; display: flex; align-items: center; justify-content: center; border: 1px dashed var(--line); border-radius: 8px; color: var(--muted); font-size: 13px; touch-action: none; }
+.tu-pad.on { border-color: var(--charge); color: var(--charge); }
+.tu-shield-fill { background: var(--charge); }
+.tu-tally { font-size: 13px; color: var(--muted); display: grid; grid-template-columns: 1fr auto; gap: 1px 8px; }
+.tu-tally b { color: var(--text); font-family: var(--mono); font-weight: 400; text-align: right; }
+.tu-comms { min-height: 60px; font-size: 12px; }
+.tu-call { padding: 10px 6px; font-size: 14px; touch-action: manipulation; }
+.tu-call small { color: var(--muted); font-weight: 400; }
+.tu-call.on { border-color: var(--warn); color: var(--warn); }
+.tu-call:disabled { opacity: .5; }
+.tu-fire { height: 22%; min-height: 80px; font: 800 24px var(--font); letter-spacing: .18em; color: #fff; background: #5a1f1a; border-color: var(--bad); touch-action: none; }
+.tu-fire.on { background: var(--bad); }
+
 @keyframes blink { 50% { opacity: .35; } }
 @keyframes fade { 0% { opacity: 0; } 15% { opacity: 1; } 100% { opacity: 0; } }
 
 /* Phones are out of scope for play; menus and the debriefing still work. */
 @media (max-width: 820px), (max-height: 480px) {
-  #scr-console > *:not(.narrow-note) { display: none !important; }
-  #scr-console { display: flex; align-items: center; justify-content: center; }
+  #scr-console > *:not(.narrow-note), #scr-turret > *:not(.narrow-note) { display: none !important; }
+  #scr-console, #scr-turret { display: flex; align-items: center; justify-content: center; }
   .narrow-note { display: block; max-width: 420px; text-align: center; font-size: 17px; padding: 16px; }
 }
 @media (max-height: 760px) {

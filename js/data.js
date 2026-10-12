@@ -313,6 +313,41 @@
     }
   };
 
+  /* ------------------------------------------------------ Gunner station
+     The gunner aims one battery and fires straight up; every bolt hits whatever ship or
+     torpedo it reaches first (no dice). The turret's view is a square field 1 wide and 1 tall,
+     0 at the top. speed and reach are in fields per second and fields; interval = seconds
+     between shots while FIRE is held; best = encounters it does `bonus` times damage against. */
+  BL.WEAPONS = {
+    pulse: { name: "Pulse cannon", short: "PULSE", shotMJ: 4, interval: 0.25, damage: 3, speed: 1.7, reach: 0.7, best: ["interceptors"],
+             what: "Short reach, fast fire, light hits. Best against interceptors." },
+    rail:  { name: "Rail gun", short: "RAIL", shotMJ: 18, interval: 1.0, damage: 15, speed: 6, reach: 1.0, best: ["raiders", "siege"],
+             what: "Long reach, slow fire, heavy hits. Best against raiders and siege lines." },
+    ion:   { name: "Ion gun", short: "ION", shotMJ: 7, interval: 0.5, damage: 3, speed: 1.1, reach: 0.85, best: ["hunters"],
+             ion: { seconds: 4, salvoMult: 0.5, delay: 1.5 },
+             what: "Medium reach, light hits. A hit drains the target's weapons for 4 s: its torpedoes launch late and hit half as hard. Best against drive hunters." }
+  };
+  BL.GUNNERY = {
+    bonus: 1.5,                        // damage multiplier against a weapon's best targets
+    turretY: 0.93,                     // where the turret sits; bolts start here
+    traverse: 1.3,                     // fields per second the turret slides
+    torpedo: { travel: 2.6, size: 0.022 },   // seconds from launch to impact; hit box half-size
+    call: { seconds: 6, cooldown: 4 }, // CALL FOR POWER: rapid-fire request length, wait before the next
+    // How each encounter's enemies look and fly. count = ships per wave (the wave's toughness is
+    // split between them); band = the height they hold; sway = side-to-side swing; dive = how far
+    // they swoop down now and then.
+    looks: {
+      raiders:      { ship: "raider", count: [3, 3], w: 0.11, h: 0.065, band: [0.13, 0.28], sway: 0.14, period: [6, 8], dive: 0.14, formation: true,
+                      what: "big, slow and tough; they hang back near the top and swoop into range now and then" },
+      interceptors: { ship: "interceptor", count: [4, 5], w: 0.06, h: 0.05, band: [0.2, 0.45], sway: 0.28, period: [2.4, 3.4], dive: 0.22,
+                      what: "small, fast and fragile; they weave and dive, and launch torpedoes often" },
+      siege:        { ship: "siege battery", count: [4, 4], w: 0.09, h: 0.075, band: [0.1, 0.2], sway: 0.04, period: [9, 12], dive: 0, formation: true,
+                      what: "a slow line far up the screen that never stops firing" },
+      hunters:      { ship: "drive hunter", count: [3, 3], w: 0.065, h: 0.06, band: [0.18, 0.4], sway: 0.24, period: [3, 4], dive: 0.12,
+                      what: "nimble ships that go for the GravSpace drive" }
+    }
+  };
+
   /* ------------------------------------------------------------ Chatter
      Several lines per event; {placeholders} are filled in by the simulation. */
   BL.CHATTER = {
@@ -362,7 +397,14 @@
     auxEmptyR:   ["Aux bank {r} is empty."],
     busterWait:  ["Bridge: the planet buster isn't charged. We can't make the final jump!", "Weapons: buster's not ready, Captain. Holding the jump."],
     starved:     ["Helm: engines are starved! I can't hold the course!", "Helm: not enough power to the engines, we're drifting into the mines!"],
-    auxEmpty:    ["Aux bank is empty."]
+    auxEmpty:    ["Aux bank is empty."],
+    // Gunner station. A key ending in G replaces the plain one while the player is at a gun.
+    recoveredG:  ["Carrier: gunboat recovered. Good shooting.", "Coxswain: we're on the deck. Nice shooting, Guns."],
+    burnG:       [],                     // the helm's burns matter to the engineer, not the gunner
+    surpriseG:   ["Tactical: torpedo out of nowhere!", "Tactical: didn't see that one launch!"],
+    powerCall:   ["Engineering: power's coming to your gun!", "Engineering: you've got it, full charge for a few seconds.", "Engineering: routing everything I can spare to you."],
+    shipKill:    ["Tactical: splash one {enemy}!", "Tactical: {enemy} down!", "Tactical: scratch one {enemy}."],
+    torpDown:    ["Tactical: torpedo destroyed!", "Tactical: nice, you got the torpedo."]
   };
 
   /* ------------------------------------------------------ Sound recipes
@@ -388,6 +430,13 @@
     pd:       { ch: "fx",    wave: "square",   f0: 2200, f1: 600,  a: 0.001, s: 0.04, d: 0.1,  vol: 0.12, repeat: 3, gap: 0.05 },
     main:     { ch: "fx",    wave: "noise",    f0: 220,  f1: 30,   a: 0.005, s: 0.25, d: 1.1,  vol: 0.45 },
     launch:   { ch: "fx",    wave: "sawtooth", f0: 160,  f1: 900,  a: 0.05,  s: 0.5,  d: 0.4,  vol: 0.18, noise: 0.3 },
+    pulse:    { ch: "fx",    wave: "square",   f0: 1700, f1: 700,  a: 0.001, s: 0.015, d: 0.05, vol: 0.07, duty: 0.25 },
+    rail:     { ch: "fx",    wave: "sawtooth", f0: 2400, f1: 120,  a: 0.001, s: 0.03, d: 0.22, vol: 0.16, noise: 0.35 },
+    ion:      { ch: "fx",    wave: "sine",     f0: 520,  f1: 1300, a: 0.005, s: 0.05, d: 0.12, vol: 0.13, vib: { rate: 40, depth: 0.15 } },
+    dry:      { ch: "fx",    wave: "square",   f0: 160,  f1: 140,  a: 0.001, s: 0.02, d: 0.03, vol: 0.10 },
+    shipHit:  { ch: "fx",    wave: "noise",    f0: 2400, f1: 900,  a: 0.001, s: 0.01, d: 0.06, vol: 0.10 },
+    torpLaunch:{ ch: "fx",   wave: "sawtooth", f0: 90,   f1: 260,  a: 0.02,  s: 0.15, d: 0.2,  vol: 0.10, noise: 0.4 },
+    torpDown: { ch: "fx",    wave: "noise",    f0: 1800, f1: 300,  a: 0.001, s: 0.05, d: 0.3,  vol: 0.20 },
     win:      { ch: "fx",    wave: "triangle", f0: 523,  f1: 1046, a: 0.01,  s: 0.25, d: 0.4,  vol: 0.22, repeat: 3, gap: 0.18 },
     lose:     { ch: "fx",    wave: "sawtooth", f0: 300,  f1: 50,   a: 0.01,  s: 0.8,  d: 0.8,  vol: 0.25, noise: 0.3 }
   };

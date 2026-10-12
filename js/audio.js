@@ -6,7 +6,7 @@
   var ctx = null, master = null, noiseBuf = null, hum = null;
   var vols = { fx: 0.8, alarm: 0.8, chat: 0.6 };
   var lastPlayed = {};
-  var MIN_GAP = { shot: 0.09, tick: 0.05, chatter: 0.25, shieldHit: 0.08 };
+  var MIN_GAP = { shot: 0.09, tick: 0.05, chatter: 0.25, shieldHit: 0.08, pulse: 0.06, shipHit: 0.05, torpLaunch: 0.12 };
 
   // iPad/iPhone: Safari mutes Web Audio in silent mode unless the page counts as media
   // playback. Newer Safari has navigator.audioSession; older ones switch over once an

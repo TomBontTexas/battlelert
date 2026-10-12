@@ -16,10 +16,11 @@
   var selected = 0, capEls = {}, fcEls = {}, lastLogKey = "", lastDamageLen = -1, lastSpoken = 0;
   var gravShown = false, doneShown = false, lastAlarm = 0, lastTs = 0, acc = 0;
   var career = BL.career.load(), job = null, report = null, offersMode = "offers";
+  var aiEngineer = null;                  // runs the power while the player is at a gun
 
   /* ------------------------------------------------------------ Settings */
   function loadSettings() {
-    var s = { fx: 80, alarm: 80, chat: 60, voice: true, voiceVol: 80, contrast: false, hints: false };
+    var s = { fx: 80, alarm: 80, chat: 60, voice: true, voiceVol: 80, contrast: false, hints: false, gunPick: "pulse" };
     try { var raw = localStorage.getItem(SETTINGS_KEY); if (raw) Object.assign(s, JSON.parse(raw)); } catch (e) {}
     return s;
   }
@@ -40,10 +41,12 @@
   }
 
   /* ------------------------------------------------------------- Screens */
-  var SCREENS = ["scr-title", "scr-enlist", "scr-hub", "scr-offers", "scr-record", "scr-briefing", "scr-console", "scr-debrief"];
+  var SCREENS = ["scr-title", "scr-enlist", "scr-hub", "scr-offers", "scr-record", "scr-briefing", "scr-console", "scr-turret", "scr-debrief"];
   function show(id) { SCREENS.forEach(function (s) { $(s).hidden = s !== id; }); }
   function overlay(id, on) { $(id).hidden = !on; }
   function inConsole() { return !$("scr-console").hidden; }
+  function inTurret() { return !$("scr-turret").hidden; }
+  function inMission() { return inConsole() || inTurret(); }
   function click() { BL.audio.play("click"); }
 
   /* --------------------------------------------------------------- Title */
@@ -55,13 +58,22 @@
     startBriefing(testJob(seed > 0 ? seed : BL.randomSeed()));
   };
   function testJob(seed) { return { test: true, station: "engineer", classId: "destroyer", n: 4, tl: 4, ship: "Destroyer", seed: seed }; }
+  // The gunner turret test: a gunboat, you at Gun 1 with the gun picked on the title screen.
+  function gunnerJob(seed) { return { test: true, station: "gunner", classId: "gunboat", n: 1, tl: 4, ship: "Gunboat", seed: seed, weapon: settings.gunPick || "pulse" }; }
+  $("gun-pick").value = BL.WEAPONS[settings.gunPick] ? settings.gunPick : "pulse";
+  $("gun-pick").onchange = function () { settings.gunPick = this.value; saveSettings(); };
+  $("btn-gunner").onclick = function () {
+    BL.audio.init(); click();
+    var seed = parseInt($("seed-input").value, 10);
+    startBriefing(gunnerJob(seed > 0 ? seed : BL.randomSeed()));
+  };
   $("btn-how").onclick = function () { BL.audio.init(); click(); overlay("ov-how", true); };
   $("btn-how-close").onclick = function () { click(); overlay("ov-how", false); };
 
   /* ------------------------------------------------------------ Briefing */
   function startBriefing(j) {
     job = j;
-    sim = new BL.Mission({ seed: j.seed, classId: j.classId, tl: j.tl });
+    sim = new BL.Mission({ seed: j.seed, classId: j.classId, tl: j.tl, gunner: j.station === "gunner" ? { weapon: j.weapon } : null });
     if (j.test) $("seed-input").value = j.seed;
     var d = sim.data, cls = BL.classById(j.classId);
     $("brief-seed").textContent = "· seed " + j.seed;
@@ -70,6 +82,7 @@
       : "Gunboats have no GravSpace drive. In each of the carrier's " + sim.cfg.jumps + " systems it launches you into the fight and recovers you when the sortie timer runs out, then carries you through GravSpace to the next one. Keep the gunboat alive through every sortie.";
     $("brief-route").innerHTML = sim.route.map(function (id, i) {
       var e = BL.ENCOUNTERS[id];
+      if (sim.turret) return "<li>Sortie " + (i + 1) + ": <b>" + e.name + "</b>. " + gunnerTip(id) + " The carrier recovers you " + sim.windowFor(i) + " s after launch.</li>";
       return "<li>" + (sim.hasDrive ? "System " : "Sortie ") + (i + 1) + ": <b>" + e.name + "</b>. " + e.what + ". Tests: " + e.tests.toLowerCase() +
         (sim.hasDrive ? ". Jump window opens " + sim.windowFor(i) + " s after arrival." : ". The carrier recovers you " + sim.windowFor(i) + " s after launch.") + "</li>";
     }).join("") + (sim.hasDrive ? "<li>The Archonian world: drop the planet buster.</li>" : "");
@@ -92,6 +105,10 @@
     $("brief-pd").hidden = !sim.sys("pd");
     $("brief-rx").hidden = d.reactors.length < 2;
     $("brief-buster").hidden = !sim.sys("buster");
+    var gunner = !!sim.turret;
+    $("brief-eng").hidden = gunner; $("brief-gun").hidden = !gunner;
+    $("brief-station").textContent = gunner ? "Your station: Gun 1 (the engineer runs the power)" : "Your station: Main Engineering";
+    if (gunner) { $("brief-weapon").textContent = sim.turret.w.name.toLowerCase(); $("brief-weapon-what").textContent = sim.turret.w.what; }
     show("scr-briefing");
   }
   $("btn-brief-back").onclick = function () { click(); if (job.test) show("scr-title"); else showOffers(offersMode); };
@@ -101,8 +118,9 @@
   function startMission() {
     BL.audio.init(); BL.audio.humStart();
     BL.speech.unlock();
-    buildConsole();
-    show("scr-console");
+    aiEngineer = sim.turret ? new BL.AIEngineer(0.5, 0.25) : null;
+    if (sim.turret) { buildTurret(); show("scr-turret"); sizeTurret(); }
+    else { buildConsole(); show("scr-console"); }
     gravShown = false; doneShown = false; paused = false; looking = false;
     lastLogKey = ""; lastDamageLen = -1; lastSpoken = 0; selected = 0; acc = 0;
     sim.beginJump();
@@ -113,6 +131,9 @@
     if (!running || !sim || sim.phase === "done" || paused) return;
     paused = true; looking = false;
     BL.speech.stop();
+    if (sim.turret) releaseTurret();
+    $("btn-look").hidden = !!sim.turret;
+    $("btn-resume").textContent = sim.turret ? "Resume (P)" : "Resume (Space)";
     overlay("ov-pause", true); $("planning-banner").hidden = true;
     $("pause-voice").textContent = BL.speech.status();
     click();
@@ -138,10 +159,11 @@
   };
   // Any tap on the console keeps iPad Safari's permission to speak alive.
   $("scr-console").addEventListener("pointerdown", function () { BL.speech.unlock(); }, true);
-  document.addEventListener("visibilitychange", function () { if (document.hidden && inConsole()) pause(); });
+  $("scr-turret").addEventListener("pointerdown", function () { BL.speech.unlock(); }, true);
+  document.addEventListener("visibilitychange", function () { if (document.hidden && inMission()) pause(); });
 
   function openOptions() {
-    if (inConsole()) pause();
+    if (inMission()) pause();
     $("vol-fx").value = settings.fx; $("vol-alarm").value = settings.alarm; $("vol-chat").value = settings.chat;
     $("opt-voice").checked = !!settings.voice; $("vol-voice").value = settings.voiceVol;
     $("opt-voice").disabled = $("vol-voice").disabled = !BL.speech.supported;
@@ -347,6 +369,7 @@
       if (ev.key === "Escape") { overlay("ov-options", false); overlay("ov-how", false); }
       return;
     }
+    if (inTurret() && sim && ev.target.tagName !== "INPUT" && ev.target.tagName !== "SELECT") { turretKey(ev, true); return; }
     if (!inConsole() || !sim || ev.target.tagName === "INPUT") return;
     if (!$("ov-grav").hidden) { if (ev.key === "Enter") $("btn-grav-go").click(); return; }
     var k = ev.key;
@@ -377,10 +400,11 @@
     if (sim && running && !paused && $("ov-grav").hidden) {
       acc += dt;
       var n = 0;
-      while (acc >= sim.dt && n < 10) { sim.step(); acc -= sim.dt; n++; }
+      while (acc >= sim.dt && n < 10) { if (aiEngineer) aiEngineer.think(sim); sim.step(); acc -= sim.dt; n++; }
       if (n >= 10) acc = 0;
     }
     if (sim && inConsole()) { render(); sounds(ts); phaseCheck(); }
+    else if (sim && inTurret()) { renderTurret(ts); sounds(ts); phaseCheck(); }
     requestAnimationFrame(frame);
   }
 
@@ -609,17 +633,152 @@
   }
 
   function renderComms() {
+    var box = sim.turret ? $("tu-comms") : $("comms-log"), lines = sim.turret ? 6 : 9;
     speakNew();
     var log = sim.log, last = log[log.length - 1];
     var key = log.length + ":" + (last ? last.t + last.text : "");
     if (key === lastLogKey) return;
     lastLogKey = key;
     var icon = { warn: "⚠ ", bad: "✖ ", good: "✔ ", info: "" };
-    $("comms-log").innerHTML = log.slice(-9).map(function (l) {
+    box.innerHTML = log.slice(-lines).map(function (l) {
       return '<div class="' + l.kind + '"><span class="t">' + mmss(l.t) + "</span>" + icon[l.kind] + esc(l.text) + "</div>";
     }).join("");
   }
   function esc(s) { return String(s).replace(/[&<>]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]; }); }
+
+  /* ------------------------------------------------------- Gunner turret */
+  var keysHeld = {}, tuCtx = null, tuSize = 0;
+  function buildTurret() {
+    var tu = sim.turret, w = tu.w;
+    $("tu-station").textContent = "Gun 1 · " + (job.test ? sim.data.className : job.ship + " (" + sim.data.className + ")") + " · tech level " + sim.data.tl;
+    $("tu-weapon").textContent = "GUN 1 · " + w.name.toUpperCase();
+    $("tu-weapon-what").textContent = w.what;
+    var gun = tu.gun(), n = Math.floor(gun.maxMJ / w.shotMJ), ticks = "";
+    for (var i = 1; i <= n && n <= 30; i++) ticks += '<i style="bottom:' + (i * w.shotMJ / gun.baseMJ * 100).toFixed(2) + '%"></i>';
+    $("tu-ticks").innerHTML = ticks;
+    $("tu-comms").innerHTML = "";
+    keysHeld = {}; setFireBtn(false);
+  }
+  function sizeTurret() {
+    var box = $("tu-field"), cv = $("tu-canvas"), dpr = window.devicePixelRatio || 1;
+    var side = Math.floor(Math.max(120, Math.min(box.clientWidth, box.clientHeight)));
+    if (side === tuSize && tuCtx) return;
+    tuSize = side;
+    cv.style.width = cv.style.height = side + "px";
+    cv.width = cv.height = Math.round(side * dpr);
+    tuCtx = cv.getContext("2d");
+    tuCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  window.addEventListener("resize", function () { if (inTurret()) { tuSize = 0; sizeTurret(); } });
+
+  function renderTurret(ts) {
+    var tu = sim.turret, ship = sim.ship, gun = tu.gun(), w = tu.w, enc = sim.encounter() || {};
+    sizeTurret();
+    BL.drawTurret(tuCtx, tuSize, sim, tu, ts);
+    $("tu-jump").innerHTML = "Sortie <b>" + (sim.jumpIndex + 1) + "</b> of " + sim.cfg.jumps + " · <b>" + (enc.name || "") + "</b>";
+    setText($("tu-phase"), sim.phase === "arrival" ? "Launching in " + Math.ceil(sim.cfg.arrivalSeconds - sim.t) + " s" : sim.phase === "engage" ? "T+" + mmss(sim.t) : "");
+    renderComms();
+    // Gun
+    $("tu-charge").style.height = pct(gun.mj / gun.baseMJ);
+    setCls($("tu-charge"), "tu-lvl" + (gun.mj < w.shotMJ ? " low" : ""));
+    setText($("tu-mj"), Math.floor(gun.mj) + " / " + gun.maxMJ + " MJ");
+    setText($("tu-shots"), Math.floor(gun.mj / w.shotMJ) + " shots · " + w.shotMJ + " MJ each");
+    setText($("tu-feed"), Math.round(gun.rate) + " MW" + (gun.tripped ? " · TRIPPED" : ""));
+    var cs = tu.callState(), st, stc = "tu-state";
+    if (gun.tripped) { st = "✖ GUN TRIPPED " + Math.ceil(gun.tripUntil - sim.t) + " s"; stc += " dry"; }
+    else if (gun.mj < w.shotMJ) { st = "DRY: release FIRE to recharge"; stc += " dry"; }
+    else if (cs.state === "on") { st = "◆ POWER CALLED " + Math.ceil(cs.left) + " s"; stc += " call"; }
+    else { st = "READY"; stc += " ready"; }
+    setText($("tu-state"), st); setCls($("tu-state"), stc);
+    var cb = $("btn-tu-call");
+    cb.disabled = cs.state === "wait" || !tu.live();
+    setCls(cb, "tu-call" + (cs.state === "on" ? " on" : ""));
+    cb.firstChild.nodeValue = cs.state === "on" ? "POWER COMING " + Math.ceil(cs.left) + " s " : cs.state === "wait" ? "CALL AGAIN IN " + Math.ceil(cs.left) + " s " : "CALL FOR POWER ";
+    // Ship
+    setText($("tu-hull-val"), Math.max(0, Math.round(ship.hull)) + " / " + ship.hullMax);
+    $("tu-hull").style.width = pct(ship.hull / ship.hullMax);
+    $("tu-hull").classList.toggle("low", ship.hull < ship.hullMax * 0.35);
+    var sh = sim.sys("shield");
+    setText($("tu-shield-val"), Math.round(sh.mj) + " / " + sh.maxMJ + " MJ");
+    $("tu-shield").style.width = pct(sh.mj / sh.maxMJ);
+    var wi = sim.windowIn();
+    setText($("tu-rec-val"), Math.max(0, Math.ceil(wi)) + " s");
+    $("tu-rec").style.width = pct(sim.t / sim.windowAt());
+    var g = tu.cur || {};
+    $("tu-tally").innerHTML = "<span>Ships destroyed</span><b>" + (g.kills || 0) + " / " + (g.ships || 0) + "</b><span>Torpedoes shot down</span><b>" + (g.downed || 0) + " / " + (g.torps || 0) +
+      "</b><span>Hits</span><b>" + (g.hits || 0) + " / " + (g.shots || 0) + "</b>" + (ship.crippled ? '<span class="bad">✖ Crew crippled: slow fire</span><b></b>' : "");
+  }
+
+  function turretActive() { return running && sim && sim.turret && !paused && sim.phase !== "done" && $("ov-grav").hidden; }
+  function setFireBtn(on) { $("btn-tu-fire").classList.toggle("on", !!on); }
+  function releaseTurret() { sim.turret.trigger(false); sim.turret.setDir(0); keysHeld = {}; setFireBtn(false); $("tu-aimpad").classList.remove("on"); }
+  function keyDir() { return (keysHeld.right ? 1 : 0) - (keysHeld.left ? 1 : 0); }
+  // Keys: ← → (A D) slide, Space or ↑ fire while held, C calls for power, P or Esc pauses.
+  function turretKey(ev, down) {
+    if (!$("ov-grav").hidden) { if (down && ev.key === "Enter") $("btn-grav-go").click(); return; }
+    var k = ev.key, kl = k.length === 1 ? k.toLowerCase() : k, tu = sim.turret;
+    if (down && (kl === "p" || k === "Escape")) { ev.preventDefault(); if (paused) resume(); else pause(); return; }
+    if (paused) { if (down && k === " ") { ev.preventDefault(); resume(); } return; }
+    var name = k === "ArrowLeft" || kl === "a" ? "left" : k === "ArrowRight" || kl === "d" ? "right" : k === " " || k === "Spacebar" || k === "ArrowUp" ? "fire" : null;
+    if (name) {
+      ev.preventDefault();
+      if (!down || turretActive()) keysHeld[name] = down;
+      if (name === "fire") { tu.trigger(down && turretActive()); setFireBtn(down && turretActive()); }
+      else tu.setDir(turretActive() ? keyDir() : 0);
+      return;
+    }
+    if (down && kl === "c" && turretActive()) { ev.preventDefault(); tu.callPower(); }
+  }
+  document.addEventListener("keyup", function (ev) { if (inTurret() && sim) turretKey(ev, false); });
+  window.addEventListener("blur", function () { if (sim && sim.turret && inTurret()) releaseTurret(); });
+
+  // Mouse on the view: the turret follows the pointer; hold the button to fire.
+  // Touch on the view or the aim pad: drag to slide (relative, so the finger never hides
+  // the target); hold the FIRE button to fire.
+  function fieldX(ev) { var r = $("tu-canvas").getBoundingClientRect(); return (ev.clientX - r.left) / r.width; }
+  (function wireTurretPointer() {
+    var cv = $("tu-canvas"), drags = {};
+    function startDrag(el, ev) {
+      if (!turretActive()) return;
+      drags[ev.pointerId] = { x: ev.clientX, aim: sim.turret.x, width: $("tu-canvas").getBoundingClientRect().width };
+      el.setPointerCapture(ev.pointerId); ev.preventDefault();
+    }
+    function moveDrag(ev) {
+      var d = drags[ev.pointerId]; if (!d || !turretActive()) return;
+      sim.turret.aimAt(d.aim + (ev.clientX - d.x) / Math.max(100, d.width) * 1.1);
+    }
+    function endDrag(ev) { delete drags[ev.pointerId]; }
+    cv.addEventListener("pointerdown", function (ev) {
+      if (ev.pointerType === "mouse") {
+        if (!turretActive() || ev.button !== 0) return;
+        sim.turret.aimAt(fieldX(ev)); sim.turret.trigger(true); setFireBtn(true);
+        cv.setPointerCapture(ev.pointerId); ev.preventDefault();
+      } else startDrag(cv, ev);
+    });
+    cv.addEventListener("pointermove", function (ev) {
+      if (ev.pointerType === "mouse") { if (turretActive()) sim.turret.aimAt(fieldX(ev)); }
+      else moveDrag(ev);
+    });
+    function mouseUp(ev) { if (ev.pointerType === "mouse") { if (sim && sim.turret && !keysHeld.fire) { sim.turret.trigger(false); setFireBtn(false); } } else endDrag(ev); }
+    cv.addEventListener("pointerup", mouseUp); cv.addEventListener("pointercancel", mouseUp);
+    cv.addEventListener("contextmenu", function (ev) { ev.preventDefault(); });
+    var pad = $("tu-aimpad");
+    pad.addEventListener("pointerdown", function (ev) { startDrag(pad, ev); if (drags[ev.pointerId]) pad.classList.add("on"); });
+    pad.addEventListener("pointermove", moveDrag);
+    function padEnd(ev) { endDrag(ev); pad.classList.remove("on"); }
+    pad.addEventListener("pointerup", padEnd); pad.addEventListener("pointercancel", padEnd);
+    var fire = $("btn-tu-fire");
+    fire.addEventListener("pointerdown", function (ev) {
+      if (!turretActive()) return;
+      sim.turret.trigger(true); setFireBtn(true); fire.setPointerCapture(ev.pointerId); ev.preventDefault();
+    });
+    function fireEnd() { if (sim && sim.turret && !keysHeld.fire) { sim.turret.trigger(false); setFireBtn(false); } }
+    fire.addEventListener("pointerup", fireEnd); fire.addEventListener("pointercancel", fireEnd);
+    fire.addEventListener("contextmenu", function (ev) { ev.preventDefault(); });
+    $("btn-tu-call").addEventListener("click", function () { if (turretActive()) sim.turret.callPower(); });
+    $("btn-tu-pause").onclick = pause;
+    $("btn-tu-options").onclick = openOptions;
+  })();
 
   /* ----------------------------------------------------------- GravSpace */
   function showGrav() {
@@ -627,6 +786,7 @@
     var dmg = sim.stats.damageReports.filter(function (d) { return d.jump === sim.jumpIndex; });
     $("grav-title").textContent = sim.hasDrive ? "In GravSpace: jump " + sim.jumpIndex + " of " + sim.cfg.jumps + " complete"
       : "Aboard the carrier: sortie " + sim.jumpIndex + " of " + sim.cfg.jumps + " complete";
+    if (sim.turret) { $("grav-body").innerHTML = gravGunner(js, dmg, next); $("btn-grav-go").textContent = "Launch"; overlay("ov-grav", true); return; }
     $("grav-body").innerHTML =
       "<p>Fighting has stopped." + (sim.hasDrive ? "" : " The carrier has you on deck and is carrying you through GravSpace.") + (sim.hasAux() ? " The aux bank is refilled." : "") + "</p>" +
       "<ul class='grav-list'>" +
@@ -643,6 +803,24 @@
     $("btn-grav-go").textContent = sim.hasDrive ? "Drop out of GravSpace" : "Launch";
     overlay("ov-grav", true);
   }
+  function gravGunner(js, dmg, next) {
+    var g = sim.turret.jumps[sim.jumpIndex - 1] || {};
+    return "<p>Fighting has stopped. The carrier has you on deck and is carrying you through GravSpace.</p><ul class='grav-list'>" +
+      "<li>Enemy ships destroyed: " + g.kills + " of " + g.ships + "</li>" +
+      "<li>Torpedoes shot down: " + g.downed + " of " + g.torps + "</li>" +
+      "<li>Hits: " + g.hits + " of " + g.shots + " shots" + (g.shots ? " (" + Math.round(100 * g.hits / g.shots) + "%)" : "") + "</li>" +
+      "<li>Torpedoes stopped by shields: " + js.shielded + " of " + js.salvos + "</li>" +
+      "<li>Hull damage taken: " + js.hullLost + "</li>" +
+      (dmg.length ? "<li>Damage: " + dmg.map(function (d) { return d.what; }).join("; ") + "</li>" : "") +
+      (sim.lastRepairs && sim.lastRepairs.length ? "<li>Damage control repaired half of it: " + sim.lastRepairs.join("; ") + "</li>" : "") +
+      "</ul><h2>Next: " + next.name + "</h2><p>" + gunnerTip(sim.route[sim.jumpIndex]) + " The carrier launches you again on arrival.</p>" +
+      "<p class='muted'>Take a breath; the clock is stopped.</p>";
+  }
+  // What the gunner should expect from an encounter, and whether their gun has the edge.
+  function gunnerTip(encId) {
+    var w = sim.turret.w, look = BL.GUNNERY.looks[encId] || {};
+    return (look.ship ? "Expect " + look.ship + "s: " + look.what + ". " : "") + (w.best.indexOf(encId) >= 0 ? "Your " + w.name.toLowerCase() + " does extra damage to them." : "Your " + w.name.toLowerCase() + " gets no bonus against them.");
+  }
   $("btn-grav-go").onclick = function () { click(); overlay("ov-grav", false); sim.beginJump(); };
 
   /* ---------------------------------------------------------- Debriefing */
@@ -655,12 +833,15 @@
       r.jumpsDone + " of " + sim.cfg.jumps + (r.hasDrive ? " jumps · " : " sorties · ") + d.minutes + " minutes · hull " + r.hull + " / " + r.hullMax +
       (r.looks ? " · looked at the paused console " + r.looks + (r.looks === 1 ? " time" : " times") + " (−" + (100 - Math.round(100 * r.score / Math.max(1, r.raw))) + "%)" : "");
     $("db-score").textContent = r.score;
-    var names = { objective: "Objective", condition: "Ship condition", efficiency: "Efficiency", demands: "Demands met" };
+    $("db-jumps-title").textContent = r.hasDrive ? "Jump by jump" : "Sortie by sortie";
+    var names = r.station === "gunner" ? { objective: "Objective", condition: "Ship condition", accuracy: "Accuracy", threats: "Threats stopped" }
+      : { objective: "Objective", condition: "Ship condition", efficiency: "Efficiency", demands: "Demands met" };
     $("db-parts").innerHTML = Object.keys(names).map(function (k) {
       return '<div class="part"><span>' + names[k] + '</span><div class="hbar"><div class="hbar-fill" style="width:' + (r.parts[k] * 4) + '%"></div></div><b>' + r.parts[k] + " / 25</b></div>";
     }).join("");
-    $("db-good").textContent = wentWell(r);
-    $("db-worst").textContent = worstMoment(r);
+    $("db-good").textContent = r.station === "gunner" ? wentWellGunner(r) : wentWell(r);
+    $("db-worst").textContent = r.station === "gunner" ? worstGunner(r) : worstMoment(r);
+    if (r.station === "gunner") { debriefGunner(r); return; }
     $("db-jumps").innerHTML = "<tr><th>" + (r.hasDrive ? "Jump" : "Sortie") + "</th><th>Encounter</th><th>Salvos shielded</th><th>Hull lost</th><th>Trips</th><th>Kills</th><th>On time</th><th>Seconds</th></tr>" +
       r.jumps.map(function (j, i) {
         return "<tr><td>" + (i + 1) + "</td><td>" + BL.ENCOUNTERS[j.encounter].name + "</td><td>" + j.shielded + " / " + j.salvos + "</td><td>" + j.hullLost +
@@ -705,6 +886,49 @@
   }
   $("btn-db-hub").onclick = function () { click(); showHub(); };
 
+  function debriefGunner(r) {
+    var g = r.gunner, d = r.detail;
+    $("db-jumps").innerHTML = "<tr><th>Sortie</th><th>Encounter</th><th>Ships destroyed</th><th>Torpedoes shot down</th><th>Hits</th><th>Shielded</th><th>Hull lost</th><th>Seconds</th></tr>" +
+      r.jumps.map(function (j, i) {
+        var t = g.jumps[i] || {};
+        return "<tr><td>" + (i + 1) + "</td><td>" + BL.ENCOUNTERS[j.encounter].name + "</td><td>" + t.kills + " / " + t.ships + "</td><td>" + t.downed + " / " + t.torps +
+          "</td><td>" + t.hits + " / " + t.shots + "</td><td>" + j.shielded + " / " + j.salvos + "</td><td>" + j.hullLost + "</td><td>" + j.seconds + "</td></tr>";
+      }).join("");
+    var rows = [
+      ["Gun", BL.WEAPONS[r.weapon].name],
+      ["Accuracy", g.hits + " hits of " + g.shots + " shots (" + g.accuracyPct + "%)"],
+      ["Enemy ships destroyed", g.kills + " / " + g.ships],
+      ["Torpedoes shot down", g.downed + " / " + g.torps],
+      ["Torpedoes that hit the hull", g.hullTorps],
+      ["Damage dealt", g.damage],
+      ["Time holding FIRE with a dry gun", g.dryTime + " s"],
+      ["Calls for power", g.calls],
+      ["Hull lost", d.hullLost],
+      ["Damage reports", r.damage.length]
+    ];
+    $("db-detail").innerHTML = rows.map(function (x) { return "<div><span>" + x[0] + ":</span> " + x[1] + "</div>"; }).join("");
+    $("db-career").hidden = true;
+    $("btn-db-hub").hidden = !!job.test;
+    $("btn-db-again").hidden = $("btn-db-new").hidden = $("btn-db-title").hidden = !job.test;
+  }
+  function wentWellGunner(r) {
+    var g = r.gunner, notes = [];
+    if (r.outcome === "success") notes.push("The gunboat made it back aboard.");
+    if (g.accuracyPct >= 70) notes.push("Sharp shooting: " + g.accuracyPct + "% of shots hit.");
+    if (g.ships && g.kills / g.ships >= 0.5) notes.push("You destroyed " + g.kills + " of " + g.ships + " enemy ships.");
+    if (g.torps && g.downed / g.torps >= 0.3) notes.push("You shot down " + g.downed + " of " + g.torps + " torpedoes.");
+    if (!g.hullTorps && g.torps) notes.push("No torpedo got through to the hull.");
+    if (!notes.length) notes.push(g.kills ? "You destroyed " + g.kills + " enemy ship" + (g.kills === 1 ? "" : "s") + "." : "You kept the gun in the fight.");
+    return notes.join(" ");
+  }
+  function worstGunner(r) {
+    var g = r.gunner;
+    if (g.dryTime >= 8) return "You held FIRE on a dry gun for " + g.dryTime + " s. Let it recharge, or call for power before it runs out.";
+    if (g.hullTorps) return g.hullTorps + " torpedo" + (g.hullTorps === 1 ? "" : "es") + " got past the shields and hit the hull.";
+    if (g.shots && g.accuracyPct < 40) return "Only " + g.accuracyPct + "% of shots hit. Lead the fast ones, and wait until a target is inside your range line.";
+    return "Nothing stands out. Clean run.";
+  }
+
   function wentWell(r) {
     var d = r.detail, notes = [];
     if (r.outcome === "success") notes.push("The planet buster got through.");
@@ -740,8 +964,8 @@
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
   }
-  $("btn-db-again").onclick = function () { click(); startBriefing(testJob(sim.seed)); };
-  $("btn-db-new").onclick = function () { click(); startBriefing(testJob(BL.randomSeed())); };
+  $("btn-db-again").onclick = function () { click(); startBriefing(Object.assign({}, job, { seed: sim.seed })); };
+  $("btn-db-new").onclick = function () { click(); startBriefing(Object.assign({}, job, { seed: BL.randomSeed() })); };
   $("btn-db-save").onclick = function () { click(); saveDebrief(); };
   $("btn-db-title").onclick = function () { click(); newSeedInput(); refreshTitle(); show("scr-title"); };
 

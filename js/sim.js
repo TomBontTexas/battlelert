@@ -53,6 +53,8 @@
     this.result = null;
     this.buildShip();
     this.hasDrive = !!this.sys("drive");
+    // Gunner station: the player aims one gun (opts.gunner = { weapon, gun }); see gunnery.js.
+    this.turret = opts.gunner ? new BL.Turret(this, opts.gunner) : null;
     this.stats = {
       heatSum: 0, heatTime: 0,
       deliveredMJ: 0, wastedMJ: 0, trips: 0, looks: 0,
@@ -174,7 +176,7 @@
   };
   Mission.prototype.chat = function (key, vars, kind) {
     if (this.quiet) return;
-    var lines = BL.CHATTER[key]; if (!lines) return;
+    var lines = (this.turret && BL.CHATTER[key + "G"]) || BL.CHATTER[key]; if (!lines || !lines.length) return;
     this.say(fill(this.rng.pick(lines), vars), kind);
     this.cue("chatter");
   };
@@ -210,6 +212,7 @@
     this.jumpStats = { salvos: 0, shielded: 0, hullLost: 0, trips: 0, kills: 0, start: this.totalT };
     this.events.push({ id: this.nextId++, type: "jump", at: this.windowAt(), announceAt: this.windowAt() - this.cfg.jumpWindowNotice, announced: false, visible: true });
     this.cue("arrive");
+    if (this.turret) this.turret.reset();
     this.chat(this.hasDrive ? "arrival" : "launch", null, "info");
     this.chat("briefing", { enemy: enc.enemy, what: enc.what }, "info");
   };
@@ -226,6 +229,7 @@
     js.encounter = this.route[this.jumpIndex];
     this.stats.jumps.push(js);
     this.events = []; this.waves = [];
+    if (this.turret) this.turret.clear();
     this.endBurn();
     this.ship.systems.forEach(function (s) { s.request = null; s.call = null; });
     if (this.hasDrive) this.sys("drive").mj = 0;
@@ -247,7 +251,7 @@
   Mission.prototype.finish = function (outcome) {
     this.phase = "done";
     this.closeOverloadRun();
-    this.result = BL.score(this, outcome);
+    this.result = this.turret ? BL.scoreGunner(this, outcome) : BL.score(this, outcome);
     this.cue(outcome === "success" ? "win" : "lose");
   };
 
@@ -297,6 +301,7 @@
     wave.lastAt = at;
     for (var k = 0; k < w.requests; k++) {
       var gun = 1 + (this.gunRotor++ % this.gunCount()), start = t + enc.request.lead + k * 3;
+      if (this.turret && gun === this.turret.gunNo) continue;     // the player calls for power instead
       this.events.push({ id: this.nextId++, type: "request", wave: wave.id, gun: gun, at: start, dur: Math.round(r.range(enc.request.duration)),
         announceAt: start - enc.request.lead, announced: false, visible: true });
     }
@@ -311,6 +316,7 @@
     this.t += dt; this.totalT += dt;
     if (this.phase === "arrival" && this.t >= this.cfg.arrivalSeconds) this.phase = "engage";
     if (this.phase !== "arrival") this.schedule();
+    if (this.turret) this.turret.step(dt);       // before events: a torpedo shot down never lands
     this.runEvents();
     this.runGunners(dt);
     this.runCalls(dt);
@@ -391,6 +397,7 @@
     sh.mj -= absorbed;
     st.salvos++; js.salvos++;
     if (e.visible) st.salvosAnnounced++; else { st.surprises++; this.chat("surprise", null, "bad"); }
+    e.outcome = overflow <= 0.5 ? "shield" : "hull";
     if (overflow <= 0.5) {
       if (e.visible) st.salvosShielded++;
       js.shielded++;
@@ -483,12 +490,13 @@
     var g = this.data.gun, ship = this.ship, t = this.t;
     var target = this.liveWave();
     if (target && this.squadron === "out") {
-      target.hp -= this.data.hangar.dps * dt;
-      if (target.hp <= 0 && !target.dead) { this.killWave(target, 0); target = this.liveWave(); }
+      this.hitWave(target, this.data.hangar.dps * dt, 0);
+      if (target.dead) target = this.liveWave();
     }
     for (var i = 0; i < ship.systems.length; i++) {
       var s = ship.systems[i];
       if (s.kind !== "gun") continue;
+      if (this.turret && s.gunner === this.turret.gunNo) continue;   // the player's gun
       if (s.request && t >= s.request.until) this.closeRequest(s);
       if (!target) continue;
       if (t < s.nextShot) continue;
@@ -502,14 +510,20 @@
         this.cue("shot");
         var hit = g.hitChance * (ship.crippled ? 0.6 : 1);
         if (this.rng.chance(hit)) {
-          target.hp -= g.damage;
-          if (target.hp <= 0 && !target.dead) this.killWave(target, s.gunner);
+          this.hitWave(target, g.damage, s.gunner);
         }
       } else if (s.request && !s.request.dryCalled) {
         s.request.dryCalled = true;
         this.chat("requestDry", { n: s.gunner }, "bad");
       }
     }
+  };
+
+  // Damage to a wave. At the gunner station the wave is several ships, so the turret picks one.
+  Mission.prototype.hitWave = function (w, dmg, gunner) {
+    if (this.turret && this.turret.hitWave(w, dmg, gunner)) return;
+    w.hp -= dmg;
+    if (w.hp <= 0 && !w.dead) this.killWave(w, gunner);
   };
 
   Mission.prototype.closeRequest = function (s) {
