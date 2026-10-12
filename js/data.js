@@ -307,7 +307,9 @@
       salvoWarning: 6,
       firstWave: [3, 5],
       waveEvery: [70, 80],
-      wave: { hp: 360, salvos: [8, 10], approach: [6, 8], salvoGap: [6, 8], salvoMJ: [70, 100], requests: 3, pairs: true },
+      wave: { hp: 360, salvos: [8, 10], approach: [6, 8], salvoGap: [6, 8], salvoMJ: [70, 100], requests: 3, pairs: true,
+              // each escort fires its own light torpedoes, like an interceptor flight's
+              escortFire: { count: 2, salvos: [3, 4], start: [2, 4], gap: [4, 6], salvoMJ: [45, 70] } },
       // Light attack craft keep coming while the frigate fights: stragglers from another quadrant.
       stragglers: { first: [12, 16], every: [18, 26], types: ["interceptors", "interceptors", "interceptors", "raiders", "raiders"] },
       request: { lead: 4, duration: [6, 8] },

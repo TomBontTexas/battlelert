@@ -97,7 +97,7 @@
     // Each of the wave's salvos is a torpedo from one of its main ships, in turn.
     var k = 0;
     this.m.events.forEach(function (e) {
-      if (e.wave === wave.id && (e.type === "salvo" || e.type === "strike")) e.shipIdx = k++ % n;
+      if (e.wave === wave.id && (e.type === "salvo" || e.type === "strike")) e.shipIdx = e.escort !== undefined ? n + e.escort : k++ % n;
     });
   };
   Turret.prototype.addGroup = function (list, wave, type, look, n, totalHp) {

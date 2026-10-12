@@ -310,6 +310,19 @@
       if (w.pairs) { var e1 = this.events[this.events.length - 1]; this.events.push(Object.assign({}, e1, { id: this.nextId++, at: at + 0.6, announceAt: e1.announceAt + 0.6 })); }
     }
     wave.lastAt = at;
+    // Escorts (frigate group) fire their own salvos; `escort` names which one.
+    if (w.escortFire) {
+      var ef = w.escortFire;
+      for (var q = 0; q < ef.count; q++) {
+        var ns = r.int(ef.salvos), ea = t + r.range(w.approach) + r.range(ef.start);
+        for (var z = 0; z < ns; z++) {
+          if (z > 0) ea += r.range(ef.gap);
+          this.events.push({ id: this.nextId++, type: "salvo", wave: wave.id, at: ea, mj: Math.round(r.range(ef.salvoMJ) * th.dmg), escort: q,
+            announceAt: Math.max(t, ea - enc.salvoWarning), announced: false, visible: true });
+          wave.lastAt = Math.max(wave.lastAt, ea);
+        }
+      }
+    }
     for (var k = 0; k < w.requests; k++) {
       var gun = 1 + (this.gunRotor++ % this.gunCount()), start = t + enc.request.lead + k * 3;
       if (this.turret && gun === this.turret.gunNo) continue;     // the player calls for power instead
