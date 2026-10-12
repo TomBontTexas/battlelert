@@ -58,7 +58,8 @@
       deliveredMJ: 0, wastedMJ: 0, trips: 0, looks: 0,
       salvos: 0, salvosAnnounced: 0, salvosShielded: 0, surprises: 0, hullLost: 0,
       requests: [], jumps: [], kills: 0, crippledTime: 0,
-      calls: [],                            // main-gun, launch and recovery calls: { type, filled }
+      calls: [],                            // launch and recovery calls: { type, filled }
+      mainShots: 0, mainDamage: 0, bleedMJ: 0,
       squadronsLost: 0,
       burns: [],                            // minefield burns: { met }
       mineStrikes: 0, intercepts: 0,
@@ -299,12 +300,6 @@
       this.events.push({ id: this.nextId++, type: "request", wave: wave.id, gun: gun, at: start, dur: Math.round(r.range(enc.request.duration)),
         announceAt: start - enc.request.lead, announced: false, visible: true });
     }
-    // Light cruiser and up: some waves get a main-gun call. The gun must be full in the window.
-    var mg = this.data.mainGun;
-    if (mg && this.sys("main") && r.chance(enc.mainChance || 0)) {
-      var ma = t + r.range(w.approach) + r.range(mg.after);
-      this.events.push({ id: this.nextId++, type: "main", wave: wave.id, at: ma, dur: mg.window, announceAt: t, announced: false, visible: true });
-    }
     this.waves.push(wave);
     this.chat("waveIn", { enemy: wave.name }, "info");
   };
@@ -356,7 +351,6 @@
     else if (e.type === "strike") { this.chat("strike", { t: lead }, "warn"); this.cue("warn"); }
     else if (e.type === "burn") { this.chat("burn", { t: lead, g: e.g, d: e.dur }, "warn"); this.cue("warnBurn"); }
     else if (e.type === "request") { this.chat("request", { n: e.gun }, "warn"); this.cue("request"); }
-    else if (e.type === "main") { this.chat("mainCall", { t: lead }, "warn"); this.cue("request"); }
     else if (e.type === "launch") { this.chat("launchCall", { t: lead }, "warn"); this.cue("request"); }
     else if (e.type === "recover") { this.chat("recoverCall", { t: lead }, "warn"); this.cue("request"); }
     else if (e.type === "jump") { this.chat(this.hasDrive ? "jumpNotice" : "recoveryNotice", { t: lead }, "info"); }
@@ -370,7 +364,6 @@
       this.ship.gTarget = e.g; this.burnUntil = e.at + e.dur;
       if (this.encounter().mines) this.curBurn = { short: 0, jump: this.jumpIndex + 1 };
     }
-    else if (e.type === "main") { var mg = this.sys("main"); if (mg) mg.call = { until: e.at + e.dur, wave: e.wave, type: "main" }; }
     else if (e.type === "launch" || e.type === "recover") { var hg = this.sys("hangar"); if (hg) hg.call = { until: e.at + e.dur, type: e.type }; }
     else if (e.type === "request") {
       var s = this.sys("gun" + e.gun);
@@ -531,8 +524,6 @@
   Mission.prototype.killWave = function (w, gunner, quiet) {
     w.dead = true;
     this.stats.kills++; this.jumpStats.kills++;
-    var mg = this.sys("main");
-    if (mg && mg.call && mg.call.wave === w.id) mg.call = null;   // target gone before the shot: no call to score
     // Its remaining salvos and gun requests never come.
     this.events = this.events.filter(function (e) { return e.wave !== w.id || e.done; });
     var self = this;
@@ -591,12 +582,23 @@
     if (this.rng.chance(0.4)) this.damageSystem();
   };
 
-  /* Main gun and hangar calls: the bridge names a window; the capacitor must be full in it.
-     A full main gun fires its whole charge and destroys the target. The hangar capacitor is the
+  /* The main gun fires by itself whenever it is full and a target is up: the whole charge, for
+     dmgPerMJ damage per MJ. Hangar calls: the bridge names a window; the capacitor must be full
+     in it. The hangar capacitor is the
      launchers while the squadron is aboard (full = launch; the squadron then shoots down some
      salvos and strafes the enemy) and the arresters while it is out (full = recovered). */
   Mission.prototype.runCalls = function (dt) {
     var t = this.t, list = this.ship.systems, hgd = this.data.hangar;
+    var mg = this.sys("main"), tw = mg && !mg.tripped && mg.mj >= mg.maxMJ - 0.5 ? this.liveWave() : null;
+    if (tw) {
+      var dmg = mg.mj * this.data.mainGun.dmgPerMJ;
+      mg.mj = 0;
+      this.stats.mainShots++; this.stats.mainDamage += Math.min(dmg, tw.hp);
+      tw.hp -= dmg;
+      this.cue("main");
+      if (tw.hp <= 0) { this.chat("mainKill", { enemy: tw.name }, "good"); this.killWave(tw, 0, true); }
+      else this.chat("mainFired", { enemy: tw.name }, "good");
+    }
     for (var i = 0; i < list.length; i++) {
       var s = list[i], q = s.call;
       if (!q) continue;
@@ -604,12 +606,7 @@
       if (full) {
         s.mj = 0; s.call = null;
         this.stats.calls.push({ type: q.type, filled: true, jump: this.jumpIndex + 1 });
-        if (q.type === "main") {
-          this.cue("main");
-          var w = this.waves.filter(function (x) { return x.id === q.wave && !x.dead; })[0];
-          this.chat("mainFired", { enemy: w ? w.name : "target" }, "good");
-          if (w) this.killWave(w, 0, true);
-        } else if (q.type === "launch") {
+        if (q.type === "launch") {
           this.cue("launch");
           this.squadron = "out"; this.hangarMode("recover");
           this.chat("launched", null, "good");
@@ -629,12 +626,19 @@
         }
         s.call = null;
         this.stats.calls.push({ type: q.type, filled: false, jump: this.jumpIndex + 1 });
-        this.chat(q.type === "main" ? "mainMissed" : "launchMissed", null, "bad");
+        this.chat("launchMissed", null, "bad");
         // A missed launch is called again, if there's still time before the recovery.
         if (q.type === "launch" && t + hgd.retry < this.windowAt() - hgd.recoverBefore - 20) this.nextLaunchAt = t + hgd.retry;
       }
     }
   };
+
+  // Bleed rate (share of stored charge per second), and the power that holds a capacitor full.
+  Mission.prototype.bleedOf = function (s) {
+    var b = this.phys.bleed; if (!b) return 0;
+    return b[s.kind] !== undefined ? b[s.kind] : b.other;
+  };
+  Mission.prototype.holdMW = function (s) { return s.drainMW + s.mj * this.bleedOf(s); };
 
   Mission.prototype.hangarMode = function (mode) {
     var s = this.sys("hangar"); if (!s) return;
@@ -656,23 +660,25 @@
     var upK = 1 - Math.exp(-dt / P.rampUpTau), downK = 1 - Math.exp(-dt / P.rampDownTau);
     for (i = 0; i < list.length; i++) {
       var s = list[i];
-      var sp = Math.min(s.set, s.maxMW), target;
+      var sp = Math.min(s.set, s.maxMW), target, dr = this.holdMW(s);
       if (s.tripped || t < s.switchUntil) { s.rate = 0; target = 0; }
-      else if (s.mj >= s.maxMJ - 1e-6) target = Math.min(sp, s.drainMW);
+      else if (s.mj >= s.maxMJ - 1e-6) target = Math.min(sp, dr);
       else {
         var wb = s.kind === "drive" ? 0.99 : P.windBackAt;
         var frac = clamp((s.maxMJ - s.mj) / (s.maxMJ * (1 - wb)), 0, 1);
-        target = Math.max(sp * Math.max(frac, 0.08), Math.min(sp, s.drainMW));
+        target = Math.min(sp, dr + sp * Math.max(frac, 0.08));     // drain and bleed come first
       }
       if (target > s.rate) s.rate += Math.min((target - s.rate) * upK + 0.02, P.rampUpSlew * dt, target - s.rate);
       else s.rate += (target - s.rate) * downK;
       if (s.rate < 0.01) s.rate = 0;
       var aux = R[s.reactor].aux;
       s.auxRate = feeding(s) ? share[s.reactor] : 0;
-      var room = s.maxMJ - s.mj + s.drainMW * dt;
+      var room = s.maxMJ - s.mj + dr * dt;
       var fromAux = Math.min(s.auxRate * dt, Math.max(0, room));
       var fromReactor = Math.min(s.rate * dt, Math.max(0, room - fromAux));
-      s.mj = clamp(s.mj + fromAux + fromReactor - s.drainMW * dt, 0, s.maxMJ);
+      var bleed = s.mj * this.bleedOf(s) * dt;
+      s.mj = clamp(s.mj + fromAux + fromReactor - s.drainMW * dt - bleed, 0, s.maxMJ);
+      this.stats.bleedMJ += bleed;
       aux.mj = Math.max(0, aux.mj - fromAux);
       aux.out += fromAux / dt;
       this.stats.deliveredMJ += fromReactor;
@@ -796,7 +802,7 @@
       var inS = e.at - t;
       if (inS > span) continue;
       if (inS + (e.dur || 0) < -0.6) continue;
-      if (e.done && (e.type === "main" || e.type === "launch" || e.type === "recover")) continue;   // shown below while open
+      if (e.done && (e.type === "launch" || e.type === "recover")) continue;   // shown below while open
       out.push({ id: e.id, type: e.type, in: inS, dur: e.dur || 0, g: e.g, gun: e.gun, mj: e.mj });
     }
     // An open main-gun or launch call stays on the strip until it is met or runs out.
@@ -848,8 +854,7 @@
       detail: {
         salvos: st.salvos, salvosAnnounced: st.salvosAnnounced, salvosShielded: st.salvosShielded, surprises: st.surprises,
         requests: st.requests.length, requestsFilled: reqFilled, jumpsOnTime: onTime,
-        mainCalls: st.calls.filter(function (c) { return c.type === "main"; }).length,
-        mainFilled: st.calls.filter(function (c) { return c.type === "main" && c.filled; }).length,
+        mainShots: st.mainShots, mainDamage: Math.round(st.mainDamage), bleedMJ: Math.round(st.bleedMJ),
         launchCalls: st.calls.filter(function (c) { return c.type === "launch"; }).length,
         launchFilled: st.calls.filter(function (c) { return c.type === "launch" && c.filled; }).length,
         recoverCalls: st.calls.filter(function (c) { return c.type === "recover"; }).length,

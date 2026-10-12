@@ -203,7 +203,7 @@
         "Damage control": "Shields held.", "Bridge": "Jump window opens in 40 seconds.", "Gunner 2": "Target locked.",
         "Medical": "Air's getting thin.", "Gunner 3": "Splash one raider!", "Navigation": "Course plotted.",
         "Reactor room": "Heat is climbing!", "Coxswain": "Launch! We're clear of the carrier.", "Carrier": "Recovery in 30 seconds.",
-        "Captain": "All hands, stand by.", "Failsafe": "Gun 3 tripped offline.", "Gunnery": "Main gun shot in 12 seconds.",
+        "Captain": "All hands, stand by.", "Failsafe": "Gun 3 tripped offline.", "Gunnery": "Main gun away! Keep it coming.",
         "Flight deck": "Squadron away!", "Gunner 4": "Need full power!", "Gunner 5": "Capacitor empty!", "Squadron": "We caught that salvo!" };
       Object.keys(lines).forEach(function (sp) { queue.push({ speaker: sp, words: (/^Gunner \d/.test(sp) ? sp + ", " : "") + lines[sp], at: Date.now() + 60000, urgent: false }); });
       next();

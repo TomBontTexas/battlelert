@@ -57,10 +57,13 @@
       var room = s.maxMJ - s.mj;
       want[s.id] = req ? s.maxMW : wavesUp ? Math.min(s.maxMW, 9 + room / 6) : room / 8;
     });
-    // Main gun and hangar: full power when a call is open or coming soon, else top up slowly.
+    // Main gun: fires whenever full, so feed it hard while there's a target, else let it sit.
+    var main = m.sys("main");
+    if (main) want.main = wavesUp ? main.maxMW : Math.min(main.maxMW, (main.maxMJ - main.mj) / 20);
+    // Hangar: full power when a call is open or coming soon, else top up slowly.
     ship.systems.forEach(function (s) {
-      if (s.kind !== "main" && s.kind !== "hangar") return;
-      var type = s.kind === "main" ? "main" : s.mode === "recover" ? "recover" : "launch", room = s.maxMJ - s.mj;
+      if (s.kind !== "hangar") return;
+      var type = s.mode === "recover" ? "recover" : "launch", room = s.maxMJ - s.mj;
       if (s.mode === "lost") { want[s.id] = 0; return; }
       var soon = s.call || fc.some(function (e) { return e.type === type && e.in < room / Math.max(1, s.maxMW) + 4; });
       want[s.id] = soon ? s.maxMW : Math.min(s.maxMW, room / 12);
@@ -72,7 +75,7 @@
       if (s.kind === "drive" || s.kind === "buster") return;
       var full = s.mj >= s.maxMJ - 0.5;
       var w = Math.min(want[id] || 0, s.maxMW);
-      var draw = full ? Math.min(w, s.drainMW) : w;
+      var draw = full ? Math.min(w, m.holdMW(s)) : w;
       var give = Math.max(0, Math.min(w, left[s.reactor] + (full ? w : 0)));
       m.setSetpoint(id, give);
       left[s.reactor] -= Math.min(draw, give);

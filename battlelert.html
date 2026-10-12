@@ -109,7 +109,7 @@
       <li>Every capacitor's charge rate adds to the <b>reactor load</b>. Above 100% the reactor heats up; at full heat the failsafe trips capacitors off the reactor for 10 s, <b>lowest priority first</b>.</li>
       <li>The <b>aux bank</b> charges any capacitor you switch it onto, without loading the reactor. It refills only in GravSpace.</li>
       <li>Capacitors that are full stop drawing power. When they're drained, they ramp back up to your setting over a second or two.</li>
-      <li id="brief-main" hidden>The <b>main gun</b> fires only when the bridge calls a shot, and only if its capacitor is full. A full shot destroys the target.</li>
+      <li id="brief-main" hidden>The <b>main gun</b> fires by itself the moment its capacitor is full and a target is up, spending the whole charge in one heavy shot. Keep feeding it and it keeps firing.</li>
       <li id="brief-hangar" hidden>The hangar capacitor charges the electromagnetic <b>launchers</b>: they must be full when the bridge calls the launch, near the start of each system. While the gunboats are out they shoot down some salvos and strafe the enemy, and the same capacitor charges the <b>arresters</b>, which must be full to recover them near the end. The captain won't jump until the gunboats are aboard, unless the hull is at 20% or less.</li>
       <li id="brief-pd" hidden><b>Point defense</b> is the only thing that stops a drive strike from drive hunters. Each strike it stops costs a chunk of its charge; one that gets through drains part of the GravSpace drive.</li>
       <li id="brief-rx" hidden>This ship has <b>several reactors</b>, each with its own load, heat, failsafe and aux bank. Every capacitor is wired to one reactor (the letter on its column); tap the letter or press R to move it to the next reactor. It draws nothing for 2 s while it switches. Aux banks can't be moved: each feeds only its own reactor's capacitors.</li>
@@ -332,7 +332,8 @@
       <li><b>Keep heat under the line.</b> Load over 100% heats the reactor. At full heat the failsafe trips capacitors off the reactor for 10 s, lowest priority first. Set the priority order so the right things trip.</li>
       <li><b>Spend aux power to bridge a gap.</b> The aux bank charges a capacitor without loading the reactor. It only refills between jumps.</li>
       <li><b>Charge the GravSpace drive.</b> When the jump window opens and the drive is full, the captain jumps. Three jumps and the planet buster is delivered.</li>
-      <li><b>Bigger ships add calls.</b> Light cruisers and up have a main gun: when the bridge calls a shot, its capacitor must be full, and a full shot destroys the target. Cruisers and up carry gunboats: charge the launchers for the launch near the start of each system, then the arresters to recover them near the end. No jump until they're aboard, unless the hull is at 20% or less.</li>
+      <li><b>Every capacitor bleeds.</b> A charged capacitor slowly loses charge, and the fuller it is the more it loses, so holding everything full keeps costing reactor power. Charge what the forecast says is coming.</li>
+      <li><b>Bigger ships add more.</b> Light cruisers and up have a main gun that fires by itself whenever its capacitor is full and a target is up; keep feeding it and it keeps firing. Cruisers and up carry gunboats: charge the launchers for the launch near the start of each system, then the arresters to recover them near the end. No jump until they're aboard, unless the hull is at 20% or less.</li>
       <li><b>The biggest ships.</b> Heavy cruisers and up have point defense, the only thing that stops drive hunters' strikes on the GravSpace drive. Battleships have two reactors and dreadnoughts three: move capacitors between them to balance the load. The dreadnought also carries the planet buster, which must be full before the final jump.</li>
       <li><b>Minefields.</b> No enemy fire, but the engines get only what the capacitors leave of the reactor. Ease off charging during each weave, or the ship drifts into mines.</li>
     </ol>
@@ -344,12 +345,12 @@
 
 <script src="version.js?b=1f9e831b"></script>
 <script src="update-banner.js?b=71816d57"></script>
-<script src="js/data.js?b=58165bcc"></script>
-<script src="js/sim.js?b=c3299892"></script>
-<script src="js/agents.js?b=f8bbbcd9"></script>
+<script src="js/data.js?b=d9c70d0e"></script>
+<script src="js/sim.js?b=395d07bf"></script>
+<script src="js/agents.js?b=eb9ead9e"></script>
 <script src="js/career.js?b=71affa4d"></script>
-<script src="js/speech.js?b=57867ca8"></script>
+<script src="js/speech.js?b=4bc6bb7f"></script>
 <script src="js/audio.js?b=76c87b2a"></script>
-<script src="js/ui.js?b=47f196e8"></script>
+<script src="js/ui.js?b=8455fe0a"></script>
 </body>
 </html>

@@ -6,7 +6,7 @@
   var $ = function (id) { return document.getElementById(id); };
   var DISPLAY = [];                       // capacitor column order for this ship; keys 1..n
   var KIND_ORDER = { gun: 0, main: 1, pd: 2, shield: 3, life: 4, hangar: 5, buster: 6, drive: 7 };
-  var LANE = { salvo: "salvo", strike: "salvo", burn: "burn", request: "request", main: "request", launch: "request", recover: "request" };
+  var LANE = { salvo: "salvo", strike: "salvo", burn: "burn", request: "request", launch: "request", recover: "request" };
   var rxEls = [];
   var SETTINGS_KEY = BL.APP_TAG + "_settings";
   var DEFAULT_HINT = $("hint-bar").textContent;   // rewritten per ship (key range)
@@ -283,7 +283,7 @@
     return s.kind === "gun" ? "Each shot uses " + sim.data.gun.shotMJ + " MJ." :
       s.kind === "shield" ? "Salvos drain it; what it can't stop hits the hull." :
       s.kind === "life" ? "Drains " + s.drainMW + " MW all the time. Empty = crippled crew." :
-      s.kind === "main" ? "Fires only when the bridge calls a shot, and only if full: the whole charge in one go, and the target is destroyed." :
+      s.kind === "main" ? "Fires by itself the moment it is full and a target is up: the whole charge in one heavy shot. Keep feeding it to keep it firing." :
       s.kind === "pd" ? "Point defense: each drive strike it stops costs a chunk of charge. Shields don't stop drive strikes." :
       s.kind === "buster" ? "The planet buster: charges from the start, keeps its charge, can't charge in GravSpace. Must be full for the final jump." :
       s.kind === "hangar" ? "Launchers while the squadron is aboard: full when the bridge calls the launch, to kick the gunboats out. Arresters while it is out: full when the bridge calls the recovery. No jump until the gunboats are aboard." :
@@ -474,7 +474,7 @@
       if (s.tripped) { st = "✖ TRIPPED " + Math.ceil(s.tripUntil - sim.t) + " s"; stc += " tripped"; }
       else if (sim.t < s.switchUntil) { st = "⇄ TO " + ship.reactors[s.reactor].name; stc += " request"; }
       else if (s.request) { st = "◆ RAPID FIRE"; stc += " request"; }
-      else if (s.call) { st = s.call.late ? "⤓ RECOVER NOW" : (s.kind === "main" ? "◉ SHOT CALLED " : s.call.type === "recover" ? "⤓ RECOVERY " : "✈ LAUNCH ") + Math.max(0, Math.ceil(s.call.until - sim.t)) + " s"; stc += " request"; }
+      else if (s.call) { st = s.call.late ? "⤓ RECOVER NOW" : (s.call.type === "recover" ? "⤓ RECOVERY " : "✈ LAUNCH ") + Math.max(0, Math.ceil(s.call.until - sim.t)) + " s"; stc += " request"; }
       else if (s.kind === "hangar" && sim.squadron === "out") { st = "✈ SQUADRON OUT"; stc += " full"; }
       else if (s.kind === "hangar" && sim.squadron === "lost") { st = "SQUADRON LOST"; stc += " low"; }
       else if (s.kind === "gun" && s.mj < sim.data.gun.shotMJ) { st = "DRY"; stc += " dry"; }
@@ -567,9 +567,9 @@
       } else if (e.type === "burn") {
         label = sim.encounter().mines ? "▲ WEAVE " + e.g + " G · engines need " + Math.round(e.g * sim.perG()) + " MW free for " + e.dur + " s" + secs
           : "▲ BURN " + e.g + " G · +" + Math.round((e.g - sim.data.cruiseG) * sim.perG()) + " MW for " + e.dur + " s" + secs;
-      } else if (e.type === "main" || e.type === "launch" || e.type === "recover") {
-        var cs = sim.sys(e.type === "main" ? "main" : "hangar"), pc = Math.floor(cs.mj / cs.maxMJ * 100);
-        var what = e.type === "main" ? "◉ MAIN GUN" : e.type === "launch" ? "✈ LAUNCH · launchers" : "⤓ RECOVERY · arresters";
+      } else if (e.type === "launch" || e.type === "recover") {
+        var cs = sim.sys("hangar"), pc = Math.floor(cs.mj / cs.maxMJ * 100);
+        var what = e.type === "launch" ? "✈ LAUNCH · launchers" : "⤓ RECOVERY · arresters";
         label = what + (e.late ? " OVERDUE · must be full · " + pc + "% · no jump until aboard" : e.open ? " NOW · must be full · " + pc + "% · " + Math.ceil(e.dur) + " s left" : " · must be full · " + pc + "% now" + secs);
         el.classList.toggle("short", pc < 100 && e.in < (cs.maxMJ - cs.mj) / Math.max(1, cs.maxMW));
       } else {
@@ -677,7 +677,8 @@
       ["Energy wasted as heat", d.wastedMJ + " MJ"],
       ["Crew crippled", d.crippledTime + " s"],
       ["Damage reports", r.damage.length]
-    ].concat(d.mainCalls ? [["Main-gun shots made", d.mainFilled + " / " + d.mainCalls]] : [],
+    ].concat(d.mainShots ? [["Main-gun shots", d.mainShots + " (" + d.mainDamage + " damage)"]] : [],
+      [["Charge lost to bleed", d.bleedMJ + " MJ"]],
       d.launchCalls ? [["Squadron launches on time", d.launchFilled + " / " + d.launchCalls], ["Recoveries on time", d.recoverFilled + " / " + d.recoverCalls],
         ["Salvos the squadron shot down", d.intercepts]].concat(d.squadronsLost ? [["Squadron left behind", "yes"]] : []) : [],
       d.burns ? [["Minefield burns fully powered", d.burnsMet + " / " + d.burns], ["Mine strikes", d.mineStrikes]] : [],

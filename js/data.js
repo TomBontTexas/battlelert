@@ -15,8 +15,8 @@
      threat: multipliers on encounter salvo damage (dmg) and enemy toughness (hp).
      gScale: multiplier on the G of announced burns (small ships burn harder).
      maxG: thruster top speed; burns never exceed it, and thruster damage lowers it by 1 G.
-     mainGun (light cruiser and up): when a main-gun call comes after a wave spawns (after its
-     approach) and how long its window stays open. A full main gun destroys the target.
+     mainGun (light cruiser and up): fires by itself the moment its capacitor is full and a target
+     is up, spending the whole charge for dmgPerMJ damage per MJ. Keep feeding it to keep firing.
      hangar (cruiser and up): the hangar capacitor is the launchers (full = launch) while the
      squadron is aboard and the arresters (full = recover) while it is out. The launch is called
      launchAfter s into each system (again `retry` s after a miss); the recovery recoverBefore s
@@ -79,7 +79,7 @@
       crew: 7, hull: 120, reactorMW: 125, engineMWperG: 6, cruiseG: 2, maxG: 7, gScale: 0.9,
       aux: { capacity: 550, rateMW: 45 }, hullPerMJ: 0.17, threat: { dmg: 1.35, hp: 1.6 },
       mission: { jumps: 3, windows: [140, 150, 160] }, encounters: ["raiders", "interceptors", "siege", "minefield"],
-      mainGun: { after: [4, 8], window: 6 },
+      mainGun: { dmgPerMJ: 0.6 },
       systems: [
         sys("life", "Life support", "LIFE", "life", 70, 14, 70, 4, { drainMW: 3.5 }),
         sys("shield", "Shields", "SHLD", "shield", 225, 85, 110, 22),
@@ -94,7 +94,7 @@
       crew: 8, hull: 140, reactorMW: 150, engineMWperG: 7, cruiseG: 2, maxG: 6, gScale: 0.85,
       aux: { capacity: 650, rateMW: 50 }, hullPerMJ: 0.19, threat: { dmg: 1.55, hp: 1.9 },
       mission: { jumps: 3, windows: [150, 160, 170] }, encounters: ["raiders", "interceptors", "siege", "minefield"],
-      mainGun: { after: [4, 8], window: 6 },
+      mainGun: { dmgPerMJ: 0.6 },
       hangar: { launchAfter: [6, 12], lead: 10, window: 8, retry: 15, recoverBefore: 25, recoverLead: 12, recoverWindow: 10, intercept: 0.25, dps: 6 },
       systems: [
         sys("life", "Life support", "LIFE", "life", 80, 16, 80, 4, { drainMW: 4 }),
@@ -112,7 +112,7 @@
       crew: 9, hull: 160, reactorMW: 175, engineMWperG: 8, cruiseG: 2, maxG: 5, gScale: 0.8,
       aux: { capacity: 750, rateMW: 55 }, hullPerMJ: 0.26, threat: { dmg: 1.75, hp: 2.2 },
       mission: { jumps: 3, windows: [160, 170, 180] }, encounters: ["raiders", "interceptors", "siege", "minefield", "hunters"],
-      mainGun: { after: [4, 8], window: 6 },
+      mainGun: { dmgPerMJ: 0.6 },
       hangar: { launchAfter: [6, 12], lead: 10, window: 8, retry: 15, recoverBefore: 25, recoverLead: 12, recoverWindow: 10, intercept: 0.25, dps: 6 },
       systems: [
         sys("life", "Life support", "LIFE", "life", 90, 18, 90, 5, { drainMW: 4.5 }),
@@ -130,10 +130,10 @@
       ] },
     { n: 8, id: "battleship", name: "Battleship", built: true, baseRep: 887,
       crew: 10, hull: 180, engineMWperG: 9, cruiseG: 2, maxG: 4, gScale: 0.75,
-      reactors: [{ name: "A", mw: 122, aux: { capacity: 450, rateMW: 35 } }, { name: "B", mw: 122, aux: { capacity: 450, rateMW: 35 } }],
+      reactors: [{ name: "A", mw: 112, aux: { capacity: 450, rateMW: 35 } }, { name: "B", mw: 112, aux: { capacity: 450, rateMW: 35 } }],
       hullPerMJ: 0.42, threat: { dmg: 1.6, hp: 3.2 },
       mission: { jumps: 3, windows: [170, 180, 190] }, encounters: ["raiders", "interceptors", "siege", "minefield", "hunters"],
-      mainGun: { after: [4, 8], window: 6 },
+      mainGun: { dmgPerMJ: 0.6 },
       hangar: { launchAfter: [6, 12], lead: 10, window: 8, retry: 15, recoverBefore: 25, recoverLead: 12, recoverWindow: 10, intercept: 0.25, dps: 7 },
       systems: [
         sys("life", "Life support", "LIFE", "life", 100, 20, 100, 5, { drainMW: 5, reactor: 0 }),
@@ -156,7 +156,7 @@
         { name: "C", mw: 112, aux: { capacity: 380, rateMW: 30 } }],
       hullPerMJ: 0.48, threat: { dmg: 1.7, hp: 3.6 },
       mission: { jumps: 3, windows: [180, 190, 200] }, encounters: ["raiders", "interceptors", "siege", "minefield", "hunters"],
-      mainGun: { after: [4, 8], window: 6 },
+      mainGun: { dmgPerMJ: 0.6 },
       hangar: { launchAfter: [6, 12], lead: 10, window: 8, retry: 15, recoverBefore: 25, recoverLead: 12, recoverWindow: 10, intercept: 0.25, dps: 8 },
       systems: [
         sys("life", "Life support", "LIFE", "life", 110, 22, 110, 6, { drainMW: 5.5, reactor: 0 }),
@@ -222,6 +222,10 @@
     tripSeconds: 10,        // a tripped capacitor stays off the reactor this long
     tripCooldown: 1.5,      // min seconds between failsafe trips (per reactor)
     switchSeconds: 2,       // a capacitor moved to another reactor draws nothing this long
+    // Bleed: every capacitor loses this share of its stored charge each second, so holding a
+    // capacitor full keeps costing reactor power. Life support already drains; the drive and
+    // the planet buster store far more and leak far less.
+    bleed: { other: 0.02, life: 0, drive: 0.0015, buster: 0.0004 },
     alarmHeat: 80           // heat alarm sounds above this
   };
 
@@ -250,7 +254,7 @@
       wave: { hp: 300, salvos: [3, 4], approach: [6, 8], salvoGap: [2.5, 4], salvoMJ: [120, 170], requests: 2 },
       request: { lead: 4, duration: [6, 8] },
       burns: { every: [28, 40], g: [5, 6], duration: [3, 4], warning: 5 },
-      surpriseChance: 0.08, mainChance: 0.6
+      surpriseChance: 0.08
     },
     siege: {
       name: "Siege line",
@@ -263,7 +267,7 @@
       wave: { hp: 420, salvos: [11, 14], approach: [6, 7], salvoGap: [2.5, 3.8], salvoMJ: [75, 105], requests: 3 },
       request: { lead: 4, duration: [6, 8] },
       burns: { every: [35, 50], g: [3, 4], duration: [3, 5], warning: 5 },
-      surpriseChance: 0.05, mainChance: 0.7
+      surpriseChance: 0.05
     },
     interceptors: {
       name: "Interceptors",
@@ -276,7 +280,7 @@
       wave: { hp: 130, salvos: [4, 6], approach: [4, 6], salvoGap: [1.8, 2.8], salvoMJ: [45, 70], requests: 1 },
       request: { lead: 3, duration: [5, 7] },
       burns: { every: [9, 14], g: [7, 9], duration: [4, 6], warning: 5 },
-      surpriseChance: 0.1, mainChance: 0.4
+      surpriseChance: 0.1
     },
     // Heavy cruiser and up. Hunters fire drive strikes: point defense stops them if it has the
     // charge (mj = PD charge per strike); one that gets through drains `driveDrain` of the drive.
@@ -291,7 +295,7 @@
       wave: { hp: 200, salvos: [4, 6], approach: [5, 7], salvoGap: [2.5, 4], salvoMJ: [30, 45], requests: 2, strikes: true },
       request: { lead: 4, duration: [6, 8] },
       burns: { every: [20, 30], g: [4, 5], duration: [3, 5], warning: 5 },
-      surpriseChance: 0.05, mainChance: 0.5, driveDrain: 0.15,
+      surpriseChance: 0.05, driveDrain: 0.15,
       breakOff: 0                      // hunters send no new waves once the jump window is open
     },
     // No enemy fire. The pilot weaves through the field with long burns, and the engines get
@@ -339,9 +343,8 @@
     jumpGo:      ["Bridge: drive full. Jumping in {t}.", "Bridge: all hands, jump in {t}."],
     damaged:     ["Damage control: {what}."],
     killedOther: ["Tactical: {enemy} destroyed.", "Tactical: {enemy} breaking up."],
-    mainCall:    ["Gunnery: main gun shot in {t} s. I need it full, Engineering.", "Bridge: main gun target in {t} seconds. Charge it up!", "Gunnery: lining up the main gun, {t} seconds. It has to be full."],
-    mainFired:   ["Gunnery: main gun fired! {enemy} gutted.", "Bridge: main gun on target. Scratch one {enemy}.", "Gunnery: direct hit with the main gun!"],
-    mainMissed:  ["Gunnery: main gun wasn't full. We lost the shot.", "Bridge: no main gun shot, Engineering. It wasn't charged."],
+    mainFired:   ["Gunnery: main gun fired! Direct hit.", "Gunnery: main gun away! {enemy} is hurting.", "Gunnery: main gun on target. Keep it coming, Engineering!"],
+    mainKill:    ["Gunnery: main gun fired! {enemy} gutted.", "Bridge: main gun on target. Scratch one {enemy}."],
     launchCall:  ["Flight deck: squadron launch in {t} s. Charge the launchers.", "Bridge: launching gunboats in {t} seconds. Launchers must be full.", "Flight deck: gunboats to launch in {t}. Need full launchers."],
     launched:    ["Flight deck: squadron away!", "Flight deck: gunboats launched. They'll screen us."],
     launchMissed:["Flight deck: launchers weren't charged. Launch scrubbed.", "Bridge: no launch, Engineering. The launchers were short."],
