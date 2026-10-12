@@ -333,6 +333,15 @@
     traverse: 1.3,                     // fields per second the turret slides
     torpedo: { travel: 2.6, size: 0.022 },   // seconds from launch to impact; hit box half-size
     call: { seconds: 6, cooldown: 4 }, // CALL FOR POWER: rapid-fire request length, wait before the next
+    // Guns sit outside the shields. When a hit damages a gun's charger it damages its turret too,
+    // taking turns: slower slide, slower fire, shorter range (share lost per hit, up to `max`).
+    damage: { order: ["slide", "rate", "reach"], loss: { slide: 0.2, rate: 0.15, reach: 0.12 }, max: 0.6 },
+    // The AI engineer at the gunner station: skill rolled per mission (1 = the old perfect AI).
+    // Gunboats draw from the better end: they are the easy first job.
+    engineer: { skill: { gunboat: [0.6, 0.95], other: [0.3, 0.95] },
+      ranks: ["Engineer's Mate", "Petty Officer", "Chief"],
+      first: ["Dana", "Ike", "Mara", "Theo", "Priya", "Sol", "Wren", "Kofi", "Lena", "Rafe", "Juno", "Tam", "Ines", "Bo", "Nadia", "Cass"],
+      last: ["Reyes", "Okafor", "Lindqvist", "Brandt", "Kowalski", "Haddad", "Moreau", "Tanaka", "Byrne", "Novak", "Silva", "Petrov", "Achebe", "Quinn", "Varga", "Holt"] },
     // How each encounter's enemies look and fly. count = ships per wave (the wave's toughness is
     // split between them); band = the height they hold; sway = side-to-side swing; dive = how far
     // they swoop down now and then.

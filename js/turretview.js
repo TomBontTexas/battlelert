@@ -53,7 +53,7 @@
     });
 
     // Reach: how far this gun's bolts fly (label in pixels: tiny scaled fonts don't render).
-    var top = G.turretY - w.reach;
+    var top = G.turretY - tu.reach();
     if (top > 0.01) {
       c.fillStyle = "rgba(240,181,74,0.55)"; c.font = Math.round(S * 0.022) + "px system-ui, sans-serif";
       c.fillText(w.short + " RANGE", S * 0.012, S * (top - 0.008));

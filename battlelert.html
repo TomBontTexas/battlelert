@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Battlelert</title>
-<link rel="stylesheet" href="css/style.css?b=ff721bc0">
+<link rel="stylesheet" href="css/style.css?b=c1c6e233">
 </head>
 <body>
 
@@ -116,9 +116,11 @@
     <div id="brief-ship" class="brief-ship"></div>
     <h2 id="brief-station">Your station: Main Engineering</h2>
     <ul class="tight" id="brief-gun" hidden>
+      <li id="brief-engineer"></li>
       <li>You're at <b>Gun 1</b>, a <b id="brief-weapon">pulse cannon</b>: <span id="brief-weapon-what"></span></li>
       <li><b>Slide the turret</b> left and right and fire straight up. A bolt hits the first ship or torpedo it reaches; it flies only as far as the gun's range line.</li>
       <li>Enemy salvos come down as <b>torpedoes</b>. The shields take them, but you can shoot one down before it lands. Killing a ship stops the torpedoes it hasn't fired yet.</li>
+      <li>Your gun sits outside the shields. A torpedo that gets through can damage its charger and its turret: it slides slower, fires slower or loses range. Damage control repairs half of it between sorties.</li>
       <li><b>Every shot drains your gun's capacitor.</b> Hold FIRE and the gun fires as fast as it can while the charge lasts. <b>Call for power</b> and the engineer pours charge into your gun for a few seconds.</li>
       <li><b>Touch:</b> drag on the view or the aim pad to slide; hold FIRE. <b>Mouse:</b> move to aim, hold the button to fire. <b>Keys:</b> ← → slide, Space fires, C calls for power, P pauses.</li>
     </ul>
@@ -266,6 +268,8 @@
           <div id="tu-state" class="tu-state"></div>
         </div>
       </div>
+      <div class="row-label"><span>TURRET</span></div>
+      <div id="tu-tdmg" class="tu-tdmg"></div>
       <div id="tu-aimpad" class="tu-pad">◀ drag to aim ▶</div>
     </aside>
     <div class="tu-field" id="tu-field"><canvas id="tu-canvas"></canvas></div>
@@ -278,6 +282,8 @@
       <div class="row-label"><span id="tu-rec-label">RECOVERY</span><span id="tu-rec-val"></span></div>
       <div class="hbar"><div id="tu-rec" class="hbar-fill drive-fill"></div></div>
       <div id="tu-tally" class="tu-tally"></div>
+      <div class="row-label"><span>DAMAGE</span></div>
+      <ul id="tu-damage" class="damage-list tu-damage"><li class="muted">None</li></ul>
       <div id="tu-comms" class="comms-log tu-comms" aria-live="polite"></div>
       <button id="btn-tu-call" class="tu-call">CALL FOR POWER <small>(C)</small></button>
       <button id="btn-tu-fire" class="tu-fire">FIRE</button>
@@ -419,15 +425,15 @@
 
 <script src="version.js?b=e019564f"></script>
 <script src="update-banner.js?b=71816d57"></script>
-<script src="js/data.js?b=b0a021a3"></script>
-<script src="js/sim.js?b=5fc5250b"></script>
-<script src="js/agents.js?b=eb9ead9e"></script>
-<script src="js/gunnery.js?b=a8e4da3f"></script>
-<script src="js/turretview.js?b=7486578c"></script>
+<script src="js/data.js?b=2f7501d1"></script>
+<script src="js/sim.js?b=ceaf8d5c"></script>
+<script src="js/agents.js?b=5c95582d"></script>
+<script src="js/gunnery.js?b=18569270"></script>
+<script src="js/turretview.js?b=8f28df40"></script>
 <script src="js/names.js?b=fa2e0d88"></script>
 <script src="js/career.js?b=3ffe969c"></script>
 <script src="js/speech.js?b=9fa3cdb3"></script>
 <script src="js/audio.js?b=c07997e5"></script>
-<script src="js/ui.js?b=d67b96a5"></script>
+<script src="js/ui.js?b=d57d13b6"></script>
 </body>
 </html>

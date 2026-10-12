@@ -370,6 +370,10 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 .tu-pad { height: 22%; min-height: 70px; display: flex; align-items: center; justify-content: center; border: 1px dashed var(--line); border-radius: 8px; color: var(--muted); font-size: 13px; touch-action: none; }
 .tu-pad.on { border-color: var(--charge); color: var(--charge); }
 .tu-shield-fill { background: var(--charge); }
+.tu-tdmg { font-size: 13px; line-height: 1.35; }
+.tu-tdmg .ok { color: var(--good); }
+.tu-tdmg .hurt { color: var(--bad); }
+.tu-damage { font-size: 12px; max-height: 7.5em; overflow: hidden; }
 .tu-tally { font-size: 13px; color: var(--muted); display: grid; grid-template-columns: 1fr auto; gap: 1px 8px; }
 .tu-tally b { color: var(--text); font-family: var(--mono); font-weight: 400; text-align: right; }
 .tu-comms { min-height: 60px; font-size: 12px; }

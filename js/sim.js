@@ -105,8 +105,9 @@
           baseMJ: s.maxMJ, maxMJ: s.maxMJ, baseMW: s.maxMW, maxMW: s.maxMW,
           mj: s.startMJ, set: s.startSet, rate: 0, auxRate: 0, drainMW: s.drainMW || 0,
           tripped: false, tripUntil: 0, aux: false, freshMW: 0, reactor: s.reactor || 0, switchUntil: 0,
-          // gunner state
-          nextShot: 0, request: null, call: null
+          // gunner state; tdmg = turret damage (share lost: slide, rate, reach), tfresh = since the last repair
+          nextShot: 0, request: null, call: null,
+          tdmg: { slide: 0, rate: 0, reach: 0 }, tfresh: { slide: 0, rate: 0, reach: 0 }, turretHits: 0
         };
       })
     };
@@ -451,6 +452,7 @@
       var mw = Math.round(c.maxMW * 0.88 * 2) / 2;
       c.freshMW += c.maxMW - mw; c.maxMW = mw;
       what = c.name + " charger damaged, max rate now " + c.maxMW + " MW";
+      if (c.kind === "gun") what += "; its turret " + this.damageTurret(c);
     } else {
       var rx = r.pick(ship.reactors), out = Math.round(rx.max * 0.95);
       rx.fresh += rx.max - out; rx.max = out;
@@ -460,6 +462,22 @@
     this.stats.damageReports.push({ jump: this.jumpIndex + 1, what: what });
     this.chat("damaged", { what: what }, "bad");
   };
+
+  // Guns sit outside the shields: the hit that damages a gun's charger damages its turret too.
+  // Hits take turns (slide, fire rate, range), so no extra random roll changes the mission.
+  Mission.prototype.damageTurret = function (s) {
+    var D = BL.GUNNERY.damage, k = D.order[s.turretHits++ % D.order.length];
+    var add = Math.min(D.loss[k], D.max - s.tdmg[k]);
+    s.tdmg[k] += add; s.tfresh[k] += add;
+    return turretWords(k, s.tdmg[k]);
+  };
+  function turretWords(k, lost) {
+    var p = Math.round(lost * 100);
+    return k === "slide" ? "now slides " + p + "% slower" : k === "rate" ? "now fires " + p + "% slower" : "range now " + p + "% shorter";
+  }
+  BL.turretWords = turretWords;
+  // 1 = undamaged. Slide and range scale down; fire rate scales the time between shots up.
+  Mission.prototype.turretFactor = function (s, k) { return 1 - ((s && s.tdmg) ? s.tdmg[k] : 0); };
 
   /* Damage control: automatic, during GravSpace transit, on every class. Each transit
      restores half of the damage taken since the last one; the other half is permanent. */
@@ -473,6 +491,11 @@
     this.totalReactors();
     ship.systems.forEach(function (s) {
       if (s.freshMW > 0) { s.maxMW = Math.min(s.baseMW, s.maxMW + half(s.freshMW)); s.freshMW = 0; done.push(s.name + " charger max rate now " + s.maxMW + " MW"); }
+      if (s.tfresh) Object.keys(s.tfresh).forEach(function (k) {
+        if (s.tfresh[k] <= 0) return;
+        s.tdmg[k] = Math.max(0, s.tdmg[k] - s.tfresh[k] / 2); s.tfresh[k] = 0;
+        done.push(s.name + " turret " + (s.tdmg[k] > 0.005 ? turretWords(k, s.tdmg[k]) : "fully repaired"));
+      });
     });
     if (f.g > 0) { ship.maxG += f.g / 2; done.push("thrusters top speed now " + ship.maxG + " G"); }
     ship.fresh = { hull: 0, g: 0 };
@@ -500,7 +523,7 @@
       if (s.request && t >= s.request.until) this.closeRequest(s);
       if (!target) continue;
       if (t < s.nextShot) continue;
-      var interval = s.request ? g.fullInterval : g.normalInterval;
+      var interval = (s.request ? g.fullInterval : g.normalInterval) / this.turretFactor(s, "rate");
       if (ship.crippled) interval *= 1.6;
       s.nextShot = t + interval * (0.85 + this.rng.next() * 0.3);
       if (s.request) s.request.wanted++;
@@ -508,7 +531,7 @@
         s.mj -= g.shotMJ;
         if (s.request) s.request.fired++;
         this.cue("shot");
-        var hit = g.hitChance * (ship.crippled ? 0.6 : 1);
+        var hit = g.hitChance * (ship.crippled ? 0.6 : 1) * this.turretFactor(s, "slide") * this.turretFactor(s, "reach");
         if (this.rng.chance(hit)) {
           this.hitWave(target, g.damage, s.gunner);
         }

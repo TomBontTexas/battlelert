@@ -108,7 +108,11 @@
     var gunner = !!sim.turret;
     $("brief-eng").hidden = gunner; $("brief-gun").hidden = !gunner;
     $("brief-station").textContent = gunner ? "Your station: Gun 1 (the engineer runs the power)" : "Your station: Main Engineering";
-    if (gunner) { $("brief-weapon").textContent = sim.turret.w.name.toLowerCase(); $("brief-weapon-what").textContent = sim.turret.w.what; }
+    if (gunner) {
+      var en = sim.turret.engineer;
+      $("brief-weapon").textContent = sim.turret.w.name.toLowerCase(); $("brief-weapon-what").textContent = sim.turret.w.what;
+      $("brief-engineer").innerHTML = "Your engineer: <b>" + esc(en.name) + "</b>, " + en.label + " (skill " + Math.round(en.skill * 100) + "). " + ENGINEER_NOTE[en.label];
+    }
     show("scr-briefing");
   }
   $("btn-brief-back").onclick = function () { click(); if (job.test) show("scr-title"); else showOffers(offersMode); };
@@ -118,7 +122,8 @@
   function startMission() {
     BL.audio.init(); BL.audio.humStart();
     BL.speech.unlock();
-    aiEngineer = sim.turret ? new BL.AIEngineer(0.5, 0.25) : null;
+    aiEngineer = sim.turret ? new BL.AIEngineer(0.5, 0.25, sim.turret.engineer.skill) : null;
+    lastTuDamage = -1;
     if (sim.turret) { buildTurret(); show("scr-turret"); sizeTurret(); }
     else { buildConsole(); show("scr-console"); }
     gravShown = false; doneShown = false; paused = false; looking = false;
@@ -647,7 +652,7 @@
   function esc(s) { return String(s).replace(/[&<>]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]; }); }
 
   /* ------------------------------------------------------- Gunner turret */
-  var keysHeld = {}, tuCtx = null, tuSize = 0;
+  var keysHeld = {}, tuCtx = null, tuSize = 0, lastTuDamage = -1;
   function buildTurret() {
     var tu = sim.turret, w = tu.w;
     $("tu-station").textContent = "Gun 1 · " + (job.test ? sim.data.className : job.ship + " (" + sim.data.className + ")") + " · tech level " + sim.data.tl;
@@ -682,8 +687,17 @@
     $("tu-charge").style.height = pct(gun.mj / gun.baseMJ);
     setCls($("tu-charge"), "tu-lvl" + (gun.mj < w.shotMJ ? " low" : ""));
     setText($("tu-mj"), Math.floor(gun.mj) + " / " + gun.maxMJ + " MJ");
-    setText($("tu-shots"), Math.floor(gun.mj / w.shotMJ) + " shots · " + w.shotMJ + " MJ each");
-    setText($("tu-feed"), Math.round(gun.rate) + " MW" + (gun.tripped ? " · TRIPPED" : ""));
+    var nShots = Math.floor(gun.mj / w.shotMJ);
+    setText($("tu-shots"), nShots + (nShots === 1 ? " shot · " : " shots · ") + w.shotMJ + " MJ each");
+    setText($("tu-feed"), Math.round(gun.rate) + " MW" + (gun.tripped ? " · TRIPPED" : gun.maxMW < gun.baseMW ? " · max " + gun.maxMW + " (damaged)" : ""));
+    var td = ["slide", "rate", "reach"].filter(function (k) { return gun.tdmg[k] > 0.005; });
+    var tdHtml = td.length ? td.map(function (k) { return '<div class="hurt">⚠ ' + BL.turretWords(k, gun.tdmg[k]).replace(/^now /, "") + "</div>"; }).join("") : '<div class="ok">✔ No damage</div>';
+    if ($("tu-tdmg").innerHTML !== tdHtml) $("tu-tdmg").innerHTML = tdHtml;
+    var dl = sim.stats.damageReports;
+    if (dl.length !== lastTuDamage) {
+      lastTuDamage = dl.length;
+      $("tu-damage").innerHTML = dl.length ? dl.slice(-4).reverse().map(function (d) { return "<li>" + esc(d.what) + "</li>"; }).join("") : '<li class="muted">None</li>';
+    }
     var cs = tu.callState(), st, stc = "tu-state";
     if (gun.tripped) { st = "✖ GUN TRIPPED " + Math.ceil(gun.tripUntil - sim.t) + " s"; stc += " dry"; }
     else if (gun.mj < w.shotMJ) { st = "DRY: release FIRE to recharge"; stc += " dry"; }
@@ -816,6 +830,12 @@
       "</ul><h2>Next: " + next.name + "</h2><p>" + gunnerTip(sim.route[sim.jumpIndex]) + " The carrier launches you again on arrival.</p>" +
       "<p class='muted'>Take a breath; the clock is stopped.</p>";
   }
+  var ENGINEER_NOTE = {
+    sharp: "Keeps the shields full and answers a call for power fast.",
+    steady: "Reliable, now and then a beat slow.",
+    green: "New to the job: the shields may be short when a torpedo lands, and your calls take a moment.",
+    sloppy: "Expect torpedoes to get through. Shoot them down yourself."
+  };
   // What the gunner should expect from an encounter, and whether their gun has the edge.
   function gunnerTip(encId) {
     var w = sim.turret.w, look = BL.GUNNERY.looks[encId] || {};
@@ -896,6 +916,7 @@
       }).join("");
     var rows = [
       ["Gun", BL.WEAPONS[r.weapon].name],
+      ["Engineer", esc(r.engineer.name) + ", " + r.engineer.label + " (skill " + Math.round(r.engineer.skill * 100) + ")"],
       ["Accuracy", g.hits + " hits of " + g.shots + " shots (" + g.accuracyPct + "%)"],
       ["Enemy ships destroyed", g.kills + " / " + g.ships],
       ["Torpedoes shot down", g.downed + " / " + g.torps],

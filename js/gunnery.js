@@ -22,12 +22,27 @@
     this.firing = false; this.nextShot = 0; this.dryCueAt = 0; this.callReadyAt = 0;
     this.ships = []; this.torps = []; this.bolts = []; this.effects = [];
     this.nextId = 1;
+    this.engineer = pickEngineer(m);
     this.stats = { shots: 0, hits: 0, torpHits: 0, torps: 0, downed: 0, ships: 0, kills: 0, damage: 0, dryTime: 0, calls: 0, hullTorps: 0 };
     this.jumps = [];                    // per sortie / system: the same counts
   }
   BL.Turret = Turret;
 
   Turret.prototype.gun = function () { return this.m.sys(this.gunId); };
+  // The gun as damage has left it: range, time between shots, slide speed.
+  Turret.prototype.reach = function () { return this.w.reach * this.m.turretFactor(this.gun(), "reach"); };
+  Turret.prototype.interval = function () { return this.w.interval / this.m.turretFactor(this.gun(), "rate") * (this.m.ship.crippled ? 1.6 : 1); };
+  Turret.prototype.traverse = function () { return this.G.traverse * this.m.turretFactor(this.gun(), "slide") * (this.m.ship.crippled ? 0.7 : 1); };
+
+  // The engineer running the power while you're at the gun: a name and a skill, rolled from
+  // the seed (its own random stream, so the mission itself is unchanged).
+  function pickEngineer(m) {
+    var E = BL.GUNNERY.engineer, r = BL.rng((m.seed ^ 0x2c1b3c6d) >>> 0);
+    var range = E.skill[m.data.classId] || E.skill.other, skill = Math.round(r.range(range) * 100) / 100;
+    var rank = E.ranks[skill >= 0.85 ? 2 : skill >= 0.7 ? 1 : 0];
+    return { name: rank + " " + r.pick(E.first) + " " + r.pick(E.last), skill: skill,
+      label: skill >= 0.85 ? "sharp" : skill >= 0.7 ? "steady" : skill >= 0.5 ? "green" : "sloppy" };
+  }
 
   /* ---------------------------------------------------------- Player input */
   Turret.prototype.aimAt = function (x) { this.aimX = clamp(x, 0.03, 0.97); this.dir = 0; };
@@ -105,7 +120,7 @@
     });
 
     // Turret traverse: keys push the aim point along; it never slides faster than its drive.
-    var trav = G.traverse * (crippled ? 0.7 : 1);
+    var trav = this.traverse();
     if (this.dir) this.aimX = clamp(this.x + this.dir * trav * 0.25, 0.03, 0.97);
     var dx = this.aimX - this.x, mv = trav * dt;
     this.x += Math.abs(dx) <= mv ? dx : (dx > 0 ? mv : -mv);
@@ -186,14 +201,14 @@
     if (!this.firing || !this.live() || t < this.nextShot) return;
     if (s.mj >= w.shotMJ) {
       s.mj -= w.shotMJ;
-      this.nextShot = t + w.interval * (m.ship.crippled ? 1.6 : 1);
+      this.nextShot = t + this.interval();
       if (s.request) { s.request.wanted++; s.request.fired++; }
       this.bolts.push({ id: this.nextId++, x: this.x, y: this.G.turretY - 0.03, y0: this.G.turretY - 0.03, born: m.totalT });
       bump(this, "shots");
       m.cue(this.weaponId);
     } else {
       this.stats.dryTime += dt;
-      if (s.request && t >= this.nextShot) { s.request.wanted++; this.nextShot = t + w.interval; }
+      if (s.request && t >= this.nextShot) { s.request.wanted++; this.nextShot = t + this.interval(); }
       if (m.totalT >= this.dryCueAt) { this.dryCueAt = m.totalT + 0.45; m.cue("dry"); }
     }
   };
@@ -201,7 +216,7 @@
   // Bolts fly straight up; each tick sweeps from where it was to where it is, so fast rail
   // slugs can't skip through a ship. The nearest thing in the sweep takes the hit.
   Turret.prototype.moveBolts = function (dt) {
-    var w = this.w, G = this.G, keep = [], top = G.turretY - w.reach;
+    var w = this.w, G = this.G, keep = [], top = G.turretY - this.reach();
     for (var i = 0; i < this.bolts.length; i++) {
       var b = this.bolts[i], yOld = b.y, yNew = b.y - w.speed * dt, best = null, bestY = -1;
       for (var k = 0; k < this.torps.length; k++) {
@@ -303,6 +318,7 @@
     var accuracy = st.shots ? st.hits / st.shots : 0;
     var threats = st.ships + st.torps ? (st.kills + st.downed) / (st.ships + st.torps) : 0;
     r.station = "gunner";
+    r.engineer = m.turret.engineer;
     r.weapon = m.turret.weaponId;
     r.parts = { objective: r.parts.objective, condition: r.parts.condition, accuracy: Math.round(25 * accuracy), threats: Math.round(25 * threats) };
     r.raw = r.parts.objective + r.parts.condition + r.parts.accuracy + r.parts.threats;
@@ -323,7 +339,7 @@
   AIGunner.prototype.think = function (m) {
     var tu = m.turret; if (!tu || m.totalT < this.next) return;
     this.next = m.totalT + 0.1;
-    var w = tu.w, G = tu.G, top = G.turretY - w.reach, target = null, tx = tu.x, best = 1e9;
+    var w = tu.w, G = tu.G, top = G.turretY - tu.reach(), target = null, tx = tu.x, best = 1e9;
     tu.torps.forEach(function (tp) {
       var left = tp.t1 - m.t;
       if (left < 2 && tp.y > top && left < best) { best = left; target = tp; tx = tp.x1 + (tp.x - tp.x1) * 0.3; }
@@ -344,7 +360,7 @@
   // Plays a whole gunner mission with no screen: AI engineer on the power, AI gunner on the gun.
   BL.runGunnerHeadless = function (seed, weapon, classId, tl, skill) {
     var m = new BL.Mission({ seed: seed, quiet: true, classId: classId || "gunboat", tl: tl || 4, gunner: { weapon: weapon || "pulse" } });
-    var eng = new BL.AIEngineer(0.5, 0.25), gun = new AIGunner(skill);
+    var eng = new BL.AIEngineer(0.5, 0.25, m.turret.engineer.skill), gun = new AIGunner(skill);
     m.beginJump();
     var guard = 0;
     while (m.phase !== "done" && guard++ < BL.TICK_RATE * 60 * 30) {

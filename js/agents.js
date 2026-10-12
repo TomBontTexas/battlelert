@@ -7,16 +7,29 @@
 
   // temper: 0 = conservative (keeps heat low), 1 = aggressive (runs hot).
   // every: seconds between decisions (a slow value stands in for human reaction time).
-  function AIEngineer(temper, every) {
+  // skill: 1 = sharp and exact (the default, used by the balance tests). Lower skill plays
+  // like a person: slower decisions, now and then a distracted moment, salvos misjudged,
+  // shields charged late, and a slow answer when a gunner calls for power.
+  function AIEngineer(temper, every, skill) {
     this.temper = temper === undefined ? 0.5 : temper;
-    this.every = every || 0.25;
+    this.skill = skill === undefined ? 1 : skill;
+    this.slack = 1 - this.skill;
+    this.every = (every || 0.25) + this.slack * 1.2;
     this.next = 0;
+    this.rng = null;
   }
   BL.AIEngineer = AIEngineer;
 
   AIEngineer.prototype.think = function (m) {
     if (m.totalT < this.next) return;
     this.next = m.totalT + this.every;
+    var slack = this.slack, rr = this.rng;
+    if (slack > 0) {
+      rr = this.rng = this.rng || BL.rng((m.seed ^ 0x51ed270b) >>> 0);
+      if (rr.chance(slack * 0.25)) { this.next += 1 + rr.next() * 2 * slack; return; }   // distracted
+    }
+    var misjudge = slack > 0 ? 1 - slack * rr.next() * 0.7 : 1;      // under-reads the salvo
+    var late = slack > 0 ? slack * rr.next() * 3 : 0;                 // seconds slow to react
     var ship = m.ship, fc = m.forecast(), d = m.data;
     var self = this, R = ship.reactors, n = R.length;
     // In a minefield the engines only get what's left under 100%, so never plan past it.
@@ -36,13 +49,14 @@
     var shield = m.sys("shield"), life = m.sys("life"), drive = m.sys("drive"), pd = m.sys("pd"), buster = m.sys("buster");
     function incomingOf(type) {
       var list = fc.filter(function (e) { return e.type === type && e.in > -0.2; });
-      return { next: list.length ? list[0].in : 99, mj: list.filter(function (e) { return e.in < 8; }).reduce(function (a, e) { return a + e.mj; }, 0) };
+      return { next: list.length ? list[0].in : 99, mj: misjudge * list.filter(function (e) { return e.in < 8; }).reduce(function (a, e) { return a + e.mj; }, 0) };
     }
     // Shields and point defense: enough charge for what's announced, refilled before it lands.
     function guard(s, inc) {
       var need = Math.max(s.maxMJ - s.mj, inc.mj - s.mj);
+      if (late && inc.next > 1.5) inc = { next: inc.next + late, mj: inc.mj };   // thinks there's more time
       var w = need <= 0 ? 0 : Math.min(s.maxMW, need / Math.max(1.2, inc.next - 0.8));
-      return inc.next > 8 ? Math.min(w, (s.maxMJ - s.mj) / 6) : w;
+      return inc.next > 8 ? Math.min(w, (s.maxMJ - s.mj) / (6 + slack * 14)) : w;
     }
     var salvos = incomingOf("salvo"), strikes = incomingOf("strike");
 
@@ -53,7 +67,7 @@
     var wavesUp = m.waves && m.waves.some(function (w) { return !w.dead; });
     ship.systems.forEach(function (s) {
       if (s.kind !== "gun") return;
-      var req = s.request || fc.some(function (e) { return e.type === "request" && e.gun === s.gunner && e.in < 2.5; });
+      var req = (s.request && m.t - s.request.t >= slack * 2.5) || fc.some(function (e) { return e.type === "request" && e.gun === s.gunner && e.in < 2.5; });
       var room = s.maxMJ - s.mj;
       want[s.id] = req ? s.maxMW : wavesUp ? Math.min(s.maxMW, 9 + room / 6) : room / 8;
     });
@@ -69,8 +83,17 @@
       want[s.id] = soon ? s.maxMW : Math.min(s.maxMW, room / 12);
     });
 
+    // A player's call for power: a careful engineer keeps the shields first; a less careful one
+    // (decided once per call) routes the gun ahead of them, and the shields can come up short.
+    var order = m.priority;
+    if (slack > 0) ship.systems.forEach(function (s) {
+      var q = s.request;
+      if (s.kind !== "gun" || !q || !q.player) return;
+      if (q.starve === undefined) q.starve = rr.chance(Math.min(1, slack * 2.5));
+      if (q.starve && m.t - q.t >= slack * 2.5) order = [s.id].concat(order.filter(function (id) { return id !== s.id; }));
+    });
     // Fill in priority order, each from its own reactor; the drive and buster take what's left.
-    m.priority.forEach(function (id) {
+    order.forEach(function (id) {
       var s = m.sys(id);
       if (s.kind === "drive" || s.kind === "buster") return;
       var full = s.mj >= s.maxMJ - 0.5;
