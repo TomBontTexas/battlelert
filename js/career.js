@@ -8,7 +8,15 @@
   var KEY = BL.APP_TAG + "_career";
   var STATIONS = ["engineer", "gunner", "pilot"];
   var STATION_NAME = { engineer: "Engineer", gunner: "Gunner", pilot: "Pilot" };
-  var PLAYABLE = { engineer: true };               // stations built so far
+  var PLAYABLE = { engineer: true, gunner: true }; // stations built so far
+  var GUNNER_CLASSES = 1;                          // the gunner station is built up to this class
+  // Is this class built for this station? (The engine room runs on every built class.)
+  function built(station, n) {
+    var cls = BL.classByN(n);
+    if (!cls || !PLAYABLE[station]) return false;
+    return station === "gunner" ? n <= GUNNER_CLASSES : !!cls.built;
+  }
+  function blankProfile() { return { missions: 0, wins: 0, losses: 0, aggression: 0, efficiency: 0, demands: 0, condition: 0 }; }
 
   var NAMES_VERSION = 2;                           // 2 = the historical ship roster (names.js)
 
@@ -22,12 +30,12 @@
       app: BL.APP_TAG, kind: "career", format: 1,
       name: cleanName(name) || "Recruit", created: today(),
       stations: {}, signoffsUsed: [],
-      profile: { missions: 0, wins: 0, losses: 0, aggression: 0, efficiency: 0, demands: 0, condition: 0 },
-      history: [], offers: [], offerSeed: BL.randomSeed(), offersSinceStepUp: 0,
+      profiles: {},                     // one reputation profile per station
+      history: [], offersBy: {}, stepUps: {}, offerSeed: BL.randomSeed(),
       ships: {}, namesVersion: NAMES_VERSION
     };
-    STATIONS.forEach(function (s) { c.stations[s] = { qualified: 0, rep: 0, failures: {} }; });
-    generateOffers(c);
+    STATIONS.forEach(function (s) { c.stations[s] = { qualified: 0, rep: 0, failures: {}, realUntil: 0 }; c.profiles[s] = blankProfile(); c.stepUps[s] = 0; });
+    STATIONS.forEach(function (s) { if (PLAYABLE[s]) generateOffers(c, s); });
     return c;
   }
 
@@ -42,29 +50,38 @@
   function normalize(c) {
     if (!c || c.kind !== "career") throw new Error("This file isn't a Battlelert career.");
     var oldNames = c.namesVersion !== NAMES_VERSION;   // checked before the defaults below fill it in
+    // Careers from before the gunner station: one engineer offer list and one profile.
+    if (!c.offersBy) c.offersBy = { engineer: Array.isArray(c.offers) ? c.offers : [] };
+    if (!c.profiles) c.profiles = { engineer: c.profile || blankProfile() };
+    if (!c.stepUps) c.stepUps = { engineer: +c.offersSinceStepUp || 0 };
+    delete c.offers; delete c.profile; delete c.offersSinceStepUp;
     var fresh = create(c.name);
-    fresh.offers = [];
     Object.keys(fresh).forEach(function (k) { if (c[k] === undefined) c[k] = fresh[k]; });
     STATIONS.forEach(function (s) {
       var st = c.stations[s] = c.stations[s] || {};
       st.qualified = clamp(+st.qualified || 0, 0, 9);
       st.rep = isFinite(+st.rep) ? Math.max(0, +st.rep) : 0;
       st.failures = st.failures || {};
+      st.realUntil = +st.realUntil || 0;
+      var p = c.profiles[s] = c.profiles[s] || blankProfile();
+      Object.keys(blankProfile()).forEach(function (k) { if (!isFinite(+p[k])) p[k] = 0; });
+      if (!isFinite(+c.stepUps[s])) c.stepUps[s] = 0;
     });
-    ["missions", "wins", "losses", "aggression", "efficiency", "demands", "condition"].forEach(function (k) {
-      if (!isFinite(+c.profile[k])) c.profile[k] = 0;
-    });
+    if (!Array.isArray(c.signoffsUsed)) c.signoffsUsed = [];
     c.name = cleanName(c.name) || "Recruit";
     if (!c.ships || typeof c.ships !== "object") c.ships = {};
     // Careers from before the ship roster: start the service records from the mission history,
     // and replace offers that still carry the old generic names.
     if (oldNames) {
       c.history.slice().reverse().forEach(function (h) { logService(c, h, {}); });
-      c.offers = [];
+      c.offersBy = {};
       c.namesVersion = NAMES_VERSION;
     }
-    if (!Array.isArray(c.offers) || !c.offers.length) generateOffers(c);
-    ensureStepUp(c);
+    STATIONS.forEach(function (s) {
+      if (!PLAYABLE[s]) return;
+      if (!Array.isArray(c.offersBy[s]) || !c.offersBy[s].length) generateOffers(c, s);
+      ensureStepUp(c, s);
+    });
     return c;
   }
 
@@ -86,50 +103,61 @@
     return q ? STATION_NAME[station] + "-" + q : "Recruit";
   }
   function highestClass(c) { return Math.max.apply(null, STATIONS.map(function (s) { return c.stations[s].qualified; })); }
+  // The best rank held, for the title screen: "Engineer-4", or "Engineer-4 · Gunner-1".
+  function ranks(c) {
+    var held = STATIONS.filter(function (s) { return qualified(c, s) > 0; }).map(function (s) { return rank(c, s); });
+    return held.length ? held.join(" · ") : "Recruit";
+  }
   function signoffsTotal(c) { return Math.max(0, highestClass(c) - 2); }
   function signoffsHeld(c) { return signoffsTotal(c) - c.signoffsUsed.length; }
   // The class a station is working toward: the one above its qualification (class 1 to start).
   function targetClass(c, station) { return Math.min(9, qualified(c, station) + 1); }
 
   /* ------------------------------------------------------------ Offers
-     Generic postings for now (Phase 2): a ship class, a tech level and a ship name.
+     Generic postings for now: a ship class, a tech level and a ship name; one list per station.
      Always a tech-level-1 offer for the class you're on and, once you're qualified, one
-     for the class above; more offers from the class above come as reputation grows. */
+     for the class above; more offers from the class above come as reputation grows.
+     A gunner job names the engineer you'd serve with (the same one the mission will roll). */
   function makeJob(rng, station, n, tl, serious) {
     var cls = BL.classByN(n);
-    return { id: "j" + Math.floor(rng.next() * 1e9).toString(36), station: station, classId: cls.id, n: n, tl: tl,
+    var job = { id: "j" + Math.floor(rng.next() * 1e9).toString(36), station: station, classId: cls.id, n: n, tl: tl,
       ship: BL.shipName(rng, cls.id, tl), seed: 1 + Math.floor(rng.next() * 999999), serious: serious !== false };
+    if (station === "gunner") { job.weapon = "pulse"; if (BL.pickEngineer) job.engineer = BL.pickEngineer(job.seed, cls.id); }
+    return job;
   }
-  function generateOffers(c) {
+  function offers(c, station) { return c.offersBy[station] || []; }
+  function generateOffers(c, station) {
+    station = station || "engineer";
     var rng = BL.rng(c.offerSeed = (c.offerSeed * 48271 + 11) % 2147483647 || 1);
-    var station = "engineer", q = qualified(c, station), offers = [];
+    var q = qualified(c, station), offers = [];
     var current = Math.max(1, q);
-    if (!BL.classByN(current).built) current = 1;
+    if (!built(station, current)) current = Math.min(current, station === "gunner" ? GUNNER_CLASSES : current);
+    if (!built(station, current)) current = 1;
     offers.push(makeJob(rng, station, current, 1));
     var extra = rng.int([1, 2]);
     for (var i = 0; i < extra; i++) offers.push(makeJob(rng, station, current, rng.int([2, 6])));
     var next = BL.classByN(q + 1);
-    if (q >= 1 && next && next.built) {
+    if (q >= 1 && next && built(station, next.n)) {
       offers.push(makeJob(rng, station, next.n, 1));
       var rep = c.stations[station].rep;
       var chance = clamp(0.45 + rep / (3 * next.baseRep), 0.45, 0.95);
-      if (rng.chance(chance) || c.offersSinceStepUp >= 2) {
+      if (rng.chance(chance) || c.stepUps[station] >= 2) {
         offers.push(makeJob(rng, station, next.n, rng.int([2, 6])));
-        c.offersSinceStepUp = 0;
-      } else c.offersSinceStepUp++;
+        c.stepUps[station] = 0;
+      } else c.stepUps[station] = (c.stepUps[station] || 0) + 1;
     }
     offers.sort(function (a, b) { return b.n - a.n || a.tl - b.tl; });
-    c.offers = offers;
+    c.offersBy[station] = offers;
     return offers;
   }
   // Careers saved before the step-up rule may lack the guaranteed tech-level-1 offer.
-  function ensureStepUp(c) {
-    var station = "engineer", q = qualified(c, station), next = BL.classByN(q + 1);
-    if (q < 1 || !next || !next.built) return;
-    var has = c.offers.some(function (o) { return o.station === station && o.n === next.n && o.tl === 1; });
+  function ensureStepUp(c, station) {
+    var q = qualified(c, station), next = BL.classByN(q + 1), list = offers(c, station);
+    if (q < 1 || !next || !built(station, next.n)) return;
+    var has = list.some(function (o) { return o.n === next.n && o.tl === 1; });
     if (!has) {
-      c.offers.push(makeJob(BL.rng(c.offerSeed + 3), station, next.n, 1));
-      c.offers.sort(function (a, b) { return b.n - a.n || a.tl - b.tl; });
+      list.push(makeJob(BL.rng(c.offerSeed + 3), station, next.n, 1));
+      list.sort(function (a, b) { return b.n - a.n || a.tl - b.tl; });
     }
   }
 
@@ -138,7 +166,7 @@
     var q = qualified(c, station), out = [];
     var rng = BL.rng(c.offerSeed + 7);
     for (var n = 1; n < q; n++) {
-      if (!BL.classByN(n).built) continue;
+      if (!built(station, n)) continue;
       for (var tl = 1; tl <= 6; tl++) out.push(makeJob(rng, station, n, tl, false));
     }
     return out;
@@ -167,6 +195,8 @@
       if (st.failures[post] >= 2) {
         st.failures[post] = 0;
         var back = Math.max(0, Math.min(st.qualified, post - 2));
+        // Classes lost this way must be requalified with real missions, not rapid sign-offs.
+        st.realUntil = Math.max(st.realUntil || 0, st.qualified);
         if (back < st.qualified) { st.qualified = back; report.demoted = true; }
         report.sentBack = true;
       }
@@ -174,23 +204,49 @@
     report.qualifiedAfter = st.qualified;
     // Rapid sign-offs held can't exceed what the new top class allows.
     while (c.signoffsUsed.length > signoffsTotal(c)) c.signoffsUsed.pop();
-    // Reputation profile: running averages over every mission flown.
-    var p = c.profile, n = p.missions;
+    // Reputation profile, one per station: running averages over every mission at that station.
+    // At the gun, accuracy fills the efficiency slot and threats stopped the demands-met slot.
+    var p = c.profiles[job.station] = c.profiles[job.station] || blankProfile(), n = p.missions;
+    report.profileBefore = profile(c, job.station);
     function avg(old, v) { return (old * n + v) / (n + 1); }
+    var gun = job.station === "gunner";
     p.aggression = avg(p.aggression, r.aggression || 0);
-    p.efficiency = avg(p.efficiency, r.detail.efficiencyPct / 100);
-    p.demands = avg(p.demands, r.parts.demands / 25);
+    p.efficiency = avg(p.efficiency, gun ? (r.gunner ? r.gunner.accuracyPct : 0) / 100 : r.detail.efficiencyPct / 100);
+    p.demands = avg(p.demands, (gun ? r.parts.threats : r.parts.demands) / 25);
     p.condition = avg(p.condition, r.parts.condition / 25);
     p.missions = n + 1;
     if (success) p.wins++; else p.losses++;
-    report.profileAfter = profile(c);
+    report.profileAfter = profile(c, job.station);
     var entry = { date: today(), station: job.station, classId: job.classId, n: job.n, tl: job.tl, ship: job.ship,
       seed: job.seed, outcome: r.outcome, score: r.score, rep: report.rep, serious: job.serious };
     c.history.unshift(entry);
     if (c.history.length > 200) c.history.length = 200;
     logService(c, entry, r);
-    generateOffers(c);
+    generateOffers(c, job.station);
     return report;
+  }
+
+  /* ------------------------------------------------------ Rapid sign-offs
+     Qualified on class N at any station, you hold N - 2 sign-offs in total. Each qualifies you
+     at another station on its next class, as long as that class is no higher than N - 2 and
+     built for that station. No reputation, and never to win back a class lost to failures. */
+  function signoffOptions(c) {
+    var top = highestClass(c), out = [];
+    if (signoffsHeld(c) <= 0) return out;
+    STATIONS.forEach(function (s) {
+      var st = c.stations[s], n = st.qualified + 1;
+      if (!PLAYABLE[s] || n > top - 2 || !built(s, n) || n <= (st.realUntil || 0)) return;
+      out.push({ station: s, n: n });
+    });
+    return out;
+  }
+  function spendSignoff(c, station, n) {
+    var ok = signoffOptions(c).some(function (o) { return o.station === station && o.n === n; });
+    if (!ok) return false;
+    c.stations[station].qualified = n;
+    c.signoffsUsed.push({ station: station, n: n, date: today() });
+    generateOffers(c, station);
+    return true;
   }
 
   /* Service records: one per ship, kept for the whole career (never trimmed). Each mission
@@ -206,9 +262,9 @@
   }
   function serviceRecord(c, ship) { return c.ships[ship] || null; }
 
-  // Reputation profile factors, 0..1 each, shown as slider bars.
-  function profile(c) {
-    var p = c.profile, flown = p.wins + p.losses;
+  // Reputation profile factors for one station, 0..1 each, shown as slider bars.
+  function profile(c, station) {
+    var p = c.profiles[station || "engineer"] || blankProfile(), flown = p.wins + p.losses;
     return {
       aggression: p.aggression,
       winloss: flown ? p.wins / flown : 0,
@@ -219,12 +275,12 @@
   }
 
   BL.career = {
-    STATIONS: STATIONS, STATION_NAME: STATION_NAME, PLAYABLE: PLAYABLE,
+    STATIONS: STATIONS, STATION_NAME: STATION_NAME, PLAYABLE: PLAYABLE, built: built,
     create: create, save: save, load: load, normalize: normalize,
     fileName: fileName, exportText: exportText, importText: importText,
-    qualified: qualified, rank: rank, targetClass: targetClass,
-    signoffsTotal: signoffsTotal, signoffsHeld: signoffsHeld,
-    generateOffers: generateOffers, lowerJobs: lowerJobs, repFor: repFor,
+    qualified: qualified, rank: rank, ranks: ranks, targetClass: targetClass,
+    signoffsTotal: signoffsTotal, signoffsHeld: signoffsHeld, signoffOptions: signoffOptions, spendSignoff: spendSignoff,
+    offers: offers, generateOffers: generateOffers, lowerJobs: lowerJobs, repFor: repFor,
     applyResult: applyResult, profile: profile, serviceRecord: serviceRecord
   };
 })(typeof window !== "undefined" ? window : globalThis);

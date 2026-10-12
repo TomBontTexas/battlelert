@@ -48,7 +48,7 @@
 <section id="scr-enlist" class="screen page" hidden>
   <div class="sheet narrow">
     <h1>Enlist</h1>
-    <p class="lede">Every career starts in a gunboat's engine room. Choose the name your crews will know you by.</p>
+    <p class="lede">Every career starts aboard a gunboat, in the engine room or at the gun. Choose the name your crews will know you by.</p>
     <label class="field-label" for="hero-name">Hero name</label>
     <input id="hero-name" class="text-input" type="text" maxlength="24" autocomplete="off" placeholder="e.g. Plasma Pete">
     <p class="muted small-text">Shown on your career hub and service record, and used for your save file (BATTLELERT_<i>name</i>.json).</p>
@@ -69,8 +69,8 @@
     <div id="hub-grid" class="grid-wrap"></div>
     <p id="hub-last" class="muted"></p>
     <div class="hub-actions">
-      <button id="btn-hub-offers" class="big primary">Job offers</button>
-      <button id="btn-hub-lower">Lower-class jobs</button>
+      <button id="btn-hub-eng" class="big primary">Engineer jobs</button>
+      <button id="btn-hub-gun" class="big primary">Gunner jobs</button>
       <button id="btn-hub-signoffs">Rapid sign-offs</button>
       <button id="btn-hub-record">Service record</button>
       <button id="btn-hub-export">Export career</button>
@@ -86,7 +86,7 @@
     <h1 id="offers-title">Job offers</h1>
     <p id="offers-lede" class="lede"></p>
     <div id="offers-list" class="offers"></div>
-    <div class="actions"><button id="btn-offers-back">Career hub</button></div>
+    <div class="actions"><button id="btn-offers-lower">Lower-class jobs</button><button id="btn-offers-back">Career hub</button></div>
   </div>
 </section>
 
@@ -95,7 +95,6 @@
   <div class="sheet">
     <h1 id="rec-title">Service record</h1>
     <div id="rec-summary" class="hub-summary"></div>
-    <h2>Reputation profile</h2>
     <div id="rec-profile" class="profile"></div>
     <h2>Career</h2>
     <div id="rec-grid" class="grid-wrap"></div>
@@ -434,13 +433,13 @@
 <script src="js/data.js?b=7fddd62f"></script>
 <script src="js/sim.js?b=28c3d453"></script>
 <script src="js/agents.js?b=5c95582d"></script>
-<script src="js/gunnery.js?b=fdfbc4b7"></script>
+<script src="js/gunnery.js?b=412d839b"></script>
 <script src="js/art.js?b=e3c1ea0c"></script>
 <script src="js/turretview.js?b=46d26e61"></script>
 <script src="js/names.js?b=fa2e0d88"></script>
-<script src="js/career.js?b=3ffe969c"></script>
+<script src="js/career.js?b=fd8f1636"></script>
 <script src="js/speech.js?b=9fa3cdb3"></script>
 <script src="js/audio.js?b=c07997e5"></script>
-<script src="js/ui.js?b=99bcf4bf"></script>
+<script src="js/ui.js?b=f06e2ac3"></script>
 </body>
 </html>

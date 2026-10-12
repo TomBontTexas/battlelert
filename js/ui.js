@@ -914,7 +914,7 @@
     if (report.failuresAtPost === 1) rows.push('<p class="big-line">Failure 1 of 2 at this post. A second failure here sends you back a class.</p>');
     if (report.sentBack) rows.push('<p class="big-line demo">Second failure at this post: sent back to ' + (report.qualifiedAfter ? BL.career.rank(career, job.station) : "the gunboat, unqualified") +
       ". Requalify with a real mission.</p>");
-    rows.push("<h2>Reputation profile</h2>" + profileHtml(report.profileAfter, report.profileBefore));
+    rows.push("<h2>" + BL.career.STATION_NAME[job.station] + " reputation profile</h2>" + profileHtml(report.profileAfter, report.profileBefore, job.station));
     $("db-career").innerHTML = "<h2>Career: " + esc(career.name) + "</h2>" + rows.join("");
   }
   $("btn-db-hub").onclick = function () { click(); showHub(); };
@@ -942,7 +942,8 @@
       ["Damage reports", r.damage.length]
     ];
     $("db-detail").innerHTML = rows.map(function (x) { return "<div><span>" + x[0] + ":</span> " + x[1] + "</div>"; }).join("");
-    $("db-career").hidden = true;
+    $("db-career").hidden = !report;
+    if (report) renderCareerReport(r);
     $("btn-db-hub").hidden = !!job.test;
     $("btn-db-again").hidden = $("btn-db-new").hidden = $("btn-db-title").hidden = !job.test;
   }
@@ -1005,15 +1006,24 @@
   $("btn-db-title").onclick = function () { click(); newSeedInput(); refreshTitle(); show("scr-title"); };
 
   /* -------------------------------------------------------------- Career */
-  var PROFILE_ROWS = [
-    ["aggression", "Aggression", "conservative", "aggressive"],
-    ["winloss", "Win/loss", "losses", "wins"],
-    ["efficiency", "Efficiency", "wasteful", "efficient"],
-    ["demands", "Demands met", "few", "all"],
-    ["condition", "Ship condition", "wrecked", "untouched"]
-  ];
-  function profileHtml(p, before) {
-    return PROFILE_ROWS.map(function (row) {
+  var PROFILE_ROWS = {
+    engineer: [
+      ["aggression", "Aggression", "conservative", "aggressive"],
+      ["winloss", "Win/loss", "losses", "wins"],
+      ["efficiency", "Efficiency", "wasteful", "efficient"],
+      ["demands", "Demands met", "few", "all"],
+      ["condition", "Ship condition", "wrecked", "untouched"]
+    ],
+    gunner: [
+      ["aggression", "Aggression", "holds fire", "trigger-happy"],
+      ["winloss", "Win/loss", "losses", "wins"],
+      ["efficiency", "Accuracy", "wild", "sharp"],
+      ["demands", "Threats stopped", "few", "all"],
+      ["condition", "Ship condition", "wrecked", "untouched"]
+    ]
+  };
+  function profileHtml(p, before, station) {
+    return PROFILE_ROWS[station || "engineer"].map(function (row) {
       var v = clampN(p[row[0]], 0, 1) * 100;
       var b = before ? '<i class="pf-mark before" style="left:' + clampN(before[row[0]], 0, 1) * 100 + '%"></i>' : "";
       return '<div class="pf"><span>' + row[1] + '</span><div class="pf-track"><div class="pf-fill" style="width:' + v + '%"></div>' + b +
@@ -1027,26 +1037,30 @@
       var q = BL.career.qualified(c, st), target = BL.career.targetClass(c, st);
       return "<tr><td>" + BL.career.STATION_NAME[st] + "</td>" + BL.CLASSES.map(function (k) {
         if (!BL.career.PLAYABLE[st]) return k.n === 1 ? '<td class="later" colspan="9">' + later[st] + "</td>" : "";
+        var ready = BL.career.built(st, k.n);
         if (k.n <= q) return '<td class="q" title="Qualified">✔</td>';
-        if (k.n === target && k.built) return '<td class="next" title="Working toward">▶</td>';
-        return '<td class="off">' + (k.built ? "" : "·") + "</td>";
+        if (k.n === target && ready) return '<td class="next" title="Working toward">▶</td>';
+        return '<td class="off">' + (ready ? "" : "·") + "</td>";
       }).join("") + "</tr>";
     }).join("");
     rows += '<tr><td>Command</td><td class="later" colspan="9">Phase 5: needs all three stations on a class</td></tr>';
     return '<table class="cgrid">' + head + rows + "</table><p class=\"muted small-text\">✔ qualified · ▶ working toward · dot = not built yet</p>";
   }
   function summaryHtml(c) {
-    var e = c.stations.engineer;
-    return "<span>Rank <b>" + BL.career.rank(c, "engineer") + "</b></span>" +
-      "<span>Engineer reputation <b>" + e.rep + "</b></span>" +
+    return BL.career.STATIONS.filter(function (s) { return BL.career.PLAYABLE[s]; }).map(function (s) {
+      return "<span>" + BL.career.STATION_NAME[s] + " <b>" + BL.career.rank(c, s) + "</b> · reputation <b>" + c.stations[s].rep + "</b></span>";
+    }).join("") +
       "<span>Rapid sign-offs <b>" + BL.career.signoffsHeld(c) + "</b></span>" +
-      "<span>Missions <b>" + c.profile.missions + "</b> (" + c.profile.wins + " won)</span>";
+      "<span>Missions <b>" + sumProfiles(c, "missions") + "</b> (" + sumProfiles(c, "wins") + " won)</span>";
+  }
+  function sumProfiles(c, k) {
+    return Object.keys(c.profiles).reduce(function (a, s) { return a + (+c.profiles[s][k] || 0); }, 0);
   }
 
   function refreshTitle() {
     var b = $("btn-continue");
     b.hidden = !career;
-    if (career) b.textContent = "Continue as " + career.name + " (" + BL.career.rank(career, "engineer") + ")";
+    if (career) b.textContent = "Continue as " + career.name + " (" + BL.career.ranks(career) + ")";
   }
   $("btn-continue").onclick = function () { BL.audio.init(); click(); showHub(); };
   $("btn-enlist").onclick = function () {
@@ -1086,13 +1100,15 @@
     $("hub-summary").innerHTML = summaryHtml(career);
     $("hub-grid").innerHTML = gridHtml(career);
     var last = career.history[0];
-    $("hub-last").textContent = last ? "Last mission: " + last.ship + " (" + BL.classById(last.classId).name + ", tech level " + last.tl + "), " +
+    $("hub-last").textContent = last ? "Last mission: " + BL.career.STATION_NAME[last.station || "engineer"].toLowerCase() + " aboard " + last.ship + " (" + BL.classById(last.classId).name + ", tech level " + last.tl + "), " +
       (last.outcome === "success" ? "success, +" + last.rep + " reputation" : last.outcome) + "." : "No missions yet. Your first job offers are waiting.";
-    $("btn-hub-offers").textContent = "Job offers (" + career.offers.length + ")";
+    $("btn-hub-eng").textContent = "Engineer jobs (" + BL.career.offers(career, "engineer").length + ")";
+    $("btn-hub-gun").textContent = "Gunner jobs (" + BL.career.offers(career, "gunner").length + ")";
     show("scr-hub");
   }
-  $("btn-hub-offers").onclick = function () { click(); showOffers("offers"); };
-  $("btn-hub-lower").onclick = function () { click(); showOffers("lower"); };
+  $("btn-hub-eng").onclick = function () { click(); showOffers("offers", "engineer"); };
+  $("btn-hub-gun").onclick = function () { click(); showOffers("offers", "gunner"); };
+  $("btn-offers-lower").onclick = function () { click(); showOffers(offersMode === "lower" ? "offers" : "lower", offersStation); };
   $("btn-hub-record").onclick = function () { click(); showRecord(); };
   $("btn-hub-options").onclick = function () { click(); openOptions(); };
   $("btn-hub-title").onclick = function () { click(); refreshTitle(); show("scr-title"); };
@@ -1107,33 +1123,48 @@
   $("btn-hub-signoffs").onclick = function () {
     click();
     var held = BL.career.signoffsHeld(career), total = BL.career.signoffsTotal(career);
-    $("signoffs-body").innerHTML = "<p>You hold <b>" + held + "</b> rapid sign-off" + (held === 1 ? "" : "s") + ".</p>" +
-      "<p>Once you're qualified at a station on ship class N, you hold N − 2 sign-offs in total (" + total + " now). Each qualifies you at another station on a class no higher than N − 2, without flying a mission. They earn no reputation and can't be used to requalify after being sent back.</p>" +
-      "<p class=\"muted\">There's nothing to spend them on yet: they become usable when the gunner and pilot stations arrive (Phases 3 and 4). Unused ones stay available.</p>";
+    renderSignoffs();
     overlay("ov-signoffs", true);
   };
+  function renderSignoffs() {
+    var held = BL.career.signoffsHeld(career), total = BL.career.signoffsTotal(career), opts = BL.career.signoffOptions(career);
+    $("signoffs-body").innerHTML = "<p>You hold <b>" + held + "</b> rapid sign-off" + (held === 1 ? "" : "s") + ".</p>" +
+      "<p>Once you're qualified at a station on ship class N, you hold N − 2 sign-offs in total (" + total + " now). Each qualifies you at another station on its next class, no higher than N − 2, without flying a mission. They earn no reputation and can't be used to requalify after being sent back.</p>" +
+      (opts.length ? '<div class="menu">' + opts.map(function (o) {
+        return '<button class="primary" data-st="' + o.station + '" data-n="' + o.n + '">Sign off as ' + BL.career.STATION_NAME[o.station] + "-" + o.n + " (" + BL.classByN(o.n).name.toLowerCase() + ")</button>";
+      }).join("") + "</div>" :
+      '<p class="muted">' + (held ? "Nothing to spend one on right now: the next class at your other stations is either higher than N − 2 or not built yet (the gunner station is built for gunboats so far)." : "Unused sign-offs stay available.") + "</p>");
+  }
+  $("signoffs-body").addEventListener("click", function (ev) {
+    var b = ev.target.closest("button[data-st]"); if (!b) return;
+    if (BL.career.spendSignoff(career, b.dataset.st, +b.dataset.n)) { saveCareer(); click(); renderSignoffs(); showHub(); overlay("ov-signoffs", true); }
+  });
   $("btn-signoffs-close").onclick = function () { click(); overlay("ov-signoffs", false); };
 
   function offerHtml(j, i) {
-    var cls = BL.classByN(j.n), q = BL.career.qualified(career, j.station), up = j.n > q;
+    var cls = BL.classByN(j.n), q = BL.career.qualified(career, j.station), up = j.n > q, rankName = BL.career.STATION_NAME[j.station];
     var tag = up ? '<span class="tag up">' + (q ? "STEP UP" : "FIRST QUALIFICATION") + "</span>" : !j.serious ? '<span class="tag low">LOWER CLASS</span>' : "";
     return '<div class="offer' + (up ? " stepup" : "") + '"><h3>' + cls.name + " · " + j.ship + tag + "</h3>" +
       '<button class="primary" data-i="' + i + '">Accept</button>' +
-      '<div class="meta">Engineer · tech level ' + j.tl + " (reputation ×" + BL.TECH.repMult(j.tl).toFixed(1) + ") · up to " + BL.career.repFor(j, 100) + " reputation" +
-      (up ? " · success qualifies you as Engineer-" + j.n : "") + "</div></div>";
+      '<div class="meta">' + rankName + (j.station === "gunner" ? " · Gun 1, pulse cannon" : "") + " · tech level " + j.tl + " (reputation ×" + BL.TECH.repMult(j.tl).toFixed(1) + ") · up to " + BL.career.repFor(j, 100) + " reputation" +
+      (up ? " · success qualifies you as " + rankName + "-" + j.n : "") + "</div>" +
+      (j.engineer ? '<div class="meta">Engineer: <b>' + esc(j.engineer.name) + "</b>, " + j.engineer.label + " (skill " + Math.round(j.engineer.skill * 100) + ")</div>" : "") + "</div>";
   }
-  var shownJobs = [];
-  function showOffers(mode) {
-    offersMode = mode;
-    var q = BL.career.qualified(career, "engineer");
+  var shownJobs = [], offersStation = "engineer";
+  function showOffers(mode, station) {
+    offersMode = mode; offersStation = station = station || offersStation;
+    var q = BL.career.qualified(career, station), who = BL.career.STATION_NAME[station];
+    $("btn-offers-lower").textContent = mode === "lower" ? who + " job offers" : "Lower-class jobs";
     if (mode === "offers") {
-      shownJobs = career.offers;
-      $("offers-title").textContent = "Job offers";
-      $("offers-lede").textContent = "Postings for engineers at your level. Lower tech levels are harder (smaller reactor and capacitors, weaker guns) and earn more reputation." +
-        (q ? " There's always a tech-level-1 posting for your class and for the class above it." : " There's always a tech-level-1 posting.");
+      shownJobs = BL.career.offers(career, station);
+      $("offers-title").textContent = who + " jobs";
+      $("offers-lede").textContent = (station === "gunner"
+        ? "Postings for gunners at your level: Gun 1 on a gunboat, with a pulse cannon and two torpedoes. Each names the engineer who'll run your power. The gunner station is built for gunboats so far."
+        : "Postings for engineers at your level. Lower tech levels are harder (smaller reactor and capacitors, weaker guns) and earn more reputation.") +
+        (q && BL.career.built(station, q + 1) ? " There's always a tech-level-1 posting for your class and for the class above it." : " There's always a tech-level-1 posting.");
     } else {
-      shownJobs = BL.career.lowerJobs(career, "engineer");
-      $("offers-title").textContent = "Lower-class jobs";
+      shownJobs = BL.career.lowerJobs(career, station);
+      $("offers-title").textContent = who + ": lower-class jobs";
       $("offers-lede").textContent = shownJobs.length ? "Jobs below your current class. You're welcome aboard, but they aren't serious offers: they earn that class's lower reputation." :
         "Nothing below your current class yet. Qualify on a bigger ship and the smaller ones show up here.";
     }
@@ -1150,13 +1181,15 @@
     var c = career;
     $("rec-title").textContent = "Service record: " + c.name;
     $("rec-summary").innerHTML = "<span>Enlisted <b>" + c.created + "</b></span>" + summaryHtml(c);
-    $("rec-profile").innerHTML = profileHtml(BL.career.profile(c));
+    $("rec-profile").innerHTML = BL.career.STATIONS.filter(function (s) { return BL.career.PLAYABLE[s]; }).map(function (s) {
+      return "<h2>" + BL.career.STATION_NAME[s] + " reputation profile</h2>" + profileHtml(BL.career.profile(c, s), null, s);
+    }).join("");
     $("rec-grid").innerHTML = gridHtml(c);
-    $("rec-history").innerHTML = "<tr><th>Date</th><th>Ship</th><th>Class</th><th>Tech</th><th>Outcome</th><th>Score</th><th>Reputation</th></tr>" +
+    $("rec-history").innerHTML = "<tr><th>Date</th><th>Station</th><th>Ship</th><th>Class</th><th>Tech</th><th>Outcome</th><th>Score</th><th>Reputation</th></tr>" +
       (c.history.length ? c.history.map(function (h) {
-        return "<tr><td>" + h.date + "</td><td>" + esc(h.ship) + "</td><td>" + BL.classById(h.classId).name + "</td><td>" + h.tl + "</td><td>" + h.outcome +
+        return "<tr><td>" + h.date + "</td><td>" + BL.career.STATION_NAME[h.station || "engineer"] + "</td><td>" + esc(h.ship) + "</td><td>" + BL.classById(h.classId).name + "</td><td>" + h.tl + "</td><td>" + h.outcome +
           "</td><td>" + h.score + "</td><td>" + (h.rep ? "+" + h.rep : "0") + "</td></tr>";
-      }).join("") : '<tr><td colspan="7" class="muted">No missions yet.</td></tr>');
+      }).join("") : '<tr><td colspan="8" class="muted">No missions yet.</td></tr>');
     show("scr-record");
   }
   $("btn-record-back").onclick = function () { click(); showHub(); };

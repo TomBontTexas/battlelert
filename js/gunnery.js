@@ -22,9 +22,9 @@
     this.firing = false; this.nextShot = 0; this.dryCueAt = 0; this.callReadyAt = 0;
     this.ships = []; this.torps = []; this.bolts = []; this.effects = [];
     this.nextId = 1;
-    this.engineer = pickEngineer(m);
+    this.engineer = BL.pickEngineer(m.seed, m.data.classId);
     this.stats = { shots: 0, hits: 0, torpHits: 0, torps: 0, downed: 0, ships: 0, kills: 0, damage: 0, dryTime: 0, calls: 0, hullTorps: 0,
-      ptFired: 0, ptHits: 0, ptDowned: 0, ptMissed: 0 };
+      ptFired: 0, ptHits: 0, ptDowned: 0, ptMissed: 0, firingTime: 0, liveTime: 0 };
     this.ptTorps = []; this.pt = [];
     this.jumps = [];                    // per sortie / system: the same counts
   }
@@ -37,14 +37,15 @@
   Turret.prototype.traverse = function () { return this.G.traverse * this.m.turretFactor(this.gun(), "slide") * (this.m.ship.crippled ? 0.7 : 1); };
 
   // The engineer running the power while you're at the gun: a name and a skill, rolled from
-  // the seed (its own random stream, so the mission itself is unchanged).
-  function pickEngineer(m) {
-    var E = BL.GUNNERY.engineer, r = BL.rng((m.seed ^ 0x2c1b3c6d) >>> 0);
-    var range = E.skill[m.data.classId] || E.skill.other, skill = Math.round(r.range(range) * 100) / 100;
+  // the mission seed (its own random stream, so the mission itself is unchanged). Job offers
+  // call it too, so the offer names the engineer you'll actually get.
+  BL.pickEngineer = function (seed, classId) {
+    var E = BL.GUNNERY.engineer, r = BL.rng((seed ^ 0x2c1b3c6d) >>> 0);
+    var range = E.skill[classId] || E.skill.other, skill = Math.round(r.range(range) * 100) / 100;
     var rank = E.ranks[skill >= 0.85 ? 2 : skill >= 0.7 ? 1 : 0];
     return { name: rank + " " + r.pick(E.first) + " " + r.pick(E.last), skill: skill,
       label: skill >= 0.85 ? "sharp" : skill >= 0.7 ? "steady" : skill >= 0.5 ? "green" : "sloppy" };
-  }
+  };
 
   /* ---------------------------------------------------------- Player input */
   Turret.prototype.aimAt = function (x) { this.aimX = clamp(x, 0.03, 0.97); this.dir = 0; };
@@ -137,6 +138,8 @@
     var dx = this.aimX - this.x, mv = trav * dt;
     this.x += Math.abs(dx) <= mv ? dx : (dx > 0 ? mv : -mv);
 
+    // For the profile's aggression: how much of the fight the trigger was held.
+    if (this.live() && m.phase !== "arrival") { this.stats.liveTime += dt; if (this.firing) this.stats.firingTime += dt; }
     this.moveShips(dt);
     this.launchTorpedoes();
     this.fire(dt);
@@ -397,6 +400,7 @@
     var accuracy = st.shots ? st.hits / st.shots : 0;
     var threats = st.ships + st.torps ? (st.kills + st.downed) / (st.ships + st.torps) : 0;
     r.station = "gunner";
+    r.aggression = st.liveTime ? Math.min(1, st.firingTime / st.liveTime * 1.5) : 0;
     r.engineer = m.turret.engineer;
     r.weapon = m.turret.weaponId;
     r.parts = { objective: r.parts.objective, condition: r.parts.condition, accuracy: Math.round(25 * accuracy), threats: Math.round(25 * threats) };
