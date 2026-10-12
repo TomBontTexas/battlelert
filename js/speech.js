@@ -94,7 +94,7 @@
     var m = /^([^:]{2,20}):\s*(.*)$/.exec(text);
     var speaker = m && PROFILE[m[1]] ? m[1] : "Crew";
     var words = m && PROFILE[m[1]] ? m[2] : text;
-    if (/^Gunner/.test(speaker)) words = speaker + ", " + words;   // which gun matters
+    if (/^Gunner d/.test(speaker)) words = speaker + ", " + words;   // which gun matters
     words = words.replace(/(\d+(?:\.\d+)?) s\b/g, "$1 seconds")
                  .replace(/(\d+(?:\.\d+)?) MW\b/g, "$1 megawatts")
                  .replace(/(\d+(?:\.\d+)?) MJ\b/g, "$1 megajoules")
@@ -177,7 +177,7 @@
         "Captain": "All hands, stand by.", "Failsafe": "Gun 3 tripped offline.", "Gunnery": "Main gun shot in 12 seconds.",
         "Flight deck": "Squadron away!", "Gunner 4": "Need full power!", "Gunner 5": "Capacitor empty!", "Squadron": "We caught that salvo!" };
       var wasEnabled = enabled; enabled = true;
-      Object.keys(lines).forEach(function (sp) { queue.push({ speaker: sp, words: (/^Gunner/.test(sp) ? sp + ", " : "") + lines[sp], at: Date.now() + 60000, urgent: false }); });
+      Object.keys(lines).forEach(function (sp) { queue.push({ speaker: sp, words: (/^Gunner d/.test(sp) ? sp + ", " : "") + lines[sp], at: Date.now() + 60000, urgent: false }); });
       enabled = wasEnabled;
       next();
     },
