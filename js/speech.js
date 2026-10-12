@@ -6,10 +6,13 @@
   "use strict";
   var BL = root.BL = root.BL || {};
   var synth = root.speechSynthesis;
-  var voices = [], assigned = {}, queue = [], speaking = false, enabled = true, volume = 0.8, unlocked = false;
+  var voices = [], assigned = {}, queue = [], speaking = false, enabled = true, volume = 0.8, unlocked = false, primedAt = 0, primer = null;
   // The line being spoken. Holding it keeps Safari from discarding it, which would lose its
   // "finished" event and leave every later line waiting forever (silence, beeps still playing).
   var current = null, startedAt = 0, expectMs = 0;
+  // What the browser actually did, shown on the pause and Options screens so a silent iPad can
+  // be diagnosed without a debugger.
+  var stats = { asked: 0, started: 0, finished: 0, errors: 0, rescued: 0, lastError: "" };
   var MAX_AGE = 5000;            // ms: a line older than this is no longer worth saying
   var MAX_QUEUE = 3;
 
@@ -107,13 +110,17 @@
     if (!speaking) return;
     var elapsed = Date.now() - startedAt;
     var idle = !synth.speaking && !synth.pending && elapsed > 1500;
-    if (idle || elapsed > expectMs) { speaking = false; current = null; if (synth.speaking) synth.cancel(); }
+    if (idle || elapsed > expectMs) {
+      speaking = false; current = null; stats.rescued++;
+      // Safari drops a line spoken right after cancel(), so the next line waits for the timer.
+      if (synth.speaking || synth.pending) { synth.cancel(); return true; }
+    }
+    return false;
   }
 
   function next() {
     if (!synth) return;
-    unstick();
-    if (speaking) return;
+    if (unstick() || speaking) return;
     if (synth.paused) synth.resume();
     var now = Date.now();
     while (queue.length && now - queue[0].at > MAX_AGE) queue.shift();
@@ -124,8 +131,14 @@
     var a = voiceFor(item.speaker);
     if (a.voice) { u.voice = a.voice; u.lang = a.voice.lang; }
     u.pitch = p.pitch + a.shift; u.rate = p.rate; u.volume = volume;
-    u.onend = u.onerror = function () { if (current !== u) return; speaking = false; current = null; next(); };
-    current = u; speaking = true; startedAt = Date.now();
+    u.onstart = function () { if (current === u) stats.started++; };
+    u.onend = function () { if (current !== u) return; stats.finished++; speaking = false; current = null; next(); };
+    u.onerror = function (ev) {
+      var code = (ev && ev.error) || "error";
+      if (code !== "interrupted" && code !== "canceled") { stats.errors++; stats.lastError = code; }
+      if (current !== u) return; speaking = false; current = null;
+    };
+    current = u; speaking = true; startedAt = Date.now(); stats.asked++;
     expectMs = 3000 + item.words.length * 110 / Math.max(0.5, u.rate);
     synth.speak(u);
   }
@@ -134,13 +147,29 @@
 
   BL.speech = {
     supported: !!synth,
-    // Call from a tap: iPad Safari only allows speech once a gesture has started it.
+    // Call from a tap: iPad Safari only allows speech once a gesture has started it, and can
+    // lose that permission again (after a cancel, a pause or the screen locking). Every tap
+    // re-primes it with a silent line while nothing is being said.
     unlock: function () {
-      if (!synth || unlocked) return;
-      unlocked = true;
-      var u = new SpeechSynthesisUtterance(" "); u.volume = 0;
-      synth.speak(u);
+      if (!synth) return;
       if (!voices.length) loadVoices();
+      if (speaking || synth.speaking || synth.pending) return;
+      if (unlocked && Date.now() - primedAt < 3000) return;
+      unlocked = true; primedAt = Date.now();
+      if (synth.paused) synth.resume();
+      var u = new SpeechSynthesisUtterance(" "); u.volume = 0;
+      primer = u;                  // held, like the real lines
+      synth.speak(u);
+    },
+    enabled: function () { return enabled && volume > 0.01; },
+    status: function () {
+      if (!synth) return "This browser can't speak.";
+      if (!enabled) return "Spoken messages are turned off in Options.";
+      if (volume <= 0.01) return "The Voices volume is at zero.";
+      var t = "Voices this session: " + stats.asked + " lines sent, " + stats.started + " started, " + stats.finished + " finished";
+      if (stats.errors) t += ", " + stats.errors + " errors (last: " + stats.lastError + ")";
+      if (stats.rescued) t += ", " + stats.rescued + " restarted";
+      return t + ". " + voices.length + " voices.";
     },
     say: function (text, kind) {
       if (!synth || !enabled || volume <= 0.01) return;
@@ -176,9 +205,7 @@
         "Reactor room": "Heat is climbing!", "Coxswain": "Launch! We're clear of the carrier.", "Carrier": "Recovery in 30 seconds.",
         "Captain": "All hands, stand by.", "Failsafe": "Gun 3 tripped offline.", "Gunnery": "Main gun shot in 12 seconds.",
         "Flight deck": "Squadron away!", "Gunner 4": "Need full power!", "Gunner 5": "Capacitor empty!", "Squadron": "We caught that salvo!" };
-      var wasEnabled = enabled; enabled = true;
       Object.keys(lines).forEach(function (sp) { queue.push({ speaker: sp, words: (/^Gunner \d/.test(sp) ? sp + ", " : "") + lines[sp], at: Date.now() + 60000, urgent: false }); });
-      enabled = wasEnabled;
       next();
     },
     stop: function () { queue = []; current = null; if (synth) synth.cancel(); speaking = false; },

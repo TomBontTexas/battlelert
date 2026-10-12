@@ -100,6 +100,7 @@
   /* ------------------------------------------------------------- Mission */
   function startMission() {
     BL.audio.init(); BL.audio.humStart();
+    BL.speech.unlock();
     buildConsole();
     show("scr-console");
     gravShown = false; doneShown = false; paused = false; looking = false;
@@ -113,6 +114,7 @@
     paused = true; looking = false;
     BL.speech.stop();
     overlay("ov-pause", true); $("planning-banner").hidden = true;
+    $("pause-voice").textContent = BL.speech.status();
     click();
   }
   function resume() {
@@ -134,6 +136,8 @@
     paused = false; overlay("ov-pause", false);
     sim.abandon();
   };
+  // Any tap on the console keeps iPad Safari's permission to speak alive.
+  $("scr-console").addEventListener("pointerdown", function () { BL.speech.unlock(); }, true);
   document.addEventListener("visibilitychange", function () { if (document.hidden && inConsole()) pause(); });
 
   function openOptions() {
@@ -160,6 +164,7 @@
   $("btn-voice-test").onclick = function () { BL.audio.init(); BL.speech.test(); renderVoiceTable(); $("voice-details").open = true; };
   function renderVoiceTable() {
     var q = ["", "", "Enhanced", "Premium"];
+    $("voice-status").textContent = BL.speech.status();
     $("voice-count").textContent = BL.speech.supported ? "This device offers " + BL.speech.voiceCount() + " usable English voices (joke and robot voices are skipped)." : "This browser can't speak.";
     $("voice-table").innerHTML = BL.speech.crew().map(function (c) {
       return "<tr><td>" + c.speaker + "</td><td>" + esc(c.voice) + (q[c.quality] ? " · " + q[c.quality] : "") + "</td></tr>";
