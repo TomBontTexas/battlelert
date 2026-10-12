@@ -5,6 +5,28 @@
   var BL = root.BL = root.BL || {};
 
   var stars = null;
+  // Approved art (art.js), rasterized once into small canvases so drawing stays cheap.
+  var sprites = {};
+  var SHIP_ART = { raiders: "raider", interceptors: "interceptor", siege: "siege", hunters: "hunter" };
+  var TURRET_ART = { pulse: "turretPulse", rail: "turretRail", ion: "turretIon" };
+  function sprite(name) {
+    var s = sprites[name];
+    if (s) return s.ready ? s : null;
+    if (!BL.ART || !BL.ART[name]) return null;
+    var text = BL.ART[name](), m = /viewBox="([-\d.]+) ([-\d.]+) ([\d.]+) ([\d.]+)"/.exec(text);
+    var vw = +m[3], vh = +m[4], W = 320, H = Math.round(W * vh / vw);
+    var cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+    s = sprites[name] = { ready: false, cv: cv, aspect: vh / vw, vb: [+m[1], +m[2], vw, vh] };
+    var img = new Image();
+    img.onload = function () { cv.getContext("2d").drawImage(img, 0, 0, W, H); s.ready = true; };
+    img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(text);
+    return null;
+  }
+  BL.preloadArt = function () {
+    Object.keys(SHIP_ART).forEach(function (k) { sprite(SHIP_ART[k]); });
+    Object.keys(TURRET_ART).forEach(function (k) { sprite(TURRET_ART[k]); });
+    sprite("torpedo");
+  };
   var BOLT = { pulse: "#7bffb0", rail: "#d8f4ff", ion: "#c49bff" };
   var HULL = { raiders: "#ff7a45", interceptors: "#ffd84a", siege: "#ff5a6e", hunters: "#5ee0d0" };
 
@@ -71,14 +93,20 @@
       c.save(); c.translate(s.x, s.y);
       var col = HULL[s.type] || "#ff7a45", leaving = s.state === "leave";
       c.globalAlpha = leaving ? 0.45 : 1;
-      // engine glow at the back (top)
-      c.fillStyle = "rgba(120,180,255," + (0.35 + 0.25 * Math.sin(t * 20 + s.id)).toFixed(2) + ")";
-      c.beginPath(); c.ellipse(0, -s.h * 0.55, s.w * 0.18, s.h * 0.18, 0, 0, Math.PI * 2); c.fill();
-      shipPath(c, s.type, s.w, s.h);
-      var flash = t - s.flashAt < 0.08;
-      c.fillStyle = flash ? "#ffffff" : col; c.globalAlpha *= flash ? 1 : 0.85; c.fill();
-      c.globalAlpha = leaving ? 0.45 : 1;
-      c.strokeStyle = "rgba(0,0,0,0.6)"; c.stroke();
+      // engine flicker at the back (top)
+      c.fillStyle = "rgba(199,125,255," + (0.18 + 0.18 * Math.sin(t * 20 + s.id)).toFixed(2) + ")";
+      c.beginPath(); c.ellipse(0, -s.h * 0.62, s.w * 0.22, s.h * 0.22, 0, 0, Math.PI * 2); c.fill();
+      var flash = t - s.flashAt < 0.08, sp = sprite(SHIP_ART[s.type]);
+      if (sp) {
+        var dw = s.w * 1.06, dh = dw * sp.aspect;
+        c.drawImage(sp.cv, -dw / 2, -dh / 2, dw, dh);
+        if (flash) { c.globalCompositeOperation = "lighter"; c.globalAlpha = 0.7; c.drawImage(sp.cv, -dw / 2, -dh / 2, dw, dh); c.globalCompositeOperation = "source-over"; c.globalAlpha = leaving ? 0.45 : 1; }
+      } else {
+        shipPath(c, s.type, s.w, s.h);
+        c.fillStyle = flash ? "#ffffff" : col; c.globalAlpha *= flash ? 1 : 0.85; c.fill();
+        c.globalAlpha = leaving ? 0.45 : 1;
+        c.strokeStyle = "rgba(0,0,0,0.6)"; c.stroke();
+      }
       if (t < s.ionUntil) {                     // ionized: crackling purple outline
         c.strokeStyle = "rgba(196,155,255," + (0.5 + 0.5 * Math.random()).toFixed(2) + ")"; c.lineWidth = 3 / S;
         shipPath(c, s.type, s.w * 1.25, s.h * 1.25); c.stroke(); c.lineWidth = 1.5 / S;
@@ -99,10 +127,19 @@
       c.beginPath(); c.moveTo(tp.x, tp.y); c.lineTo(tp.x1, tp.y1); c.stroke(); c.setLineDash([]);
       c.strokeStyle = "rgba(255,120,60,0.5)"; c.lineWidth = 4 / S;
       c.beginPath(); c.moveTo(tp.x - ux * 0.05, tp.y - uy * 0.05); c.lineTo(tp.x, tp.y); c.stroke(); c.lineWidth = 1.5 / S;
-      var r = G.torpedo.size * (tp.weak ? 0.75 : 1);
-      var g = c.createRadialGradient(tp.x, tp.y, 0, tp.x, tp.y, r * 1.6);
-      g.addColorStop(0, "#fff4d0"); g.addColorStop(0.4, tp.weak ? "#c49bff" : "#ff6a3d"); g.addColorStop(1, "rgba(255,60,40,0)");
-      c.fillStyle = g; c.beginPath(); c.arc(tp.x, tp.y, r * 1.6, 0, Math.PI * 2); c.fill();
+      var r = G.torpedo.size * (tp.weak ? 0.75 : 1), tsp = sprite("torpedo");
+      if (tsp) {
+        // The art's nose glow sits 78% of the way down its box; put that on the torpedo's spot.
+        var tw = r * 1.7, th = tw * tsp.aspect;
+        c.save(); c.translate(tp.x, tp.y); c.rotate(Math.atan2(uy, ux) - Math.PI / 2);
+        c.globalAlpha = tp.weak ? 0.7 : 1;
+        c.drawImage(tsp.cv, -tw / 2, -th * 0.78, tw, th);
+        c.restore();
+      } else {
+        var g = c.createRadialGradient(tp.x, tp.y, 0, tp.x, tp.y, r * 1.6);
+        g.addColorStop(0, "#fff4d0"); g.addColorStop(0.4, tp.weak ? "#c49bff" : "#ff6a3d"); g.addColorStop(1, "rgba(255,60,40,0)");
+        c.fillStyle = g; c.beginPath(); c.arc(tp.x, tp.y, r * 1.6, 0, Math.PI * 2); c.fill();
+      }
       if (left < 1.2) {                          // landing soon: blink the impact marker
         c.strokeStyle = Math.floor(t * 8) % 2 ? "rgba(255,90,70,0.9)" : "rgba(255,90,70,0.3)";
         c.beginPath(); c.arc(tp.x1, tp.y1, 0.02, 0, Math.PI * 2); c.stroke();
@@ -150,8 +187,17 @@
     }
     var gun = tu.gun(), ready = gun && gun.mj >= w.shotMJ;
     c.save(); c.translate(tu.x, gy);
-    c.fillStyle = "#4cc3ee"; c.beginPath(); c.moveTo(-0.03, 0.022); c.lineTo(-0.018, -0.008); c.lineTo(0.018, -0.008); c.lineTo(0.03, 0.022); c.closePath(); c.fill();
-    c.fillStyle = ready ? "#d6e0e8" : "#5b6b7a"; c.fillRect(-0.0045, -0.045, 0.009, 0.04);
+    var tsp2 = sprite(TURRET_ART[tu.weaponId]);
+    if (tsp2) {
+      // The art's base sits at y 60 of its box: stand it on the rail.
+      var ww = 0.085, wh = ww * tsp2.aspect, baseFrac = (60 - tsp2.vb[1]) / tsp2.vb[3];
+      c.globalAlpha = ready ? 1 : 0.6;
+      c.drawImage(tsp2.cv, -ww / 2, 0.03 - wh * baseFrac, ww, wh);
+      c.globalAlpha = 1;
+    } else {
+      c.fillStyle = "#4cc3ee"; c.beginPath(); c.moveTo(-0.03, 0.022); c.lineTo(-0.018, -0.008); c.lineTo(0.018, -0.008); c.lineTo(0.03, 0.022); c.closePath(); c.fill();
+      c.fillStyle = ready ? "#d6e0e8" : "#5b6b7a"; c.fillRect(-0.0045, -0.045, 0.009, 0.04);
+    }
     c.restore();
     // Reticle: straight up from the turret, at the end of the gun's reach.
     var ry = Math.max(0.04, top);

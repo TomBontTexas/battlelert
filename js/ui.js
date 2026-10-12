@@ -99,6 +99,9 @@
     });
     if (!j.test) html.push("<div><span>Reputation if perfect</span> up to " + BL.career.repFor(j, 100) + "</div>");
     $("brief-ship").innerHTML = html.join("");
+    // The approved art: the gunboat carries its hull number, bigger classes their hull letters.
+    $("brief-art").innerHTML = BL.ART ? (j.classId === "gunboat" ? BL.ART.gunboat(/^PT-/.test(j.ship) ? j.ship : "PT") : BL.ART.warship(j.classId)) : "";
+    if (BL.preloadArt) BL.preloadArt();
     $("brief-main").hidden = !sim.sys("main");
     $("brief-hangar").hidden = !sim.sys("hangar");
     $("brief-mines").hidden = sim.route.indexOf("minefield") < 0;
@@ -110,7 +113,7 @@
     $("brief-station").textContent = gunner ? "Your station: Gun 1 (the engineer runs the power)" : "Your station: Main Engineering";
     if (gunner) {
       var en = sim.turret.engineer;
-      $("brief-weapon").textContent = sim.turret.w.name.toLowerCase(); $("brief-weapon-what").textContent = sim.turret.w.what;
+      var wn = sim.turret.w.name.toLowerCase(); $("brief-weapon").textContent = (/^[aeiou]/.test(wn) ? "an " : "a ") + wn; $("brief-weapon-what").textContent = sim.turret.w.what;
       $("brief-engineer").innerHTML = "Your engineer: <b>" + esc(en.name) + "</b>, " + en.label + " (skill " + Math.round(en.skill * 100) + "). " + ENGINEER_NOTE[en.label];
     }
     show("scr-briefing");

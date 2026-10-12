@@ -72,6 +72,10 @@ h2 { font-size: 17px; margin: 18px 0 6px; color: var(--charge); }
 .brief-ship { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 6px 16px; font-size: 14px; }
 .brief-ship div { background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; }
 .brief-ship span { color: var(--muted); }
+.brief-ship-row { display: flex; gap: 18px; align-items: flex-start; }
+.brief-ship-row .brief-ship { flex: 1; min-width: 0; }
+.brief-art { flex: none; width: 96px; height: 190px; display: flex; align-items: center; justify-content: center; background: #05070c; border: 1px solid var(--line); border-radius: 8px; padding: 8px; }
+.brief-art svg { width: 100%; height: 100%; }
 
 /* -------------------------------------------------------------- Console */
 #scr-console {
