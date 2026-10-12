@@ -281,10 +281,8 @@
      actually doing ("auto" resolves to the suggestion for this fight) and why. */
   Turret.prototype.setOrder = function (b, order) {
     b = this.bat(b);
-    var cyc = this.G.orderCycle;
-    b.order = order || cyc[(cyc.indexOf(b.order) + 1) % cyc.length];
-    var o = this.orderFor(b);
-    this.m.say("Gunner " + b.gunNo + ": " + (b.order === "auto" ? "suggested orders, " : "") + this.G.orders[o.order].ack, "good");
+    b.order = this.G.orders[order] ? order : "auto";
+    this.m.say("Gunner " + b.gunNo + ": " + this.G.orders[b.order].ack, "good");
     this.m.cue("toggle");
     return b.order;
   };

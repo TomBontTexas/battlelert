@@ -152,7 +152,7 @@
     if (!running || !sim || sim.phase === "done" || paused) return;
     paused = true; looking = false;
     BL.speech.stop();
-    if (sim.turret) releaseTurret();
+    if (sim.turret) { releaseTurret(); closeOrders(); }
     $("btn-look").hidden = !!sim.turret;
     $("btn-resume").textContent = sim.turret ? "Resume (P)" : "Resume (Space)";
     overlay("ov-pause", true); $("planning-banner").hidden = true;
@@ -673,7 +673,7 @@
     var tu = sim.turret, w = tu.w;
     $("tu-station").textContent = "Gunnery · " + (job.test ? sim.data.className : job.ship + " (" + sim.data.className + ")") + " · tech level " + sim.data.tl;
     $("tu-rec-label").textContent = sim.hasDrive ? "JUMP" : "RECOVERY";
-    lastJolt = 0;
+    lastJolt = 0; closeOrders();
     $("tu-keys").textContent = "← → slide · Space fire (hold) · " + (tu.bats.length > 1 ? "1–" + tu.bats.length + " or tap a turret: switch guns · O orders · " : sim.data.torpedoes ? "1 2 torpedoes · " : "") +
       "C call for power · P pause · Mouse: move to aim, hold button to fire · Touch: drag to aim, hold FIRE";
     // Battery buttons (two or more guns): tap to take that gun; the AI gunner takes the other.
@@ -707,7 +707,7 @@
   }
   $("tu-bats").addEventListener("click", function (ev) {
     var o = ev.target.closest("[data-ord]");
-    if (o && turretActive()) { cycleOrder(+o.dataset.ord); return; }   // tapping ORDERS changes the order, not the gun
+    if (o && turretActive()) { openOrders(+o.dataset.ord); return; }   // tapping ORDERS opens the order list, not the gun
     var b = ev.target.closest("button[data-i]"); if (b && turretActive()) selectBattery(+b.dataset.i);
   });
   function sizeTurret() {
@@ -757,8 +757,8 @@
       var b = tu.bats[i], o = tu.orderFor(b);
       setText(el.querySelector(".acc"), "you " + rate(b.hits, b.shots) + " · AI " + rate(b.aiHits, b.aiShots));
       var ord = el.querySelector(".ord");
-      setText(ord, "ORDERS: " + (o.auto ? "suggested · " : "") + BL.GUNNERY.orders[o.order].short);
-      ord.title = (o.auto ? "Suggested: " : "") + BL.GUNNERY.orders[o.order].name + ". " + (o.auto ? o.why : "Shoots " + o.why) + ". Tap to change.";
+      setText(ord, "ORDERS: " + BL.GUNNERY.orders[o.order].short + (o.auto ? " (suggested)" : ""));
+      ord.title = BL.GUNNERY.orders[o.order].name + (o.auto ? " (suggested: " + o.why + ")" : "") + ". Tap for all the orders.";
     });
     setText($("tu-feed"), Math.round(gun.rate) + " MW" + (gun.tripped ? " · TRIPPED" : gun.maxMW < gun.baseMW ? " · max " + gun.maxMW + " (damaged)" : ""));
     var td = ["slide", "rate", "reach"].filter(function (k) { return gun.tdmg[k] > 0.005; });
@@ -815,6 +815,14 @@
   // Keys: ← → (A D) slide, Space or ↑ fire while held, C calls for power, P or Esc pauses.
   function turretKey(ev, down) {
     if (!$("ov-grav").hidden) { if (down && ev.key === "Enter") $("btn-grav-go").click(); return; }
+    // With the order list open, its letters pick an order (D defend, S stop launches, H hunt,
+    // F free fire, Enter follow the suggestion) and Esc or O closes it.
+    if (ordersFor >= 0 && down) {
+      var ok = ev.key.length === 1 ? ev.key.toUpperCase() : ev.key, O = BL.GUNNERY.orders;
+      var pick = ok === "Enter" ? "auto" : BL.GUNNERY.orderList.filter(function (k) { return O[k].key === ok; })[0];
+      if (pick) { ev.preventDefault(); pickOrder(ordersFor, pick); closeOrders(); return; }
+      if (ok === "Escape" || ok === "O") { ev.preventDefault(); closeOrders(); return; }
+    }
     var k = ev.key, kl = k.length === 1 ? k.toLowerCase() : k, tu = sim.turret;
     if (down && (kl === "p" || k === "Escape")) { ev.preventDefault(); if (paused) resume(); else pause(); return; }
     if (paused) { if (down && k === " ") { ev.preventDefault(); resume(); } return; }
@@ -828,7 +836,7 @@
     }
     if (down && kl === "c" && turretActive()) { ev.preventDefault(); tu.callPower(); }
     // O: change the standing order of the gun the AI gunner has (the first one you aren't aiming).
-    if (down && kl === "o" && turretActive() && tu.bats.length > 1) { ev.preventDefault(); cycleOrder(tu.sel === 0 ? 1 : 0); }
+    if (down && kl === "o" && turretActive() && tu.bats.length > 1) { ev.preventDefault(); openOrders(tu.sel === 0 ? 1 : 0); }
     // Number keys: with several batteries they pick a gun; on a gunboat, 1 and 2 fire torpedoes.
     if (down && k.length === 1 && k >= "1" && k <= "9" && turretActive()) {
       if (tu.bats.length > 1) { if (+k <= tu.bats.length) { ev.preventDefault(); selectBattery(+k - 1); } }
@@ -939,28 +947,49 @@
     sloppy: "Expect torpedoes to get through. Shoot them down yourself."
   };
   // Briefing: an order for each gun, used whenever the AI gunner has it.
+  /* Standing orders: every option listed with what it does, the one suggested for this fight
+     marked "(suggested)" with the reason. A gun nobody picked an order for follows the suggestion. */
+  function orderOptions(i, keys) {
+    var tu = sim.turret, b = tu.bats[i], O = BL.GUNNERY.orders, sug = tu.suggestOrder(b), cur = tu.orderFor(b).order;
+    return BL.GUNNERY.orderList.map(function (k) {
+      var s = k === sug.order;
+      return '<button class="ord-opt' + (k === cur ? " on" : "") + '" data-i="' + i + '" data-o="' + k + '"><span><b>' + O[k].name + "</b>" +
+        (s ? ' <span class="sug">(suggested)</span>' : "") + (keys ? " <small>[" + O[k].key + "]</small>" : "") + "</span>" +
+        (s ? '<span class="why">Suggested because ' + sug.why + ".</span>" : "") + '<span class="what">' + O[k].what + "</span></button>";
+    }).join("") + '<button class="ord-opt auto' + (b.order === "auto" ? " on" : "") + '" data-i="' + i + '" data-o="auto">' + O.auto.name +
+      (b.order === "auto" ? " (now)" : "") + (keys ? " [Enter]" : "") + "</button>";
+  }
   function renderBriefOrders() {
-    var tu = sim.turret, el = $("brief-orders"), O = BL.GUNNERY.orders;
+    var tu = sim.turret, el = $("brief-orders");
     el.hidden = tu.bats.length < 2;
     if (el.hidden) return;
-    el.innerHTML = "<b>Standing orders</b> for each gun whenever the AI gunner has it. Suggested picks for you: hunt if the gun is best against the enemy in this fight, else defend against torpedoes. You can change them during the fight too (tap ORDERS on a battery button, or press O)." +
+    el.innerHTML = "<b>Standing orders</b> for each gun, used whenever the AI gunner has it. The suggestion is for the first fight and changes with each one; a gun you don't pick an order for follows it. You can change orders during the fight too: tap ORDERS on a battery button, or press O." +
       '<div class="brief-orders">' + tu.bats.map(function (b, i) {
-        return '<label>Gun ' + b.gunNo + " (" + b.w.name.toLowerCase() + ')<select data-i="' + i + '">' + BL.GUNNERY.orderCycle.map(function (k) {
-          return '<option value="' + k + '"' + (b.order === k ? " selected" : "") + ">" + O[k].name + (k === "auto" ? "" : ": " + O[k].what) + "</option>";
-        }).join("") + "</select></label>";
+        return '<div class="ord-gun"><h4>Gun ' + b.gunNo + " · " + b.w.name.toLowerCase() + "</h4>" + orderOptions(i, false) + "</div>";
       }).join("") + "</div>";
   }
-  $("brief-orders").addEventListener("change", function (ev) {
-    var sel = ev.target.closest("select[data-i]"); if (!sel) return;
-    var b = sim.turret.bats[+sel.dataset.i];
-    b.order = sel.value;
-    settings.gunOrders = settings.gunOrders || {}; settings.gunOrders[b.gunNo] = b.order; saveSettings();
-  });
-  function cycleOrder(i) {
+  function pickOrder(i, order) {
     var tu = sim.turret, b = tu.bats[i];
-    tu.setOrder(b);
+    if (inTurret()) tu.setOrder(b, order); else b.order = order;
     settings.gunOrders = settings.gunOrders || {}; settings.gunOrders[b.gunNo] = b.order; saveSettings();
   }
+  $("brief-orders").addEventListener("click", function (ev) {
+    var o = ev.target.closest("button[data-o]"); if (!o) return;
+    click(); pickOrder(+o.dataset.i, o.dataset.o); renderBriefOrders();
+  });
+  // In the fight: the same list opens over the left panel for one gun.
+  var ordersFor = -1;
+  function openOrders(i) {
+    if (ordersFor === i) { closeOrders(); return; }
+    ordersFor = i;
+    $("tu-orders").innerHTML = '<div class="ord-head">GUN ' + sim.turret.bats[i].gunNo + " ORDERS · when the AI gunner has it · Esc closes</div>" + orderOptions(i, true);
+    $("tu-orders").hidden = false;
+  }
+  function closeOrders() { ordersFor = -1; $("tu-orders").hidden = true; }
+  $("tu-orders").addEventListener("click", function (ev) {
+    var o = ev.target.closest("button[data-o]"); if (!o || !turretActive()) return;
+    pickOrder(+o.dataset.i, o.dataset.o); closeOrders();
+  });
   function an(x) { return (/^[aeiou]/.test(x) ? "an " : "a ") + x; }
   // What the gunner should expect from an encounter, and which of their guns has the edge.
   function gunnerTip(encId) {

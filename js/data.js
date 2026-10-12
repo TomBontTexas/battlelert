@@ -361,16 +361,17 @@
     // the player aims one and an AI gunner works the others; turrets share one rail and pass freely.
     loadout: { gunboat: ["pulse"], picket: ["rail"], destroyerEscort: ["pulse", "rail"] },
     aiGunner: 0.75,                    // skill of the AI gunner on the batteries you aren't aiming
-    // Standing orders for AI gunners, one per gun. "auto" follows the suggestion: hunt if the
-    // gun's weapon is best against the enemy in this fight, else defend against torpedoes.
+    // Standing orders for AI gunners, one per gun. Each fight one of them is suggested: hunt if
+    // the gun's weapon is best against the enemy, else defend against torpedoes. A gun whose
+    // order was never picked ("auto") follows the suggestion. key = its letter in the menu.
     orders: {
-      auto:   { name: "Suggested", short: "SUGGESTED" },
-      defend: { name: "Defend", short: "DEFEND", what: "torpedoes about to land, then ships charging to fire", ack: "defending, aye!" },
-      stop:   { name: "Stop launches", short: "STOP LAUNCHES", what: "ships charging to fire, then torpedoes", ack: "going after the launchers!" },
-      hunt:   { name: "Hunt", short: "HUNT", what: "ships its weapon is best against; torpedoes only at the last second", ack: "hunting, aye!" },
-      free:   { name: "Free fire", short: "FREE FIRE", what: "its own judgment", ack: "free fire, aye!" }
+      auto:   { name: "Follow the suggestion each fight", short: "SUGGESTED", ack: "following the suggested orders, aye!" },
+      defend: { name: "Defend", short: "DEFEND", key: "D", what: "Shoots torpedoes about to land first, then ships charging to fire.", ack: "defending, aye!" },
+      stop:   { name: "Stop launches", short: "STOP LAUNCHES", key: "S", what: "Shoots ships charging to fire first, then torpedoes.", ack: "going after the launchers!" },
+      hunt:   { name: "Hunt", short: "HUNT", key: "H", what: "Shoots the ships its weapon is best against; torpedoes only at the last second.", ack: "hunting, aye!" },
+      free:   { name: "Free fire", short: "FREE FIRE", key: "F", what: "Picks its own targets: torpedoes about to land, else the nearest ship.", ack: "free fire, aye!" }
     },
-    orderCycle: ["auto", "defend", "stop", "hunt", "free"],
+    orderList: ["defend", "stop", "hunt", "free"],
     // Our torpedoes (gunboats carry two; the carrier reloads them every sortie). No energy.
     // Slow and homing on the nearest siege battery or capital ship; damage x the class's threat
     // hp. A target sidesteps (jink, fields/s) when one gets within jinkAt, and its point defense

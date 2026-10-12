@@ -296,7 +296,7 @@
         c.scale(dpr, dpr);
         c.font = "700 " + Math.round(S * 0.022) + "px system-ui, sans-serif"; c.textAlign = "center";
         c.fillStyle = own ? "#4cc3ee" : "rgba(214,224,232,0.55)";
-        c.fillText((own ? "GUN " : "AI · GUN ") + bt.gunNo, bt.x * S, (gy + 0.06) * S);
+        c.fillText((own ? "GUN " : "AI · GUN ") + bt.gunNo, Math.min(0.93, Math.max(0.07, bt.x)) * S, (gy + 0.06) * S);
         c.restore();
       }
     });
