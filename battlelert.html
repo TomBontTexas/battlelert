@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Battlelert</title>
-<link rel="stylesheet" href="css/style.css?b=9a002fc4">
+<link rel="stylesheet" href="css/style.css?b=62b884be">
 </head>
 <body>
 
@@ -116,7 +116,7 @@
     <h2 id="brief-station">Your station: Main Engineering</h2>
     <ul class="tight" id="brief-gun" hidden>
       <li id="brief-engineer"></li>
-      <li>You're at <b>Gun 1</b>, <b id="brief-weapon">a pulse cannon</b>: <span id="brief-weapon-what"></span></li>
+      <li id="brief-guns"></li>
       <li><b>Slide the turret</b> left and right and fire straight up. A bolt hits the first ship or torpedo it reaches; it flies only as far as the gun's range line.</li>
       <li>Enemy salvos come down as <b>torpedoes</b>. The shields take them, but you can shoot one down before it lands. Killing a ship stops the torpedoes it hasn't fired yet.</li>
       <li>Your gun sits outside the shields. A torpedo that gets through can damage its charger and its turret: it slides slower, fires slower or loses range. Damage control repairs half of it between sorties.</li>
@@ -257,6 +257,7 @@
     <aside class="panel tu-side">
       <div class="panel-title" id="tu-weapon">GUN 1</div>
       <div class="tu-what muted small-text" id="tu-weapon-what"></div>
+      <div class="tu-bats" id="tu-bats"></div>
       <div class="tu-charge-wrap">
         <div class="tu-vbar"><div class="tu-ticks" id="tu-ticks"></div><div id="tu-charge" class="tu-lvl"></div></div>
         <div class="tu-readout">
@@ -293,7 +294,7 @@
       <button id="btn-tu-fire" class="tu-fire">FIRE</button>
     </aside>
   </div>
-  <footer class="con-foot"><span class="hint-bar">← → slide · Space fire (hold) · 1 2 torpedoes · C call for power · P pause · Mouse: move to aim, hold button to fire · Touch: drag to aim, hold FIRE</span></footer>
+  <footer class="con-foot"><span class="hint-bar" id="tu-keys">← → slide · Space fire (hold) · 1 2 torpedoes · C call for power · P pause · Mouse: move to aim, hold button to fire · Touch: drag to aim, hold FIRE</span></footer>
   <div class="narrow-note">The turret needs a tablet or desktop screen. Turn the device sideways or use a wider window.</div>
 </section>
 
@@ -430,16 +431,16 @@
 
 <script src="version.js?b=735bfd56"></script>
 <script src="update-banner.js?b=71816d57"></script>
-<script src="js/data.js?b=7fddd62f"></script>
-<script src="js/sim.js?b=28c3d453"></script>
+<script src="js/data.js?b=0e0aa298"></script>
+<script src="js/sim.js?b=63d5c427"></script>
 <script src="js/agents.js?b=5c95582d"></script>
-<script src="js/gunnery.js?b=412d839b"></script>
+<script src="js/gunnery.js?b=a278e8d2"></script>
 <script src="js/art.js?b=e3c1ea0c"></script>
-<script src="js/turretview.js?b=46d26e61"></script>
+<script src="js/turretview.js?b=b1e68395"></script>
 <script src="js/names.js?b=fa2e0d88"></script>
-<script src="js/career.js?b=fd8f1636"></script>
+<script src="js/career.js?b=e798e5a5"></script>
 <script src="js/speech.js?b=9fa3cdb3"></script>
 <script src="js/audio.js?b=c07997e5"></script>
-<script src="js/ui.js?b=f06e2ac3"></script>
+<script src="js/ui.js?b=4343a728"></script>
 </body>
 </html>

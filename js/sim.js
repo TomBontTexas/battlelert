@@ -325,7 +325,7 @@
     }
     for (var k = 0; k < w.requests; k++) {
       var gun = 1 + (this.gunRotor++ % this.gunCount()), start = t + enc.request.lead + k * 3;
-      if (this.turret && gun === this.turret.gunNo) continue;     // the player calls for power instead
+      if (this.turret && this.turret.owns(gun)) continue;     // turret gunners call for power themselves
       this.events.push({ id: this.nextId++, type: "request", wave: wave.id, gun: gun, at: start, dur: Math.round(r.range(enc.request.duration)),
         announceAt: start - enc.request.lead, announced: false, visible: true });
     }
@@ -542,7 +542,7 @@
     for (var i = 0; i < ship.systems.length; i++) {
       var s = ship.systems[i];
       if (s.kind !== "gun") continue;
-      if (this.turret && s.gunner === this.turret.gunNo) continue;   // the player's gun
+      if (this.turret && this.turret.owns(s.gunner)) continue;   // worked by the turret (player or its AI)
       if (s.request && t >= s.request.until) this.closeRequest(s);
       if (!target) continue;
       if (t < s.nextShot) continue;

@@ -165,12 +165,13 @@
     });
 
     // Bolts.
-    var bc = BOLT[tu.weaponId];
     tu.bolts.forEach(function (b) {
-      c.strokeStyle = bc; c.fillStyle = bc;
-      if (tu.weaponId === "rail") { c.lineWidth = 3 / S; c.beginPath(); c.moveTo(b.x, b.y); c.lineTo(b.x, Math.min(b.y0, b.y + 0.12)); c.stroke(); c.lineWidth = 1.5 / S; }
-      else if (tu.weaponId === "ion") { c.beginPath(); c.arc(b.x, b.y, 0.009, 0, Math.PI * 2); c.fill(); }
+      var bw = b.weaponId || tu.weaponId, bc = BOLT[bw];
+      c.strokeStyle = bc; c.fillStyle = bc; c.globalAlpha = b.mine === false ? 0.7 : 1;
+      if (bw === "rail") { c.lineWidth = 3 / S; c.beginPath(); c.moveTo(b.x, b.y); c.lineTo(b.x, Math.min(b.y0, b.y + 0.12)); c.stroke(); c.lineWidth = 1.5 / S; }
+      else if (bw === "ion") { c.beginPath(); c.arc(b.x, b.y, 0.009, 0, Math.PI * 2); c.fill(); }
       else { c.lineWidth = 3 / S; c.beginPath(); c.moveTo(b.x, b.y); c.lineTo(b.x, b.y + 0.025); c.stroke(); c.lineWidth = 1.5 / S; }
+      c.globalAlpha = 1;
     });
 
     // Effects: explosions, sparks, shield flashes.
@@ -203,20 +204,33 @@
     if (Math.abs(tu.aimX - tu.x) > 0.01) {        // where the turret is heading
       c.strokeStyle = "rgba(76,195,238,0.35)"; c.beginPath(); c.moveTo(tu.aimX, gy - 0.01); c.lineTo(tu.aimX, gy + 0.03); c.stroke();
     }
-    var gun = tu.gun(), ready = gun && gun.mj >= w.shotMJ;
-    c.save(); c.translate(tu.x, gy);
-    var tsp2 = sprite(TURRET_ART[tu.weaponId]);
-    if (tsp2) {
-      // The art's base sits at y 60 of its box: stand it on the rail.
-      var ww = 0.085, wh = ww * tsp2.aspect, baseFrac = (60 - tsp2.vb[1]) / tsp2.vb[3];
-      c.globalAlpha = ready ? 1 : 0.6;
-      c.drawImage(tsp2.cv, -ww / 2, 0.03 - wh * baseFrac, ww, wh);
-      c.globalAlpha = 1;
-    } else {
-      c.fillStyle = "#4cc3ee"; c.beginPath(); c.moveTo(-0.03, 0.022); c.lineTo(-0.018, -0.008); c.lineTo(0.018, -0.008); c.lineTo(0.03, 0.022); c.closePath(); c.fill();
-      c.fillStyle = ready ? "#d6e0e8" : "#5b6b7a"; c.fillRect(-0.0045, -0.045, 0.009, 0.04);
-    }
-    c.restore();
+    var gun = tu.gun(), ready = gun && gun.mj >= w.shotMJ, multi = tu.bats.length > 1;
+    // Every battery's turret on the rail: yours bright, the AI gunner's dimmed and tagged.
+    tu.bats.forEach(function (bt, i) {
+      var own = i === tu.sel, bg = tu.gun(bt), bready = bg && bg.mj >= bt.w.shotMJ;
+      c.save(); c.translate(bt.x, gy);
+      var tsp2 = sprite(TURRET_ART[bt.weaponId]);
+      if (tsp2) {
+        // The art's base sits at y 60 of its box: stand it on the rail.
+        var ww = 0.085, wh = ww * tsp2.aspect, baseFrac = (60 - tsp2.vb[1]) / tsp2.vb[3];
+        c.globalAlpha = (bready ? 1 : 0.6) * (own ? 1 : 0.55);
+        c.drawImage(tsp2.cv, -ww / 2, 0.03 - wh * baseFrac, ww, wh);
+        c.globalAlpha = 1;
+      } else {
+        c.fillStyle = "#4cc3ee"; c.beginPath(); c.moveTo(-0.03, 0.022); c.lineTo(-0.018, -0.008); c.lineTo(0.018, -0.008); c.lineTo(0.03, 0.022); c.closePath(); c.fill();
+        c.fillStyle = bready ? "#d6e0e8" : "#5b6b7a"; c.fillRect(-0.0045, -0.045, 0.009, 0.04);
+      }
+      c.restore();
+      if (multi) {                                   // gun number under each turret, in pixels
+        c.save(); c.setTransform(1, 0, 0, 1, 0, 0);
+        var dpr = c.canvas.width / S;
+        c.scale(dpr, dpr);
+        c.font = "700 " + Math.round(S * 0.022) + "px system-ui, sans-serif"; c.textAlign = "center";
+        c.fillStyle = own ? "#4cc3ee" : "rgba(214,224,232,0.55)";
+        c.fillText((own ? "GUN " : "AI · GUN ") + bt.gunNo, bt.x * S, (gy + 0.06) * S);
+        c.restore();
+      }
+    });
     // Reticle: straight up from the turret, at the end of the gun's reach.
     var ry = Math.max(0.04, top);
     c.strokeStyle = ready ? "rgba(123,224,166,0.8)" : "rgba(255,107,90,0.7)";

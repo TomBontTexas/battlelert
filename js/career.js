@@ -9,7 +9,7 @@
   var STATIONS = ["engineer", "gunner", "pilot"];
   var STATION_NAME = { engineer: "Engineer", gunner: "Gunner", pilot: "Pilot" };
   var PLAYABLE = { engineer: true, gunner: true }; // stations built so far
-  var GUNNER_CLASSES = 1;                          // the gunner station is built up to this class
+  var GUNNER_CLASSES = 3;                          // the gunner station is built up to this class
   // Is this class built for this station? (The engine room runs on every built class.)
   function built(station, n) {
     var cls = BL.classByN(n);
@@ -122,7 +122,7 @@
     var cls = BL.classByN(n);
     var job = { id: "j" + Math.floor(rng.next() * 1e9).toString(36), station: station, classId: cls.id, n: n, tl: tl,
       ship: BL.shipName(rng, cls.id, tl), seed: 1 + Math.floor(rng.next() * 999999), serious: serious !== false };
-    if (station === "gunner") { job.weapon = "pulse"; if (BL.pickEngineer) job.engineer = BL.pickEngineer(job.seed, cls.id); }
+    if (station === "gunner") { job.weapons = (BL.GUNNERY.loadout[cls.id] || ["pulse"]).slice(); if (BL.pickEngineer) job.engineer = BL.pickEngineer(job.seed, cls.id); }
     return job;
   }
   function offers(c, station) { return c.offersBy[station] || []; }

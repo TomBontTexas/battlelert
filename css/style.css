@@ -357,6 +357,12 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 .tu-field { position: relative; min-width: 0; min-height: 0; display: flex; align-items: center; justify-content: center; touch-action: none; }
 #tu-canvas { display: block; border: 1px solid var(--line); border-radius: 8px; touch-action: none; cursor: crosshair; }
 .tu-what { line-height: 1.3; }
+.tu-bats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.tu-bats[hidden] { display: none; }
+.tu-bat { padding: 6px 4px; font-size: 12px; text-align: left; display: grid; gap: 3px; touch-action: manipulation; }
+.tu-bat.on { border-color: var(--charge); color: var(--charge); }
+.tu-bat .mini { height: 5px; background: var(--panel); border-radius: 2px; overflow: hidden; }
+.tu-bat .mini i { display: block; height: 100%; background: var(--charge); }
 .tu-charge-wrap { display: flex; gap: 10px; flex: 1; min-height: 120px; }
 .tu-vbar { position: relative; width: 34px; flex: none; background: var(--panel-2); border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
 .tu-lvl { position: absolute; left: 0; right: 0; bottom: 0; height: 0; background: var(--charge); }

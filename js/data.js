@@ -351,6 +351,11 @@
     traverse: 1.3,                     // fields per second the turret slides
     torpedo: { travel: 2.6, size: 0.022 },   // seconds from launch to impact; hit box half-size
     call: { seconds: 6, cooldown: 4 }, // CALL FOR POWER: rapid-fire request length, wait before the next
+    // What each class's batteries carry at the gunner station, Gun 1 first. With two or more,
+    // the player aims one and an AI gunner works the others; turrets share one rail.
+    loadout: { gunboat: ["pulse"], picket: ["rail"], destroyerEscort: ["pulse", "rail"] },
+    railGap: 0.09,                     // turrets on one rail can't come closer than this
+    aiGunner: 0.75,                    // skill of the AI gunner on the batteries you aren't aiming
     // Our torpedoes (gunboats carry two; the carrier reloads them every sortie). No energy.
     // Slow and homing on the nearest siege battery or capital ship; damage x the class's threat
     // hp. A target sidesteps (jink, fields/s) when one gets within jinkAt, and its point defense

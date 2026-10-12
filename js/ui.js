@@ -73,7 +73,9 @@
   /* ------------------------------------------------------------ Briefing */
   function startBriefing(j) {
     job = j;
-    sim = new BL.Mission({ seed: j.seed, classId: j.classId, tl: j.tl, gunner: j.station === "gunner" ? { weapon: j.weapon } : null });
+    // The turret test fires the gun picked on the title screen; a real gunner job, the ship's own guns.
+    var guns = j.station !== "gunner" ? null : j.weapons ? { weapons: j.weapons } : j.weapon && j.test ? { weapon: j.weapon } : { weapons: BL.GUNNERY.loadout[j.classId] || ["pulse"] };
+    sim = new BL.Mission({ seed: j.seed, classId: j.classId, tl: j.tl, gunner: guns });
     if (j.test) $("seed-input").value = j.seed;
     var d = sim.data, cls = BL.classById(j.classId);
     $("brief-seed").textContent = "· seed " + j.seed;
@@ -82,7 +84,8 @@
       : "Gunboats have no GravSpace drive. In each of the carrier's " + sim.cfg.jumps + " systems it launches you into the fight and recovers you when the sortie timer runs out, then carries you through GravSpace to the next one. Keep the gunboat alive through every sortie.";
     $("brief-route").innerHTML = sim.route.map(function (id, i) {
       var e = BL.ENCOUNTERS[id];
-      if (sim.turret) return "<li>Sortie " + (i + 1) + ": <b>" + e.name + "</b>. " + gunnerTip(id) + " The carrier recovers you " + sim.windowFor(i) + " s after launch.</li>";
+      if (sim.turret) return "<li>" + (sim.hasDrive ? "System " : "Sortie ") + (i + 1) + ": <b>" + e.name + "</b>. " + gunnerTip(id) +
+        (sim.hasDrive ? " Jump window opens " + sim.windowFor(i) + " s after arrival." : " The carrier recovers you " + sim.windowFor(i) + " s after launch.") + "</li>";
       return "<li>" + (sim.hasDrive ? "System " : "Sortie ") + (i + 1) + ": <b>" + e.name + "</b>. " + e.what + ". Tests: " + e.tests.toLowerCase() +
         (sim.hasDrive ? ". Jump window opens " + sim.windowFor(i) + " s after arrival." : ". The carrier recovers you " + sim.windowFor(i) + " s after launch.") + "</li>";
     }).join("") + (sim.hasDrive ? "<li>The Archonian world: drop the planet buster.</li>" : "");
@@ -114,7 +117,12 @@
     if (gunner) {
       var en = sim.turret.engineer;
       $("brief-pt").hidden = !sim.data.torpedoes;
-      var wn = sim.turret.w.name.toLowerCase(); $("brief-weapon").textContent = (/^[aeiou]/.test(wn) ? "an " : "a ") + wn; $("brief-weapon-what").textContent = sim.turret.w.what;
+      var bats = sim.turret.bats;
+      $("brief-guns").innerHTML = bats.length === 1
+        ? "You're at <b>Gun 1</b>, <b>" + an(bats[0].w.name.toLowerCase()) + "</b>: " + bats[0].w.what
+        : "You command " + bats.map(function (b) { return "<b>Gun " + b.gunNo + "</b> (" + b.w.name.toLowerCase() + ")"; }).join(" and ") +
+          ". You aim one; an AI gunner works the other, and the two turrets share one rail. Tap a turret or press 1 or 2 to switch. " +
+          bats.map(function (b) { return b.w.name + ": " + b.w.what; }).join(" ");
       $("brief-engineer").innerHTML = "Your engineer: <b>" + esc(en.name) + "</b>, " + en.label + " (skill " + Math.round(en.skill * 100) + "). " + ENGINEER_NOTE[en.label];
     }
     show("scr-briefing");
@@ -659,15 +667,42 @@
   var keysHeld = {}, tuCtx = null, tuSize = 0, lastTuDamage = -1;
   function buildTurret() {
     var tu = sim.turret, w = tu.w;
-    $("tu-station").textContent = "Gun 1 · " + (job.test ? sim.data.className : job.ship + " (" + sim.data.className + ")") + " · tech level " + sim.data.tl;
-    $("tu-weapon").textContent = "GUN 1 · " + w.name.toUpperCase();
+    $("tu-station").textContent = "Gunnery · " + (job.test ? sim.data.className : job.ship + " (" + sim.data.className + ")") + " · tech level " + sim.data.tl;
+    $("tu-rec-label").textContent = sim.hasDrive ? "JUMP" : "RECOVERY";
+    $("tu-keys").textContent = "← → slide · Space fire (hold) · " + (tu.bats.length > 1 ? "1–" + tu.bats.length + " or tap a turret: switch guns" : tu.pt.length ? "1 2 torpedoes" : "") +
+      " · C call for power · P pause · Mouse: move to aim, hold button to fire · Touch: drag to aim, hold FIRE";
+    // Battery buttons (two or more guns): tap to take that gun; the AI gunner takes the other.
+    $("tu-bats").hidden = tu.bats.length < 2;
+    $("tu-bats").innerHTML = tu.bats.map(function (b, i) {
+      return '<button class="tu-bat" data-i="' + i + '"><span>GUN ' + b.gunNo + " · " + b.w.short + " <small>(" + (i + 1) + ')</small></span><span class="mini"><i></i></span></button>';
+    }).join("");
+    shownSel = -1; showBattery();
+    $("tu-comms").innerHTML = "";
+    keysHeld = {}; setFireBtn(false);
+  }
+  // The left panel follows the battery you're aiming.
+  var shownSel = -1;
+  function showBattery() {
+    var tu = sim.turret, w = tu.w;
+    if (shownSel === tu.sel) return;
+    shownSel = tu.sel;
+    $("tu-weapon").textContent = "GUN " + tu.gunNo + " · " + w.name.toUpperCase();
     $("tu-weapon-what").textContent = w.what;
     var gun = tu.gun(), n = Math.floor(gun.maxMJ / w.shotMJ), ticks = "";
     for (var i = 1; i <= n && n <= 30; i++) ticks += '<i style="bottom:' + (i * w.shotMJ / gun.baseMJ * 100).toFixed(2) + '%"></i>';
     $("tu-ticks").innerHTML = ticks;
-    $("tu-comms").innerHTML = "";
-    keysHeld = {}; setFireBtn(false);
+    Array.prototype.forEach.call($("tu-bats").children, function (el, i) { el.classList.toggle("on", i === tu.sel); });
   }
+  function selectBattery(i) {
+    var tu = sim.turret, held = tu.firing;
+    if (!tu.select(i)) return;
+    if (held || keysHeld.fire) tu.trigger(true);      // keep firing with the new gun if FIRE is held
+    tu.setDir(keyDir());
+    showBattery();
+  }
+  $("tu-bats").addEventListener("click", function (ev) {
+    var b = ev.target.closest("button[data-i]"); if (b && turretActive()) selectBattery(+b.dataset.i);
+  });
   function sizeTurret() {
     var box = $("tu-field"), cv = $("tu-canvas"), dpr = window.devicePixelRatio || 1;
     var side = Math.floor(Math.max(120, Math.min(box.clientWidth, box.clientHeight)));
@@ -684,8 +719,13 @@
     var tu = sim.turret, ship = sim.ship, gun = tu.gun(), w = tu.w, enc = sim.encounter() || {};
     sizeTurret();
     BL.drawTurret(tuCtx, tuSize, sim, tu, ts);
-    $("tu-jump").innerHTML = "Sortie <b>" + (sim.jumpIndex + 1) + "</b> of " + sim.cfg.jumps + " · <b>" + (enc.name || "") + "</b>";
-    setText($("tu-phase"), sim.phase === "arrival" ? "Launching in " + Math.ceil(sim.cfg.arrivalSeconds - sim.t) + " s" : sim.phase === "engage" ? "T+" + mmss(sim.t) : "");
+    showBattery();
+    $("tu-jump").innerHTML = (sim.hasDrive ? "Jump" : "Sortie") + " <b>" + (sim.jumpIndex + 1) + "</b> of " + sim.cfg.jumps + " · <b>" + (enc.name || "") + "</b>";
+    setText($("tu-phase"), sim.phase === "arrival" ? (sim.hasDrive ? "Engagement in " : "Launching in ") + Math.ceil(sim.cfg.arrivalSeconds - sim.t) + " s" :
+      sim.phase === "countdown" ? "JUMPING IN " + Math.max(1, Math.ceil(sim.jumpAt - sim.t)) : sim.phase === "engage" ? "T+" + mmss(sim.t) : "");
+    Array.prototype.forEach.call($("tu-bats").children, function (el, i) {
+      var g = tu.gun(tu.bats[i]); el.querySelector(".mini i").style.width = pct(g.mj / g.baseMJ);
+    });
     renderComms();
     // Gun
     $("tu-charge").style.height = pct(gun.mj / gun.baseMJ);
@@ -726,8 +766,14 @@
     setText($("tu-shield-val"), Math.round(sh.mj) + " / " + sh.maxMJ + " MJ");
     $("tu-shield").style.width = pct(sh.mj / sh.maxMJ);
     var wi = sim.windowIn();
-    setText($("tu-rec-val"), Math.max(0, Math.ceil(wi)) + " s");
-    $("tu-rec").style.width = pct(sim.t / sim.windowAt());
+    var drive = sim.sys("drive");
+    if (drive) {
+      setText($("tu-rec-val"), (wi > 0 ? "window in " + Math.ceil(wi) + " s · " : "window open · ") + "drive " + Math.floor(drive.mj / drive.maxMJ * 100) + "%");
+      $("tu-rec").style.width = pct(drive.mj / drive.maxMJ);
+    } else {
+      setText($("tu-rec-val"), Math.max(0, Math.ceil(wi)) + " s");
+      $("tu-rec").style.width = pct(sim.t / sim.windowAt());
+    }
     var g = tu.cur || {};
     $("tu-tally").innerHTML = "<span>Ships destroyed</span><b>" + (g.kills || 0) + " / " + (g.ships || 0) + "</b><span>Torpedoes shot down</span><b>" + (g.downed || 0) + " / " + (g.torps || 0) +
       "</b><span>Hits</span><b>" + (g.hits || 0) + " / " + (g.shots || 0) + "</b>" + (ship.crippled ? '<span class="bad">✖ Crew crippled: slow fire</span><b></b>' : "");
@@ -752,7 +798,11 @@
       return;
     }
     if (down && kl === "c" && turretActive()) { ev.preventDefault(); tu.callPower(); }
-    if (down && (k === "1" || k === "2") && turretActive()) { ev.preventDefault(); tu.launchPT(+k - 1); }
+    // Number keys: with several batteries they pick a gun; on a gunboat, 1 and 2 fire torpedoes.
+    if (down && k.length === 1 && k >= "1" && k <= "9" && turretActive()) {
+      if (tu.bats.length > 1) { if (+k <= tu.bats.length) { ev.preventDefault(); selectBattery(+k - 1); } }
+      else if (k === "1" || k === "2") { ev.preventDefault(); tu.launchPT(+k - 1); }
+    }
   }
   document.addEventListener("keyup", function (ev) { if (inTurret() && sim) turretKey(ev, false); });
   window.addEventListener("blur", function () { if (sim && sim.turret && inTurret()) releaseTurret(); });
@@ -773,7 +823,15 @@
       sim.turret.aimAt(d.aim + (ev.clientX - d.x) / Math.max(100, d.width) * 1.1);
     }
     function endDrag(ev) { delete drags[ev.pointerId]; }
+    // A tap or click on another battery's turret takes that gun.
+    function turretAt(ev) {
+      var r = cv.getBoundingClientRect(), x = (ev.clientX - r.left) / r.width, y = (ev.clientY - r.top) / r.height, tu = sim.turret;
+      if (tu.bats.length < 2 || y < BL.GUNNERY.turretY - 0.08) return -1;
+      for (var i = 0; i < tu.bats.length; i++) if (i !== tu.sel && Math.abs(tu.bats[i].x - x) < 0.05) return i;
+      return -1;
+    }
     cv.addEventListener("pointerdown", function (ev) {
+      if (turretActive()) { var hitBat = turretAt(ev); if (hitBat >= 0) { selectBattery(hitBat); ev.preventDefault(); return; } }
       if (ev.pointerType === "mouse") {
         if (!turretActive() || ev.button !== 0) return;
         sim.turret.aimAt(fieldX(ev)); sim.turret.trigger(true); setFireBtn(true);
@@ -812,7 +870,7 @@
     var dmg = sim.stats.damageReports.filter(function (d) { return d.jump === sim.jumpIndex; });
     $("grav-title").textContent = sim.hasDrive ? "In GravSpace: jump " + sim.jumpIndex + " of " + sim.cfg.jumps + " complete"
       : "Aboard the carrier: sortie " + sim.jumpIndex + " of " + sim.cfg.jumps + " complete";
-    if (sim.turret) { $("grav-body").innerHTML = gravGunner(js, dmg, next); $("btn-grav-go").textContent = "Launch"; overlay("ov-grav", true); return; }
+    if (sim.turret) { $("grav-body").innerHTML = gravGunner(js, dmg, next); $("btn-grav-go").textContent = sim.hasDrive ? "Drop out of GravSpace" : "Launch"; overlay("ov-grav", true); return; }
     $("grav-body").innerHTML =
       "<p>Fighting has stopped." + (sim.hasDrive ? "" : " The carrier has you on deck and is carrying you through GravSpace.") + (sim.hasAux() ? " The aux bank is refilled." : "") + "</p>" +
       "<ul class='grav-list'>" +
@@ -831,7 +889,7 @@
   }
   function gravGunner(js, dmg, next) {
     var g = sim.turret.jumps[sim.jumpIndex - 1] || {};
-    return "<p>Fighting has stopped. The carrier has you on deck and is carrying you through GravSpace.</p><ul class='grav-list'>" +
+    return "<p>Fighting has stopped. " + (sim.hasDrive ? "The ship is in GravSpace." : "The carrier has you on deck and is carrying you through GravSpace.") + "</p><ul class='grav-list'>" +
       "<li>Enemy ships destroyed: " + g.kills + " of " + g.ships + "</li>" +
       "<li>Torpedoes shot down: " + g.downed + " of " + g.torps + "</li>" +
       (g.ptFired ? "<li>Our torpedoes: " + g.ptHits + " hits of " + g.ptFired + " launched. Both tubes are reloaded.</li>" : "") +
@@ -840,7 +898,7 @@
       "<li>Hull damage taken: " + js.hullLost + "</li>" +
       (dmg.length ? "<li>Damage: " + dmg.map(function (d) { return d.what; }).join("; ") + "</li>" : "") +
       (sim.lastRepairs && sim.lastRepairs.length ? "<li>Damage control repaired half of it: " + sim.lastRepairs.join("; ") + "</li>" : "") +
-      "</ul><h2>Next: " + next.name + "</h2><p>" + gunnerTip(sim.route[sim.jumpIndex]) + " The carrier launches you again on arrival.</p>" +
+      "</ul><h2>Next: " + next.name + "</h2><p>" + gunnerTip(sim.route[sim.jumpIndex]) + (sim.hasDrive ? "" : " The carrier launches you again on arrival.") + "</p>" +
       "<p class='muted'>Take a breath; the clock is stopped.</p>";
   }
   var ENGINEER_NOTE = {
@@ -849,10 +907,14 @@
     green: "New to the job: the shields may be short when a torpedo lands, and your calls take a moment.",
     sloppy: "Expect torpedoes to get through. Shoot them down yourself."
   };
-  // What the gunner should expect from an encounter, and whether their gun has the edge.
+  function an(x) { return (/^[aeiou]/.test(x) ? "an " : "a ") + x; }
+  // What the gunner should expect from an encounter, and which of their guns has the edge.
   function gunnerTip(encId) {
-    var w = sim.turret.w, look = BL.GUNNERY.looks[encId] || {};
-    return (look.ship ? "Expect " + look.ship + "s: " + look.what + ". " : "") + (w.best.indexOf(encId) >= 0 ? "Your " + w.name.toLowerCase() + " does extra damage to them." : "Your " + w.name.toLowerCase() + " gets no bonus against them.");
+    var look = BL.GUNNERY.looks[encId] || {}, bats = sim.turret.bats;
+    var good = bats.filter(function (b) { return b.w.best.indexOf(encId) >= 0; }).map(function (b) { return b.w.name.toLowerCase(); });
+    var gun = bats.length === 1 ? "Your " + bats[0].w.name.toLowerCase() : "None of your guns";
+    return (look.ship ? "Expect " + look.ship + "s: " + look.what + ". " : "") +
+      (good.length ? "Your " + good.join(" and ") + " does extra damage to them." : gun + (bats.length === 1 ? " gets" : " get") + " no bonus against them.");
   }
   $("btn-grav-go").onclick = function () { click(); overlay("ov-grav", false); sim.beginJump(); };
 
@@ -928,7 +990,7 @@
           "</td><td>" + t.hits + " / " + t.shots + "</td><td>" + j.shielded + " / " + j.salvos + "</td><td>" + j.hullLost + "</td><td>" + j.seconds + "</td></tr>";
       }).join("");
     var rows = [
-      ["Gun", BL.WEAPONS[r.weapon].name],
+      [(r.weapons || [r.weapon]).length > 1 ? "Guns" : "Gun", (r.weapons || [r.weapon]).map(function (id) { return BL.WEAPONS[id].name; }).join(" and ")],
       ["Engineer", esc(r.engineer.name) + ", " + r.engineer.label + " (skill " + Math.round(r.engineer.skill * 100) + ")"],
       ["Accuracy", g.hits + " hits of " + g.shots + " shots (" + g.accuracyPct + "%)"],
       ["Enemy ships destroyed", g.kills + " / " + g.ships],
@@ -1146,7 +1208,7 @@
     var tag = up ? '<span class="tag up">' + (q ? "STEP UP" : "FIRST QUALIFICATION") + "</span>" : !j.serious ? '<span class="tag low">LOWER CLASS</span>' : "";
     return '<div class="offer' + (up ? " stepup" : "") + '"><h3>' + cls.name + " · " + j.ship + tag + "</h3>" +
       '<button class="primary" data-i="' + i + '">Accept</button>' +
-      '<div class="meta">' + rankName + (j.station === "gunner" ? " · Gun 1, pulse cannon" : "") + " · tech level " + j.tl + " (reputation ×" + BL.TECH.repMult(j.tl).toFixed(1) + ") · up to " + BL.career.repFor(j, 100) + " reputation" +
+      '<div class="meta">' + rankName + (j.station === "gunner" ? " · " + (j.weapons || ["pulse"]).map(function (id, k) { return "Gun " + (k + 1) + " " + BL.WEAPONS[id].name.toLowerCase(); }).join(", ") + (j.classId === "gunboat" ? ", two torpedoes" : "") : "") + " · tech level " + j.tl + " (reputation ×" + BL.TECH.repMult(j.tl).toFixed(1) + ") · up to " + BL.career.repFor(j, 100) + " reputation" +
       (up ? " · success qualifies you as " + rankName + "-" + j.n : "") + "</div>" +
       (j.engineer ? '<div class="meta">Engineer: <b>' + esc(j.engineer.name) + "</b>, " + j.engineer.label + " (skill " + Math.round(j.engineer.skill * 100) + ")</div>" : "") + "</div>";
   }
@@ -1159,7 +1221,7 @@
       shownJobs = BL.career.offers(career, station);
       $("offers-title").textContent = who + " jobs";
       $("offers-lede").textContent = (station === "gunner"
-        ? "Postings for gunners at your level: Gun 1 on a gunboat, with a pulse cannon and two torpedoes. Each names the engineer who'll run your power. The gunner station is built for gunboats so far."
+        ? "Postings for gunners at your level. Each lists the ship's guns and names the engineer who'll run your power. The gunner station is built up to the destroyer escort so far."
         : "Postings for engineers at your level. Lower tech levels are harder (smaller reactor and capacitors, weaker guns) and earn more reputation.") +
         (q && BL.career.built(station, q + 1) ? " There's always a tech-level-1 posting for your class and for the class above it." : " There's always a tech-level-1 posting.");
     } else {
