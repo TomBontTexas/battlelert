@@ -1,5 +1,5 @@
 /* Battlelert career record: qualifications, reputation, failures, rapid sign-offs,
-   reputation profile, mission history and the current job offers.
+   reputation profile, mission history, the current job offers and every ship's service record.
    Pure JavaScript (no screen code). Saved in browser storage; exported as
    BATTLELERT_<hero name>.json. */
 (function (root) {
@@ -9,9 +9,8 @@
   var STATIONS = ["engineer", "gunner", "pilot"];
   var STATION_NAME = { engineer: "Engineer", gunner: "Gunner", pilot: "Pilot" };
   var PLAYABLE = { engineer: true };               // stations built so far
-  var SHIP_NAMES = ["Resolute", "Valiant", "Tenacity", "Harrier", "Vigilant", "Defiance", "Endeavour", "Swift", "Intrepid",
-    "Bulwark", "Corsair", "Sentinel", "Audacious", "Kestrel", "Warden", "Relentless", "Lancer", "Indomitable", "Petrel",
-    "Stalwart", "Fearless", "Merlin", "Paladin", "Gallant", "Steadfast", "Osprey", "Talon", "Courageous", "Ranger", "Archer"];
+
+  var NAMES_VERSION = 2;                           // 2 = the historical ship roster (names.js)
 
   function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
   function today() { var d = new Date(); return d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2) + "-" + ("0" + d.getDate()).slice(-2); }
@@ -24,7 +23,8 @@
       name: cleanName(name) || "Recruit", created: today(),
       stations: {}, signoffsUsed: [],
       profile: { missions: 0, wins: 0, losses: 0, aggression: 0, efficiency: 0, demands: 0, condition: 0 },
-      history: [], offers: [], offerSeed: BL.randomSeed(), offersSinceStepUp: 0
+      history: [], offers: [], offerSeed: BL.randomSeed(), offersSinceStepUp: 0,
+      ships: {}, namesVersion: NAMES_VERSION
     };
     STATIONS.forEach(function (s) { c.stations[s] = { qualified: 0, rep: 0, failures: {} }; });
     generateOffers(c);
@@ -41,6 +41,7 @@
   // Fill in anything an older or hand-edited file is missing, so it never breaks the game.
   function normalize(c) {
     if (!c || c.kind !== "career") throw new Error("This file isn't a Battlelert career.");
+    var oldNames = c.namesVersion !== NAMES_VERSION;   // checked before the defaults below fill it in
     var fresh = create(c.name);
     fresh.offers = [];
     Object.keys(fresh).forEach(function (k) { if (c[k] === undefined) c[k] = fresh[k]; });
@@ -54,6 +55,14 @@
       if (!isFinite(+c.profile[k])) c.profile[k] = 0;
     });
     c.name = cleanName(c.name) || "Recruit";
+    if (!c.ships || typeof c.ships !== "object") c.ships = {};
+    // Careers from before the ship roster: start the service records from the mission history,
+    // and replace offers that still carry the old generic names.
+    if (oldNames) {
+      c.history.slice().reverse().forEach(function (h) { logService(c, h, {}); });
+      c.offers = [];
+      c.namesVersion = NAMES_VERSION;
+    }
     if (!Array.isArray(c.offers) || !c.offers.length) generateOffers(c);
     ensureStepUp(c);
     return c;
@@ -89,7 +98,7 @@
   function makeJob(rng, station, n, tl, serious) {
     var cls = BL.classByN(n);
     return { id: "j" + Math.floor(rng.next() * 1e9).toString(36), station: station, classId: cls.id, n: n, tl: tl,
-      ship: "TFS " + rng.pick(SHIP_NAMES), seed: 1 + Math.floor(rng.next() * 999999), serious: serious !== false };
+      ship: BL.shipName(rng, cls.id, tl), seed: 1 + Math.floor(rng.next() * 999999), serious: serious !== false };
   }
   function generateOffers(c) {
     var rng = BL.rng(c.offerSeed = (c.offerSeed * 48271 + 11) % 2147483647 || 1);
@@ -175,12 +184,27 @@
     p.missions = n + 1;
     if (success) p.wins++; else p.losses++;
     report.profileAfter = profile(c);
-    c.history.unshift({ date: today(), station: job.station, classId: job.classId, n: job.n, tl: job.tl, ship: job.ship,
-      seed: job.seed, outcome: r.outcome, score: r.score, rep: report.rep, serious: job.serious });
+    var entry = { date: today(), station: job.station, classId: job.classId, n: job.n, tl: job.tl, ship: job.ship,
+      seed: job.seed, outcome: r.outcome, score: r.score, rep: report.rep, serious: job.serious };
+    c.history.unshift(entry);
     if (c.history.length > 200) c.history.length = 200;
+    logService(c, entry, r);
     generateOffers(c);
     return report;
   }
+
+  /* Service records: one per ship, kept for the whole career (never trimmed). Each mission
+     aboard adds an entry: who served, at which station, how it went and what the ship took. */
+  function logService(c, h, r) {
+    var rec = c.ships[h.ship];
+    if (!rec) rec = c.ships[h.ship] = { name: h.ship, classId: h.classId, n: h.n, tl: h.tl, firstServed: h.date, missions: [] };
+    var d = r.detail || {};
+    rec.missions.push({ date: h.date, hero: c.name, station: h.station, seed: h.seed, outcome: h.outcome, score: h.score,
+      rep: h.rep, serious: h.serious, kills: d.kills, hullLost: d.hullLost, jumpsOnTime: d.jumpsOnTime,
+      encounters: (r.jumps || []).map(function (j) { return j.encounter; }), damageReports: (r.damage || []).length });
+    rec.lastServed = h.date;
+  }
+  function serviceRecord(c, ship) { return c.ships[ship] || null; }
 
   // Reputation profile factors, 0..1 each, shown as slider bars.
   function profile(c) {
@@ -201,6 +225,6 @@
     qualified: qualified, rank: rank, targetClass: targetClass,
     signoffsTotal: signoffsTotal, signoffsHeld: signoffsHeld,
     generateOffers: generateOffers, lowerJobs: lowerJobs, repFor: repFor,
-    applyResult: applyResult, profile: profile
+    applyResult: applyResult, profile: profile, serviceRecord: serviceRecord
   };
 })(typeof window !== "undefined" ? window : globalThis);
