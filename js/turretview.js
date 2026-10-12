@@ -7,7 +7,7 @@
   var stars = null;
   // Approved art (art.js), rasterized once into small canvases so drawing stays cheap.
   var sprites = {};
-  var SHIP_ART = { raiders: "raider", interceptors: "interceptor", siege: "siege", hunters: "hunter" };
+  var SHIP_ART = { raiders: "raider", interceptors: "interceptor", siege: "siege", hunters: "hunter", frigate: "frigate" };
   var TURRET_ART = { pulse: "turretPulse", rail: "turretRail", ion: "turretIon" };
   function sprite(name) {
     var s = sprites[name];
@@ -25,7 +25,7 @@
   BL.preloadArt = function () {
     Object.keys(SHIP_ART).forEach(function (k) { sprite(SHIP_ART[k]); });
     Object.keys(TURRET_ART).forEach(function (k) { sprite(TURRET_ART[k]); });
-    sprite("torpedo");
+    sprite("torpedo"); sprite("ptTorpedo");
   };
   var BOLT = { pulse: "#7bffb0", rail: "#d8f4ff", ion: "#c49bff" };
   var HULL = { raiders: "#ff7a45", interceptors: "#ffd84a", siege: "#ff5a6e", hunters: "#5ee0d0" };
@@ -144,6 +144,24 @@
         c.strokeStyle = Math.floor(t * 8) % 2 ? "rgba(255,90,70,0.9)" : "rgba(255,90,70,0.3)";
         c.beginPath(); c.arc(tp.x1, tp.y1, 0.02, 0, Math.PI * 2); c.stroke();
       }
+    });
+
+    // Our torpedoes, and brackets on what each one is locked onto.
+    var pts = sprite("ptTorpedo");
+    tu.ptTorps.forEach(function (tp) {
+      if (tp.target && !tp.target.dead) {
+        var s = tp.target, bx = s.w / 2 + 0.012, by = s.h / 2 + 0.012, k = 0.025;
+        c.strokeStyle = Math.floor(t * 6) % 2 ? "rgba(255,107,90,0.95)" : "rgba(255,107,90,0.45)"; c.lineWidth = 2.5 / S;
+        [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(function (q) {
+          var x = s.x + q[0] * bx, y = s.y + q[1] * by;
+          c.beginPath(); c.moveTo(x - q[0] * k, y); c.lineTo(x, y); c.lineTo(x, y - q[1] * k); c.stroke();
+        });
+        c.lineWidth = 1.5 / S;
+      }
+      c.save(); c.translate(tp.x, tp.y); c.rotate(tp.a + Math.PI / 2);
+      if (pts) { var pw = 0.032, ph = pw * pts.aspect; c.drawImage(pts.cv, -pw / 2, -ph * 0.4, pw, ph); }
+      else { c.fillStyle = "#d6dee5"; c.fillRect(-0.006, -0.02, 0.012, 0.04); }
+      c.restore();
     });
 
     // Bolts.

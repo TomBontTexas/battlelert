@@ -35,8 +35,8 @@
   BL.CLASSES = [
     { n: 1, id: "gunboat", name: "Gunboat", built: true, baseRep: 100,
       crew: 4, hull: 30, reactorMW: 40, engineMWperG: 2, cruiseG: 4, maxG: 16, gScale: 1.5,
-      aux: { capacity: 0, rateMW: 0 }, hullPerMJ: 0.3, threat: { dmg: 0.35, hp: 0.4 },
-      mission: { jumps: 3, windows: [70, 80, 90] }, encounters: ["raiders", "interceptors"],
+      aux: { capacity: 0, rateMW: 0 }, hullPerMJ: 0.3, threat: { dmg: 0.35, hp: 0.4 }, torpedoes: 2,
+      mission: { jumps: 3, windows: [70, 80, 90] }, encounters: ["raiders", "interceptors", "frigate"],
       systems: [
         sys("life", "Life support", "LIFE", "life", 25, 6, 25, 2, { drainMW: 1.2 }),
         sys("shield", "Shields", "SHLD", "shield", 90, 35, 45, 4),
@@ -199,7 +199,7 @@
       reactorMW: reactors.reduce(function (a, x) { return a + x.mw; }, 0), engineMWperG: c.engineMWperG, cruiseG: c.cruiseG, maxG: c.maxG, gScale: c.gScale,
       aux: reactors[0].aux,
       hullPerMJ: c.hullPerMJ, threat: c.threat, mission: c.mission, encounters: c.encounters,
-      mainGun: c.mainGun || null,
+      mainGun: c.mainGun || null, torpedoes: c.torpedoes || 0,
       hangar: c.hangar ? Object.assign({}, c.hangar, { dps: c.hangar.dps * f }) : null,
       gun: { shotMJ: GUN.shotMJ, normalInterval: GUN.normalInterval, fullInterval: GUN.fullInterval, hitChance: GUN.hitChance, damage: GUN.damage * f },
       systems: c.systems.map(function (s) {
@@ -298,6 +298,20 @@
       surpriseChance: 0.05, driveDrain: 0.15,
       breakOff: 0                      // hunters send no new waves once the jump window is open
     },
+    // An Archonian frigate with two interceptor escorts: one big hull, torpedoes in pairs.
+    frigate: {
+      name: "Frigate group",
+      enemy: "Archonian frigate",
+      what: "A frigate and two escorts; torpedoes come in pairs every 6 to 8 s",
+      tests: "Shield timing under steady pairs",
+      salvoWarning: 6,
+      firstWave: [3, 5],
+      waveEvery: [70, 80],
+      wave: { hp: 360, salvos: [8, 10], approach: [6, 8], salvoGap: [6, 8], salvoMJ: [70, 100], requests: 3, pairs: true },
+      request: { lead: 4, duration: [6, 8] },
+      burns: { every: [24, 34], g: [5, 6], duration: [3, 4], warning: 5 },
+      surpriseChance: 0.05
+    },
     // No enemy fire. The pilot weaves through the field with long burns, and the engines get
     // only what the capacitors leave of the reactor. Short of power = drifting = mine strikes.
     minefield: {
@@ -321,8 +335,8 @@
   BL.WEAPONS = {
     pulse: { name: "Pulse cannon", short: "PULSE", shotMJ: 4, interval: 0.25, damage: 3, speed: 1.7, reach: 0.7, best: ["interceptors"],
              what: "Short reach, fast fire, light hits. Best against interceptors." },
-    rail:  { name: "Rail gun", short: "RAIL", shotMJ: 18, interval: 1.0, damage: 15, speed: 6, reach: 1.0, best: ["raiders", "siege"],
-             what: "Long reach, slow fire, heavy hits. Best against raiders and siege lines." },
+    rail:  { name: "Rail gun", short: "RAIL", shotMJ: 18, interval: 1.0, damage: 15, speed: 6, reach: 1.0, best: ["raiders", "siege", "frigate", "cruiserA", "carrier", "battleshipA", "fortress"],
+             what: "Long reach, slow fire, heavy hits. Best against raiders, siege lines and capital ships." },
     ion:   { name: "Ion gun", short: "ION", shotMJ: 7, interval: 0.5, damage: 3, speed: 1.1, reach: 0.85, best: ["hunters"],
              ion: { seconds: 4, salvoMult: 0.5, delay: 1.5 },
              what: "Medium reach, light hits. A hit drains the target's weapons for 4 s: its torpedoes launch late and hit half as hard. Best against drive hunters." }
@@ -333,6 +347,13 @@
     traverse: 1.3,                     // fields per second the turret slides
     torpedo: { travel: 2.6, size: 0.022 },   // seconds from launch to impact; hit box half-size
     call: { seconds: 6, cooldown: 4 }, // CALL FOR POWER: rapid-fire request length, wait before the next
+    // Our torpedoes (gunboats carry two; the carrier reloads them every sortie). No energy.
+    // Slow and homing on the nearest siege battery or capital ship; damage x the class's threat
+    // hp. A target sidesteps (jink, fields/s) when one gets within jinkAt, and its point defense
+    // has pd chance per second to kill one within pdRange.
+    pt: { speed: 0.3, turn: 60, damage: 135, size: 0.018, jinkAt: 0.3, jinkSeconds: 1.2,
+          jink: { frigate: 0.18, cruiserA: 0.12, carrier: 0.08, battleshipA: 0.04, fortress: 0, siege: 0.03 },
+          pdRange: 0.35, pd: { frigate: 0.3, cruiserA: 0.4, carrier: 0.35, battleshipA: 0.55, fortress: 0.7, siege: 0.15 } },
     // Guns sit outside the shields. When a hit damages a gun's charger it damages its turret too,
     // taking turns: slower slide, slower fire, shorter range (share lost per hit, up to `max`).
     damage: { order: ["slide", "rate", "reach"], loss: { slide: 0.2, rate: 0.15, reach: 0.12 }, max: 0.6 },
@@ -352,6 +373,10 @@
                       what: "small, fast and fragile; they weave and dive, and launch torpedoes often" },
       siege:        { ship: "siege battery", count: [4, 4], w: 0.09, h: 0.075, band: [0.1, 0.2], sway: 0.04, period: [9, 12], dive: 0, formation: true,
                       what: "a slow line far up the screen that never stops firing" },
+      // Archonian capital ships: one big hull (the wave's toughness minus the escorts' share).
+      frigate:      { ship: "frigate", capital: true, count: [1, 1], w: 0.13, h: 0.25, band: [0.15, 0.2], sway: 0.1, period: [10, 12], dive: 0,
+                      escorts: { type: "interceptors", count: 2, share: 0.17 },
+                      what: "one big hull escorted by two interceptors; it holds near the top and fires torpedoes in pairs" },
       hunters:      { ship: "drive hunter", count: [3, 3], w: 0.065, h: 0.07, band: [0.18, 0.4], sway: 0.24, period: [3, 4], dive: 0.12,
                       what: "nimble ships that go for the GravSpace drive" }
     }
@@ -413,7 +438,11 @@
     surpriseG:   ["Tactical: torpedo out of nowhere!", "Tactical: didn't see that one launch!"],
     powerCall:   ["Engineering: power's coming to your gun!", "Engineering: you've got it, full charge for a few seconds.", "Engineering: routing everything I can spare to you."],
     shipKill:    ["Tactical: splash one {enemy}!", "Tactical: {enemy} down!", "Tactical: scratch one {enemy}."],
-    torpDown:    ["Tactical: torpedo destroyed!", "Tactical: nice, you got the torpedo."]
+    torpDown:    ["Tactical: torpedo destroyed!", "Tactical: nice, you got the torpedo."],
+    ptAway:      ["Coxswain: torpedo {n} away!", "Torpedo {n} running hot and straight!", "Coxswain: fish {n} in the water!"],
+    ptHit:       ["Tactical: torpedo hit! {enemy} is burning!", "Coxswain: direct hit on the {enemy}!", "Tactical: that one hurt the {enemy}!"],
+    ptDowned:    ["Tactical: their point defense got our torpedo.", "Tactical: torpedo intercepted."],
+    ptMiss:      ["Tactical: torpedo missed.", "Coxswain: it slipped the torpedo."]
   };
 
   /* ------------------------------------------------------ Sound recipes
@@ -445,6 +474,7 @@
     dry:      { ch: "fx",    wave: "square",   f0: 160,  f1: 140,  a: 0.001, s: 0.02, d: 0.03, vol: 0.10 },
     shipHit:  { ch: "fx",    wave: "noise",    f0: 2400, f1: 900,  a: 0.001, s: 0.01, d: 0.06, vol: 0.10 },
     torpLaunch:{ ch: "fx",   wave: "sawtooth", f0: 90,   f1: 260,  a: 0.02,  s: 0.15, d: 0.2,  vol: 0.10, noise: 0.4 },
+    ptLaunch: { ch: "fx",    wave: "sawtooth", f0: 70,   f1: 420,  a: 0.03,  s: 0.35, d: 0.4,  vol: 0.2,  noise: 0.5 },
     torpDown: { ch: "fx",    wave: "noise",    f0: 1800, f1: 300,  a: 0.001, s: 0.05, d: 0.3,  vol: 0.20 },
     win:      { ch: "fx",    wave: "triangle", f0: 523,  f1: 1046, a: 0.01,  s: 0.25, d: 0.4,  vol: 0.22, repeat: 3, gap: 0.18 },
     lose:     { ch: "fx",    wave: "sawtooth", f0: 300,  f1: 50,   a: 0.01,  s: 0.8,  d: 0.8,  vol: 0.25, noise: 0.3 }

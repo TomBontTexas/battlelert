@@ -298,6 +298,8 @@
       // Drive hunters fire drive strikes (mj = point-defense charge needed to stop one).
       this.events.push({ id: this.nextId++, type: w.strikes ? "strike" : "salvo", wave: wave.id, at: at, mj: Math.round(r.range(w.salvoMJ) * th.dmg),
         announceAt: Math.max(t, at - enc.salvoWarning), announced: false, visible: !surprise });
+      // A frigate fires in pairs: a second, equal salvo half a second behind the first.
+      if (w.pairs) { var e1 = this.events[this.events.length - 1]; this.events.push(Object.assign({}, e1, { id: this.nextId++, at: at + 0.6, announceAt: e1.announceAt + 0.6 })); }
     }
     wave.lastAt = at;
     for (var k = 0; k < w.requests; k++) {

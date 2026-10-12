@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Battlelert</title>
-<link rel="stylesheet" href="css/style.css?b=bed38e35">
+<link rel="stylesheet" href="css/style.css?b=9a002fc4">
 </head>
 <body>
 
@@ -121,6 +121,7 @@
       <li><b>Slide the turret</b> left and right and fire straight up. A bolt hits the first ship or torpedo it reaches; it flies only as far as the gun's range line.</li>
       <li>Enemy salvos come down as <b>torpedoes</b>. The shields take them, but you can shoot one down before it lands. Killing a ship stops the torpedoes it hasn't fired yet.</li>
       <li>Your gun sits outside the shields. A torpedo that gets through can damage its charger and its turret: it slides slower, fires slower or loses range. Damage control repairs half of it between sorties.</li>
+      <li id="brief-pt">Your gunboat carries <b>two torpedoes</b>: LAUNCH 1 and LAUNCH 2 (keys 1 and 2). They need no power and the carrier reloads them every sortie. Each one is slow and homes on the nearest frigate or siege battery; the target can dodge it or shoot it down, but a hit does more damage than anything else you carry.</li>
       <li><b>Every shot drains your gun's capacitor.</b> Hold FIRE and the gun fires as fast as it can while the charge lasts. <b>Call for power</b> and the engineer pours charge into your gun for a few seconds.</li>
       <li><b>Touch:</b> drag on the view or the aim pad to slide; hold FIRE. <b>Mouse:</b> move to aim, hold the button to fire. <b>Keys:</b> ← → slide, Space fires, C calls for power, P pauses.</li>
     </ul>
@@ -285,11 +286,15 @@
       <div class="row-label"><span>DAMAGE</span></div>
       <ul id="tu-damage" class="damage-list tu-damage"><li class="muted">None</li></ul>
       <div id="tu-comms" class="comms-log tu-comms" aria-live="polite"></div>
+      <div class="tu-tubes" id="tu-tubes">
+        <button id="btn-pt-1" class="tu-pt">LAUNCH 1 <small>(1)</small></button>
+        <button id="btn-pt-2" class="tu-pt">LAUNCH 2 <small>(2)</small></button>
+      </div>
       <button id="btn-tu-call" class="tu-call">CALL FOR POWER <small>(C)</small></button>
       <button id="btn-tu-fire" class="tu-fire">FIRE</button>
     </aside>
   </div>
-  <footer class="con-foot"><span class="hint-bar">← → slide · Space fire (hold) · C call for power · P pause · Mouse: move to aim, hold button to fire · Touch: drag to aim, hold FIRE</span></footer>
+  <footer class="con-foot"><span class="hint-bar">← → slide · Space fire (hold) · 1 2 torpedoes · C call for power · P pause · Mouse: move to aim, hold button to fire · Touch: drag to aim, hold FIRE</span></footer>
   <div class="narrow-note">The turret needs a tablet or desktop screen. Turn the device sideways or use a wider window.</div>
 </section>
 
@@ -394,6 +399,7 @@
       <tr><td>← → (or A D)</td><td>Slide the turret</td></tr>
       <tr><td>Space (or ↑)</td><td>Fire (hold)</td></tr>
       <tr><td>C</td><td>Call for power</td></tr>
+      <tr><td>1 / 2</td><td>Launch torpedo 1 or 2 (gunboat)</td></tr>
       <tr><td>P / Esc</td><td>Pause</td></tr>
       <tr><td>Mouse</td><td>Move to aim, hold the button to fire</td></tr>
     </table>
@@ -425,16 +431,16 @@
 
 <script src="version.js?b=b83261b2"></script>
 <script src="update-banner.js?b=71816d57"></script>
-<script src="js/data.js?b=a6a5a078"></script>
-<script src="js/sim.js?b=ceaf8d5c"></script>
+<script src="js/data.js?b=99256736"></script>
+<script src="js/sim.js?b=ce4b5608"></script>
 <script src="js/agents.js?b=5c95582d"></script>
-<script src="js/gunnery.js?b=18569270"></script>
+<script src="js/gunnery.js?b=4964be03"></script>
 <script src="js/art.js?b=e3c1ea0c"></script>
-<script src="js/turretview.js?b=a683a39e"></script>
+<script src="js/turretview.js?b=46d26e61"></script>
 <script src="js/names.js?b=fa2e0d88"></script>
 <script src="js/career.js?b=3ffe969c"></script>
 <script src="js/speech.js?b=9fa3cdb3"></script>
 <script src="js/audio.js?b=c07997e5"></script>
-<script src="js/ui.js?b=bcdb7a11"></script>
+<script src="js/ui.js?b=99bcf4bf"></script>
 </body>
 </html>

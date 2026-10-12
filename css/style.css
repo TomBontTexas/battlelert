@@ -381,6 +381,10 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 .tu-tally { font-size: 13px; color: var(--muted); display: grid; grid-template-columns: 1fr auto; gap: 1px 8px; }
 .tu-tally b { color: var(--text); font-family: var(--mono); font-weight: 400; text-align: right; }
 .tu-comms { min-height: 60px; font-size: 12px; }
+.tu-tubes { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.tu-pt { padding: 10px 4px; font-size: 13px; touch-action: manipulation; border-color: var(--warn); color: var(--warn); }
+.tu-pt small { color: var(--muted); font-weight: 400; }
+.tu-pt:disabled { opacity: .45; border-color: var(--line); color: var(--muted); }
 .tu-call { padding: 10px 6px; font-size: 14px; touch-action: manipulation; }
 .tu-call small { color: var(--muted); font-weight: 400; }
 .tu-call.on { border-color: var(--warn); color: var(--warn); }

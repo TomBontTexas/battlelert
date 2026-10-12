@@ -113,6 +113,7 @@
     $("brief-station").textContent = gunner ? "Your station: Gun 1 (the engineer runs the power)" : "Your station: Main Engineering";
     if (gunner) {
       var en = sim.turret.engineer;
+      $("brief-pt").hidden = !sim.data.torpedoes;
       var wn = sim.turret.w.name.toLowerCase(); $("brief-weapon").textContent = (/^[aeiou]/.test(wn) ? "an " : "a ") + wn; $("brief-weapon-what").textContent = sim.turret.w.what;
       $("brief-engineer").innerHTML = "Your engineer: <b>" + esc(en.name) + "</b>, " + en.label + " (skill " + Math.round(en.skill * 100) + "). " + ENGINEER_NOTE[en.label];
     }
@@ -707,6 +708,12 @@
     else if (cs.state === "on") { st = "◆ POWER CALLED " + Math.ceil(cs.left) + " s"; stc += " call"; }
     else { st = "READY"; stc += " ready"; }
     setText($("tu-state"), st); setCls($("tu-state"), stc);
+    $("tu-tubes").hidden = !tu.pt.length;
+    [0, 1].forEach(function (i) {
+      var b = $("btn-pt-" + (i + 1)), loaded = !!tu.pt[i];
+      b.disabled = !loaded || !tu.live();
+      b.firstChild.nodeValue = loaded ? "LAUNCH " + (i + 1) + " " : "TUBE " + (i + 1) + " EMPTY ";
+    });
     var cb = $("btn-tu-call");
     cb.disabled = cs.state === "wait" || !tu.live();
     setCls(cb, "tu-call" + (cs.state === "on" ? " on" : ""));
@@ -745,6 +752,7 @@
       return;
     }
     if (down && kl === "c" && turretActive()) { ev.preventDefault(); tu.callPower(); }
+    if (down && (k === "1" || k === "2") && turretActive()) { ev.preventDefault(); tu.launchPT(+k - 1); }
   }
   document.addEventListener("keyup", function (ev) { if (inTurret() && sim) turretKey(ev, false); });
   window.addEventListener("blur", function () { if (sim && sim.turret && inTurret()) releaseTurret(); });
@@ -793,6 +801,7 @@
     fire.addEventListener("pointerup", fireEnd); fire.addEventListener("pointercancel", fireEnd);
     fire.addEventListener("contextmenu", function (ev) { ev.preventDefault(); });
     $("btn-tu-call").addEventListener("click", function () { if (turretActive()) sim.turret.callPower(); });
+    [1, 2].forEach(function (i) { $("btn-pt-" + i).addEventListener("click", function () { if (turretActive()) sim.turret.launchPT(i - 1); }); });
     $("btn-tu-pause").onclick = pause;
     $("btn-tu-options").onclick = openOptions;
   })();
@@ -825,6 +834,7 @@
     return "<p>Fighting has stopped. The carrier has you on deck and is carrying you through GravSpace.</p><ul class='grav-list'>" +
       "<li>Enemy ships destroyed: " + g.kills + " of " + g.ships + "</li>" +
       "<li>Torpedoes shot down: " + g.downed + " of " + g.torps + "</li>" +
+      (g.ptFired ? "<li>Our torpedoes: " + g.ptHits + " hits of " + g.ptFired + " launched. Both tubes are reloaded.</li>" : "") +
       "<li>Hits: " + g.hits + " of " + g.shots + " shots" + (g.shots ? " (" + Math.round(100 * g.hits / g.shots) + "%)" : "") + "</li>" +
       "<li>Torpedoes stopped by shields: " + js.shielded + " of " + js.salvos + "</li>" +
       "<li>Hull damage taken: " + js.hullLost + "</li>" +
@@ -927,6 +937,7 @@
       ["Damage dealt", g.damage],
       ["Time holding FIRE with a dry gun", g.dryTime + " s"],
       ["Calls for power", g.calls],
+      ["Torpedoes", g.ptFired ? g.ptHits + " hits of " + g.ptFired + " launched (" + g.ptDowned + " shot down, " + g.ptMissed + " missed)" : "none launched"],
       ["Hull lost", d.hullLost],
       ["Damage reports", r.damage.length]
     ];

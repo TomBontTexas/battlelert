@@ -23,7 +23,9 @@
     this.ships = []; this.torps = []; this.bolts = []; this.effects = [];
     this.nextId = 1;
     this.engineer = pickEngineer(m);
-    this.stats = { shots: 0, hits: 0, torpHits: 0, torps: 0, downed: 0, ships: 0, kills: 0, damage: 0, dryTime: 0, calls: 0, hullTorps: 0 };
+    this.stats = { shots: 0, hits: 0, torpHits: 0, torps: 0, downed: 0, ships: 0, kills: 0, damage: 0, dryTime: 0, calls: 0, hullTorps: 0,
+      ptFired: 0, ptHits: 0, ptDowned: 0, ptMissed: 0 };
+    this.ptTorps = []; this.pt = [];
     this.jumps = [];                    // per sortie / system: the same counts
   }
   BL.Turret = Turret;
@@ -70,27 +72,43 @@
   /* ------------------------------------------------------------- Lifecycle */
   Turret.prototype.reset = function () {
     this.clear();
-    this.cur = { ships: 0, kills: 0, torps: 0, downed: 0, shots: 0, hits: 0, hullTorps: 0 };
+    this.cur = { ships: 0, kills: 0, torps: 0, downed: 0, shots: 0, hits: 0, hullTorps: 0, ptFired: 0, ptHits: 0, ptDowned: 0, ptMissed: 0 };
     this.jumps[this.m.jumpIndex] = this.cur;
+    // The carrier reloads the torpedo tubes on every recovery.
+    var n = this.m.data.torpedoes || 0;
+    this.pt = []; for (var i = 0; i < n; i++) this.pt.push(true);
     // Timers run on the system's clock, which restarts at 0 on every launch.
     this.callReadyAt = 0; this.nextShot = 0;
   };
   Turret.prototype.clear = function () {
-    this.ships = []; this.torps = []; this.bolts = [];
+    this.ships = []; this.torps = []; this.bolts = []; this.ptTorps = [];
     this.firing = false; this.dir = 0; this.aimX = this.x;
   };
   function bump(self, key, n) { self.stats[key] += n || 1; if (self.cur && self.cur[key] !== undefined) self.cur[key] += n || 1; }
 
-  // A new wave arrives as a group of ships; its toughness is split between them.
+  // A new wave arrives as a group of ships; its toughness is split between them. A capital
+  // ship brings escorts, who take their share; the wave's torpedoes all come from the big ship.
   Turret.prototype.spawnShips = function (wave) {
-    var look = this.G.looks[wave.type] || this.G.looks.raiders, r = this.rng, t = this.m.t;
-    var n = r.int(look.count), hp = wave.hpMax / n, list = [];
+    var look = this.G.looks[wave.type] || this.G.looks.raiders, esc = look.escorts, list = [];
+    var n = this.addGroup(list, wave, wave.type, look, this.rng.int(look.count), wave.hpMax * (esc ? 1 - esc.share : 1));
+    if (esc) this.addGroup(list, wave, esc.type, this.G.looks[esc.type], esc.count, wave.hpMax * esc.share);
+    wave.ships = list;
+    bump(this, "ships", list.length);
+    // Each of the wave's salvos is a torpedo from one of its main ships, in turn.
+    var k = 0;
+    this.m.events.forEach(function (e) {
+      if (e.wave === wave.id && (e.type === "salvo" || e.type === "strike")) e.shipIdx = k++ % n;
+    });
+  };
+  Turret.prototype.addGroup = function (list, wave, type, look, n, totalHp) {
+    var r = this.rng, t = this.m.t, hp = totalHp / n;
     var groupPhase = r.next() * Math.PI * 2, groupPeriod = r.range(look.period);
     var span = Math.min(0.78, n * (look.w + 0.08)), left = 0.5 - span / 2 + (r.next() - 0.5) * (0.9 - span) * 0.5;
     for (var i = 0; i < n; i++) {
       var homeX = n === 1 ? 0.5 : left + span * (i + 0.5) / n;
       var s = {
-        id: this.nextId++, wave: wave.id, type: wave.type, name: look.ship, w: look.w, h: look.h,
+        id: this.nextId++, wave: wave.id, type: type, name: look.ship, w: look.w, h: look.h,
+        lockable: !!look.capital || type === "siege", jinkUntil: 0, jinkDir: 0,
         hp: hp, hpMax: hp, homeX: homeX, x: homeX, y: -0.08 - r.next() * 0.08,
         stationY: r.range(look.band), sway: look.sway * (look.formation ? 1 : 0.7 + r.next() * 0.6),
         period: look.formation ? groupPeriod : r.range(look.period),
@@ -100,13 +118,7 @@
       };
       list.push(s); this.ships.push(s);
     }
-    wave.ships = list;
-    bump(this, "ships", n);
-    // Each of the wave's salvos is a torpedo from one of its ships, in turn.
-    var k = 0;
-    this.m.events.forEach(function (e) {
-      if (e.wave === wave.id && (e.type === "salvo" || e.type === "strike")) e.shipIdx = k++ % n;
-    });
+    return n;
   };
 
   /* ---------------------------------------------------------------- Tick */
@@ -129,6 +141,7 @@
     this.launchTorpedoes();
     this.fire(dt);
     this.moveBolts(dt);
+    this.movePT(dt);
     this.landTorpedoes();
     var now = m.totalT;
     this.effects = this.effects.filter(function (f) { return now - f.at < 1.6; });
@@ -139,6 +152,8 @@
     for (var i = 0; i < this.ships.length; i++) {
       var s = this.ships[i];
       if (s.dead) continue;
+      // A big ship sidesteps a torpedo closing on it.
+      if (t < s.jinkUntil) s.homeX = clamp(s.homeX + s.jinkDir * (this.G.pt.jink[s.type] || 0) * dt, s.w / 2 + 0.02, 1 - s.w / 2 - 0.02);
       var swing = Math.sin((t - s.born) * 2 * Math.PI / s.period + s.phase);
       var tx = clamp(s.homeX + s.sway * swing, s.w / 2 + 0.02, 1 - s.w / 2 - 0.02);
       if (s.state === "leave") {
@@ -286,6 +301,70 @@
     return true;
   };
 
+  /* -------------------------------------------------- Our torpedoes (PT) */
+  // LAUNCH 1 / LAUNCH 2: tube i fires from its side of the bow, locked on the nearest big ship.
+  Turret.prototype.launchPT = function (i) {
+    var m = this.m;
+    if (!this.live() || !this.pt[i]) return false;
+    this.pt[i] = false;
+    var tp = { id: this.nextId++, x: clamp(this.x + (i ? 0.035 : -0.035), 0.03, 0.97), y: this.G.turretY - 0.02, a: -Math.PI / 2, target: null, tube: i + 1 };
+    tp.target = this.lockFor(tp);
+    this.ptTorps.push(tp);
+    bump(this, "ptFired");
+    m.cue("ptLaunch");
+    m.chat("ptAway", { n: i + 1 }, "good");
+    return true;
+  };
+  Turret.prototype.lockFor = function (tp) {
+    var best = null, bd = 1e9;
+    this.ships.forEach(function (s) {
+      if (!s.lockable || s.dead || s.state === "leave" || s.y < 0) return;
+      var d = Math.hypot(s.x - tp.x, s.y - tp.y);
+      if (d < bd) { bd = d; best = s; }
+    });
+    return best;
+  };
+  Turret.prototype.movePT = function (dt) {
+    var m = this.m, P = this.G.pt, t = m.t, keep = [];
+    for (var i = 0; i < this.ptTorps.length; i++) {
+      var tp = this.ptTorps[i], tg = tp.target;
+      if (!tg || tg.dead || tg.state === "leave") tg = tp.target = this.lockFor(tp);
+      if (tg) {
+        var want = Math.atan2(tg.y - tp.y, tg.x - tp.x), diff = want - tp.a;
+        while (diff > Math.PI) diff -= 2 * Math.PI;
+        while (diff < -Math.PI) diff += 2 * Math.PI;
+        var mt = P.turn * Math.PI / 180 * dt;
+        tp.a += clamp(diff, -mt, mt);
+        var d = Math.hypot(tg.x - tp.x, tg.y - tp.y);
+        if (d < P.jinkAt && t >= tg.jinkUntil) { tg.jinkUntil = t + P.jinkSeconds; tg.jinkDir = tg.x >= tp.x ? 1 : -1; }
+        if (d < P.pdRange && this.rng.chance((P.pd[tg.type] || 0) * dt)) {
+          bump(this, "ptDowned");
+          this.effects.push({ type: "torpBoom", x: tp.x, y: tp.y, at: m.totalT });
+          m.cue("torpDown"); m.chat("ptDowned", null, "bad");
+          continue;
+        }
+      }
+      tp.x += Math.cos(tp.a) * P.speed * dt; tp.y += Math.sin(tp.a) * P.speed * dt;
+      var hit = null;
+      for (var k = 0; k < this.ships.length && !hit; k++) {
+        var s = this.ships[k];
+        if (!s.dead && s.state !== "leave" && Math.abs(s.x - tp.x) <= s.w / 2 && Math.abs(s.y - tp.y) <= s.h / 2) hit = s;
+      }
+      if (hit) {
+        bump(this, "ptHits");
+        hit.flashAt = m.totalT;
+        this.effects.push({ type: "boom", x: tp.x, y: tp.y, at: m.totalT, size: 0.16 });
+        m.cue("main");
+        m.chat("ptHit", { enemy: hit.name }, "good");
+        this.damageShip(hit, P.damage * m.data.threat.hp, 0, true);
+        continue;
+      }
+      if (tp.y < -0.08 || tp.x < -0.08 || tp.x > 1.08 || tp.y > 1.05) { bump(this, "ptMissed"); m.chat("ptMiss", null, "info"); continue; }
+      keep.push(tp);
+    }
+    this.ptTorps = keep;
+  };
+
   // Torpedoes fly on a straight line to land exactly when their salvo does. Once the
   // simulation has fired the salvo (shields or hull), the torpedo is gone.
   Turret.prototype.landTorpedoes = function () {
@@ -326,6 +405,7 @@
     r.gunner = {
       shots: st.shots, hits: st.hits, accuracyPct: Math.round(accuracy * 100), ships: st.ships, kills: st.kills,
       torps: st.torps, downed: st.downed, hullTorps: st.hullTorps, damage: Math.round(st.damage), dryTime: Math.round(st.dryTime), calls: st.calls,
+      ptFired: st.ptFired, ptHits: st.ptHits, ptDowned: st.ptDowned, ptMissed: st.ptMissed,
       jumps: m.turret.jumps.map(function (j) { return j ? Object.assign({}, j) : null; })
     };
     return r;
@@ -355,6 +435,11 @@
     var gun = tu.gun();
     tu.trigger(!!target && Math.abs(tu.x - tx) < half * (0.6 + 0.6 * this.skill) && gun.mj >= w.shotMJ);
     if (target && gun.mj < w.shotMJ * 3) tu.callPower();
+    // Torpedoes: one at a time, at a big ship that has settled into its station.
+    if (!tu.ptTorps.length && tu.ships.some(function (s) { return s.lockable && !s.dead && s.state === "hold"; })) {
+      var tube = tu.pt.indexOf(true);
+      if (tube >= 0) tu.launchPT(tube);
+    }
   };
 
   // Plays a whole gunner mission with no screen: AI engineer on the power, AI gunner on the gun.
