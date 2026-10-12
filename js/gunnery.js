@@ -57,7 +57,8 @@
     this.clear();
     this.cur = { ships: 0, kills: 0, torps: 0, downed: 0, shots: 0, hits: 0, hullTorps: 0 };
     this.jumps[this.m.jumpIndex] = this.cur;
-    this.callReadyAt = 0;
+    // Timers run on the system's clock, which restarts at 0 on every launch.
+    this.callReadyAt = 0; this.nextShot = 0;
   };
   Turret.prototype.clear = function () {
     this.ships = []; this.torps = []; this.bolts = [];
