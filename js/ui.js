@@ -122,7 +122,7 @@
       $("brief-guns").innerHTML = bats.length === 1
         ? "You're at <b>Gun 1</b>, <b>" + an(bats[0].w.name.toLowerCase()) + "</b>: " + bats[0].w.what
         : "You command " + bats.map(function (b) { return "<b>Gun " + b.gunNo + "</b> (" + b.w.name.toLowerCase() + ")"; }).join(" and ") +
-          ". You aim one; an AI gunner works the other, and the two turrets share one rail. Tap a turret or press 1 or 2 to switch. " +
+          ". You aim one; an AI gunner works the other. Both turrets ride one rail and slide past each other. Tap a turret or press 1 or 2 to switch. " +
           bats.map(function (b) { return b.w.name + ": " + b.w.what; }).join(" ");
       $("brief-engineer").innerHTML = "Your engineer: <b>" + esc(en.name) + "</b>, " + en.label + " (skill " + Math.round(en.skill * 100) + "). " + ENGINEER_NOTE[en.label];
     }
@@ -670,8 +670,9 @@
     var tu = sim.turret, w = tu.w;
     $("tu-station").textContent = "Gunnery · " + (job.test ? sim.data.className : job.ship + " (" + sim.data.className + ")") + " · tech level " + sim.data.tl;
     $("tu-rec-label").textContent = sim.hasDrive ? "JUMP" : "RECOVERY";
-    $("tu-keys").textContent = "← → slide · Space fire (hold) · " + (tu.bats.length > 1 ? "1–" + tu.bats.length + " or tap a turret: switch guns" : tu.pt.length ? "1 2 torpedoes" : "") +
-      " · C call for power · P pause · Mouse: move to aim, hold button to fire · Touch: drag to aim, hold FIRE";
+    lastJolt = 0;
+    $("tu-keys").textContent = "← → slide · Space fire (hold) · " + (tu.bats.length > 1 ? "1–" + tu.bats.length + " or tap a turret: switch guns · " : sim.data.torpedoes ? "1 2 torpedoes · " : "") +
+      "C call for power · P pause · Mouse: move to aim, hold button to fire · Touch: drag to aim, hold FIRE";
     // Battery buttons (two or more guns): tap to take that gun; the AI gunner takes the other.
     $("tu-bats").hidden = tu.bats.length < 2;
     $("tu-bats").innerHTML = tu.bats.map(function (b, i) {
@@ -716,8 +717,17 @@
   }
   window.addEventListener("resize", function () { if (inTurret()) { tuSize = 0; sizeTurret(); } });
 
+  var lastJolt = 0;
   function renderTurret(ts) {
     var tu = sim.turret, ship = sim.ship, gun = tu.gun(), w = tu.w, enc = sim.encounter() || {};
+    // A hull hit shakes the whole station, not just the view.
+    tu.effects.forEach(function (f) {
+      if (f.type === "hullHit" && f.at > lastJolt) {
+        lastJolt = f.at; var el = $("scr-turret");
+        el.classList.remove("jolt"); void el.offsetWidth; el.classList.add("jolt");
+        if (navigator.vibrate) try { navigator.vibrate([60, 40, 90]); } catch (e) {}
+      }
+    });
     sizeTurret();
     BL.drawTurret(tuCtx, tuSize, sim, tu, ts);
     showBattery();

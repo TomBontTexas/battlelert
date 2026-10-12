@@ -378,7 +378,16 @@
 
   Mission.prototype.announce = function (e) {
     var lead = Math.max(1, Math.round(e.at - this.t));
-    if (e.type === "salvo") { this.chat("salvo", { t: lead }, "warn"); this.cue("warn"); }
+    if (e.type === "salvo") {
+      // At the gun: no call for a ship that's already dead, and one call per burst, not per torpedo.
+      if (this.turret) {
+        var from = this.turret.shipOf(e);
+        if (from && from.dead) return;
+        if (this.totalT - (this.lastSalvoCall || -99) < 3) return;
+        this.lastSalvoCall = this.totalT;
+      }
+      this.chat("salvo", { t: lead }, "warn"); this.cue("warn");
+    }
     else if (e.type === "strike") { this.chat("strike", { t: lead }, "warn"); this.cue("warn"); }
     else if (e.type === "burn") { this.chat("burn", { t: lead, g: e.g, d: e.dur }, "warn"); this.cue("warnBurn"); }
     else if (e.type === "request") { this.chat("request", { n: e.gun }, "warn"); this.cue("request"); }
@@ -427,12 +436,14 @@
       if (e.visible) st.salvosShielded++;
       js.shielded++;
       this.cue("shieldHit");
+      if (this.turret) this.cue("shieldBoom");
       if (this.rng.chance(0.35)) this.chat("shielded", null, "good");
       return;
     }
     var dmg = Math.max(1, Math.round(overflow * this.data.hullPerMJ));
     this.ship.hull -= dmg; this.ship.fresh.hull += dmg; st.hullLost += dmg; js.hullLost += dmg;
     this.cue("hullHit");
+    if (this.turret) { this.cue("shieldBoom"); this.cue("breach"); }
     this.chat("hit", { dmg: dmg }, "bad");
     if (this.rng.chance(Math.min(0.85, overflow / 110))) this.damageSystem();
   };

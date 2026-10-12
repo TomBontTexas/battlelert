@@ -32,6 +32,11 @@
     this.jumps = [];                    // per sortie / system: the same counts
   }
   BL.Turret = Turret;
+  // Height of the shield dome's surface at x (field units); torpedoes land on it.
+  BL.shieldY = function (x) {
+    var S = BL.GUNNERY.shield, k = (x - S.cx) / S.rx;
+    return S.cy - S.ry * Math.sqrt(Math.max(0, 1 - k * k));
+  };
   // The selected battery's fields read as the turret's own, so screens written for one gun work.
   ["x", "aimX", "dir", "firing", "w", "weaponId", "gunNo", "gunId", "nextShot"].forEach(function (k) {
     Object.defineProperty(Turret.prototype, k, { get: function () { return this.bats[this.sel][k]; }, set: function (v) { this.bats[this.sel][k] = v; } });
@@ -154,25 +159,26 @@
 
     // The AI gunner works every battery the player isn't aiming.
     this.bats.forEach(function (b, i) { if (i !== self.sel) self.aiBattery(b); });
-    // Traverse: keys push the aim point along; a turret never slides faster than its drive,
-    // and turrets on one rail never pass each other.
-    var gap = G.railGap;
-    this.bats.forEach(function (b, i) {
+    // Traverse: keys push the aim point along; a turret never slides faster than its drive.
+    // Turrets pass each other freely: each has the whole rail.
+    this.bats.forEach(function (b) {
       var trav = self.traverse(b);
       if (b.dir) b.aimX = clamp(b.x + b.dir * trav * 0.25, 0.03, 0.97);
-      var lo = 0.03 + i * gap, hi = 0.97 - (self.bats.length - 1 - i) * gap;
-      var want = clamp(b.aimX, lo, hi), dx = want - b.x, mv = trav * dt;
+      var dx = b.aimX - b.x, mv = trav * dt;
       b.x += Math.abs(dx) <= mv ? dx : (dx > 0 ? mv : -mv);
     });
-    for (var bi = 1; bi < this.bats.length; bi++) {
-      var L = this.bats[bi - 1], R = this.bats[bi];
-      if (R.x - L.x < gap) { if (bi - 1 === this.sel) R.x = Math.min(0.97, L.x + gap); else L.x = Math.max(0.03, R.x - gap); }
-    }
 
     // For the profile's aggression: how much of the fight the trigger was held.
     if (this.live() && m.phase !== "arrival") { this.stats.liveTime += dt; if (this.firing) this.stats.firingTime += dt; }
     this.moveShips(dt);
     this.launchTorpedoes();
+    // Ships about to fire: from the warning until launch they charge, so every call has a ship to watch.
+    this.ships.forEach(function (s) { s.chargeAt = 0; });
+    m.events.forEach(function (e) {
+      if ((e.type !== "salvo" && e.type !== "strike") || e.done || e.torp || !e.announced || !e.visible) return;
+      var s = self.shipOf(e), la = e.at - G.torpedo.travel;
+      if (s && !s.dead && s.state !== "leave" && (!s.chargeAt || la < s.chargeAt)) { s.chargeAt = la; s.chargeFrom = Math.min(e.announceAt, la - 0.5); }
+    });
     this.fire(dt);
     this.moveBolts(dt);
     this.movePT(dt);
@@ -235,7 +241,8 @@
         e.ionized = true; e.at += ion.delay; e.mj = Math.round(e.mj * ion.salvoMult);
         if (t < e.at - G.torpedo.travel) return;          // launches later
       }
-      var torp = { id: self.nextId++, ev: e, x0: s.x, y0: s.y + s.h / 2, x1: 0.22 + self.rng.next() * 0.56, y1: G.turretY + 0.02, t0: t, t1: e.at, x: s.x, y: s.y + s.h / 2, weak: !!e.ionized };
+      var x1 = 0.22 + self.rng.next() * 0.56;
+      var torp = { id: self.nextId++, ev: e, x0: s.x, y0: s.y + s.h / 2, x1: x1, y1: BL.shieldY(x1), t0: t, t1: e.at, x: s.x, y: s.y + s.h / 2, weak: !!e.ionized };
       e.torp = torp;
       self.torps.push(torp);
       bump(self, "torps");
@@ -349,6 +356,7 @@
     if (s.hp > 0.001) return;
     s.dead = true;
     if (mine) bump(this, "kills");
+    if (s.chargeAt > m.t && this.rng.chance(0.6)) m.chat("chargeStopped", null, "good");
     this.effects.push({ type: "boom", x: s.x, y: s.y, at: m.totalT, size: s.w });
     var rest = wave ? wave.ships.filter(function (x) { return !x.dead; }).length : 0;
     if (wave && !rest && !wave.dead) { wave.hp = 0; m.killWave(wave, gunner); }
@@ -436,7 +444,7 @@
       var e = tp.ev;
       if (e.done) {
         if (!e.downed) {
-          self.effects.push({ type: e.outcome === "hull" ? "hullHit" : "shieldHit", x: tp.x1, y: tp.y1, at: m.totalT });
+          self.effects.push({ type: e.outcome === "hull" ? "hullHit" : "shieldHit", x: tp.x1, y: tp.y1, at: m.totalT, mj: e.mj });
           if (e.outcome === "hull") bump(self, "hullTorps");
         }
         return;

@@ -55,17 +55,81 @@
     c.closePath();
   }
 
-  // size: canvas side in CSS pixels (the field is square). shake: seconds of screen shake left.
+  /* The shield dome over our bow. Brighter the more charge it holds, flickering when low.
+     A hit flares the dome, sends a ripple across it and makes it wobble; a hull hit cracks
+     it and floods the view red. */
+  function drawShield(c, S, m, tu, t, lastShield, lastHull) {
+    var SH = tu.G.shield, sys = m.sys("shield"), frac = sys ? Math.max(0, Math.min(1, sys.mj / sys.maxMJ)) : 0;
+    var ageS = lastShield ? t - lastShield.at : 9, ageH = lastHull ? t - lastHull.at : 9, age = Math.min(ageS, ageH);
+    var wob = Math.max(0, 0.7 - age) / 0.7, ph = age * 38;
+    var rx = SH.rx * (1 - 0.025 * wob * Math.sin(ph + 1)), ry = SH.ry * (1 + 0.12 * wob * Math.sin(ph));
+    var flick = frac < 0.3 ? (Math.random() < 0.35 ? 0.25 : 1) : 1;
+    function dome() { c.beginPath(); c.ellipse(SH.cx, SH.cy, rx, ry, 0, Math.PI, 2 * Math.PI); c.closePath(); }
+    // body
+    var g = c.createLinearGradient(0, SH.cy - ry, 0, SH.cy);
+    g.addColorStop(0, "rgba(120,220,255," + ((0.08 + 0.16 * frac) * flick).toFixed(3) + ")");
+    g.addColorStop(1, "rgba(76,195,238," + ((0.02 + 0.05 * frac) * flick).toFixed(3) + ")");
+    c.fillStyle = g; dome(); c.fill();
+    // shimmer bands
+    c.save(); dome(); c.clip();
+    c.strokeStyle = "rgba(160,235,255," + (0.12 * frac * flick).toFixed(3) + ")"; c.lineWidth = 1 / S;
+    for (var k = 0; k < 5; k++) {
+      var off = ((t * 0.06 + k / 5) % 1);
+      c.beginPath(); c.ellipse(SH.cx, SH.cy, rx * (0.35 + 0.65 * off), ry * (0.35 + 0.65 * off), 0, Math.PI, 2 * Math.PI); c.stroke();
+    }
+    // hit: flare and ripple from the impact point
+    if (age < 0.6) {
+      var f = ageS <= ageH ? lastShield : lastHull, hull = f === lastHull;
+      var a = 1 - age / 0.6, big = Math.min(1.6, 0.6 + (f.mj || 30) / 60);
+      c.fillStyle = hull ? "rgba(255,80,60," + (0.45 * a).toFixed(3) + ")" : "rgba(200,245,255," + (0.35 * a * big).toFixed(3) + ")";
+      c.fillRect(0, 0, 1, 1);
+      for (var r = 0; r < 3; r++) {
+        var rr = 0.02 + (age + r * 0.06) * 0.7;
+        c.strokeStyle = hull ? "rgba(255,120,90," + (a * 0.9).toFixed(3) + ")" : "rgba(220,250,255," + (a * 0.9).toFixed(3) + ")";
+        c.lineWidth = (4 - r) / S;
+        c.beginPath(); c.arc(f.x, f.y, rr, 0, Math.PI * 2); c.stroke();
+      }
+    }
+    c.restore();
+    // rim
+    var rimA = (0.4 + 0.5 * frac) * flick + (age < 0.5 ? (1 - age / 0.5) * 0.8 : 0);
+    c.strokeStyle = ageH < 0.5 ? "rgba(255,110,90," + Math.min(1, rimA).toFixed(3) + ")" : "rgba(130,225,255," + Math.min(1, rimA).toFixed(3) + ")";
+    c.lineWidth = (2.5 + (age < 0.5 ? 3 * (1 - age / 0.5) : 0)) / S;
+    c.beginPath(); c.ellipse(SH.cx, SH.cy, rx, ry, 0, Math.PI, 2 * Math.PI); c.stroke();
+    c.lineWidth = 1.5 / S;
+    // hull hit: cracks through the dome, red vignette over everything
+    if (ageH < 1.2) {
+      var ah = 1 - ageH / 1.2, seed = Math.floor(lastHull.at * 1000);
+      c.strokeStyle = "rgba(255,230,220," + ah.toFixed(3) + ")"; c.lineWidth = 2 / S;
+      for (var q = 0; q < 6; q++) {
+        var ang = Math.PI + (q + 0.5) * Math.PI / 6 + ((seed * (q + 3)) % 7 - 3) * 0.04, x = lastHull.x, y = lastHull.y;
+        c.beginPath(); c.moveTo(x, y);
+        for (var st = 0; st < 4; st++) { x += Math.cos(ang) * 0.03 + (((seed >> st) % 5) - 2) * 0.004; y += Math.sin(ang) * 0.03; c.lineTo(x, y); }
+        c.stroke();
+      }
+      c.lineWidth = 1.5 / S;
+      var vg = c.createRadialGradient(0.5, 0.5, 0.25, 0.5, 0.5, 0.75);
+      vg.addColorStop(0, "rgba(255,0,0,0)"); vg.addColorStop(1, "rgba(255,20,10," + (0.55 * ah).toFixed(3) + ")");
+      c.fillStyle = vg; c.fillRect(0, 0, 1, 1);
+    }
+  }
+
+  // size: canvas side in CSS pixels (the field is square).
   BL.drawTurret = function (c, size, m, tu, now) {
     if (!stars) makeStars();
     var S = size, t = m.totalT, G = tu.G, w = tu.w;
     c.save();
     c.fillStyle = "#03060b"; c.fillRect(0, 0, S, S);
-    // Screen shake after a hull hit.
-    var lastHull = 0;
-    tu.effects.forEach(function (f) { if (f.type === "hullHit") lastHull = Math.max(lastHull, f.at); });
-    var sh = Math.max(0, 0.35 - (t - lastHull));
-    if (lastHull && sh > 0) c.translate((Math.random() - 0.5) * sh * 18, (Math.random() - 0.5) * sh * 18);
+    // Screen shake: a jolt when the shield takes a hit, a hard shake when the hull does.
+    var lastHull = null, lastShield = null;
+    tu.effects.forEach(function (f) {
+      if (f.type === "hullHit" && (!lastHull || f.at > lastHull.at)) lastHull = f;
+      if (f.type === "shieldHit" && (!lastShield || f.at > lastShield.at)) lastShield = f;
+    });
+    var shake = 0;
+    if (lastHull) shake = Math.max(shake, Math.max(0, 0.55 - (t - lastHull.at)) * 46);
+    if (lastShield) shake = Math.max(shake, Math.max(0, 0.3 - (t - lastShield.at)) * 34);
+    if (shake > 0) c.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
 
     // Stars stream down: the ship is moving up the screen.
     var live = tu.live();
@@ -111,6 +175,15 @@
       if (t < s.ionUntil) {                     // ionized: crackling purple outline
         c.strokeStyle = "rgba(196,155,255," + (0.5 + 0.5 * Math.random()).toFixed(2) + ")"; c.lineWidth = 3 / S;
         shipPath(c, s.type, s.w * 1.25, s.h * 1.25); c.stroke(); c.lineWidth = 1.5 / S;
+      }
+      if (s.chargeAt > m.t && !leaving) {        // about to fire: a red glow at the nose and a closing ring
+        var span = Math.max(0.5, s.chargeAt - s.chargeFrom), p = Math.min(1, Math.max(0, 1 - (s.chargeAt - m.t) / span));
+        var ny = s.h / 2, gr = 0.012 + 0.02 * p + 0.004 * Math.sin(t * (10 + 20 * p));
+        var cg = c.createRadialGradient(0, ny, 0, 0, ny, gr * 2.2);
+        cg.addColorStop(0, "rgba(255,240,220," + (0.6 + 0.4 * p).toFixed(2) + ")"); cg.addColorStop(0.35, "rgba(255,70,50,0.85)"); cg.addColorStop(1, "rgba(255,40,30,0)");
+        c.fillStyle = cg; c.beginPath(); c.arc(0, ny, gr * 2.2, 0, Math.PI * 2); c.fill();
+        c.strokeStyle = "rgba(255,90,70,0.9)"; c.lineWidth = 2 / S;
+        c.beginPath(); c.arc(0, ny, 0.03, -Math.PI / 2, -Math.PI / 2 + 2 * Math.PI * (1 - p)); c.stroke(); c.lineWidth = 1.5 / S;
       }
       if (s.hp < s.hpMax - 0.01 && !leaving) {   // damage bar
         var bw = s.w * 0.9, f = Math.max(0, s.hp / s.hpMax);
@@ -190,11 +263,6 @@
         c.beginPath(); c.arc(f.x, f.y, 0.008 + a * 0.06, 0, Math.PI * 2); c.fill(); c.globalAlpha = 1;
       } else if (f.type === "fizzle" && a < 0.25) {
         c.fillStyle = "rgba(240,181,74," + (0.6 - a * 2.4) + ")"; c.fillRect(f.x - 0.004, f.y - 0.004, 0.008, 0.008);
-      } else if ((f.type === "shieldHit" || f.type === "hullHit") && a < 0.7) {
-        var hull = f.type === "hullHit", al2 = 1 - a / 0.7;
-        c.strokeStyle = hull ? "rgba(255,80,60," + al2 + ")" : "rgba(76,195,238," + al2 + ")"; c.lineWidth = 4 / S;
-        c.beginPath(); c.ellipse(0.5, 1.02, 0.62, 0.11 + a * 0.05, 0, Math.PI, 2 * Math.PI); c.stroke(); c.lineWidth = 1.5 / S;
-        if (hull) { c.fillStyle = "rgba(255,60,40," + al2 * 0.25 + ")"; c.fillRect(0, 0.85, 1, 0.15); }
       }
     });
 
@@ -232,6 +300,7 @@
         c.restore();
       }
     });
+    drawShield(c, S, m, tu, t, lastShield, lastHull);
     // Reticle: straight up from the turret, at the end of the gun's reach.
     var ry = Math.max(0.04, top);
     c.strokeStyle = ready ? "rgba(123,224,166,0.8)" : "rgba(255,107,90,0.7)";

@@ -349,13 +349,15 @@
   BL.GUNNERY = {
     bonus: 1.5,                        // damage multiplier against a weapon's best targets
     turretY: 0.93,                     // where the turret sits; bolts start here
+    // Our shield dome: an ellipse over the bow, high enough that about half of each turret's
+    // barrels stick out of it. Torpedoes strike its surface.
+    shield: { cx: 0.5, cy: 1.035, rx: 0.64, ry: 0.13 },
     traverse: 1.3,                     // fields per second the turret slides
     torpedo: { travel: 2.6, size: 0.022 },   // seconds from launch to impact; hit box half-size
     call: { seconds: 6, cooldown: 4 }, // CALL FOR POWER: rapid-fire request length, wait before the next
     // What each class's batteries carry at the gunner station, Gun 1 first. With two or more,
-    // the player aims one and an AI gunner works the others; turrets share one rail.
+    // the player aims one and an AI gunner works the others; turrets share one rail and pass freely.
     loadout: { gunboat: ["pulse"], picket: ["rail"], destroyerEscort: ["pulse", "rail"] },
-    railGap: 0.09,                     // turrets on one rail can't come closer than this
     aiGunner: 0.75,                    // skill of the AI gunner on the batteries you aren't aiming
     // Our torpedoes (gunboats carry two; the carrier reloads them every sortie). No energy.
     // Slow and homing on the nearest siege battery or capital ship; damage x the class's threat
@@ -452,6 +454,7 @@
     ptAway:      ["Coxswain: torpedo {n} away!", "Torpedo {n} running hot and straight!", "Coxswain: fish {n} in the water!"],
     ptHit:       ["Tactical: torpedo hit! {enemy} is burning!", "Coxswain: direct hit on the {enemy}!", "Tactical: that one hurt the {enemy}!"],
     ptDowned:    ["Tactical: their point defense got our torpedo.", "Tactical: torpedo intercepted."],
+    chargeStopped: ["Tactical: got it before it could fire!", "Tactical: that one won't be shooting at us.", "Tactical: nice, it never got that torpedo off."],
     straggler:   ["Tactical: stragglers from another quadrant. {enemy} inbound!", "Tactical: more contacts, {enemy} breaking off from another fight.", "Tactical: {enemy} joining in from the flank!"],
     ptMiss:      ["Tactical: torpedo missed.", "Coxswain: it slipped the torpedo."]
   };
@@ -486,6 +489,8 @@
     shipHit:  { ch: "fx",    wave: "noise",    f0: 2400, f1: 900,  a: 0.001, s: 0.01, d: 0.06, vol: 0.10 },
     torpLaunch:{ ch: "fx",   wave: "sawtooth", f0: 90,   f1: 260,  a: 0.02,  s: 0.15, d: 0.2,  vol: 0.10, noise: 0.4 },
     ptLaunch: { ch: "fx",    wave: "sawtooth", f0: 70,   f1: 420,  a: 0.03,  s: 0.35, d: 0.4,  vol: 0.2,  noise: 0.5 },
+    shieldBoom: { ch: "fx",  wave: "noise",    f0: 180,  f1: 35,   a: 0.004, s: 0.12, d: 0.7,  vol: 0.5 },
+    breach:   { ch: "alarm", wave: "square",   f0: 560,  f1: 400,  a: 0.01,  s: 0.16, d: 0.05, vol: 0.2,  repeat: 3, gap: 0.07 },
     torpDown: { ch: "fx",    wave: "noise",    f0: 1800, f1: 300,  a: 0.001, s: 0.05, d: 0.3,  vol: 0.20 },
     win:      { ch: "fx",    wave: "triangle", f0: 523,  f1: 1046, a: 0.01,  s: 0.25, d: 0.4,  vol: 0.22, repeat: 3, gap: 0.18 },
     lose:     { ch: "fx",    wave: "sawtooth", f0: 300,  f1: 50,   a: 0.01,  s: 0.8,  d: 0.8,  vol: 0.25, noise: 0.3 }

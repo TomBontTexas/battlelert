@@ -399,6 +399,9 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 .tu-call:disabled { opacity: .5; }
 .tu-fire { height: 22%; min-height: 80px; font: 800 24px var(--font); letter-spacing: .18em; color: #fff; background: #5a1f1a; border-color: var(--bad); touch-action: none; }
 .tu-fire.on { background: var(--bad); }
+@keyframes jolt { 0% { transform: translate(0, 0); } 15% { transform: translate(-7px, 4px); } 30% { transform: translate(6px, -5px); } 45% { transform: translate(-5px, -3px); } 60% { transform: translate(4px, 4px); } 80% { transform: translate(-2px, 1px); } 100% { transform: translate(0, 0); } }
+#scr-turret.jolt { animation: jolt .45s linear; }
+@media (prefers-reduced-motion: reduce) { #scr-turret.jolt { animation: none; } }
 
 @keyframes blink { 50% { opacity: .35; } }
 @keyframes fade { 0% { opacity: 0; } 15% { opacity: 1; } 100% { opacity: 0; } }
