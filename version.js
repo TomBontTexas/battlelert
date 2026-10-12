@@ -1,3 +1,4 @@
+/* Battlelert © 2011–2026 Tom Bont. All rights reserved. See LICENSE. */
 /* Single source of truth for this app's version (TexasBont standard).
    Format P.FF.BB = product . feature . bug fix (e.g. 0.01.00):
      product (major) up -> feature and bug fix reset to 00

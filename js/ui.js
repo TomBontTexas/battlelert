@@ -1,3 +1,4 @@
+/* Battlelert © 2011–2026 Tom Bont. All rights reserved. See LICENSE. */
 /* Battlelert display layer: screens, the engine-room console, input and sound cues.
    It reads the simulation and sends it the player's inputs; no game rules live here. */
 (function () {

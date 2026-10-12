@@ -1,3 +1,4 @@
+/* Battlelert © 2011–2026 Tom Bont. All rights reserved. See LICENSE. */
 /* Battlelert ship names. Every named ship is a real warship of the same type from one of the
    world's navies (the country is noted beside it), six per tech level per class, older ships at
    the lower tech levels. No name is used by two classes. Gunboats get a fresh PT-1XX hull number

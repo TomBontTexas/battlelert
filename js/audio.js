@@ -1,3 +1,4 @@
+/* Battlelert © 2011–2026 Tom Bont. All rights reserved. See LICENSE. */
 /* Battlelert audio: every sound is synthesized from a recipe in BL.SOUNDS (bfxr-style).
    No sound files. Three volume channels: fx, alarm, chat. */
 (function (root) {

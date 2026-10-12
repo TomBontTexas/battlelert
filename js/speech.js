@@ -1,3 +1,4 @@
+/* Battlelert © 2011–2026 Tom Bont. All rights reserved. See LICENSE. */
 /* Battlelert spoken chatter: comms lines read aloud with the browser's built-in voices.
    Each speaker (the part of a line before the colon) gets its own voice, pitch and pace.
    The browser speaks one line at a time, so this keeps a short queue of its own: warnings

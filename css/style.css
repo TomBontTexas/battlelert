@@ -1,3 +1,4 @@
+/* Battlelert © 2011–2026 Tom Bont. All rights reserved. See LICENSE. */
 /* Battlelert: engineering console. Placeholder visuals for Phase 1. */
 :root {
   --bg: #0b1016;
@@ -62,6 +63,7 @@ h2 { font-size: 17px; margin: 18px 0 6px; color: var(--charge); }
 .seed-row input { width: 110px; font: 15px var(--mono); padding: 5px 8px; background: var(--panel-2); color: var(--text); border: 1px solid var(--line); border-radius: 5px; }
 .seed-row .muted { flex-basis: 100%; }
 .version-line { margin-top: 36px; color: var(--muted); font: 13px var(--mono); }
+.copyright { margin-top: 6px; color: var(--muted); font-size: 12px; }
 .sheet { max-width: 860px; margin: 0 auto; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 22px 26px 26px; }
 .lede { font-size: 16px; }
 .tight li { margin: 4px 0; }

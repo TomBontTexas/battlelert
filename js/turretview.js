@@ -1,3 +1,4 @@
+/* Battlelert © 2011–2026 Tom Bont. All rights reserved. See LICENSE. */
 /* Battlelert gunner station: draws the turret's view on a canvas. Reads the turret and the
    mission, changes nothing. Placeholder art, all drawn with canvas paths. */
 (function (root) {

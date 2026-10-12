@@ -1,3 +1,4 @@
+/* Battlelert © 2011–2026 Tom Bont. All rights reserved. See LICENSE. */
 /* Battlelert gunner station: the turret. Pure simulation, no screen code, stepped by the
    Mission it belongs to (Mission.step calls turret.step before the events run).
    The engine room sees a wave as one pool of hit points; here it is several ships, and each

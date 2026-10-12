@@ -1,3 +1,4 @@
+/* Battlelert © 2011–2026 Tom Bont. All rights reserved. See LICENSE. */
 /* Battlelert simulation core. Pure JavaScript, no screen code: the page, the test
    harness and any future station all drive the same Mission object.
    Runs on fixed ticks (BL.TICK_RATE per second). Same seed + same inputs = same result. */

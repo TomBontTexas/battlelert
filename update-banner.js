@@ -1,3 +1,4 @@
+/* Battlelert © 2011–2026 Tom Bont. All rights reserved. See LICENSE. */
 /* Drop-in "new version available" banner (TexasBont standard).
  *
  * Setup — put both files next to the app's HTML page, and load them in this order:

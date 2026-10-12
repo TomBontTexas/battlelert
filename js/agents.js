@@ -1,3 +1,4 @@
+/* Battlelert © 2011–2026 Tom Bont. All rights reserved. See LICENSE. */
 /* AI engineers. They use only what the player sees and touches: the forecast strip,
    capacitor levels, setpoints, aux switches. The test harness plays missions with them,
    and later phases reuse them as AI crew. */

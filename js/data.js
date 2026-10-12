@@ -1,3 +1,4 @@
+/* Battlelert © 2011–2026 Tom Bont. All rights reserved. See LICENSE. */
 /* Battlelert data: ship classes, encounters, chatter lines and sound recipes.
    Balance lives here so tuning never touches the simulation code.
    Units: power in MW (MJ per second), stored energy in MJ, time in seconds. */

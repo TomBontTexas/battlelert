@@ -1,3 +1,4 @@
+/* Battlelert © 2011–2026 Tom Bont. All rights reserved. See LICENSE. */
 /* Battlelert career record: qualifications, reputation, failures, rapid sign-offs,
    reputation profile, mission history, the current job offers and every ship's service record.
    Pure JavaScript (no screen code). Saved in browser storage; exported as

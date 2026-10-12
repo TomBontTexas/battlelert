@@ -1,3 +1,4 @@
+/* Battlelert © 2011–2026 Tom Bont. All rights reserved. See LICENSE. */
 /* Battlelert ship art, approved by TexasBont Oct 12, 2026. Every ship is an SVG drawn around (0, 0) in a 200 x 200
    box. Archonian ships point their noses down (toward you); human ships point up.
    Light comes from the upper left. Archonian engines burn violet; human engines blue-white. */
