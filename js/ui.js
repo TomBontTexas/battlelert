@@ -140,9 +140,13 @@
       // The guns and their arcs; how they work is in How to play.
       $("brief-guns").innerHTML = "<b>" + (bats.length > 1 ? "Guns" : "Gun") + ":</b> " + bats.map(function (b) {
         return "Gun " + b.gunNo + " " + b.w.name.toLowerCase() + (b.arcName ? " " + b.arcName : "") + (b.arcH === undefined ? "" : " (" + (b.arcH >= 180 ? "all round" : (b.arcH * 2) + "°") + ")");
-      }).join(" · ") + (bats.length > 1 ? ". You aim one; AI gunners work the rest." : ".");
+      }).join(" · ") + (bats.length > 1 ? ". You aim one; your gun crew works the rest." : ".");
+      $("brief-crew").hidden = bats.length < 2;
+      $("brief-crew").innerHTML = "<b>Gun crew:</b> " + bats.filter(function (b) { return b.crew; }).map(function (b) {
+        return "Gun " + b.gunNo + " " + esc(b.crew.name) + ", " + b.crew.label + " (" + Math.round(b.crew.skill * 100) + ")";
+      }).join(" · ") + ". Take a gun and you trade places with its gunner.";
       $("brief-orders").hidden = bats.length < 2;
-      $("brief-orders").innerHTML = "<b>Orders:</b> the letter on each gun card is its AI gunner's order (P point defense, L stop launches, H hunt, F free fire; green = this fight's suggestion). Take a gun and press O to change it.";
+      $("brief-orders").innerHTML = "<b>Orders:</b> the letter on each gun card is its gunner's order (P point defense, L stop launches, H hunt, F free fire; green = this fight's suggestion). Take a gun and press O to change it.";
       $("brief-engineer").innerHTML = "Your engineer: <b>" + esc(en.name) + "</b>, " + en.label + " (skill " + Math.round(en.skill * 100) + "). " + ENGINEER_NOTE[en.label];
     }
     show("scr-briefing");
@@ -706,7 +710,7 @@
     lastJolt = 0;
     $("tu-keys").textContent = (tu.ring ? "→ clockwise · ← counterclockwise" : "← → slide") + " · Space fire (hold) · " + (tu.ring ? "W wide view · " : "") + (tu.firesMain ? "M main gun · " : "") + (tu.bats.length > 1 ? "1–" + tu.bats.length + " switch guns · O orders · " : sim.data.torpedoes ? "1 2 torpedoes · " : "") +
       "C call for power · P pause · " + (tu.ring ? "Mouse or trackpad: the gun follows the pointer; click a target to swing to it; hold button to fire · Touch: touch the view to point, hold FIRE" : "Mouse: move to aim, hold button to fire · Touch: drag to aim, hold FIRE");
-    // Battery buttons (two or more guns): tap to take that gun; the AI gunner takes the other.
+    // Battery buttons (two or more guns): tap to take that gun; you trade places with its gunner.
     $("tu-bats").hidden = tu.bats.length < 2;
     $("tu-bats").innerHTML = tu.bats.map(function (b, i) {
       return '<button class="tu-bat" data-i="' + i + '"><span class="bat-top"><span>GUN ' + b.gunNo + " · " + b.w.short + " <small>(" + (i + 1) + ')</small></span><span class="ord" data-ord="' + i + '"></span></span><span class="mini"><i></i></span><span class="acc"></span></button>';
@@ -799,13 +803,17 @@
     setText($("tu-mj"), Math.floor(gun.mj) + " / " + gun.maxMJ + " MJ");
     var nShots = Math.floor(gun.mj / w.shotMJ);
     setText($("tu-shots"), nShots + (nShots === 1 ? " shot · " : " shots · ") + w.shotMJ + " MJ each");
-    // Hit rate on this gun this mission: yours, and the AI gunner's when it has had the gun.
+    // Hit rate on this gun this mission: yours, and its crew's when they've had the gun.
     var bt = tu.bat(), accHtml = '<div>you <b>' + rate(bt.hits, bt.shots) + "</b> " + frac(bt.hits, bt.shots) + "</div>" +
-      (tu.bats.length > 1 ? '<div class="ai">AI ' + rate(bt.aiHits, bt.aiShots) + " " + frac(bt.aiHits, bt.aiShots) + "</div>" : "");
+      (tu.bats.length > 1 ? '<div class="ai">crew ' + rate(bt.aiHits, bt.aiShots) + " " + frac(bt.aiHits, bt.aiShots) + "</div>" : "");
     if ($("tu-acc").innerHTML !== accHtml) $("tu-acc").innerHTML = accHtml;
     Array.prototype.forEach.call($("tu-bats").children, function (el, i) {
       var b = tu.bats[i], o = tu.orderFor(b);
-      setText(el.querySelector(".acc"), "you " + rate(b.hits, b.shots) + " · AI " + rate(b.aiHits, b.aiShots));
+      // Who's on it: you, or its gunner and their skill (the hit rate is in the tooltip).
+      var acc = el.querySelector(".acc");
+      setText(acc, b.crew ? b.crew.last + " · " + Math.round(b.crew.skill * 100) : "You");
+      acc.title = (b.crew ? b.crew.name + ", " + b.crew.label + " (skill " + Math.round(b.crew.skill * 100) + "). " : "You're on this gun. ") +
+        "Hit rate on this gun this mission: you " + rate(b.hits, b.shots) + ", crew " + rate(b.aiHits, b.aiShots) + ".";
       var ord = el.querySelector(".ord");
       setText(ord, BL.GUNNERY.orders[o.order].key);
       setCls(ord, "ord" + (o.auto ? " sug" : ""));
@@ -1170,10 +1178,11 @@
       }).join("");
     var rows = [
       [(r.weapons || [r.weapon]).length > 1 ? "Guns" : "Gun", (r.weapons || [r.weapon]).map(function (id) { return BL.WEAPONS[id].name; }).join(" and ")],
-      ["Engineer", esc(r.engineer.name) + ", " + r.engineer.label + " (skill " + Math.round(r.engineer.skill * 100) + ")"],
-      ["Accuracy", g.hits + " hits of " + g.shots + " shots (" + g.accuracyPct + "%)"]].concat((g.guns || []).map(function (x) {
+      ["Engineer", esc(r.engineer.name) + ", " + r.engineer.label + " (skill " + Math.round(r.engineer.skill * 100) + ")"]].concat(r.crew && r.crew.length ? [
+      ["Gun crew", r.crew.map(function (c) { return esc(c.name) + ", " + c.label + " (" + Math.round(c.skill * 100) + ")"; }).join(" · ")]] : [], [
+      ["Accuracy", g.hits + " hits of " + g.shots + " shots (" + g.accuracyPct + "%)"]]).concat((g.guns || []).map(function (x) {
         return ["Gun " + x.gun + " (" + BL.WEAPONS[x.weapon].name.toLowerCase() + ")", "you " + rate(x.hits, x.shots) + " " + frac(x.hits, x.shots) +
-          (r.weapons && r.weapons.length > 1 ? " · AI " + rate(x.aiHits, x.aiShots) + " " + frac(x.aiHits, x.aiShots) : "")];
+          (r.weapons && r.weapons.length > 1 ? " · crew " + rate(x.aiHits, x.aiShots) + " " + frac(x.aiHits, x.aiShots) : "")];
       }), [
       ["Enemy ships destroyed", g.kills + " / " + g.ships],
       ["Torpedoes shot down", g.downed + " / " + g.torps],
@@ -1399,6 +1408,10 @@
       var p = j[st];
       return BL.career.STATION_NAME[st] + "-" + j.n + " " + esc(p.who || p.name.split(" ").slice(-2).join(" ")) + ", " + p.label + " (skill " + Math.round(p.skill * 100) + ")";
     });
+    // A gunner job also names the gun crew (the same people the mission will roll).
+    if (j.station === "gunner" && BL.pickGunCrew) BL.pickGunCrew(j.seed, j.classId).forEach(function (c, k) {
+      if (c) crew.push("Gun " + (k + 1) + " " + esc(c.name) + ", " + c.label + " (skill " + Math.round(c.skill * 100) + ")");
+    });
     var arms = j.station === "gunner" ? (j.weapons || ["pulse"]).map(function (id, k) { return "Gun " + (k + 1) + " " + BL.WEAPONS[id].name.toLowerCase(); })
       .concat(BL.classById(j.classId).mainGun ? ["Main gun"] : [], j.classId === "gunboat" ? ["Two torpedoes"] : []) : [];
     function sec(title, rows) { return rows.length ? '<div class="offer-sec"><div class="offer-sec-h">' + title + "</div>" + rows.map(function (x) { return "<div>" + x + "</div>"; }).join("") + "</div>" : ""; }
@@ -1417,7 +1430,7 @@
       shownJobs = BL.career.offers(career, station);
       $("offers-title").textContent = who + " jobs";
       $("offers-lede").textContent = (station === "gunner"
-        ? "Postings for gunners at your level. Each lists the ship's guns and names the engineer who'll run your power. The gunner station is built up to the cruiser so far."
+        ? "Postings for gunners at your level. Each lists the ship's guns and names the engineer who'll run your power and the gun crew. The gunner station is built up to the heavy cruiser so far."
         : "Postings for engineers at your level. Lower tech levels are harder (smaller reactor and capacitors, weaker guns) and earn more reputation.") +
         (q && BL.career.built(station, q + 1) ? " There's always a tech-level-1 posting for your class and for the class above it." : " There's always a tech-level-1 posting.");
     } else {

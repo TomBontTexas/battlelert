@@ -73,6 +73,21 @@
       label: skill >= 0.85 ? "sharp" : skill >= 0.7 ? "steady" : skill >= 0.5 ? "green" : "sloppy" };
   };
 
+  /* The gun crew: a gunner for every gun but Gun 1 (yours to start), picked from the mission
+     seed so a job posting names the same people. Names never repeat the engineer's. */
+  BL.pickGunCrew = function (seed, classId) {
+    var C = BL.GUNNERY.crew, E = BL.GUNNERY.engineer, n = (BL.GUNNERY.loadout[classId] || []).length, r = BL.rng((seed ^ 0x6a09e667) >>> 0);
+    var used = {}, eng = BL.pickEngineer(seed, classId), out = [null];
+    used[eng.who.split(" ")[0]] = used[eng.who.split(" ")[1]] = true;
+    function pick(list) { var x, k = 0; do { x = r.pick(list); } while (used[x] && k++ < 40); used[x] = true; return x; }
+    for (var i = 1; i < n; i++) {
+      var skill = Math.round(r.range(C.skill) * 100) / 100, first = pick(E.first), last = pick(E.last);
+      out.push({ name: C.ranks[skill >= 0.7 ? 2 : skill >= 0.5 ? 1 : 0] + " " + first + " " + last, who: first + " " + last, last: last, skill: skill,
+        label: skill >= 0.7 ? "sharp" : skill >= 0.5 ? "steady" : skill >= 0.35 ? "green" : "raw" });
+    }
+    return out;
+  };
+
   /* ---------------------------------------------------------- Player input */
   Turret.prototype.aimAt = function (x) { this.aimX = clamp(x, 0.03, 0.97); this.dir = 0; };
   Turret.prototype.setDir = function (d) { this.dir = d; if (!d) this.aimX = this.x; };
@@ -525,6 +540,7 @@
     r.engineer = m.turret.engineer;
     r.weapon = m.turret.bats[0].weaponId;
     r.weapons = m.turret.bats.map(function (b) { return b.weaponId; });
+    r.crew = m.turret.bats.map(function (b) { return b.crew; }).filter(Boolean).sort(function (a, b) { return a.name < b.name ? -1 : 1; });
     r.parts = { objective: r.parts.objective, condition: r.parts.condition, accuracy: Math.round(25 * accuracy), threats: Math.round(25 * threats) };
     r.raw = r.parts.objective + r.parts.condition + r.parts.accuracy + r.parts.threats;
     r.score = Math.round(r.raw * Math.pow(1 - m.cfg.lookCostPct / 100, r.looks));

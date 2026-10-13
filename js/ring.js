@@ -25,6 +25,8 @@
       b.rel = b.aimRel = a[2] === undefined ? 0 : norm(a[2] - a[0]);
       self.placeBattery(b);
     });
+    var crew = BL.pickGunCrew(m.seed, m.data.classId);
+    this.bats.forEach(function (b, i) { b.crew = crew[i] || null; });
     this.pilot = cls.pilot || null;            // main gun ships: the AI pilot turns the bow onto the big target
     this.heading = 0;                          // degrees the ship has turned (the starfield turns with it)
     this.firesMain = !!m.sys("main");          // the main gun is yours: one heavy shot straight off the bow
@@ -80,6 +82,14 @@
     return (this.R.reach[b.weaponId] || 0.3) * this.m.turretFactor(this.gun(b), "reach");
   };
   // Degrees per second a gun turns along the rim.
+  // A crewman fires slower than the gun's best rate (GUNNERY.crew.pace); you fire it at full rate.
+  RingTurret.prototype.interval = function (b) {
+    b = this.bat(b);
+    var base = BL.Turret.prototype.interval.call(this, b), C = this.G.crew, cw = b.crew;
+    if (!cw || b === this.bat()) return base;
+    var k = clamp((cw.skill - C.skill[0]) / (C.skill[1] - C.skill[0]), 0, 1);
+    return base * (C.pace[0] + (C.pace[1] - C.pace[0]) * k);
+  };
   RingTurret.prototype.traverse = function (b) {
     b = this.bat(b);
     return this.R.traverse * this.m.turretFactor(this.gun(b), "slide") * (this.m.ship.crippled ? 0.7 : 1);
@@ -135,9 +145,13 @@
     b.dir = 0;
     b.aimRel = this.full(b) ? b.rel + norm(rel - b.rel) : clamp(rel, -b.arcH, b.arcH);
   };
+  // You trade places with the gunner of the gun you take.
   RingTurret.prototype.select = function (i) {
-    var ok = BL.Turret.prototype.select.call(this, i);
-    if (ok) { var b = this.bat(); b.aimRel = b.rel; this.bats.forEach(function (x) { x.seek = null; }); }
+    var old = this.bat(), ok = BL.Turret.prototype.select.call(this, i);
+    if (ok) {
+      var b = this.bat(); b.aimRel = b.rel; this.bats.forEach(function (x) { x.seek = null; });
+      old.crew = b.crew; b.crew = null; old.aiNext = this.m.totalT + 0.5; old.aiTarget = null;
+    }
     return ok;
   };
 
@@ -594,9 +608,12 @@
     this.damageShip(s, w.damage * bonus * (b.power || 1), b.mine ? 0 : bat.gunNo, b.mine);
   };
 
-  /* ------------------------------------------------------------ AI gunner
+  /* ------------------------------------------------------------ Gun crew
      Same standing orders as the rail view; a target counts only if it's inside the gun's arc
-     and within reach of the rim, and the gun turns to face it. */
+     and within reach of the rim, and the gun turns to face it. A crewman (b.crew) plays it like
+     a person: slow to take things in, aim a little off, rough about when to open fire, and now
+     and then after the wrong target (GUNNERY.crew). With no crewman (the test bot) it plays
+     like a machine. */
   RingTurret.prototype.inReachOf = function (b, x, y) {
     var phi = this.bearingOf(x, y), rel = this.relFor(b, phi);
     if (rel === null) return null;
@@ -604,13 +621,19 @@
     return Math.hypot(x - p.x, y - p.y) <= this.reach(b) ? rel : null;
   };
   RingTurret.prototype.aiBattery = function (b) {
-    var m = this.m, G = this.G, r = this.rng, skill = G.aiGunner, self = this;
+    var m = this.m, G = this.G, r = this.rng, self = this, cw = b.crew, C = G.crew;
     if (m.totalT < b.aiNext) return;
-    b.aiNext = m.totalT + 0.12;
-    var order = this.orderFor(b).order, target = null, rel = 0, best = 1e9;
+    var skill = cw ? cw.skill : G.aiGunner, k = cw ? (skill - C.skill[0]) / (C.skill[1] - C.skill[0]) : 1;
+    function lerp(p) { return p[0] + (p[1] - p[0]) * clamp(k, 0, 1); }
+    var strain = cw && (m.ship.crippled || m.ship.hull < m.data.hull * 0.5) ? C.strain : 1;
+    var react = cw ? lerp(C.react) * strain : 0.12;
+    b.aiNext = m.totalT + react * (cw ? 0.7 + 0.6 * r.next() : 1);
+    var order = this.orderFor(b).order, target = null, rel = 0, best = 1e9, seen = [];
     function torps(within) {
       self.torps.forEach(function (tp) {
+        if (cw && m.t - tp.t0 < react * C.notice) return;          // not spotted yet
         var left = tp.t1 - m.t, rr = self.inReachOf(b, tp.x, tp.y);
+        if (rr !== null) seen.push([tp, rr]);
         if (rr !== null && left < within && left < best) { best = left; target = tp; rel = rr; }
       });
     }
@@ -626,6 +649,7 @@
       self.ships.forEach(function (s) {
         if (s.dead || s.state === "leave") return;
         var rr = self.inReachOf(b, s.x, s.y); if (rr === null) return;
+        seen.push([s, rr]);
         var good = b.w.best.indexOf(s.type) >= 0;
         if (matched && !good) return;
         var d = Math.abs(norm(rr - b.rel)) / 180 + (good ? 0 : penalty);
@@ -638,16 +662,29 @@
       hunt:   [[torps, 0.8], [ships, true], [ships, false, 0.35]],
       free:   [[torps, 1.6], [ships, false, 0.35]]
     }[order] || [[torps, 1.6], [ships, false, 0.35]];
-    for (var k = 0; k < plans.length && !target; k++) { best = 1e9; plans[k][0](plans[k][1], plans[k][2]); }
-    if (r.chance(0.2)) b.aiJitter = (r.next() - 0.5) * 6 * (1 - skill);
+    for (var q = 0; q < plans.length && !target; q++) { best = 1e9; plans[q][0](plans[q][1], plans[q][2]); }
+    if (cw) {
+      // A person: sometimes after something else they can see; once on a target, they stay on
+      // it a while (a new pick only when it's gone or out of reach, or now and then).
+      var keep = b.aiTarget && !b.aiTarget.dead && b.aiTarget.state !== "leave" && seen.some(function (x) { return x[0] === b.aiTarget; });
+      if (keep && r.chance(0.7)) { target = b.aiTarget; seen.forEach(function (x) { if (x[0] === target) rel = x[1]; }); }
+      else if (seen.length && r.chance(lerp(C.wrong) * strain)) { var w = r.pick(seen); target = w[0]; rel = w[1]; }
+      if (target !== b.aiTarget) b.aiOnAt = m.totalT;
+      var settle = 1 / (1 + (m.totalT - (b.aiOnAt || 0)) / C.settle);   // walking their fire in
+      if (target !== b.aiTarget || r.chance(0.25)) b.aiJitter = (r.next() + r.next() - 1) * lerp(C.aimErr) * strain * settle;
+      b.aiTarget = target;
+    } else if (r.chance(0.2)) b.aiJitter = (r.next() - 0.5) * 6 * (1 - skill);
     if (target) { b.aimRel = this.full(b) ? b.rel + norm(rel + b.aiJitter - b.rel) : clamp(rel + b.aiJitter, -b.arcH, b.arcH); }
     b.dir = 0;
     var gun = this.gun(b), aligned = false;
     if (target) {
-      // On the firing line: the target's distance from the gun's straight-out line.
+      // On the firing line: the target's distance from the gun's straight-out line (a crewman
+      // judges it from where they think it is, their aim error included).
       var dx = target.x - b.x, dy = target.y - b.y, along = dx * b.nx + dy * b.ny, off = Math.abs(dx * b.ny - dy * b.nx);
       var rad = target.w ? Math.max(target.w, target.h) * 0.45 : 0.024;
-      aligned = along > 0 && off < rad * (0.6 + 0.6 * skill);
+      if (cw) { var d = Math.hypot(dx, dy), miss = Math.abs(norm(self.bearingOf(target.x, target.y) + b.aiJitter - b.phi));
+        aligned = along > 0 && miss * RAD * d < rad * lerp(C.loose); }
+      else aligned = along > 0 && off < rad * (0.6 + 0.6 * skill);
     }
     b.firing = aligned && gun.mj >= b.w.shotMJ;
     if (target && gun.mj < b.w.shotMJ * 2) this.callPower(b);

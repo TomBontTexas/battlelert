@@ -385,6 +385,7 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 .tu-acc b { font-weight: 600; color: var(--text); }
 .tu-acc .ai { color: var(--muted); }
 .tu-bat .acc { font: 11px var(--mono); color: var(--muted); }
+.tu-bat .acc { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tu-bat .bat-top { display: flex; justify-content: space-between; align-items: center; gap: 4px; }
 .tu-bat .ord { font: 800 13px var(--mono); color: var(--warn); border: 1px solid var(--warn); border-radius: 4px; min-width: 20px; text-align: center; padding: 0 3px; }
 .tu-bat .ord.sug { color: var(--good); border-color: var(--good); }

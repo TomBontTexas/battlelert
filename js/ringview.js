@@ -242,7 +242,7 @@
       c.font = "700 " + Math.max(11, Math.round(Math.min(W, H) * 0.02)) + "px system-ui, sans-serif"; c.textAlign = "center"; c.textBaseline = "middle";
       c.fillStyle = own ? "#4cc3ee" : "rgba(214,224,232,0.55)";
       var lp = toScreen(bt.x + bt.nx * (R.gunSize + 0.025), bt.y + bt.ny * (R.gunSize + 0.025));
-      c.fillText((own ? "GUN " : "AI ") + bt.gunNo, lp.x, lp.y);
+      c.fillText(own ? "GUN " + bt.gunNo : String(bt.gunNo), lp.x, lp.y);      // the crew's names are on the gun cards
       c.restore();
     });
 

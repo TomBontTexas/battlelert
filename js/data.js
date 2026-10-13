@@ -439,8 +439,19 @@
       wing: { n: 4, speed: 0.32, orbit: 0.075, spin: 1.4, size: 0.042, look: 0.1, tick: 0.4, kill: 0.35
       }
     },
-    aiGunner: 0.75,                    // skill of the AI gunner on the batteries you aren't aiming
-    // Standing orders for AI gunners, one per gun. Each fight one of them is suggested: hunt if
+    aiGunner: 0.75,                    // skill of the machine gunner (rail view, and the test bot)
+    // The gun crew ("man, not machine"): every gun but yours has a gunner, a fresh crew each
+    // mission, skill rolled from `skill`. Skill runs from green (first value of each pair) to
+    // sharp (second): react = seconds to take in the fight and pick a target; notice = how long a
+    // torpedo flies before they spot it (x react); aimErr = degrees their aim is off, rerolled
+    // now and then (they don't lead a moving target either); loose = how roughly on target they
+    // open fire (x the target's size); wrong = the chance a pick goes after the wrong target;
+    // settle = seconds on one target to walk their fire in (the aim error shrinks, so slow or
+    // holding targets get hit); pace = how much slower than the gun's best rate they fire;
+    // strain = how much worse all of it gets once the hull is under half or the crew is crippled.
+    crew: { skill: [0.25, 0.85], react: [1.6, 0.6], notice: 1.5, aimErr: [16, 5], loose: [2.5, 1.3], wrong: [0.5, 0.1], settle: 2.5, pace: [1.8, 1.2], strain: 1.2,
+            ranks: ["Gunner's Mate", "Petty Officer", "Chief"] },
+    // Standing orders for the gun crew, one per gun. Each fight one of them is suggested: hunt if
     // the gun's weapon is best against the enemy, else point defense against torpedoes. A gun whose
     // order was never picked ("auto") follows the suggestion. key = its letter in the menu.
     orders: {
