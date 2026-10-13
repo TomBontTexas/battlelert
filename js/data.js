@@ -374,7 +374,7 @@
         // (shipH, the shield's rx and ry, gun icon size gunSize, and pull = how much closer than
         // their look's ringR the enemies hold, so the gap from the shield stays the same). The
         // defaults above are the biggest ships' (dreadnought); smaller classes draw smaller.
-        destroyer: { arcs: [[0, 135, 0], [0, 180, 90], [180, 135, 180]], arcNames: ["on the bow", "amidships", "on the stern"],
+        destroyer: { arcs: [[0, 100, 0], [0, 180, 90], [180, 100, 180]], arcNames: ["on the bow", "amidships", "on the stern"],
                      view: { shipH: 0.2, rx: 0.085, ry: 0.145, gunSize: 0.045, pull: 0.1 } }
       }
     },
