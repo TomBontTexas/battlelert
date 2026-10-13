@@ -4,14 +4,16 @@
 (function (root) {
   "use strict";
   var BL = root.BL = root.BL || {};
-  var stars = null;
+  var stars = null, lastNow = null, lastHead = 0;
+  function wrap(v) { return ((v + 0.1) % 1.2 + 1.2) % 1.2 - 0.1; }   // keep a star in -0.1 .. 1.1
   var BOLT = { pulse: "#7bffb0", rail: "#d8f4ff", ion: "#c49bff" };
   var SHIP_ART = { raiders: "raider", interceptors: "interceptor", siege: "siege", hunters: "hunter", frigate: "frigate" };
   var TURRET_ART = { pulse: "turretPulse", rail: "turretRail", ion: "turretIon" };
 
   BL.drawRing = function (c, S, m, tu, now) {
     var R = tu.R, t = m.totalT, sprite = BL.sprite;
-    if (!stars) { stars = []; for (var i = 0; i < 260; i++) stars.push({ x: Math.random(), y: Math.random(), z: 0.25 + Math.random() * 0.75 }); }
+    // Stars fill a square a little bigger than the view, so turning never shows an empty corner.
+    if (!stars) { stars = []; for (var i = 0; i < 230; i++) stars.push({ x: -0.1 + Math.random() * 1.2, y: -0.1 + Math.random() * 1.2, z: 0.25 + Math.random() * 0.75 }); }
     c.save();
     c.fillStyle = "#03060b"; c.fillRect(0, 0, S, S);
     // Shake: a jolt for a shield hit, a hard shake for a hull hit.
@@ -25,14 +27,20 @@
     if (lastShield) shake = Math.max(shake, Math.max(0, 0.3 - (t - lastShield.at)) * 34);
     if (shake > 0) c.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
     var live = tu.live();
-    // Stars stream past; when the pilot turns the ship they swing around the center with it.
-    c.save(); c.translate(S / 2, S / 2); c.rotate(-(tu.heading || 0) * Math.PI / 180); c.translate(-S * 0.75, -S * 0.75);
+    // Stars: the ship always flies forward (up the screen), so they always stream straight down.
+    // When the pilot turns, their positions swing around the center the other way; their
+    // motion stays straight down, so the ship never seems to slip sideways or back up.
+    var dt = lastNow === null ? 0 : Math.max(0, Math.min(0.1, (now - lastNow) / 1000)), head = tu.heading || 0, dh = head - lastHead;
+    lastNow = now; lastHead = head;
+    if (Math.abs(dh) > 30) dh = 0;                // a new mission starts the heading over
+    var ra = -dh * Math.PI / 180, ca = Math.cos(ra), sa = Math.sin(ra);
     stars.forEach(function (st) {
-      var y = (st.y + (live ? now * 0.00004 * st.z : 0)) % 1;
+      if (dh) { var dx = st.x - 0.5, dy = st.y - 0.5; st.x = 0.5 + dx * ca - dy * sa; st.y = 0.5 + dx * sa + dy * ca; }
+      if (live) st.y += 0.04 * st.z * dt;
+      st.x = wrap(st.x); st.y = wrap(st.y);
       c.fillStyle = "rgba(200,220,255," + (0.25 + st.z * 0.6).toFixed(2) + ")";
-      c.fillRect(st.x * S * 1.5, y * S * 1.5, st.z * 1.8, st.z * 1.8 + (live ? st.z * 2 : 0));
+      c.fillRect(st.x * S, st.y * S, st.z * 1.8, st.z * 1.8 + (live ? st.z * 2 : 0));
     });
-    c.restore();
     c.scale(S, S);
     c.lineWidth = 1.5 / S;
     var sel = tu.bat();
