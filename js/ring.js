@@ -29,6 +29,7 @@
     this.heading = 0;                          // degrees the ship has turned (the starfield turns with it)
     this.firesMain = !!m.sys("main");          // the main gun is yours: one heavy shot straight off the bow
     this.mainFx = null; this.mainWasReady = false; this.nextMineAt = Infinity;
+    this.wing = []; this.lastSquadron = m.squadron;   // the gunboat squadron, while it's out
     this.stats.mines = 0; this.stats.minesDowned = 0; this.stats.mainShots = 0; this.stats.mainHits = 0;
   }
   RingTurret.prototype = Object.create(BL.Turret.prototype);
@@ -38,6 +39,11 @@
     BL.Turret.prototype.reset.call(this);
     this.cur.mines = 0; this.cur.minesDowned = 0; this.cur.mainShots = 0; this.cur.mainHits = 0;
     this.nextMineAt = this.m.cfg.arrivalSeconds + 2; this.pilotTarget = null; this.mainFx = null;
+    this.wing = []; this.lastSquadron = this.m.squadron;
+  };
+  RingTurret.prototype.clear = function () {
+    BL.Turret.prototype.clear.call(this);
+    this.wing = []; this.lastSquadron = this.m.squadron;
   };
   function count(self, key) { self.stats[key]++; if (self.cur) self.cur[key]++; }
 
@@ -149,6 +155,7 @@
     if (held.seek && Math.abs(norm(held.aimRel - held.rel)) < 1) held.seek = null;    // on target
     if (this.live() && m.phase !== "arrival") { this.stats.liveTime += dt; if (this.firing) this.stats.firingTime += dt; }
     this.moveShips(dt);
+    this.runWing(dt);
     this.launchTorpedoes();
     this.dropMines();
     var ms = this.mainState();
@@ -199,6 +206,76 @@
     this.torps.forEach(function (tp) { rot(tp, "x0", "y0"); rot(tp, "x", "y"); tp.hitB -= deg; var p = self.rim(tp.hitB); tp.x1 = p.x; tp.y1 = p.y; });
     this.bolts.forEach(function (b) { rot(b, "x", "y"); var vx = b.vx; b.vx = vx * ca - b.vy * sa; b.vy = vx * sa + b.vy * ca; });
     this.ptTorps.forEach(function (tp) { rot(tp, "x", "y"); tp.a += a; });
+    this.wing.forEach(function (g) { rot(g, "x", "y"); g.a += a; });
+  };
+
+  /* ------------------------------------------------------------ Squadron
+     Cruiser and up: when the launchers fire, the gunboats fly out of the hangar bays, circle
+     the enemy ships strafing them, and shoot down torpedoes that pass close. When the arresters
+     bring them home they fly back aboard. Your bolts pass them by. */
+  RingTurret.prototype.runWing = function (dt) {
+    var m = this.m, hg = m.data.hangar, W = this.G.ring.wing, self = this;
+    if (!hg) return;
+    var sq = m.squadron;
+    if (sq !== this.lastSquadron) {
+      if (sq === "out") this.launchWing();
+      else if (this.lastSquadron === "out") this.wing.forEach(function (g) { g.state = "home"; });
+      this.lastSquadron = sq;
+    }
+    var keep = [];
+    this.wing.forEach(function (g, i) {
+      var tx, ty;
+      if (g.state === "home") {
+        var bay = self.rim(g.bay); tx = bay.x; ty = bay.y;
+        if (Math.hypot(tx - g.x, ty - g.y) < 0.02) return;             // aboard
+      } else {
+        var tg = g.target;
+        if (!tg || tg.dead || tg.state === "leave" || self.ships.indexOf(tg) < 0) tg = g.target = self.wingTarget(i);
+        g.orbitA += W.spin * dt;
+        if (tg) { tx = tg.x + Math.cos(g.orbitA) * W.orbit; ty = tg.y + Math.sin(g.orbitA) * W.orbit; }
+        else {                                                           // nothing to fight: patrol off our side
+          var R = self.R, p = self.rim(g.bay);
+          tx = R.cx + (p.x - R.cx) * 2.2 + Math.cos(g.orbitA) * 0.04; ty = R.cy + (p.y - R.cy) * 1.5 + Math.sin(g.orbitA) * 0.04;
+        }
+      }
+      var dx = tx - g.x, dy = ty - g.y, d = Math.hypot(dx, dy);
+      if (d > 1e-6) {
+        var diff = Math.atan2(dy, dx) - g.a;
+        while (diff > Math.PI) diff -= 2 * Math.PI;
+        while (diff < -Math.PI) diff += 2 * Math.PI;
+        g.a += clamp(diff, -6 * dt, 6 * dt);
+        var mv = Math.min(d, W.speed * dt);
+        g.x += Math.cos(g.a) * mv; g.y += Math.sin(g.a) * mv;
+      }
+      if (g.state !== "home" && m.totalT >= g.next) {
+        g.next = m.totalT + W.tick;
+        var tp = null, bd = W.look;
+        self.torps.forEach(function (x) { var dd = Math.hypot(x.x - g.x, x.y - g.y); if (dd < bd) { bd = dd; tp = x; } });
+        if (tp) {
+          self.effects.push({ type: "tracer", x: g.x, y: g.y, x1: tp.x, y1: tp.y, at: m.totalT });
+          if (self.rng.chance(W.kill)) { self.downTorpedo(tp, null); m.stats.intercepts++; }
+        } else if (g.target && Math.hypot(g.target.x - g.x, g.target.y - g.y) < W.orbit * 1.6) {
+          self.effects.push({ type: "tracer", x: g.x, y: g.y, x1: g.target.x, y1: g.target.y, at: m.totalT });
+          g.target.flashAt = m.totalT;
+          self.damageShip(g.target, hg.dps / W.n * W.tick, 0, false);
+        }
+      }
+      keep.push(g);
+    });
+    this.wing = keep;
+  };
+  RingTurret.prototype.launchWing = function () {
+    var W = this.G.ring.wing;
+    this.wing = [];
+    for (var i = 0; i < W.n; i++) {
+      var bay = i % 2 ? 125 : -125, p = this.rim(bay);
+      this.wing.push({ x: p.x, y: p.y, a: Math.atan2(p.ny, p.nx), bay: bay, state: "out", target: null, orbitA: i * 1.6, next: this.m.totalT + 1 + i * 0.2 });
+    }
+  };
+  // Spread the gunboats over the ships that are up.
+  RingTurret.prototype.wingTarget = function (i) {
+    var live = this.ships.filter(function (s) { return !s.dead && s.state !== "leave"; });
+    return live.length ? live[i % live.length] : null;
   };
 
   /* ------------------------------------------------------------ Main gun

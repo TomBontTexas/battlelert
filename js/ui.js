@@ -132,6 +132,7 @@
       $("brief-pt").hidden = !sim.data.torpedoes;
       $("brief-gmain").hidden = !sim.turret.firesMain;
       $("brief-gmines").hidden = sim.route.indexOf("minefield") < 0;
+      $("brief-gwing").hidden = !sim.sys("hangar");
       var bats = sim.turret.bats;
       if (sim.turret.ring) $("brief-guns").innerHTML = "Your ship sits in the middle of the screen inside its oval shield, and enemies come in from every side (mostly ahead and on the flanks). " +
         (bats.length > 1 ? "Your guns ride the shield's rim, each inside its own arc, and fire straight out: " : "Your gun rides the shield's rim and fires straight out: ") +
@@ -1366,7 +1367,7 @@
       shownJobs = BL.career.offers(career, station);
       $("offers-title").textContent = who + " jobs";
       $("offers-lede").textContent = (station === "gunner"
-        ? "Postings for gunners at your level. Each lists the ship's guns and names the engineer who'll run your power. The gunner station is built up to the light cruiser so far."
+        ? "Postings for gunners at your level. Each lists the ship's guns and names the engineer who'll run your power. The gunner station is built up to the cruiser so far."
         : "Postings for engineers at your level. Lower tech levels are harder (smaller reactor and capacitors, weaker guns) and earn more reputation.") +
         (q && BL.career.built(station, q + 1) ? " There's always a tech-level-1 posting for your class and for the class above it." : " There's always a tech-level-1 posting.");
     } else {

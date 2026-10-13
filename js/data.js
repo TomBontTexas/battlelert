@@ -367,7 +367,7 @@
     // What each class's batteries carry at the gunner station, Gun 1 first. With two or more,
     // the player aims one and an AI gunner works the others; turrets share one rail and pass freely.
     loadout: { gunboat: ["pulse"], picket: ["rail"], destroyerEscort: ["pulse", "rail"], destroyer: ["rail", "pulse", "rail"],
-               lightCruiser: ["rail", "rail", "pulse", "pulse"] },
+               lightCruiser: ["rail", "rail", "pulse", "pulse"], cruiser: ["rail", "rail", "rail", "pulse", "pulse"] },
     // Ring view (every class): the ship in the center inside an oval shield (cx, cy, rx, ry);
     // guns ride its rim inside their arcs ([center bearing, half width], 0 = ahead, clockwise).
     // reach = how far a bolt flies from the rim; traverse = degrees per second along the rim;
@@ -396,7 +396,17 @@
         lightCruiser: { arcs: [[-90, 100, -90], [90, 100, 90], [0, 180, -150], [0, 180, 150]],
                         arcNames: ["to port", "to starboard", "aft, port side", "aft, starboard side"],
                         view: { shipH: 0.255, rx: 0.112, ry: 0.185, gunSize: 0.048, pull: 0.065 },
-                        pilot: { turn: 10, evade: 5, dodge: 30 } }
+                        pilot: { turn: 10, evade: 5, dodge: 30 } },
+        cruiser: { arcs: [[-90, 100, -90], [90, 100, 90], [0, 180, 0], [0, 180, -150], [0, 180, 150]],
+                   arcNames: ["to port", "to starboard", "on the centerline", "aft, port side", "aft, starboard side"],
+                   view: { shipH: 0.3, rx: 0.135, ry: 0.218, gunSize: 0.05, pull: 0.04 },
+                   pilot: { turn: 8, evade: 5, dodge: 30 } }
+      },
+      // The gunboat squadron (cruiser and up) as the gunner sees it: n gunboats fly at `speed`,
+      // circle their target at `orbit` (spin radians/s) strafing it, and every `tick` s shoot at
+      // a torpedo within `look` (kill = the chance it goes down). Their strafing adds up to the
+      // class's hangar dps.
+      wing: { n: 4, speed: 0.32, orbit: 0.075, spin: 1.4, size: 0.042, look: 0.1, tick: 0.4, kill: 0.35
       }
     },
     aiGunner: 0.75,                    // skill of the AI gunner on the batteries you aren't aiming

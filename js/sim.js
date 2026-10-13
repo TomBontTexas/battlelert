@@ -419,7 +419,7 @@
 
   Mission.prototype.salvoHits = function (e) {
     var sh = this.sys("shield"), st = this.stats, js = this.jumpStats;
-    if (this.squadron === "out" && this.rng.chance(this.data.hangar.intercept)) {
+    if (this.squadron === "out" && !(this.turret && this.turret.ring) && this.rng.chance(this.data.hangar.intercept)) {
       st.salvos++; js.salvos++; st.intercepts++;
       if (e.visible) { st.salvosAnnounced++; st.salvosShielded++; }
       js.shielded++;
@@ -454,7 +454,7 @@
     var pd = this.sys("pd"), drive = this.sys("drive"), st = this.stats, enc = this.encounter();
     st.strikes++;
     if (e.visible) st.strikesAnnounced++; else this.chat("surprise", null, "bad");
-    if (this.squadron === "out" && this.rng.chance(this.data.hangar.intercept)) {
+    if (this.squadron === "out" && !(this.turret && this.turret.ring) && this.rng.chance(this.data.hangar.intercept)) {
       st.intercepts++; if (e.visible) st.strikesStopped++;
       this.cue("kill"); this.chat("intercepted", null, "good"); return;
     }
@@ -547,7 +547,7 @@
   Mission.prototype.runGunners = function (dt) {
     var g = this.data.gun, ship = this.ship, t = this.t;
     var target = this.liveWave();
-    if (target && this.squadron === "out") {
+    if (target && this.squadron === "out" && !(this.turret && this.turret.ring)) {   // at the gun, the squadron is flown (ring.js)
       this.hitWave(target, this.data.hangar.dps * dt, 0);
       if (target.dead) target = this.liveWave();
     }

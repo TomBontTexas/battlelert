@@ -86,6 +86,15 @@
       }
     });
 
+    // Our gunboat squadron, when it's out.
+    var gsp = sprite("gunboat"), gsz = tu.G.ring.wing.size;
+    (tu.wing || []).forEach(function (g) {
+      c.save(); c.translate(g.x, g.y); c.rotate(g.a + Math.PI / 2);
+      if (gsp) { var gw = gsz / gsp.aspect; c.drawImage(gsp.cv, -gw / 2, -gsz / 2, gw, gsz); }
+      else { c.fillStyle = "#c3ccd4"; c.fillRect(-0.006, -gsz / 2, 0.012, gsz); }
+      c.restore();
+    });
+
     // Torpedoes heading for the shield (and mines drifting in).
     var tsp = sprite("torpedo");
     tu.torps.forEach(function (tp) {
@@ -140,6 +149,9 @@
       } else if (f.type === "spark" && a < 0.18) {
         c.fillStyle = BOLT[f.weapon] || "#fff"; c.globalAlpha = 1 - a / 0.18;
         c.beginPath(); c.arc(f.x, f.y, 0.008 + a * 0.06, 0, Math.PI * 2); c.fill(); c.globalAlpha = 1;
+      } else if (f.type === "tracer" && a < 0.12) {
+        c.strokeStyle = "rgba(160,225,255," + (0.9 - a * 6).toFixed(2) + ")"; c.lineWidth = 1.5 / S;
+        c.beginPath(); c.moveTo(f.x, f.y); c.lineTo(f.x1, f.y1); c.stroke();
       } else if (f.type === "fizzle" && a < 0.25) {
         c.fillStyle = "rgba(240,181,74," + (0.6 - a * 2.4) + ")"; c.fillRect(f.x - 0.004, f.y - 0.004, 0.008, 0.008);
       }
