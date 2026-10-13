@@ -97,8 +97,10 @@
       : "Gunboats have no GravSpace drive. In each of the carrier's " + sim.cfg.jumps + " systems it launches you into the fight and recovers you when the sortie timer runs out, then carries you through GravSpace to the next one. Keep the gunboat alive through every sortie.";
     $("brief-route").innerHTML = sim.route.map(function (id, i) {
       var e = BL.ENCOUNTERS[id];
-      if (sim.turret) return "<li>" + (sim.hasDrive ? "System " : "Sortie ") + (i + 1) + ": <b>" + e.name + "</b>. " + gunnerTip(id) +
-        (sim.hasDrive ? " Jump window opens " + sim.windowFor(i) + " s after arrival." : " The carrier recovers you " + sim.windowFor(i) + " s after launch.") + "</li>";
+      // At the gun: each enemy described the first time it comes up, then just which gun has the edge.
+      if (sim.turret) { var first = sim.route.indexOf(id) === i;
+        return "<li>" + (sim.hasDrive ? "System " : "Sortie ") + (i + 1) + ": <b>" + e.name + "</b>. " + gunnerTip(id, !first) +
+          (sim.hasDrive ? " Jump window " + sim.windowFor(i) + " s." : " Recovered after " + sim.windowFor(i) + " s.") + "</li>"; }
       return "<li>" + (sim.hasDrive ? "System " : "Sortie ") + (i + 1) + ": <b>" + e.name + "</b>. " + e.what + ". Tests: " + e.tests.toLowerCase() +
         (sim.hasDrive ? ". Jump window opens " + sim.windowFor(i) + " s after arrival." : ". The carrier recovers you " + sim.windowFor(i) + " s after launch.") + "</li>";
     }).join("") + (sim.hasDrive ? "<li>The Archonian world: drop the planet buster.</li>" : "");
@@ -134,26 +136,19 @@
       $("brief-gmines").hidden = sim.route.indexOf("minefield") < 0;
       $("brief-gwing").hidden = !sim.sys("hangar");
       var bats = sim.turret.bats;
-      if (sim.turret.ring) $("brief-guns").innerHTML = "Your ship sits in the middle of the screen inside its oval shield, and enemies come in from every side (mostly ahead and on the flanks). " +
-        (bats.length > 1 ? "Your guns ride the shield's rim, each inside its own arc, and fire straight out: " : "Your gun rides the shield's rim and fires straight out: ") +
-        bats.map(function (b) { return "<b>Gun " + b.gunNo + "</b> " + b.w.name.toLowerCase() + (b.arcName ? " " + b.arcName : "") + " (" + (b.arcH >= 180 ? "all the way round" : (b.arcH * 2) + "°") + ")"; }).join(", ") +
-        ". Your gun follows the mouse or trackpad: point anywhere around the ship and the gun turns along the rim toward that side (as far as its arc allows), whether you're firing or not, so you can follow a ship by keeping the pointer on it. A finger on the view does the same; on the aim pad, drag right to turn clockwise, left counterclockwise. The arrow keys turn it too. You can also click or tap a ship or torpedo: your gun swings to it (it still has to travel) and, if you hold the button, opens fire once it's on. " +
-        (bats.length > 1 ? "You aim one gun; AI gunners work the others. Press a gun's number or tap its card to take it (switches on the left let you take a gun by clicking it on the view, and turn click-to-aim off). "
-          : "A switch on the left turns click-to-aim off. ") +
-        bats.filter(function (b, i) { return bats.findIndex(function (x) { return x.weaponId === b.weaponId; }) === i; }).map(function (b) { return b.w.name + ": " + b.w.what; }).join(" ");
-      else $("brief-guns").innerHTML = bats.length === 1
-        ? "You're at <b>Gun 1</b>, <b>" + an(bats[0].w.name.toLowerCase()) + "</b>: " + bats[0].w.what
-        : "You command " + bats.map(function (b) { return "<b>Gun " + b.gunNo + "</b> (" + b.w.name.toLowerCase() + ")"; }).join(" and ") +
-          ". You aim one; an AI gunner works the other. Both turrets ride one rail and slide past each other. Press 1 or 2, or tap a gun's card, to switch (a switch on the left lets you take a gun by clicking it on the view). " +
-          bats.map(function (b) { return b.w.name + ": " + b.w.what; }).join(" ");
+      // The guns and their arcs; how they work is in How to play.
+      $("brief-guns").innerHTML = "<b>" + (bats.length > 1 ? "Guns" : "Gun") + ":</b> " + bats.map(function (b) {
+        return "Gun " + b.gunNo + " " + b.w.name.toLowerCase() + (b.arcName ? " " + b.arcName : "") + (b.arcH === undefined ? "" : " (" + (b.arcH >= 180 ? "all round" : (b.arcH * 2) + "°") + ")");
+      }).join(" · ") + (bats.length > 1 ? ". You aim one; AI gunners work the rest." : ".");
       $("brief-orders").hidden = bats.length < 2;
-      $("brief-orders").innerHTML = "<b>Standing orders.</b> Each gun's card shows a letter for what its AI gunner does: <b>P</b> point defense (torpedoes first, then ships charging to fire), <b>L</b> stop launches (charging ships first), <b>H</b> hunt (the ships its weapon is best against) or <b>F</b> free fire. Take a gun and press O, or tap its letter, to change it; switch away and the AI follows that order. Until you change it, a gun follows the suggestion for each fight (green letter): hunt if its weapon is best against the enemy, else point defense.";
+      $("brief-orders").innerHTML = "<b>Orders:</b> the letter on each gun card is its AI gunner's order (P point defense, L stop launches, H hunt, F free fire; green = this fight's suggestion). Take a gun and press O to change it.";
       $("brief-engineer").innerHTML = "Your engineer: <b>" + esc(en.name) + "</b>, " + en.label + " (skill " + Math.round(en.skill * 100) + "). " + ENGINEER_NOTE[en.label];
     }
     show("scr-briefing");
   }
   $("btn-brief-back").onclick = function () { click(); if (job.test) show("scr-title"); else showOffers(offersMode); };
   $("btn-brief-go").onclick = function () { click(); startMission(); };
+  $("btn-brief-how").onclick = function () { click(); overlay("ov-how", true); };
 
   /* ------------------------------------------------------------- Mission */
   function startMission() {
@@ -1087,13 +1082,14 @@
   }
   function an(x) { return (/^[aeiou]/.test(x) ? "an " : "a ") + x; }
   // What the gunner should expect from an encounter, and which of their guns has the edge.
-  function gunnerTip(encId) {
+  // brief = leave out what the enemy is like (already said).
+  function gunnerTip(encId, brief) {
     var look = BL.GUNNERY.looks[encId] || {}, bats = sim.turret.bats;
-    if (encId === "minefield") return "Mines drift in toward the ship: shoot them before they reach the shield. One hit from any gun kills a mine.";
+    if (encId === "minefield") return brief ? "Shoot the mines." : "Mines drift in toward the ship: shoot them before they reach the shield. One hit from any gun kills a mine.";
     var good = bats.filter(function (b) { return b.w.best.indexOf(encId) >= 0; }).map(function (b) { return b.w.name.toLowerCase(); })
       .filter(function (n, i, a) { return a.indexOf(n) === i; });
     var gun = bats.length === 1 ? "Your " + bats[0].w.name.toLowerCase() : "None of your guns";
-    return (look.ship ? "Expect " + BL.plural(look.ship) + ": " + look.what + ". " : "") +
+    return (look.ship && !brief ? "Expect " + BL.plural(look.ship) + ": " + look.what + ". " : "") +
       (good.length ? "Your " + good.join(" and ") + " does extra damage to them." : gun + (bats.length === 1 ? " gets" : " get") + " no bonus against them.");
   }
   $("btn-grav-go").onclick = function () { click(); overlay("ov-grav", false); sim.beginJump(); };

@@ -122,30 +122,24 @@
       <li id="brief-engineer"></li>
       <li id="brief-guns"></li>
       <li id="brief-orders" hidden></li>
-      <li>Each gun <b>fires straight out</b> from the shield's rim. A bolt hits the first ship or torpedo it reaches. Rail and ion bolts stop at the gun's range line (dashed); pulse bolts fly on past it but hit far weaker.</li>
-      <li>Enemy salvos come down as <b>torpedoes</b>. The shields take them, but you can shoot one down before it lands. Killing a ship stops the torpedoes it hasn't fired yet.</li>
-      <li>Your gun sits outside the shields. A torpedo that gets through can damage its charger and its turret: it turns slower, fires slower or loses range. Damage control repairs half of it between sorties.</li>
-      <li id="brief-pt">Your gunboat carries <b>two torpedoes</b>: LAUNCH 1 and LAUNCH 2 (keys 1 and 2). They need no power and the carrier reloads them every sortie. Each one is slow and homes on the nearest frigate or siege battery; the target can dodge it or shoot it down, but a hit does more damage than anything else you carry.</li>
-      <li><b>Every shot drains your gun's capacitor.</b> Hold FIRE and the gun fires as fast as it can while the charge lasts. <b>Call for power</b> and the engineer pours charge into your gun for a few seconds.</li>
-      <li id="brief-gmain" hidden>The <b>main gun</b> is yours. It points straight off the bow (the gold dashed line, bright when it's charged). Once the engineer has it full, press <b>M</b> or MAIN GUN: the whole charge goes into the first ship on that line, enough to gut most ships. With nothing on the line, the shot is wasted. The pilot swings the bow toward the biggest target, but it won't sit still and slides away from the bow, so be ready when it crosses.</li>
-      <li id="brief-gwing" hidden>Your cruiser carries a <b>gunboat squadron</b>. When the engineer fires the launchers, four gunboats fly out of the hangar bays, circle the enemy ships strafing them and shoot down torpedoes that pass close. Your bolts pass them by. The arresters bring them home before the jump; the captain won't jump without them.</li>
-      <li id="brief-gmines" hidden>In a <b>minefield</b>, mines drift in toward the ship. Shoot them before they reach the shield: each one that lands hits like a torpedo. When the engines run short of power the ship drifts, and more mines come.</li>
-      <li><b>Mouse or trackpad:</b> point to turn the gun, click a target to swing to it, hold the button to fire. <b>Touch:</b> touch the view to point, or drag on the aim pad; hold FIRE. <b>Keys:</b> ← → turn, Space fires, C calls for power, W switches to wide view (the battle fills the screen, bow to the right), P pauses.</li>
+      <li id="brief-pt"><b>Two torpedoes</b> (LAUNCH 1 and 2, keys 1 and 2): slow, they home on a frigate or siege battery and hit harder than anything else you carry. Reloaded every sortie.</li>
+      <li id="brief-gmain" hidden><b>Main gun:</b> press M when it's charged; it hits the first ship straight off the bow (the gold line). The pilot swings the bow toward the biggest target, which slides away, so time your shot.</li>
+      <li id="brief-gwing" hidden><b>Gunboat squadron:</b> launched early in each system, it strafes the enemy and shoots down nearby torpedoes, then comes home before the jump.</li>
+      <li id="brief-gmines" hidden><b>Minefield:</b> shoot the drifting mines before they reach the shield.</li>
+      <li class="muted">Controls and rules: How to play. Keys: Options.</li>
     </ul>
     <ul class="tight" id="brief-eng">
-      <li>The <b>forecast strip</b> at the top shows what the bridge needs in the next 15 seconds. Charge for it before it lands.</li>
-      <li>Every capacitor's charge rate adds to the <b>reactor load</b>. Above 100% the reactor heats up; at full heat the failsafe trips capacitors off the reactor for 10 s, <b>lowest priority first</b>.</li>
-      <li>The <b>aux bank</b> charges any capacitor you switch it onto, without loading the reactor. It refills only in GravSpace.</li>
-      <li>Capacitors that are full stop drawing power. When they're drained, they ramp back up to your setting over a second or two.</li>
-      <li id="brief-main" hidden>The <b>main gun</b> fires by itself the moment its capacitor is full and a target is up, spending the whole charge in one heavy shot. Keep feeding it and it keeps firing.</li>
-      <li id="brief-hangar" hidden>The hangar capacitor charges the electromagnetic <b>launchers</b>: they must be full when the bridge calls the launch, near the start of each system. While the gunboats are out they shoot down some salvos and strafe the enemy, and the same capacitor charges the <b>arresters</b>, which must be full to recover them near the end. The captain won't jump until the gunboats are aboard, unless the hull is at 20% or less.</li>
-      <li id="brief-pd" hidden><b>Point defense</b> is the only thing that stops a drive strike from drive hunters. Each strike it stops costs a chunk of its charge; one that gets through drains part of the GravSpace drive.</li>
-      <li id="brief-rx" hidden>This ship has <b>several reactors</b>, each with its own load, heat, failsafe and aux bank. Every capacitor is wired to one reactor (the letter on its column); tap the letter or press R to move it to the next reactor. It draws nothing for 2 s while it switches. Aux banks can't be moved: each feeds only its own reactor's capacitors.</li>
-      <li id="brief-buster" hidden>The <b>planet buster</b> charges from the start of the mission and keeps its charge, but it can't charge in GravSpace. It must be full, as well as the drive, before the final jump.</li>
-      <li id="brief-mines" hidden>In a <b>minefield</b> there is no enemy fire, but the engines get only the power your capacitors leave. Ease off charging during each weave, or the ship drifts into mines.</li>
+      <li id="brief-main" hidden><b>Main gun:</b> fires by itself whenever it's full and a target is up. Keep feeding it.</li>
+      <li id="brief-hangar" hidden><b>Launchers and arresters:</b> full launchers at the launch call early in each system, full arresters at the recovery call before the jump. No jump without the gunboats unless the hull is at 20% or less.</li>
+      <li id="brief-pd" hidden><b>Point defense</b> is the only thing that stops a drive hunter's strike on the GravSpace drive.</li>
+      <li id="brief-rx" hidden><b>Several reactors:</b> each capacitor is wired to one (the letter on its column). Tap the letter or press R to move it; it draws nothing for 2 s while it switches.</li>
+      <li id="brief-buster" hidden><b>Planet buster:</b> must be full, as well as the drive, before the final jump. It can't charge in GravSpace.</li>
+      <li id="brief-mines" hidden><b>Minefield:</b> the engines get only what the capacitors leave. Ease off charging during each weave, or the ship drifts into mines.</li>
+      <li class="muted">Controls and rules: How to play. Keys: Options.</li>
     </ul>
     <div class="actions">
       <button id="btn-brief-back">Back</button>
+      <button id="btn-brief-how">How to play</button>
       <button id="btn-brief-go" class="big primary">Stations, Please</button>
     </div>
   </div>
@@ -414,7 +408,7 @@
       <label for="opt-contrast">High-contrast theme</label><input id="opt-contrast" type="checkbox">
       <label for="opt-hints">Hint mode</label><input id="opt-hints" type="checkbox">
     </div>
-    <h2>Keyboard</h2>
+    <h2>Engine room</h2>
     <table class="keys">
       <tr><td>1 – 9</td><td>Select a system</td></tr>
       <tr><td>↑ ↓</td><td>Raise or lower its charge rate (hold Shift for big steps)</td></tr>
@@ -423,20 +417,25 @@
       <tr><td>A</td><td>Switch the aux bank onto or off the selected capacitor</td></tr>
       <tr><td>[ ]</td><td>Raise or lower its priority (what trips first)</td></tr>
       <tr><td>R</td><td>Move it to the next reactor (battleship and up)</td></tr>
-      <tr><td>Space</td><td>Pause</td></tr>
+      <tr><td>Space</td><td>Pause and resume</td></tr>
+      <tr><td>Esc</td><td>Back to the fight after looking at the paused console</td></tr>
       <tr><td>H</td><td>Hint mode</td></tr>
+      <tr><td>Enter</td><td>Continue after the GravSpace report</td></tr>
     </table>
-    <h2>Gunner turret</h2>
+    <h2>At the gun</h2>
     <table class="keys">
       <tr><td>← → (or A D)</td><td>Turn the gun clockwise or counterclockwise around the ship</td></tr>
       <tr><td>Space (or ↑)</td><td>Fire (hold)</td></tr>
       <tr><td>C</td><td>Call for power</td></tr>
-      <tr><td>1 / 2</td><td>Launch torpedo 1 or 2 (gunboat), or take Gun 1 or 2 (two guns or more)</td></tr>
-      <tr><td>W</td><td>Switch between standard view and wide view (the battle fills the screen, bow to the right)</td></tr>
-      <tr><td>M</td><td>Fire the main gun (light cruiser and up) once it's charged: one heavy shot straight off the bow</td></tr>
-      <tr><td>O</td><td>Cycle the standing order of the gun you hold: P point defense, L stop launches, H hunt, F free fire</td></tr>
-      <tr><td>P / Esc</td><td>Pause</td></tr>
+      <tr><td>1 – 5</td><td>Take that gun (ships with two guns or more)</td></tr>
+      <tr><td>1 / 2</td><td>Launch torpedo 1 or 2 (gunboat)</td></tr>
+      <tr><td>M</td><td>Fire the main gun once it's charged (light cruiser and up)</td></tr>
+      <tr><td>O</td><td>Change the standing order of the gun you hold: P point defense, L stop launches, H hunt, F free fire</td></tr>
+      <tr><td>W</td><td>Wide view on or off (the battle fills the screen, bow to the right)</td></tr>
+      <tr><td>P / Esc</td><td>Pause and resume</td></tr>
+      <tr><td>Enter</td><td>Continue after the GravSpace report</td></tr>
       <tr><td>Mouse</td><td>The gun follows the pointer around the ship; click a ship or torpedo to swing to it; hold the button to fire</td></tr>
+      <tr><td>Touch</td><td>Touch the view to point the gun, or drag on the aim pad; tap a ship or torpedo to swing to it; hold FIRE</td></tr>
     </table>
     <div class="menu"><button id="btn-options-close" class="primary">Done</button></div>
   </div>
@@ -446,20 +445,35 @@
 <section id="ov-how" class="overlay" hidden>
   <div class="ov-card wide">
     <h1>How to play</h1>
-    <p>You are the Destroyer's engineer. The reactor can't feed everything at once, so you decide where the power goes, second by second.</p>
+    <p>A career aboard the warships carrying humanity's planet buster. Take jobs as engineer or gunner (the pilot station comes later) from the gunboat up to the dreadnought; a successful mission qualifies you on that class, and offers from bigger ships follow your reputation.</p>
+    <h2>The engine room</h2>
+    <p>The reactor can't feed everything at once, so you decide where the power goes, second by second.</p>
     <ol class="tight">
       <li><b>Read the forecast strip.</b> Salvos, evasive burns and gun requests are announced seconds before they land.</li>
-      <li><b>Shift charge to meet the next demand.</b> Drag a capacitor's charge-rate slider, or select it with 1–6 and use ↑↓. The controller ramps toward your setting over a second or two, so start early.</li>
+      <li><b>Shift charge to meet the next demand.</b> Drag a capacitor's charge-rate slider, or select it with 1–9 and use ↑↓. The controller ramps toward your setting over a second or two, so start early.</li>
       <li><b>Keep heat under the line.</b> Load over 100% heats the reactor. At full heat the failsafe trips capacitors off the reactor for 10 s, lowest priority first. Set the priority order so the right things trip.</li>
       <li><b>Spend aux power to bridge a gap.</b> The aux bank charges a capacitor without loading the reactor. It only refills between jumps.</li>
       <li><b>Charge the GravSpace drive.</b> When the jump window opens and the drive is full, the captain jumps. Three jumps and the planet buster is delivered.</li>
-      <li><b>Every capacitor bleeds.</b> A charged capacitor slowly loses charge, and the fuller it is the more it loses, so holding everything full keeps costing reactor power. Charge what the forecast says is coming.</li>
-      <li><b>Bigger ships add more.</b> Light cruisers and up have a main gun that fires by itself whenever its capacitor is full and a target is up; keep feeding it and it keeps firing. Cruisers and up carry gunboats: charge the launchers for the launch near the start of each system, then the arresters to recover them near the end. No jump until they're aboard, unless the hull is at 20% or less.</li>
+      <li><b>Every capacitor bleeds.</b> The fuller it is the more it loses, so holding everything full keeps costing reactor power. Charge what the forecast says is coming.</li>
+      <li><b>Bigger ships add more.</b> Light cruisers and up have a main gun that fires by itself whenever its capacitor is full and a target is up. Cruisers and up carry gunboats: charge the launchers for the launch near the start of each system, then the arresters to recover them near the end. No jump until they're aboard, unless the hull is at 20% or less.</li>
       <li><b>The biggest ships.</b> Heavy cruisers and up have point defense, the only thing that stops drive hunters' strikes on the GravSpace drive. Battleships have two reactors and dreadnoughts three: move capacitors between them to balance the load. The dreadnought also carries the planet buster, which must be full before the final jump.</li>
       <li><b>Minefields.</b> No enemy fire, but the engines get only what the capacitors leave of the reactor. Ease off charging during each weave, or the ship drifts into mines.</li>
     </ol>
     <p>Shields stop salvos; whatever gets through damages the hull, and damage slows chargers, lowers reactor output and weakens the thrusters. Fed guns kill enemies faster, and a dead enemy fires no more salvos. Keep life support topped up, or the crew falters.</p>
     <p class="muted">Not every salvo is announced; surprises are rare. Pausing is free; looking at the console while paused costs 10% of the mission's score.</p>
+    <h2>At the gun</h2>
+    <p>Your ship sits in the middle of the view inside its oval shield, and enemies come in from every side, mostly ahead and on the flanks. An AI engineer runs the power.</p>
+    <ol class="tight">
+      <li><b>Aim.</b> Your gun rides the shield's rim inside its arc (the lit part of the rim) and fires straight out. It follows the mouse or trackpad around the ship; a finger on the view does the same, or drag on the aim pad; ← → turn it. Click or tap a ship or torpedo and the gun swings to it, holding fire until it's on.</li>
+      <li><b>Fire.</b> Hold Space, the mouse button or FIRE. The dotted line is your line of fire and the dashed curve your range. Rail and ion bolts stop at the range line; pulse bolts fly on past it but hit far weaker.</li>
+      <li><b>Weapons.</b> Each hits harder against its best targets: the pulse cannon (fast, light, short) against interceptors; the rail gun (slow, heavy, long) against raiders, siege lines and capital ships; the ion gun against drive hunters, and a hit drains the target's weapons for 4 s.</li>
+      <li><b>Power.</b> Every shot drains your gun's capacitor. Release FIRE to let it recharge, or call for power (C) and the engineer pours charge into it for a few seconds.</li>
+      <li><b>Torpedoes.</b> Enemy salvos are torpedoes; a ship about to fire glows red at the nose. The shields take them, but you can shoot one down first, and a dead ship fires no more.</li>
+      <li><b>Several guns.</b> You aim one; AI gunners work the others. Take a gun with its number key or its card. The letter on each card is its gunner's standing order: P point defense (torpedoes first), L stop launches (ships charging to fire first), H hunt (the ships its weapon is best against), F free fire. Take a gun and press O, or tap its letter, to change it; a green letter is the suggestion for this fight.</li>
+      <li><b>Damage.</b> Guns sit outside the shields. A torpedo that gets through can damage a gun's charger and turret: it turns slower, fires slower or loses range. Damage control repairs half of it between systems.</li>
+      <li><b>Bigger ships add more.</b> Gunboats carry two homing torpedoes (1 and 2), reloaded every sortie. Light cruisers and up have a main gun off the bow: press M when it's charged and the whole charge goes into the first ship on that line; the pilot swings the bow toward the biggest target, which tries to slide away. Cruisers launch a gunboat squadron that strafes the enemy and shoots down nearby torpedoes. In minefields, shoot the mines before they reach the shield.</li>
+      <li><b>Views and switches.</b> W switches to wide view: the side panels give way to an overlay and the battle fills the screen, bow to the right. Switches on the left panel let you take a gun by clicking it on the view, or turn click-to-aim off.</li>
+    </ol>
     <p class="muted small-text">Battlelert © 2011–2026 Tom Bont. All rights reserved. Free to play. The code, art and sounds may not be copied, changed or shared without written permission.</p>
     <div class="menu"><button id="btn-how-close" class="primary">Got it</button></div>
   </div>
@@ -467,7 +481,7 @@
 
 <script src="version.js?b=a2aede56"></script>
 <script src="update-banner.js?b=ec7860dd"></script>
-<script src="js/data.js?b=a05db0a2"></script>
+<script src="js/data.js?b=7f9b0623"></script>
 <script src="js/sim.js?b=c41f53b1"></script>
 <script src="js/agents.js?b=781a8ccb"></script>
 <script src="js/gunnery.js?b=ffd194d0"></script>
@@ -479,6 +493,6 @@
 <script src="js/career.js?b=857b8369"></script>
 <script src="js/speech.js?b=82211578"></script>
 <script src="js/audio.js?b=273e5325"></script>
-<script src="js/ui.js?b=ab01995f"></script>
+<script src="js/ui.js?b=d2ae347a"></script>
 </body>
 </html>

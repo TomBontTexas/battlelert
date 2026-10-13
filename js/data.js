@@ -442,15 +442,15 @@
     // they swoop down now and then.
     looks: {
       raiders:      { ship: "raider", ringR: [0.38, 0.44], count: [3, 3], w: 0.11, h: 0.072, band: [0.13, 0.28], sway: 0.14, period: [6, 8], dive: 0.14, formation: true,
-                      what: "big, slow and tough; they hang back near the top and swoop into range now and then" },
+                      what: "big, slow and tough; they hang back and swoop into range now and then" },
       interceptors: { ship: "interceptor", ringR: [0.33, 0.4], count: [4, 5], w: 0.06, h: 0.066, band: [0.2, 0.45], sway: 0.28, period: [2.4, 3.4], dive: 0.22,
                       what: "small, fast and fragile; they weave and dive, and launch torpedoes often" },
       siege:        { ship: "siege battery", ringR: [0.43, 0.47], count: [4, 4], w: 0.09, h: 0.075, band: [0.1, 0.2], sway: 0.04, period: [9, 12], dive: 0, formation: true,
-                      what: "a slow line far up the screen that never stops firing" },
+                      what: "a slow line that holds far out and never stops firing" },
       // Archonian capital ships: one big hull (the wave's toughness minus the escorts' share).
       frigate:      { ship: "frigate", ringR: [0.42, 0.46], capital: true, count: [1, 1], w: 0.13, h: 0.25, band: [0.15, 0.2], sway: 0.1, period: [10, 12], dive: 0,
                       escorts: { type: "interceptors", count: 2, share: 0.17 },
-                      what: "one big hull escorted by two interceptors; it holds near the top and fires torpedoes in pairs" },
+                      what: "one big hull escorted by two interceptors; it holds far out and fires torpedoes in pairs" },
       hunters:      { ship: "drive hunter", ringR: [0.35, 0.42], count: [3, 3], w: 0.065, h: 0.07, band: [0.18, 0.4], sway: 0.24, period: [3, 4], dive: 0.12,
                       what: "nimble ships that go for the GravSpace drive" }
     }
