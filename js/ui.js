@@ -1100,7 +1100,7 @@
     var good = bats.filter(function (b) { return b.w.best.indexOf(encId) >= 0; }).map(function (b) { return b.w.name.toLowerCase(); })
       .filter(function (n, i, a) { return a.indexOf(n) === i; });
     var gun = bats.length === 1 ? "Your " + bats[0].w.name.toLowerCase() : "None of your guns";
-    return (look.ship && !brief ? "Expect " + BL.plural(look.ship) + ": " + look.what + ". " : "") +
+    return (look.ship && !brief ? "Expect " + (look.only ? "the " + look.ship : BL.plural(look.ship)) + ": " + look.what + ". " : "") +
       (good.length ? "Your " + good.join(" and ") + " does extra damage to them." : gun + (bats.length === 1 ? " gets" : " get") + " no bonus against them.");
   }
   $("btn-grav-go").onclick = function () { click(); overlay("ov-grav", false); sim.beginJump(); };
@@ -1389,7 +1389,7 @@
       (opts.length ? '<div class="menu">' + opts.map(function (o) {
         return '<button class="primary" data-st="' + o.station + '" data-n="' + o.n + '">Sign off as ' + BL.career.STATION_NAME[o.station] + "-" + o.n + " (" + BL.classByN(o.n).name.toLowerCase() + ")</button>";
       }).join("") + "</div>" :
-      '<p class="muted">' + (held ? "Nothing to spend one on right now: the next class at your other stations is either higher than N − 2 or not built yet (the gunner station is built for gunboats so far)." : "Unused sign-offs stay available.") + "</p>");
+      '<p class="muted">' + (held ? "Nothing to spend one on right now: the next class at your other stations is either higher than N − 2 or not built yet (the pilot station isn't built yet)." : "Unused sign-offs stay available.") + "</p>");
   }
   $("signoffs-body").addEventListener("click", function (ev) {
     var b = ev.target.closest("button[data-st]"); if (!b) return;
@@ -1430,7 +1430,7 @@
       shownJobs = BL.career.offers(career, station);
       $("offers-title").textContent = who + " jobs";
       $("offers-lede").textContent = (station === "gunner"
-        ? "Postings for gunners at your level. Each lists the ship's guns and names the engineer who'll run your power and the gun crew. The gunner station is built up to the heavy cruiser so far."
+        ? "Postings for gunners at your level. Each lists the ship's guns and names the engineer who'll run your power and the gun crew."
         : "Postings for engineers at your level. Lower tech levels are harder (smaller reactor and capacitors, weaker guns) and earn more reputation.") +
         (q && BL.career.built(station, q + 1) ? " There's always a tech-level-1 posting for your class and for the class above it." : " There's always a tech-level-1 posting.");
     } else {

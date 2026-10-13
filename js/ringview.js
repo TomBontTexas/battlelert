@@ -33,7 +33,7 @@
     return V.wide ? { x: V.w / 2 - dy, y: V.h / 2 + dx } : { x: V.w / 2 + dx, y: V.h / 2 + dy };
   }
   var BOLT = { pulse: "#7bffb0", rail: "#d8f4ff", ion: "#c49bff" };
-  var SHIP_ART = { raiders: "raider", interceptors: "interceptor", siege: "siege", hunters: "hunter", frigate: "frigate", cruiserA: "cruiserA" };
+  var SHIP_ART = { raiders: "raider", interceptors: "interceptor", siege: "siege", hunters: "hunter", frigate: "frigate", cruiserA: "cruiserA", battleshipA: "battleshipA", fortress: "fortress" };
   var TURRET_ART = { pulse: "turretPulse", rail: "turretRail", ion: "turretIon" };
 
   // vp: { w, h, wide } = the canvas in CSS pixels and the view mode.

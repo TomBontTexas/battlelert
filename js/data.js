@@ -7,8 +7,8 @@
   var BL = root.BL = root.BL || {};
 
   BL.APP_TAG = "BATTLELERT";
-  // "siege battery" -> "siege batteries", "raider" -> "raiders".
-  BL.plural = function (w) { return /[^aeiou]y$/i.test(w) ? w.slice(0, -1) + "ies" : w + "s"; };
+  // "siege battery" -> "siege batteries", "raider" -> "raiders", "fortress" -> "fortresses".
+  BL.plural = function (w) { return /[^aeiou]y$/i.test(w) ? w.slice(0, -1) + "ies" : /(s|x|ch|sh)$/i.test(w) ? w + "es" : w + "s"; };
   BL.TICK_RATE = 20;                       // simulation ticks per second
 
   /* ------------------------------------------------------- Ship classes
@@ -27,7 +27,8 @@
      reactors (battleship and up): several reactors, each with its own safe output and aux
      bank; each system's `reactor` (0 = A, 1 = B, 2 = C) is where it starts out wired.
      gunnerEncounters: the route's encounters at the gunner station, if they differ (the
-     Archonian cruiser is met only at the gun for now).
+     Archonian capital ships are met only at the gun for now). gunnerFinal: the encounter that
+     always holds the final system at the gun (the dreadnought's homeworld fortress).
      mission: jumps and when each jump window opens (s after arrival). A ship with no
      GravSpace drive flies one timed sortie per carrier jump: the carrier recovers it when
      the sortie timer runs out, carries it through GravSpace, and launches it again. */
@@ -139,6 +140,7 @@
       reactors: [{ name: "A", mw: 112, aux: { capacity: 450, rateMW: 35 } }, { name: "B", mw: 112, aux: { capacity: 450, rateMW: 35 } }],
       hullPerMJ: 0.42, threat: { dmg: 1.6, hp: 3.2 },
       mission: { jumps: 3, windows: [170, 180, 190] }, encounters: ["raiders", "interceptors", "siege", "minefield", "hunters"],
+      gunnerEncounters: ["raiders", "interceptors", "siege", "minefield", "hunters", "cruiserA", "battleshipA"],
       mainGun: { dmgPerMJ: 0.6 },
       hangar: { launchAfter: [6, 12], lead: 10, window: 8, retry: 15, recoverBefore: 25, recoverLead: 12, recoverWindow: 10, intercept: 0.25, dps: 7 },
       systems: [
@@ -162,6 +164,7 @@
         { name: "C", mw: 112, aux: { capacity: 380, rateMW: 30 } }],
       hullPerMJ: 0.48, threat: { dmg: 1.7, hp: 3.6 },
       mission: { jumps: 3, windows: [180, 190, 200] }, encounters: ["raiders", "interceptors", "siege", "minefield", "hunters"],
+      gunnerEncounters: ["raiders", "interceptors", "siege", "minefield", "hunters", "cruiserA", "battleshipA"], gunnerFinal: "fortress",
       mainGun: { dmgPerMJ: 0.6 },
       hangar: { launchAfter: [6, 12], lead: 10, window: 8, retry: 15, recoverBefore: 25, recoverLead: 12, recoverWindow: 10, intercept: 0.25, dps: 8 },
       systems: [
@@ -204,7 +207,7 @@
       name: c.name, hull: c.hull, crew: c.crew,
       reactorMW: reactors.reduce(function (a, x) { return a + x.mw; }, 0), engineMWperG: c.engineMWperG, cruiseG: c.cruiseG, maxG: c.maxG, gScale: c.gScale,
       aux: reactors[0].aux,
-      hullPerMJ: c.hullPerMJ, threat: c.threat, mission: c.mission, encounters: c.encounters, gunnerEncounters: c.gunnerEncounters,
+      hullPerMJ: c.hullPerMJ, threat: c.threat, mission: c.mission, encounters: c.encounters, gunnerEncounters: c.gunnerEncounters, gunnerFinal: c.gunnerFinal,
       mainGun: c.mainGun || null, torpedoes: c.torpedoes || 0,
       hangar: c.hangar ? Object.assign({}, c.hangar, { dps: c.hangar.dps * f }) : null,
       gun: { shotMJ: GUN.shotMJ, normalInterval: GUN.normalInterval, fullInterval: GUN.fullInterval, hitChance: GUN.hitChance, damage: GUN.damage * f },
@@ -340,6 +343,43 @@
       burns: { every: [24, 34], g: [5, 6], duration: [3, 4], warning: 5 },
       surpriseChance: 0.05
     },
+    // An Archonian battleship (battleship and dreadnought, gunner station) screened by three
+    // raiders: the biggest hull yet, torpedoes in volleys of three (a broadside), and stragglers,
+    // drive hunters among them. volley = torpedoes per salvo call, 0.6 s apart.
+    battleshipA: {
+      name: "Battleship group",
+      enemy: "Archonian battleship",
+      what: "A battleship and three raiders; its torpedoes come in threes every 6 to 8 s",
+      tests: "Shield timing under broadsides",
+      salvoWarning: 6,
+      firstWave: [3, 5],
+      waveEvery: [100, 115],
+      wave: { hp: 760, salvos: [10, 12], approach: [6, 8], salvoGap: [6, 8], salvoMJ: [60, 85], requests: 3, volley: 3,
+              escortFire: { count: 3, salvos: [2, 3], start: [3, 5], gap: [6, 8], salvoMJ: [90, 130] } },
+      stragglers: { first: [16, 20], every: [22, 30], types: ["interceptors", "interceptors", "raiders", "hunters"] },
+      request: { lead: 4, duration: [6, 8] },
+      burns: { every: [26, 36], g: [4, 5], duration: [3, 4], warning: 5 },
+      surpriseChance: 0.05
+    },
+    // The fortress guarding the Archonian homeworld: the final system of every dreadnought
+    // mission at the gun. It never moves and never gives up; its torpedoes (volleys of three)
+    // keep coming for the whole fight unless it is destroyed. Four interceptor escorts, stragglers.
+    fortress: {
+      name: "Homeworld fortress",
+      enemy: "Archonian fortress",
+      what: "The fortress guarding the Archonian world and four escorts; its torpedoes come in threes every 6 to 8 s for the whole fight",
+      tests: "Holding out until the planet buster is away",
+      chat: "fortressIn",              // its own arrival call instead of the usual "expect ..."
+      salvoWarning: 6,
+      firstWave: [2, 3],
+      waveEvery: [999, 999],
+      wave: { hp: 2000, salvos: [34, 38], approach: [8, 10], salvoGap: [6, 8], salvoMJ: [55, 80], requests: 3, volley: 3,
+              escortFire: { count: 4, salvos: [3, 4], start: [2, 4], gap: [4, 6], salvoMJ: [45, 70] } },
+      stragglers: { first: [18, 24], every: [20, 28], types: ["interceptors", "interceptors", "raiders", "hunters"] },
+      request: { lead: 4, duration: [6, 8] },
+      burns: { every: [26, 36], g: [3, 4], duration: [3, 4], warning: 5 },
+      surpriseChance: 0.05
+    },
     // No enemy fire. The pilot weaves through the field with long burns, and the engines get
     // only what the capacitors leave of the reactor. Short of power = drifting = mine strikes.
     minefield: {
@@ -389,7 +429,9 @@
     // the player aims one and an AI gunner works the others; turrets share one rail and pass freely.
     loadout: { gunboat: ["pulse"], picket: ["rail"], destroyerEscort: ["pulse", "rail"], destroyer: ["rail", "pulse", "rail"],
                lightCruiser: ["rail", "rail", "pulse", "pulse"], cruiser: ["rail", "rail", "rail", "pulse", "pulse"],
-               heavyCruiser: ["rail", "rail", "rail", "ion", "pulse", "pulse"] },
+               heavyCruiser: ["rail", "rail", "rail", "ion", "pulse", "pulse"],
+               battleship: ["rail", "rail", "rail", "rail", "ion", "pulse", "pulse"],
+               dreadnought: ["rail", "rail", "rail", "rail", "ion", "ion", "pulse", "pulse"] },
     // Ring view (every class): the ship in the center inside an oval shield (cx, cy, rx, ry);
     // guns ride its rim inside their arcs ([center bearing, half width], 0 = ahead, clockwise).
     // reach = how far a bolt flies from the rim; traverse = degrees per second along the rim;
@@ -426,7 +468,16 @@
         heavyCruiser: { arcs: [[-90, 100, -90], [90, 100, 90], [0, 180, 0], [0, 180, 180], [0, 180, -150], [0, 180, 150]],
                         arcNames: ["to port", "to starboard", "on the centerline", "on the centerline", "aft, port side", "aft, starboard side"],
                         view: { shipH: 0.335, rx: 0.15, ry: 0.243, gunSize: 0.052, pull: 0.02 },
-                        pilot: { turn: 7, evade: 5, dodge: 30 } }
+                        pilot: { turn: 7, evade: 5, dodge: 30 } },
+        battleship: { arcs: [[-90, 100, -90], [90, 100, 90], [0, 180, 0], [0, 180, 180], [0, 180, 120], [0, 180, -150], [0, 180, 150]],
+                      arcNames: ["to port", "to starboard", "forward, on the centerline", "aft, on the centerline", "on the centerline", "aft, port side", "aft, starboard side"],
+                      view: { shipH: 0.368, rx: 0.155, ry: 0.256, gunSize: 0.056, pull: 0.01 },
+                      pilot: { turn: 6, evade: 4, dodge: 30 } },
+        // (the pilot must turn faster than the target slides, or the bow never catches it)
+        dreadnought: { arcs: [[-90, 100, -90], [90, 100, 90], [0, 180, 0], [0, 180, 180], [0, 180, -120], [0, 180, 120], [0, 180, -155], [0, 180, 155]],
+                       arcNames: ["to port", "to starboard", "forward, on the centerline", "aft, on the centerline", "port side", "starboard side", "aft, port side", "aft, starboard side"],
+                       view: { shipH: 0.4, rx: 0.16, ry: 0.27, gunSize: 0.06, pull: 0 },
+                       pilot: { turn: 5, evade: 3, dodge: 30 } }
       },
       // CIWS (heavy cruiser and up): mounts on the hull fire on a drive strike by themselves
       // `engage` s before it lands, if the CIWS capacitor holds that strike's charge; the burst
@@ -495,6 +546,15 @@
       cruiserA:     { ship: "Archonian cruiser", ringR: [0.44, 0.48], capital: true, count: [1, 1], w: 0.2, h: 0.23, band: [0.15, 0.2], sway: 0.08, period: [11, 13], dive: 0,
                       escorts: { type: "interceptors", count: 3, share: 0.2 },
                       what: "one heavy hull escorted by three interceptors; it holds far out and fires heavy torpedoes in pairs" },
+      battleshipA:  { ship: "Archonian battleship", ringR: [0.54, 0.58], capital: true, count: [1, 1], w: 0.24, h: 0.29, band: [0.15, 0.2], sway: 0.06, period: [12, 14], dive: 0,
+                      escorts: { type: "raiders", count: 3, share: 0.22 },
+                      what: "the biggest hull yet, screened by three raiders; it holds far out and fires torpedoes in threes" },
+      // still: it never moves (no sway, no sliding away from the bow); bearing: always comes from dead ahead;
+      // only: there is just the one.
+      fortress:     { ship: "Archonian fortress", ringR: [0.53, 0.57], capital: true, still: true, bearing: 0, count: [1, 1], w: 0.3, h: 0.3, band: [0.12, 0.16], sway: 0, period: [12, 14], dive: 0,
+                      escorts: { type: "interceptors", count: 4, share: 0.12 },
+                      only: true,
+                      what: "fixed dead ahead, guarding the Archonian world with four interceptors; it fires torpedoes in threes for the whole fight" },
       hunters:      { ship: "drive hunter", ringR: [0.35, 0.42], count: [3, 3], w: 0.065, h: 0.07, band: [0.18, 0.4], sway: 0.24, period: [3, 4], dive: 0.12,
                       what: "nimble ships that fire missiles at the GravSpace drive" }
     }
@@ -508,6 +568,8 @@
     recovered:   ["Carrier: gunboat recovered. Well flown.", "Coxswain: we're on the deck. Nice work, Engineering."],
     arrival:     ["Bridge: dropping out of GravSpace. Drive is empty.", "Bridge: we're out of GravSpace. Start charging the drive, Engineering.", "Helm: normal space. Drive reads empty."],
     briefing:    ["Tactical: expect {enemies}. {what}.", "Tactical: scopes show {enemies} on approach."],
+    fortressIn:  ["Tactical: the homeworld fortress, dead ahead. Hold it off until the buster's away.", "Bridge: there's the fortress guarding their world. Guns, keep it off us.",
+                  "Tactical: Archonian fortress dead ahead. It won't move and it won't stop firing."],
     waveIn:      ["Tactical: {enemy} on scope.", "Tactical: new contacts, {enemy}.", "Tactical: {enemy} closing."],
     salvo:       ["Tactical: enemy salvo in {t} s.", "Tactical: incoming fire, {t} seconds.", "Tactical: they're locking on. Salvo in {t}."],
     burn:        ["Helm: evasive burn in {t} s, {g} G for {d} s.", "Helm: hard burn coming, {g} G in {t} seconds.", "Helm: evading in {t}. {g} G, {d} seconds."],
@@ -539,7 +601,7 @@
     mainShotMiss:["Bridge: main gun missed! Nothing on the bow.", "Tactical: clean miss. That's a minute of charge gone."],
     mineDown:    ["Tactical: mine destroyed.", "Helm: thanks, Gunnery. That one was close.", "Tactical: mine cleared."],
     launchCall:  ["Flight deck: squadron launch in {t} s. Charge the launchers.", "Bridge: launching gunboats in {t} seconds. Launchers must be full.", "Flight deck: gunboats to launch in {t}. Need full launchers."],
-    launched:    ["Flight deck: squadron away!", "Flight deck: gunboats launched. They'll screen us."],
+    launched:    ["Bridge: Transferring launch control to PT Squadron. Launch when ready."],
     launchMissed:["Flight deck: launchers weren't charged. Launch scrubbed.", "Bridge: no launch, Engineering. The launchers were short."],
     recoverCall: ["Flight deck: recovering the squadron in {t} s. Charge the arresters.", "Bridge: gunboats coming home in {t} seconds. Arresters must be full."],
     recovered2:  ["Flight deck: squadron recovered. All gunboats aboard.", "Flight deck: arresters caught them. Squadron's home."],

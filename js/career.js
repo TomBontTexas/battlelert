@@ -10,7 +10,7 @@
   var STATIONS = ["engineer", "gunner", "pilot"];
   var STATION_NAME = { engineer: "Engineer", gunner: "Gunner", pilot: "Pilot" };
   var PLAYABLE = { engineer: true, gunner: true }; // stations built so far
-  var GUNNER_CLASSES = 7;                          // the gunner station is built up to this class
+  var GUNNER_CLASSES = 9;                          // the gunner station is built up to this class
   // Is this class built for this station? (The engine room runs on every built class.)
   function built(station, n) {
     var cls = BL.classByN(n);

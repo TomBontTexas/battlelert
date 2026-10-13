@@ -76,9 +76,11 @@
 
   Mission.prototype.planRoute = function (gunner) {
     var types = ((gunner && this.data.gunnerEncounters) || this.data.encounters || Object.keys(BL.ENCOUNTERS)).slice(), route = [];
-    for (var i = 0; i < this.cfg.jumps; i++) route.push(this.rng.pick(types));
+    // At the gun a dreadnought's final system is always the homeworld fortress.
+    var last = gunner && this.data.gunnerFinal;
+    for (var i = 0; i < this.cfg.jumps; i++) route.push(last && i === this.cfg.jumps - 1 ? last : this.rng.pick(types));
     // On longer routes every encounter type appears at least once.
-    if (route.length >= types.length) types.forEach(function (ty, k) {
+    if (!last && route.length >= types.length) types.forEach(function (ty, k) {
       if (route.indexOf(ty) < 0) route[(k + this.seed) % route.length] = ty;
     }, this);
     return route;
@@ -217,7 +219,7 @@
     this.cue("arrive");
     if (this.turret) this.turret.reset();
     this.chat(this.hasDrive ? "arrival" : "launch", null, "info");
-    this.chat("briefing", { enemies: BL.plural(enc.enemy), what: enc.what }, "info");
+    this.chat(enc.chat || "briefing", { enemies: BL.plural(enc.enemy), what: enc.what }, "info");
   };
 
   // Called by the display after the GravSpace report (or by the harness).
@@ -307,8 +309,9 @@
       // Drive hunters fire drive strikes (mj = CIWS charge needed to stop one).
       this.events.push({ id: this.nextId++, type: w.strikes ? "strike" : "salvo", wave: wave.id, at: at, mj: Math.round(r.range(w.salvoMJ) * th.dmg),
         announceAt: Math.max(t, at - enc.salvoWarning), announced: false, visible: !surprise });
-      // A frigate fires in pairs: a second, equal salvo half a second behind the first.
-      if (w.pairs) { var e1 = this.events[this.events.length - 1]; this.events.push(Object.assign({}, e1, { id: this.nextId++, at: at + 0.6, announceAt: e1.announceAt + 0.6 })); }
+      // A frigate fires in pairs, a battleship or fortress in threes: equal salvos 0.6 s apart.
+      var e1 = this.events[this.events.length - 1];
+      for (var v = 1; v < (w.volley || (w.pairs ? 2 : 1)); v++) this.events.push(Object.assign({}, e1, { id: this.nextId++, at: at + 0.6 * v, announceAt: e1.announceAt + 0.6 * v }));
     }
     wave.lastAt = at;
     // Escorts (frigate group) fire their own salvos; `escort` names which one.
@@ -451,7 +454,8 @@
   // A drive strike: the CIWS stops it if it holds the charge; shields don't help.
   // One that gets through drains a slice of the GravSpace drive (the hull is untouched).
   Mission.prototype.strikeHits = function (e) {
-    var pd = this.sys("pd"), drive = this.sys("drive"), st = this.stats, enc = this.encounter();
+    // (drive strikes are always drive hunters', even when they join another fight as stragglers)
+    var pd = this.sys("pd"), drive = this.sys("drive"), st = this.stats, drain = BL.ENCOUNTERS.hunters.driveDrain;
     st.strikes++;
     if (e.visible) st.strikesAnnounced++; else this.chat("surprise", null, "bad");
     if (this.squadron === "out" && !(this.turret && this.turret.ring) && this.rng.chance(this.data.hangar.intercept)) {
@@ -469,10 +473,10 @@
     }
     if (pd && !seen) pd.mj = 0;                     // it fired everything it had and missed
     if (drive) {
-      var loss = Math.min(drive.mj, drive.maxMJ * enc.driveDrain);
+      var loss = Math.min(drive.mj, drive.maxMJ * drain);
       drive.mj -= loss; st.driveDrainedMJ += loss;
       this.cue("hullHit");
-      this.chat("driveHit", { pct: Math.round(enc.driveDrain * 100) }, "bad");
+      this.chat("driveHit", { pct: Math.round(drain * 100) }, "bad");
     }
   };
 

@@ -378,14 +378,14 @@
   // A wave comes in from one bearing and its ships spread out around it at their holding distance.
   RingTurret.prototype.addGroup = function (list, wave, type, look, n, totalHp) {
     var r = this.rng, t = this.m.t, R = this.R, hp = totalHp / n;
-    if (wave.bearing === undefined) wave.bearing = this.pickBearing();
+    if (wave.bearing === undefined) wave.bearing = look.bearing !== undefined ? look.bearing : this.pickBearing();
     var band = look.ringR || [0.36, 0.44], groupPhase = r.next() * Math.PI * 2, groupPeriod = r.range(look.period);
     var hold = r.range(band) - R.pull, spread = (look.w + 0.05) / hold / RAD;
     for (var i = 0; i < n; i++) {
       var home = wave.bearing + (i - (n - 1) / 2) * spread;
       var s = {
         id: this.nextId++, wave: wave.id, type: type, name: look.ship, w: look.w, h: look.h,
-        lockable: !!look.capital || type === "siege", jinkUntil: 0, jinkDir: 0,
+        lockable: !!look.capital || type === "siege", still: !!look.still, jinkUntil: 0, jinkDir: 0,
         hp: hp, hpMax: hp, home: home, bearing: home, r: R.enter + r.next() * 0.08, hold: hold + (r.next() - 0.5) * 0.03,
         sway: look.sway * 120 * (look.formation ? 1 : 0.7 + r.next() * 0.6),
         period: look.formation ? groupPeriod : r.range(look.period), phase: look.formation ? groupPhase : r.next() * Math.PI * 2,
@@ -409,9 +409,9 @@
       if (s.dead) continue;
       // A big ship sidesteps a torpedo closing on it (fields per second, turned into degrees).
       if (t < s.jinkUntil) s.home += s.jinkDir * (this.G.pt.jink[s.type] || 0) / Math.max(0.1, s.r) / RAD * dt;
-      // The pilot's target won't sit on our bow: it slides away while it's near it.
+      // The pilot's target won't sit on our bow: it slides away while it's near it (a fortress can't).
       var P = this.pilot;
-      if (P && s === this.pilotTarget && s.state !== "leave" && Math.abs(norm(s.bearing)) < P.dodge) s.home += (norm(s.bearing) >= 0 ? 1 : -1) * P.evade * dt;
+      if (P && s === this.pilotTarget && !s.still && s.state !== "leave" && Math.abs(norm(s.bearing)) < P.dodge) s.home += (norm(s.bearing) >= 0 ? 1 : -1) * P.evade * dt;
       var swing = Math.sin((t - s.born) * 2 * Math.PI / s.period + s.phase);
       var want = s.home + s.sway * swing;
       if (s.state === "leave") { s.r += 0.3 * dt; if (s.r > 0.85) continue; }
