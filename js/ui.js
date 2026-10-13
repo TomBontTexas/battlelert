@@ -86,7 +86,8 @@
     // Standing orders for the AI gunners, remembered per gun number between missions.
     if (guns) guns.orders = [1, 2, 3, 4, 5, 6, 7, 8].map(function (n) { return (settings.gunOrders || {})[n] || "auto"; });
     var rc = BL.GUNNERY.ring.classes[j.classId];
-    if (guns && j.ring && rc) { guns.ring = true; guns.arcs = rc.arcs; guns.arcNames = rc.arcNames; guns.weapons = BL.GUNNERY.loadout[j.classId]; delete guns.weapon; }
+    // Every class with a ring layout fights in the ring view (the turret test: its one gun is the one picked).
+    if (guns && rc) { guns.ring = true; guns.arcs = rc.arcs; guns.arcNames = rc.arcNames; if (!guns.weapons) guns.weapons = [guns.weapon]; delete guns.weapon; }
     sim = new BL.Mission({ seed: j.seed, classId: j.classId, tl: j.tl, gunner: guns });
     if (j.test) $("seed-input").value = j.seed;
     var d = sim.data, cls = BL.classById(j.classId);
@@ -130,10 +131,13 @@
       var en = sim.turret.engineer;
       $("brief-pt").hidden = !sim.data.torpedoes;
       var bats = sim.turret.bats;
-      if (sim.turret.ring) $("brief-guns").innerHTML = "Your ship sits in the middle of the screen inside its oval shield, and enemies come in from every side (on a destroyer mostly ahead and on the flanks). " +
-        "Your guns ride the shield's rim, each inside its own arc, and fire straight out: " +
-        bats.map(function (b) { return "<b>Gun " + b.gunNo + "</b> " + b.w.name.toLowerCase() + " " + b.arcName + " (" + (b.arcH >= 180 ? "all the way round" : (b.arcH * 2) + "°") + ")"; }).join(", ") +
-        ". Your gun follows the mouse or trackpad: point anywhere around the ship and the gun turns along the rim toward that side (as far as its arc allows), whether you're firing or not, so you can follow a ship by keeping the pointer on it. A finger on the view does the same; on the aim pad, drag right to turn clockwise, left counterclockwise. The arrow keys turn it too. You can also click or tap a ship or torpedo: your gun swings to it (it still has to travel) and, if you hold the button, opens fire once it's on. You aim one gun; AI gunners work the others. Press a gun's number or tap its card to take it (switches on the left let you take a gun by clicking it on the view, and turn click-to-aim off).";
+      if (sim.turret.ring) $("brief-guns").innerHTML = "Your ship sits in the middle of the screen inside its oval shield, and enemies come in from every side (mostly ahead and on the flanks). " +
+        (bats.length > 1 ? "Your guns ride the shield's rim, each inside its own arc, and fire straight out: " : "Your gun rides the shield's rim and fires straight out: ") +
+        bats.map(function (b) { return "<b>Gun " + b.gunNo + "</b> " + b.w.name.toLowerCase() + (b.arcName ? " " + b.arcName : "") + " (" + (b.arcH >= 180 ? "all the way round" : (b.arcH * 2) + "°") + ")"; }).join(", ") +
+        ". Your gun follows the mouse or trackpad: point anywhere around the ship and the gun turns along the rim toward that side (as far as its arc allows), whether you're firing or not, so you can follow a ship by keeping the pointer on it. A finger on the view does the same; on the aim pad, drag right to turn clockwise, left counterclockwise. The arrow keys turn it too. You can also click or tap a ship or torpedo: your gun swings to it (it still has to travel) and, if you hold the button, opens fire once it's on. " +
+        (bats.length > 1 ? "You aim one gun; AI gunners work the others. Press a gun's number or tap its card to take it (switches on the left let you take a gun by clicking it on the view, and turn click-to-aim off). "
+          : "A switch on the left turns click-to-aim off. ") +
+        bats.filter(function (b, i) { return bats.findIndex(function (x) { return x.weaponId === b.weaponId; }) === i; }).map(function (b) { return b.w.name + ": " + b.w.what; }).join(" ");
       else $("brief-guns").innerHTML = bats.length === 1
         ? "You're at <b>Gun 1</b>, <b>" + an(bats[0].w.name.toLowerCase()) + "</b>: " + bats[0].w.what
         : "You command " + bats.map(function (b) { return "<b>Gun " + b.gunNo + "</b> (" + b.w.name.toLowerCase() + ")"; }).join(" and ") +

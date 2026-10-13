@@ -1,5 +1,5 @@
 /* Battlelert © 2011–2026 Tom Bont. All rights reserved. See LICENSE. */
-/* Battlelert gunner station, ring view (destroyer and up). The ship sits in the center inside
+/* Battlelert gunner station, ring view (every class). The ship sits in the center inside
    an oval shield; each gun rides the shield's rim inside its own arc and fires straight out.
    Enemies come in from every direction. Builds on the Turret: waves, torpedoes, damage,
    scoring and standing orders are the same; only geometry, aiming and movement differ.
@@ -146,6 +146,7 @@
     });
     this.fire(dt);
     this.moveBolts(dt);
+    this.movePT(dt);
     this.landTorpedoes();
     var now = m.totalT;
     this.effects = this.effects.filter(function (f) { return now - f.at < 1.6; });
@@ -189,7 +190,8 @@
     for (var i = 0; i < this.ships.length; i++) {
       var s = this.ships[i];
       if (s.dead) continue;
-      if (t < s.jinkUntil) s.home += s.jinkDir * 40 * dt;
+      // A big ship sidesteps a torpedo closing on it (fields per second, turned into degrees).
+      if (t < s.jinkUntil) s.home += s.jinkDir * (this.G.pt.jink[s.type] || 0) / Math.max(0.1, s.r) / RAD * dt;
       var swing = Math.sin((t - s.born) * 2 * Math.PI / s.period + s.phase);
       var want = s.home + s.sway * swing;
       if (s.state === "leave") { s.r += 0.3 * dt; if (s.r > 0.85) continue; }
@@ -235,6 +237,23 @@
     });
   };
 
+  /* -------------------------------------------------- Our torpedoes (PT) */
+  // Tube 1 fires from the bow's left side, tube 2 from its right, turned toward the ship it locks onto.
+  RingTurret.prototype.launchPT = function (i) {
+    var m = this.m;
+    if (!this.live() || !this.pt[i]) return false;
+    this.pt[i] = false;
+    var p = this.rim(i ? 14 : -14), tp = { id: this.nextId++, x: p.x, y: p.y, a: Math.atan2(p.ny, p.nx), target: null, tube: i + 1 };
+    tp.target = this.lockFor(tp);
+    if (tp.target) tp.a = Math.atan2(tp.target.y - tp.y, tp.target.x - tp.x);
+    this.ptTorps.push(tp);
+    this.stats.ptFired++; if (this.cur) this.cur.ptFired++;
+    m.cue("ptLaunch");
+    m.chat("ptAway", { n: i + 1 }, "good");
+    return true;
+  };
+  RingTurret.prototype.touches = function (s, x, y) { return Math.hypot(s.x - x, s.y - y) <= Math.max(s.w, s.h) * 0.45; };
+
   /* ---------------------------------------------------------------- Guns */
   RingTurret.prototype.fireBattery = function (b, dt, mine) {
     var before = this.bolts.length;
@@ -245,11 +264,12 @@
     }
   };
   // Bolts fly out along the gun's direction; each tick sweeps the segment it crossed, and the
-  // first ship or torpedo along it takes the hit.
+  // first ship or torpedo along it takes the hit. A weapon with `long` flies on past its reach,
+  // hitting weaker the farther it goes (b.power); a weak bolt may glance off a torpedo.
   RingTurret.prototype.moveBolts = function (dt) {
     var keep = [];
     for (var i = 0; i < this.bolts.length; i++) {
-      var b = this.bolts[i], bat = this.bats[b.bat], w = bat.w, reach = this.reach(bat);
+      var b = this.bolts[i], bat = this.bats[b.bat], w = bat.w, reach = this.reach(bat), lg = w.long, maxD = reach + (lg ? lg.extra : 0);
       var step = w.speed * dt * 0.6, x0 = b.x, y0 = b.y, x1 = b.x + b.vx * step, y1 = b.y + b.vy * step;
       var best = null, bestT = 2;
       var consider = function (px, py, rad, what) {
@@ -259,14 +279,20 @@
       };
       this.torps.forEach(function (tp) { consider(tp.x, tp.y, 0.024, { torp: tp }); });
       this.ships.forEach(function (s) { if (!s.dead && s.state !== "leave") consider(s.x, s.y, Math.max(s.w, s.h) * 0.45, { ship: s }); });
-      if (best && b.dist + step * bestT <= reach) {
-        if (b.mine) { this.stats.hits++; if (this.cur) this.cur.hits++; bat.hits++; } else bat.aiHits++;
+      if (best && b.dist + step * bestT <= maxD) {
+        var d = b.dist + step * bestT;
+        b.power = d <= reach ? 1 : lg.at + (lg.end - lg.at) * Math.min(1, (d - reach) / lg.extra);
         b.x = x0 + (x1 - x0) * bestT; b.y = y0 + (y1 - y0) * bestT;
+        if (best.torp && b.power < 1 && !this.rng.chance(b.power)) {
+          this.effects.push({ type: "spark", x: b.x, y: b.y, at: this.m.totalT, weapon: bat.weaponId });
+          continue;
+        }
+        if (b.mine) { this.stats.hits++; if (this.cur) this.cur.hits++; bat.hits++; } else bat.aiHits++;
         if (best.torp) this.downTorpedo(best.torp, b); else this.hitShip(best.ship, b);
         continue;
       }
       b.x = x1; b.y = y1; b.dist += step;
-      if (b.dist < reach && b.x > -0.05 && b.x < 1.05 && b.y > -0.05 && b.y < 1.05) keep.push(b);
+      if (b.dist < maxD && b.x > -0.05 && b.x < 1.05 && b.y > -0.05 && b.y < 1.05) keep.push(b);
       else this.effects.push({ type: "fizzle", x: b.x, y: b.y, at: this.m.totalT });
     }
     this.bolts = keep;
@@ -277,7 +303,7 @@
     s.flashAt = m.totalT;
     this.effects.push({ type: "spark", x: b.x, y: b.y, at: m.totalT, weapon: bat.weaponId });
     m.cue("shipHit");
-    this.damageShip(s, w.damage * bonus, b.mine ? 0 : bat.gunNo, b.mine);
+    this.damageShip(s, w.damage * bonus * (b.power || 1), b.mine ? 0 : bat.gunNo, b.mine);
   };
 
   /* ------------------------------------------------------------ AI gunner

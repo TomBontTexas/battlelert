@@ -340,8 +340,11 @@
      0 at the top. speed and reach are in fields per second and fields; interval = seconds
      between shots while FIRE is held; best = encounters it does `bonus` times damage against. */
   BL.WEAPONS = {
+    // long (ring view): past its reach (the dotted line) a bolt flies on another `extra`, hitting
+    // for `at` of its damage just past the line, fading to `end` (a torpedo: that chance to kill it).
     pulse: { name: "Pulse cannon", short: "PULSE", shotMJ: 4, interval: 0.25, damage: 3, speed: 1.7, reach: 0.7, best: ["interceptors"],
-             what: "Short reach, fast fire, light hits. Best against interceptors." },
+             long: { at: 0.35, end: 0.1, extra: 0.6 },
+             what: "Short effective range (the dotted line), fast fire, light hits. Past the line its bolts fly on but hit far weaker. Best against interceptors." },
     rail:  { name: "Rail gun", short: "RAIL", shotMJ: 18, interval: 1.0, damage: 15, speed: 6, reach: 1.0, best: ["raiders", "siege", "frigate", "cruiserA", "carrier", "battleshipA", "fortress"],
              what: "Long reach, slow fire, heavy hits. Best against raiders, siege lines and capital ships." },
     ion:   { name: "Ion gun", short: "ION", shotMJ: 7, interval: 0.5, damage: 3, speed: 1.1, reach: 0.85, best: ["hunters"],
@@ -360,7 +363,7 @@
     // What each class's batteries carry at the gunner station, Gun 1 first. With two or more,
     // the player aims one and an AI gunner works the others; turrets share one rail and pass freely.
     loadout: { gunboat: ["pulse"], picket: ["rail"], destroyerEscort: ["pulse", "rail"], destroyer: ["rail", "pulse", "rail"] },
-    // Ring view (destroyer and up): the ship in the center inside an oval shield (cx, cy, rx, ry);
+    // Ring view (every class): the ship in the center inside an oval shield (cx, cy, rx, ry);
     // guns ride its rim inside their arcs ([center bearing, half width], 0 = ahead, clockwise).
     // reach = how far a bolt flies from the rim; traverse = degrees per second along the rim;
     // enemies enter from radius `enter` and hold at their look's ringR; bearings = how often a
@@ -374,6 +377,12 @@
         // (shipH, the shield's rx and ry, gun icon size gunSize, and pull = how much closer than
         // their look's ringR the enemies hold, so the gap from the shield stays the same). The
         // defaults above are the biggest ships' (dreadnought); smaller classes draw smaller.
+        gunboat:         { arcs: [[0, 180, 0]], arcNames: ["on its back"],
+                           view: { shipH: 0.095, rx: 0.042, ry: 0.07, gunSize: 0.034, pull: 0.16 } },
+        picket:          { arcs: [[0, 180, 0]], arcNames: ["on the bow"],
+                           view: { shipH: 0.13, rx: 0.056, ry: 0.095, gunSize: 0.038, pull: 0.14 } },
+        destroyerEscort: { arcs: [[0, 100, 0], [180, 100, 180]], arcNames: ["on the bow", "on the stern"],
+                           view: { shipH: 0.165, rx: 0.07, ry: 0.12, gunSize: 0.042, pull: 0.12 } },
         destroyer: { arcs: [[0, 100, 0], [0, 180, 90], [180, 100, 180]], arcNames: ["on the bow", "amidships", "on the stern"],
                      view: { shipH: 0.2, rx: 0.085, ry: 0.145, gunSize: 0.045, pull: 0.1 } }
       }

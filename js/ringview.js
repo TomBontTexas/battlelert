@@ -95,10 +95,29 @@
       if (tp.t1 - m.t < 1.2) { c.strokeStyle = Math.floor(t * 8) % 2 ? "rgba(255,90,70,0.9)" : "rgba(255,90,70,0.3)"; c.beginPath(); c.arc(tp.x1, tp.y1, 0.02, 0, Math.PI * 2); c.stroke(); }
     });
 
-    // Bolts.
+    // Our torpedoes, and brackets on what each one is locked onto.
+    var pts = sprite("ptTorpedo");
+    tu.ptTorps.forEach(function (tp) {
+      if (tp.target && !tp.target.dead) {
+        var s = tp.target, bx = Math.max(s.w, s.h) * 0.55, k = 0.025;
+        c.strokeStyle = Math.floor(t * 6) % 2 ? "rgba(255,107,90,0.95)" : "rgba(255,107,90,0.45)"; c.lineWidth = 2.5 / S;
+        [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(function (q) {
+          var x = s.x + q[0] * bx, y = s.y + q[1] * bx;
+          c.beginPath(); c.moveTo(x - q[0] * k, y); c.lineTo(x, y); c.lineTo(x, y - q[1] * k); c.stroke();
+        });
+        c.lineWidth = 1.5 / S;
+      }
+      c.save(); c.translate(tp.x, tp.y); c.rotate(tp.a + Math.PI / 2);
+      if (pts) { var pw = 0.026, ph = pw * pts.aspect; c.drawImage(pts.cv, -pw / 2, -ph * 0.4, pw, ph); }
+      else { c.fillStyle = "#d6dee5"; c.fillRect(-0.005, -0.016, 0.01, 0.032); }
+      c.restore();
+    });
+
+    // Bolts; past their reach (pulse cannons) they fade as they weaken.
     tu.bolts.forEach(function (b) {
-      var bw = b.weaponId, col = BOLT[bw] || "#fff", len = bw === "rail" ? 0.07 : 0.022;
-      c.strokeStyle = col; c.fillStyle = col; c.globalAlpha = b.mine === false ? 0.7 : 1;
+      var bw = b.weaponId, col = BOLT[bw] || "#fff", len = bw === "rail" ? 0.07 : 0.022, bt = tu.bats[b.bat], rch = tu.reach(bt);
+      var fade = b.dist > rch && bt.w.long ? Math.max(0.2, 0.6 - 0.4 * (b.dist - rch) / bt.w.long.extra) : 1;
+      c.strokeStyle = col; c.fillStyle = col; c.globalAlpha = (b.mine === false ? 0.7 : 1) * fade;
       if (bw === "ion") { c.beginPath(); c.arc(b.x, b.y, 0.008, 0, Math.PI * 2); c.fill(); }
       else { c.lineWidth = 3 / S; c.beginPath(); c.moveTo(b.x, b.y); c.lineTo(b.x - (b.vx || 0) * len, b.y - (b.vy || 0) * len); c.stroke(); c.lineWidth = 1.5 / S; }
       c.globalAlpha = 1;
@@ -123,7 +142,7 @@
     });
 
     // Our ship in the center.
-    var ssp = sprite("warship:" + m.data.classId);
+    var ssp = sprite(m.data.classId === "gunboat" ? "gunboat" : "warship:" + m.data.classId);
     if (ssp) { var sh = R.shipH, sw = sh / ssp.aspect; c.drawImage(ssp.cv, R.cx - sw / 2, R.cy - sh / 2, sw, sh); }
 
     drawShield(c, S, m, tu, t, lastShield, lastHull);

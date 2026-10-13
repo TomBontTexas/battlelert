@@ -437,6 +437,7 @@
     m.chat("ptAway", { n: i + 1 }, "good");
     return true;
   };
+  Turret.prototype.touches = function (s, x, y) { return Math.abs(s.x - x) <= s.w / 2 && Math.abs(s.y - y) <= s.h / 2; };
   Turret.prototype.lockFor = function (tp) {
     var best = null, bd = 1e9;
     this.ships.forEach(function (s) {
@@ -470,7 +471,7 @@
       var hit = null;
       for (var k = 0; k < this.ships.length && !hit; k++) {
         var s = this.ships[k];
-        if (!s.dead && s.state !== "leave" && Math.abs(s.x - tp.x) <= s.w / 2 && Math.abs(s.y - tp.y) <= s.h / 2) hit = s;
+        if (!s.dead && s.state !== "leave" && this.touches(s, tp.x, tp.y)) hit = s;
       }
       if (hit) {
         bump(this, "ptHits");
@@ -554,6 +555,7 @@
       }
       var held = tu.bat(), keep = held.order; held.order = "free"; held.aiNext = 0;
       tu.aiBattery(held); held.order = keep;
+      this.launchTorps(tu);
       return;
     }
     var w = tu.w, G = tu.G, top = G.turretY - tu.reach(), target = null, tx = tu.x, best = 1e9;
@@ -579,7 +581,10 @@
     var gun = tu.gun();
     tu.trigger(!!target && Math.abs(tu.x - tx) < half * (0.6 + 0.6 * this.skill) && gun.mj >= w.shotMJ);
     if (target && gun.mj < w.shotMJ * 3) tu.callPower();
-    // Torpedoes: one at a time, at a big ship that has settled into its station.
+    this.launchTorps(tu);
+  };
+  // Torpedoes: one at a time, at a big ship that has settled into its station.
+  AIGunner.prototype.launchTorps = function (tu) {
     if (!tu.ptTorps.length && tu.ships.some(function (s) { return s.lockable && !s.dead && s.state === "hold"; })) {
       var tube = tu.pt.indexOf(true);
       if (tube >= 0) tu.launchPT(tube);
