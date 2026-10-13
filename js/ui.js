@@ -147,7 +147,7 @@
           ". You aim one; an AI gunner works the other. Both turrets ride one rail and slide past each other. Press 1 or 2, or tap a gun's card, to switch (a switch on the left lets you take a gun by clicking it on the view). " +
           bats.map(function (b) { return b.w.name + ": " + b.w.what; }).join(" ");
       $("brief-orders").hidden = bats.length < 2;
-      $("brief-orders").innerHTML = "<b>Standing orders.</b> Each gun's card shows a letter for what its AI gunner does: <b>D</b> defend (torpedoes first, then ships charging to fire), <b>S</b> stop launches (charging ships first), <b>H</b> hunt (the ships its weapon is best against) or <b>F</b> free fire. Take a gun and press O, or tap its letter, to change it; switch away and the AI follows that order. Until you change it, a gun follows the suggestion for each fight (green letter): hunt if its weapon is best against the enemy, else defend.";
+      $("brief-orders").innerHTML = "<b>Standing orders.</b> Each gun's card shows a letter for what its AI gunner does: <b>P</b> point defense (torpedoes first, then ships charging to fire), <b>L</b> stop launches (charging ships first), <b>H</b> hunt (the ships its weapon is best against) or <b>F</b> free fire. Take a gun and press O, or tap its letter, to change it; switch away and the AI follows that order. Until you change it, a gun follows the suggestion for each fight (green letter): hunt if its weapon is best against the enemy, else point defense.";
       $("brief-engineer").innerHTML = "Your engineer: <b>" + esc(en.name) + "</b>, " + en.label + " (skill " + Math.round(en.skill * 100) + "). " + ENGINEER_NOTE[en.label];
     }
     show("scr-briefing");
@@ -1025,7 +1025,7 @@
     green: "New to the job: the shields may be short when a torpedo lands, and your calls take a moment.",
     sloppy: "Expect torpedoes to get through. Shoot them down yourself."
   };
-  /* Standing orders, one letter per gun: D defend, S stop launches, H hunt, F free fire.
+  /* Standing orders, one letter per gun: P point defense, L stop launches, H hunt, F free fire.
      Take a gun, then press O (or tap its letter) to cycle its order; when you switch away, the
      AI gunner works it under that order. Until you pick, it follows the suggestion for each
      fight (the letter shows green). */
