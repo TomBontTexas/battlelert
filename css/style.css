@@ -361,6 +361,10 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 .tu-what { line-height: 1.3; }
 .tu-bats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .tu-bats[hidden] { display: none; }
+.tu-toggles { display: flex; flex-direction: column; gap: 4px; }
+.tu-tg { font-size: 11px; padding: 3px 6px; text-align: left; color: var(--muted); }
+.tu-tg.on { color: var(--good); border-color: var(--good); background: transparent; }
+.tu-tg[hidden] { display: none; }
 .tu-bat { padding: 6px 4px; font-size: 12px; text-align: left; display: grid; gap: 3px; touch-action: manipulation; }
 .tu-bat.on { border-color: var(--charge); color: var(--charge); }
 .tu-bat .mini { height: 5px; background: var(--panel); border-radius: 2px; overflow: hidden; }

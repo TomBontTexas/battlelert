@@ -152,6 +152,12 @@
     c.strokeStyle = ready2 ? "rgba(123,224,166,0.8)" : "rgba(255,107,90,0.7)";
     c.setLineDash([0.004, 0.014]); c.beginPath(); c.moveTo(sel.x + sel.nx * 0.04, sel.y + sel.ny * 0.04); c.lineTo(ex, ey); c.stroke(); c.setLineDash([]);
     c.beginPath(); c.arc(ex, ey, 0.016, 0, Math.PI * 2); c.stroke();
+    // The target you clicked, bracketed until your gun is on it.
+    if (sel.seek) {
+      var sk = sel.seek, sr = sk.w ? Math.max(sk.w, sk.h) * 0.6 : 0.03;
+      c.strokeStyle = "rgba(76,195,238,0.9)"; c.lineWidth = 2 / S;
+      for (var q = 0; q < 4; q++) { c.beginPath(); c.arc(sk.x, sk.y, sr, q * Math.PI / 2 + 0.25, q * Math.PI / 2 + Math.PI / 2 - 0.25); c.stroke(); }
+    }
     if (tu.stick) drawStick(c, S, tu.stick);
     c.restore();
   };
@@ -163,7 +169,7 @@
     c.lineWidth = 2 / S; c.strokeStyle = "rgba(214,224,232,0.18)";
     c.beginPath(); c.moveTo(lo, y); c.lineTo(hi, y); c.stroke();
     c.fillStyle = "rgba(214,224,232,0.12)"; c.fillRect(st.cx - st.dead, y - 0.006, st.dead * 2, 0.012);
-    c.fillStyle = "rgba(214,224,232,0.8)";
+    c.fillStyle = st.hold ? "#f0b44c" : "rgba(214,224,232,0.8)";      // amber: bring the pointer to the middle to steer
     c.beginPath(); c.moveTo(st.cx - 0.009, y - 0.016); c.lineTo(st.cx + 0.009, y - 0.016); c.lineTo(st.cx, y - 0.004); c.closePath(); c.fill();
     var a = Math.abs(st.v);
     if (a > 0) {

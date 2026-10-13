@@ -133,11 +133,11 @@
       if (sim.turret.ring) $("brief-guns").innerHTML = "Your ship sits in the middle of the screen inside its oval shield, and enemies come in from every side (on a destroyer mostly ahead and on the flanks). " +
         "Your guns ride the shield's rim, each inside its own arc, and fire straight out: " +
         bats.map(function (b) { return "<b>Gun " + b.gunNo + "</b> " + b.w.name.toLowerCase() + " " + b.arcName + " (" + (b.arcH >= 180 ? "all the way round" : (b.arcH * 2) + "°") + ")"; }).join(", ") +
-        ". <b>Right</b> turns your gun clockwise, <b>left</b> counterclockwise. With the mouse or trackpad, it works like a joystick: keep the pointer right of the middle of the view (the marker at the top) and the gun keeps turning, faster the farther out you go; bring it back to the middle to stop. A finger works the same way, measured from where it first touched. You aim one gun; AI gunners work the others. Tap a gun or press its number to take it.";
+        ". <b>Right</b> turns your gun clockwise, <b>left</b> counterclockwise. With the mouse or trackpad, it works like a joystick: keep the pointer right of the middle of the view (the marker at the top) and the gun keeps turning, faster the farther out you go; bring it back to the middle to stop. A finger works the same way, measured from where it first touched. You can also click or tap a ship or torpedo: your gun swings to it (it still has to travel) and, if you hold the button, opens fire once it's on. You aim one gun; AI gunners work the others. Press a gun's number or tap its card to take it (switches on the left let you take a gun by clicking it on the view, and turn click-to-aim off).";
       else $("brief-guns").innerHTML = bats.length === 1
         ? "You're at <b>Gun 1</b>, <b>" + an(bats[0].w.name.toLowerCase()) + "</b>: " + bats[0].w.what
         : "You command " + bats.map(function (b) { return "<b>Gun " + b.gunNo + "</b> (" + b.w.name.toLowerCase() + ")"; }).join(" and ") +
-          ". You aim one; an AI gunner works the other. Both turrets ride one rail and slide past each other. Tap a turret or press 1 or 2 to switch. " +
+          ". You aim one; an AI gunner works the other. Both turrets ride one rail and slide past each other. Press 1 or 2, or tap a gun's card, to switch (a switch on the left lets you take a gun by clicking it on the view). " +
           bats.map(function (b) { return b.w.name + ": " + b.w.what; }).join(" ");
       $("brief-orders").hidden = bats.length < 2;
       $("brief-orders").innerHTML = "<b>Standing orders.</b> Each gun's card shows a letter for what its AI gunner does: <b>D</b> defend (torpedoes first, then ships charging to fire), <b>S</b> stop launches (charging ships first), <b>H</b> hunt (the ships its weapon is best against) or <b>F</b> free fire. Take a gun and press O, or tap its letter, to change it; switch away and the AI follows that order. Until you change it, a gun follows the suggestion for each fight (green letter): hunt if its weapon is best against the enemy, else defend.";
@@ -174,6 +174,7 @@
     click();
   }
   function resume() {
+    stickHold = true;                    // the gun stays put until the mouse comes back to the middle
     if (!paused) return;
     paused = false; looking = false;
     overlay("ov-pause", false); $("planning-banner").hidden = true;
@@ -687,18 +688,32 @@
     var tu = sim.turret, w = tu.w;
     $("tu-station").textContent = "Gunnery · " + (job.test ? sim.data.className : job.ship + " (" + sim.data.className + ")") + " · tech level " + sim.data.tl;
     $("tu-rec-label").textContent = sim.hasDrive ? "JUMP" : "RECOVERY";
-    lastJolt = 0;
-    $("tu-keys").textContent = (tu.ring ? "→ clockwise · ← counterclockwise" : "← → slide") + " · Space fire (hold) · " + (tu.bats.length > 1 ? "1–" + tu.bats.length + " or tap a turret: switch guns · O orders · " : sim.data.torpedoes ? "1 2 torpedoes · " : "") +
-      "C call for power · P pause · " + (tu.ring ? "Mouse or trackpad: right or left of the middle turns, farther is faster; hold button to fire · Touch: slide right or left of where you touched, hold FIRE" : "Mouse: move to aim, hold button to fire · Touch: drag to aim, hold FIRE");
+    lastJolt = 0; stickHold = true;      // a fresh sortie: the mouse steers once it has passed the middle
+    $("tu-keys").textContent = (tu.ring ? "→ clockwise · ← counterclockwise" : "← → slide") + " · Space fire (hold) · " + (tu.bats.length > 1 ? "1–" + tu.bats.length + " switch guns · O orders · " : sim.data.torpedoes ? "1 2 torpedoes · " : "") +
+      "C call for power · P pause · " + (tu.ring ? "Mouse or trackpad: right or left of the middle turns, farther is faster; click a target to swing to it; hold button to fire · Touch: slide right or left of where you touched, hold FIRE" : "Mouse: move to aim, hold button to fire · Touch: drag to aim, hold FIRE");
     // Battery buttons (two or more guns): tap to take that gun; the AI gunner takes the other.
     $("tu-bats").hidden = tu.bats.length < 2;
     $("tu-bats").innerHTML = tu.bats.map(function (b, i) {
       return '<button class="tu-bat" data-i="' + i + '"><span class="bat-top"><span>GUN ' + b.gunNo + " · " + b.w.short + " <small>(" + (i + 1) + ')</small></span><span class="ord" data-ord="' + i + '"></span></span><span class="mini"><i></i></span><span class="acc"></span></button>';
     }).join("");
     shownSel = -1; showBattery();
+    showToggles();
     $("tu-comms").innerHTML = "";
     keysHeld = {}; setFireBtn(false);
   }
+  /* On-screen switches: clicking a gun on the view takes it (off by default, so a stray click
+     doesn't move you off your gun), and clicking a target swings your gun to it (ring view). */
+  function showToggles() {
+    var tu = sim.turret;
+    $("tg-gunpick").hidden = tu.bats.length < 2;
+    $("tg-clickaim").hidden = !tu.ring;
+    $("tg-gunpick").innerHTML = "Click a gun to take it: <b>" + (settings.tapGuns ? "ON" : "OFF") + "</b>";
+    $("tg-clickaim").innerHTML = "Click a target to aim: <b>" + (settings.clickAim !== false ? "ON" : "OFF") + "</b>";
+    $("tg-gunpick").classList.toggle("on", !!settings.tapGuns);
+    $("tg-clickaim").classList.toggle("on", settings.clickAim !== false);
+  }
+  $("tg-gunpick").onclick = function () { settings.tapGuns = !settings.tapGuns; saveSettings(); showToggles(); this.blur(); };
+  $("tg-clickaim").onclick = function () { settings.clickAim = settings.clickAim === false; saveSettings(); showToggles(); this.blur(); };
   // The left panel follows the battery you're aiming.
   var shownSel = -1;
   function showBattery() {
@@ -862,8 +877,10 @@
   /* Ring view steering works like a joystick. The mouse's distance right or left of the middle
      of the view (a finger's, from where it touched down) sets how fast the gun turns: none
      inside the dead zone, full traverse at `full` and beyond. Keys override it while held. */
-  var STICK = { dead: 0.04, full: 0.3 };           // fractions of the view's width
+  var STICK = { dead: 0.03, full: 0.3 };           // fractions of the view's width
   var mouseX = null, touchStick = null;            // the mouse's last x on the page; the finger's { id, x0, x }
+  var holdOff = null;                              // the pointer's last offset from the middle
+  var stickHold = false;                           // at the start, after a pause or after a click on a target: the stick waits until the pointer is back in the middle
   function stickValue(off) {
     var a = Math.abs(off);
     return a <= STICK.dead ? 0 : Math.sign(off) * Math.min(1, (a - STICK.dead) / (STICK.full - STICK.dead));
@@ -873,8 +890,12 @@
     if (touchStick) { cx = (touchStick.x0 - r.left) / w; px = (touchStick.x - r.left) / w; }
     else if (mouseX !== null) { cx = 0.5; px = (mouseX - r.left) / w; }
     if (touchStick || mouseX !== null) v = stickValue(px - cx);
+    // Held: released once the pointer reaches or crosses the middle (or a key is used).
+    var off = px - cx, crossed = holdOff !== null && off * holdOff < 0;
+    if (stickHold) { if (Math.abs(off) <= STICK.dead || crossed || keysHeld.left || keysHeld.right) stickHold = false; else v = 0; }
+    holdOff = touchStick || mouseX !== null ? off : null;
     if (!turretActive()) v = 0;
-    tu.stick = touchStick || mouseX !== null ? { cx: cx, px: px, v: v, dead: STICK.dead, full: STICK.full } : null;
+    tu.stick = touchStick || mouseX !== null ? { cx: cx, px: px, v: v, hold: stickHold, dead: STICK.dead, full: STICK.full } : null;
     if (!keysHeld.left && !keysHeld.right) tu.setDir(v);
   }
   document.addEventListener("pointermove", function (ev) { if (ev.pointerType === "mouse") mouseX = ev.clientX; });
@@ -909,7 +930,18 @@
       return -1;
     }
     cv.addEventListener("pointerdown", function (ev) {
-      if (turretActive()) { var hitBat = turretAt(ev); if (hitBat >= 0) { selectBattery(hitBat); ev.preventDefault(); return; } }
+      if (turretActive() && settings.tapGuns) { var hitBat = turretAt(ev); if (hitBat >= 0) { selectBattery(hitBat); ev.preventDefault(); return; } }
+      // Ring view: a click or tap on a ship or torpedo swings your gun to it (a held mouse
+      // button fires once it's on).
+      var tu = sim.turret;
+      if (turretActive() && tu.ring && settings.clickAim !== false && (ev.pointerType !== "mouse" || ev.button === 0)) {
+        var r = cv.getBoundingClientRect();
+        if (tu.seekAt((ev.clientX - r.left) / r.width, (ev.clientY - r.top) / r.height)) {
+          stickHold = true;
+          if (ev.pointerType === "mouse") { tu.trigger(true); setFireBtn(true); cv.setPointerCapture(ev.pointerId); }
+          ev.preventDefault(); return;
+        }
+      }
       if (ev.pointerType === "mouse") {
         if (!turretActive() || ev.button !== 0) return;
         if (!sim.turret.ring) sim.turret.aimAt(fieldX(ev));

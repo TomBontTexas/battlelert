@@ -61,7 +61,37 @@
   /* ---------------------------------------------------------- Player input */
   // Right turns clockwise, left counterclockwise; d runs -1..1, the share of full traverse
   // (a key gives 1, the mouse or a finger anything between).
-  RingTurret.prototype.setDir = function (d) { var b = this.bat(); b.dir = d; if (!d) b.aimRel = b.rel; };
+  RingTurret.prototype.setDir = function (d) {
+    var b = this.bat(); b.dir = d;
+    if (d) b.seek = null; else if (!b.seek) b.aimRel = b.rel;
+  };
+  /* Click or tap on a ship or torpedo: the gun turns toward it, following it as it moves, and
+     holds its fire until it's on. Returns false if nothing is there. */
+  RingTurret.prototype.seekAt = function (x, y) {
+    var b = this.bat(), best = null, bd = 1e9;
+    this.torps.forEach(function (tp) { var d = Math.hypot(tp.x - x, tp.y - y); if (d < 0.04 && d < bd) { bd = d; best = tp; } });
+    this.ships.forEach(function (s) {
+      if (s.dead || s.state === "leave") return;
+      var d = Math.hypot(s.x - x, s.y - y);
+      if (d < Math.max(s.w, s.h) * 0.6 + 0.012 && d < bd) { bd = d; best = s; }
+    });
+    if (!best) return false;
+    b.seek = best; b.dir = 0; this.trackSeek(b);
+    return true;
+  };
+  RingTurret.prototype.trackSeek = function (b) {
+    var s = b.seek;
+    if (s.dead || s.state === "leave" || (this.ships.indexOf(s) < 0 && this.torps.indexOf(s) < 0)) { b.seek = null; return; }
+    var rel = norm(this.bearingOf(s.x, s.y) - b.arcC);
+    b.aimRel = this.full(b) ? b.rel + norm(rel - b.rel) : clamp(rel, -b.arcH, b.arcH);
+  };
+  // Your gun holds fire while it swings to a clicked target.
+  RingTurret.prototype.fire = function (dt) {
+    var b = this.bat(), f = b.firing;
+    if (b.seek) b.firing = false;
+    BL.Turret.prototype.fire.call(this, dt);
+    b.firing = f;
+  };
   // Mouse, trackpad or a finger moving sideways: degrees to turn (right = clockwise).
   RingTurret.prototype.nudge = function (deg) {
     var b = this.bat();
@@ -71,7 +101,7 @@
   RingTurret.prototype.aimAt = function () {};          // the rail view's absolute aim has no meaning here
   RingTurret.prototype.select = function (i) {
     var ok = BL.Turret.prototype.select.call(this, i);
-    if (ok) { var b = this.bat(); b.aimRel = b.rel; }
+    if (ok) { var b = this.bat(); b.aimRel = b.rel; this.bats.forEach(function (x) { x.seek = null; }); }
     return ok;
   };
 
@@ -84,6 +114,8 @@
     });
     this.bats.forEach(function (b, i) { if (i !== self.sel) self.aiBattery(b); });
     // Turn each gun toward its aim along its arc, never faster than its drive.
+    var held = this.bat();
+    if (held.seek) this.trackSeek(held);
     this.bats.forEach(function (b) {
       var mv = self.traverse(b) * dt;
       if (b.dir) b.aimRel = self.full(b) ? b.rel + b.dir * mv : clamp(b.rel + b.dir * mv, -b.arcH, b.arcH);
@@ -92,6 +124,7 @@
       if (self.full(b)) { b.rel = norm(b.rel); b.aimRel = b.rel + norm(b.aimRel - b.rel); }
       self.placeBattery(b);
     });
+    if (held.seek && Math.abs(norm(held.aimRel - held.rel)) < 1) held.seek = null;    // on target
     if (this.live() && m.phase !== "arrival") { this.stats.liveTime += dt; if (this.firing) this.stats.firingTime += dt; }
     this.moveShips(dt);
     this.launchTorpedoes();
