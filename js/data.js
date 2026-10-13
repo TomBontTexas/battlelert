@@ -26,6 +26,8 @@
      before the jump window. While out, the squadron shoots down `intercept` of salvos and does dps.
      reactors (battleship and up): several reactors, each with its own safe output and aux
      bank; each system's `reactor` (0 = A, 1 = B, 2 = C) is where it starts out wired.
+     gunnerEncounters: the route's encounters at the gunner station, if they differ (the
+     Archonian cruiser is met only at the gun for now).
      mission: jumps and when each jump window opens (s after arrival). A ship with no
      GravSpace drive flies one timed sortie per carrier jump: the carrier recovers it when
      the sortie timer runs out, carries it through GravSpace, and launches it again. */
@@ -115,6 +117,7 @@
       crew: 9, hull: 160, reactorMW: 175, engineMWperG: 8, cruiseG: 2, maxG: 5, gScale: 0.8,
       aux: { capacity: 750, rateMW: 55 }, hullPerMJ: 0.26, threat: { dmg: 1.75, hp: 2.2 },
       mission: { jumps: 3, windows: [160, 170, 180] }, encounters: ["raiders", "interceptors", "siege", "minefield", "hunters"],
+      gunnerEncounters: ["raiders", "interceptors", "siege", "minefield", "hunters", "cruiserA"],
       mainGun: { dmgPerMJ: 0.6 },
       hangar: { launchAfter: [6, 12], lead: 10, window: 8, retry: 15, recoverBefore: 25, recoverLead: 12, recoverWindow: 10, intercept: 0.25, dps: 6 },
       systems: [
@@ -128,7 +131,7 @@
         sys("gun6", "Gun 6", "GUN6", "gun", 115, 42, 57, 10, { gunner: 6 }),
         sys("main", "Main gun", "MAIN", "main", 560, 55, 180, 8),
         sys("hangar", "Launchers", "LNCH", "hangar", 650, 45, 320, 6),
-        sys("pd", "Point defense", "PD", "pd", 180, 45, 90, 8),
+        sys("pd", "CIWS", "CIWS", "pd", 180, 45, 90, 8),
         sys("drive", "GravSpace drive", "DRIVE", "drive", 5600, 90, 0, 0)
       ] },
     { n: 8, id: "battleship", name: "Battleship", built: true, baseRep: 887,
@@ -150,7 +153,7 @@
         sys("gun7", "Gun 7", "GUN7", "gun", 120, 44, 60, 10, { gunner: 7, reactor: 1 }),
         sys("main", "Main gun", "MAIN", "main", 600, 60, 200, 8, { reactor: 1 }),
         sys("hangar", "Launchers", "LNCH", "hangar", 700, 48, 350, 6, { reactor: 1 }),
-        sys("pd", "Point defense", "PD", "pd", 200, 50, 100, 8, { reactor: 0 }),
+        sys("pd", "CIWS", "CIWS", "pd", 200, 50, 100, 8, { reactor: 0 }),
         sys("drive", "GravSpace drive", "DRIVE", "drive", 6400, 100, 0, 0, { reactor: 1 })
       ] },
     { n: 9, id: "dreadnought", name: "Dreadnaught", built: true, baseRep: 1000,
@@ -174,7 +177,7 @@
         sys("gun8", "Gun 8", "GUN8", "gun", 125, 45, 62, 10, { gunner: 8, reactor: 2 }),
         sys("main", "Main gun", "MAIN", "main", 640, 65, 210, 8, { reactor: 1 }),
         sys("hangar", "Launchers", "LNCH", "hangar", 750, 50, 370, 6, { reactor: 2 }),
-        sys("pd", "Point defense", "PD", "pd", 220, 55, 110, 8, { reactor: 0 }),
+        sys("pd", "CIWS", "CIWS", "pd", 220, 55, 110, 8, { reactor: 0 }),
         sys("buster", "Planet buster", "BUSTER", "buster", 9000, 45, 0, 18, { reactor: 2 }),
         sys("drive", "GravSpace drive", "DRIVE", "drive", 7200, 110, 0, 0, { reactor: 1 })
       ] }
@@ -201,7 +204,7 @@
       name: c.name, hull: c.hull, crew: c.crew,
       reactorMW: reactors.reduce(function (a, x) { return a + x.mw; }, 0), engineMWperG: c.engineMWperG, cruiseG: c.cruiseG, maxG: c.maxG, gScale: c.gScale,
       aux: reactors[0].aux,
-      hullPerMJ: c.hullPerMJ, threat: c.threat, mission: c.mission, encounters: c.encounters,
+      hullPerMJ: c.hullPerMJ, threat: c.threat, mission: c.mission, encounters: c.encounters, gunnerEncounters: c.gunnerEncounters,
       mainGun: c.mainGun || null, torpedoes: c.torpedoes || 0,
       hangar: c.hangar ? Object.assign({}, c.hangar, { dps: c.hangar.dps * f }) : null,
       gun: { shotMJ: GUN.shotMJ, normalInterval: GUN.normalInterval, fullInterval: GUN.fullInterval, hitChance: GUN.hitChance, damage: GUN.damage * f },
@@ -285,12 +288,13 @@
       burns: { every: [9, 14], g: [7, 9], duration: [4, 6], warning: 5 },
       surpriseChance: 0.1
     },
-    // Heavy cruiser and up. Hunters fire drive strikes: point defense stops them if it has the
-    // charge (mj = PD charge per strike); one that gets through drains `driveDrain` of the drive.
+    // Heavy cruiser and up. Hunters fire drive strikes: the CIWS (close-in weapon system) stops
+    // them if it has the charge (mj = CIWS charge per strike); one that gets through drains
+    // `driveDrain` of the drive.
     hunters: {
       name: "Drive hunters",
       enemy: "Drive hunter",
-      what: "They fire at the GravSpace drive; only point defense stops them",
+      what: "They fire at the GravSpace drive; only the CIWS stops them",
       tests: "Priority order, shielding the drive",
       salvoWarning: 6,
       firstWave: [3, 5],
@@ -315,6 +319,23 @@
               escortFire: { count: 2, salvos: [3, 4], start: [2, 4], gap: [4, 6], salvoMJ: [45, 70] } },
       // Light attack craft keep coming while the frigate fights: stragglers from another quadrant.
       stragglers: { first: [12, 16], every: [18, 26], types: ["interceptors", "interceptors", "interceptors", "raiders", "raiders"] },
+      request: { lead: 4, duration: [6, 8] },
+      burns: { every: [24, 34], g: [5, 6], duration: [3, 4], warning: 5 },
+      surpriseChance: 0.05
+    },
+    // An Archonian cruiser (heavy cruiser, gunner station) with three interceptor escorts: a bigger hull
+    // than the frigate's, heavier torpedoes in pairs, and stragglers joining the fight.
+    cruiserA: {
+      name: "Cruiser group",
+      enemy: "Archonian cruiser",
+      what: "A cruiser and three escorts; heavy torpedoes come in pairs every 5 to 7 s",
+      tests: "Shield timing under heavy pairs",
+      salvoWarning: 6,
+      firstWave: [3, 5],
+      waveEvery: [80, 90],
+      wave: { hp: 560, salvos: [10, 12], approach: [6, 8], salvoGap: [5, 7], salvoMJ: [80, 110], requests: 3, pairs: true,
+              escortFire: { count: 3, salvos: [3, 4], start: [2, 4], gap: [4, 6], salvoMJ: [45, 70] } },
+      stragglers: { first: [14, 18], every: [20, 28], types: ["interceptors", "interceptors", "raiders", "raiders"] },
       request: { lead: 4, duration: [6, 8] },
       burns: { every: [24, 34], g: [5, 6], duration: [3, 4], warning: 5 },
       surpriseChance: 0.05
@@ -367,7 +388,8 @@
     // What each class's batteries carry at the gunner station, Gun 1 first. With two or more,
     // the player aims one and an AI gunner works the others; turrets share one rail and pass freely.
     loadout: { gunboat: ["pulse"], picket: ["rail"], destroyerEscort: ["pulse", "rail"], destroyer: ["rail", "pulse", "rail"],
-               lightCruiser: ["rail", "rail", "pulse", "pulse"], cruiser: ["rail", "rail", "rail", "pulse", "pulse"] },
+               lightCruiser: ["rail", "rail", "pulse", "pulse"], cruiser: ["rail", "rail", "rail", "pulse", "pulse"],
+               heavyCruiser: ["rail", "rail", "rail", "ion", "pulse", "pulse"] },
     // Ring view (every class): the ship in the center inside an oval shield (cx, cy, rx, ry);
     // guns ride its rim inside their arcs ([center bearing, half width], 0 = ahead, clockwise).
     // reach = how far a bolt flies from the rim; traverse = degrees per second along the rim;
@@ -400,8 +422,16 @@
         cruiser: { arcs: [[-90, 100, -90], [90, 100, 90], [0, 180, 0], [0, 180, -150], [0, 180, 150]],
                    arcNames: ["to port", "to starboard", "on the centerline", "aft, port side", "aft, starboard side"],
                    view: { shipH: 0.3, rx: 0.135, ry: 0.218, gunSize: 0.05, pull: 0.04 },
-                   pilot: { turn: 8, evade: 5, dodge: 30 } }
+                   pilot: { turn: 8, evade: 5, dodge: 30 } },
+        heavyCruiser: { arcs: [[-90, 100, -90], [90, 100, 90], [0, 180, 0], [0, 180, 180], [0, 180, -150], [0, 180, 150]],
+                        arcNames: ["to port", "to starboard", "on the centerline", "on the centerline", "aft, port side", "aft, starboard side"],
+                        view: { shipH: 0.335, rx: 0.15, ry: 0.243, gunSize: 0.052, pull: 0.02 },
+                        pilot: { turn: 7, evade: 5, dodge: 30 } }
       },
+      // CIWS (heavy cruiser and up): mounts on the hull fire on a drive strike by themselves
+      // `engage` s before it lands, if the CIWS capacitor holds that strike's charge; the burst
+      // lasts `burst` s. mounts: [x, y] as shares of the ship's drawn width and height from its center.
+      ciws: { engage: 0.8, burst: 0.4, mounts: [[-0.3, 0.3], [0.3, 0.3], [-0.32, -0.1], [0.32, -0.1]] },
       // The gunboat squadron (cruiser and up) as the gunner sees it: n gunboats fly at `speed`,
       // circle their target at `orbit` (spin radians/s) strafing it, and every `tick` s shoot at
       // a torpedo within `look` (kill = the chance it goes down). Their strafing adds up to the
@@ -451,8 +481,11 @@
       frigate:      { ship: "frigate", ringR: [0.42, 0.46], capital: true, count: [1, 1], w: 0.13, h: 0.25, band: [0.15, 0.2], sway: 0.1, period: [10, 12], dive: 0,
                       escorts: { type: "interceptors", count: 2, share: 0.17 },
                       what: "one big hull escorted by two interceptors; it holds far out and fires torpedoes in pairs" },
+      cruiserA:     { ship: "Archonian cruiser", ringR: [0.44, 0.48], capital: true, count: [1, 1], w: 0.2, h: 0.23, band: [0.15, 0.2], sway: 0.08, period: [11, 13], dive: 0,
+                      escorts: { type: "interceptors", count: 3, share: 0.2 },
+                      what: "one heavy hull escorted by three interceptors; it holds far out and fires heavy torpedoes in pairs" },
       hunters:      { ship: "drive hunter", ringR: [0.35, 0.42], count: [3, 3], w: 0.065, h: 0.07, band: [0.18, 0.4], sway: 0.24, period: [3, 4], dive: 0.12,
-                      what: "nimble ships that go for the GravSpace drive" }
+                      what: "nimble ships that fire missiles at the GravSpace drive" }
     }
   };
 
@@ -505,7 +538,8 @@
     intercepted: ["Squadron: we caught that salvo!", "Flight deck: gunboats knocked down a salvo."],
     mineHit:     ["Damage control: mine strike! Hull down {dmg}.", "We clipped a mine! Hull down {dmg}."],
     strike:      ["Tactical: drive strike inbound, {t} s!", "Tactical: hunters are going for the drive. Impact in {t}.", "Tactical: missile on the drive in {t} seconds!"],
-    pdStopped:   ["Point defense: splash one missile.", "Point defense: got it."],
+    pdStopped:   ["CIWS: splash one missile.", "CIWS: got it."],
+    ciwsDry:     ["CIWS: out of charge! Missile through.", "CIWS: dry! It's going for the drive."],
     driveHit:    ["Damage control: drive strike! We lost {pct}% of the drive charge.", "Navigation: they hit the drive. Charge down {pct}%!"],
     heatR:       ["Reactor room: reactor {r} is running hot!", "Reactor room: heat's climbing on reactor {r}!"],
     auxEmptyR:   ["Aux bank {r} is empty."],

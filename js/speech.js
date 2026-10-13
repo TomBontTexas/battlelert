@@ -39,7 +39,7 @@
     "Gunner 4":       { pitch: 1.02, rate: 1.2,  order: 16 },
     "Gunner 5":       { pitch: 0.98, rate: 1.2,  order: 17 },
     "Squadron":       { pitch: 1.08, rate: 1.2,  order: 18 },
-    "Point defense":  { pitch: 1.1,  rate: 1.2,  order: 19 },
+    "CIWS":           { pitch: 1.1,  rate: 1.2,  order: 19 },
     "Weapons":        { pitch: 0.9,  rate: 1.0,  order: 20 },
     "Gunner 6":       { pitch: 1.03, rate: 1.2,  order: 21 },
     "Gunner 7":       { pitch: 0.96, rate: 1.2,  order: 22 },
@@ -103,7 +103,8 @@
     words = words.replace(/(\d+(?:\.\d+)?) s\b/g, "$1 seconds")
                  .replace(/(\d+(?:\.\d+)?) MW\b/g, "$1 megawatts")
                  .replace(/(\d+(?:\.\d+)?) MJ\b/g, "$1 megajoules")
-                 .replace(/(\d+) G\b/g, "$1 G");
+                 .replace(/(\d+) G\b/g, "$1 G")
+                 .replace(/\bCIWS\b/g, "sea-whiz");
     return { speaker: speaker, words: words };
   }
 

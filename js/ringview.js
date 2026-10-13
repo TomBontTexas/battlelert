@@ -33,7 +33,7 @@
     return V.wide ? { x: V.w / 2 - dy, y: V.h / 2 + dx } : { x: V.w / 2 + dx, y: V.h / 2 + dy };
   }
   var BOLT = { pulse: "#7bffb0", rail: "#d8f4ff", ion: "#c49bff" };
-  var SHIP_ART = { raiders: "raider", interceptors: "interceptor", siege: "siege", hunters: "hunter", frigate: "frigate" };
+  var SHIP_ART = { raiders: "raider", interceptors: "interceptor", siege: "siege", hunters: "hunter", frigate: "frigate", cruiserA: "cruiserA" };
   var TURRET_ART = { pulse: "turretPulse", rail: "turretRail", ion: "turretIon" };
 
   // vp: { w, h, wide } = the canvas in CSS pixels and the view mode.
@@ -47,12 +47,14 @@
     c.save();
     c.fillStyle = "#03060b"; c.fillRect(0, 0, W, H);
     // Shake: a jolt for a shield hit, a hard shake for a hull hit.
-    var lastHull = null, lastShield = null;
+    var lastHull = null, lastShield = null, lastDrive = null;
     tu.effects.forEach(function (f) {
       if (f.type === "hullHit" && (!lastHull || f.at > lastHull.at)) lastHull = f;
       if (f.type === "shieldHit" && (!lastShield || f.at > lastShield.at)) lastShield = f;
+      if (f.type === "driveHit" && (!lastDrive || f.at > lastDrive.at)) lastDrive = f;
     });
     var shake = 0;
+    if (lastDrive) shake = Math.max(shake, Math.max(0, 0.45 - (t - lastDrive.at)) * 40);
     if (lastHull) shake = Math.max(shake, Math.max(0, 0.55 - (t - lastHull.at)) * 46);
     if (lastShield) shake = Math.max(shake, Math.max(0, 0.3 - (t - lastShield.at)) * 34);
     if (shake > 0) c.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
@@ -142,6 +144,7 @@
     var tsp = sprite("torpedo");
     tu.torps.forEach(function (tp) {
       if (tp.mine) { drawMine(c, S, tp, t, m); return; }
+      if (tp.strike) { drawStrike(c, S, tu, tp, t, m); return; }
       var dx = tp.x1 - tp.x0, dy = tp.y1 - tp.y0, len = Math.hypot(dx, dy) || 1, ux = dx / len, uy = dy / len;
       c.strokeStyle = "rgba(255,90,70,0.25)"; c.setLineDash([0.006, 0.01]);
       c.beginPath(); c.moveTo(tp.x, tp.y); c.lineTo(tp.x1, tp.y1); c.stroke(); c.setLineDash([]);
@@ -195,6 +198,15 @@
       } else if (f.type === "tracer" && a < 0.12) {
         c.strokeStyle = "rgba(160,225,255," + (0.9 - a * 6).toFixed(2) + ")"; c.lineWidth = 1.5 / S;
         c.beginPath(); c.moveTo(f.x, f.y); c.lineTo(f.x1, f.y1); c.stroke();
+      } else if (f.type === "ciws" && a < 0.08) {           // a CIWS burst: short bright dashes
+        var k2 = a / 0.08, ddx = f.x1 - f.x, ddy = f.y1 - f.y;
+        c.strokeStyle = "rgba(255,236,160," + (1 - k2).toFixed(2) + ")"; c.lineWidth = 1.8 / S;
+        c.beginPath(); c.moveTo(f.x + ddx * k2 * 0.5, f.y + ddy * k2 * 0.5); c.lineTo(f.x + ddx * (0.35 + k2 * 0.65), f.y + ddy * (0.35 + k2 * 0.65)); c.stroke();
+        c.lineWidth = 1.5 / S;
+      } else if (f.type === "driveHit" && a < 0.9) {        // the drive struck: a flash in the stern
+        var dg = c.createRadialGradient(f.x, f.y, 0, f.x, f.y, 0.03 + a * 0.12);
+        dg.addColorStop(0, "rgba(120,255,235," + (0.9 * (1 - a / 0.9)).toFixed(2) + ")"); dg.addColorStop(1, "rgba(40,200,180,0)");
+        c.fillStyle = dg; c.beginPath(); c.arc(f.x, f.y, 0.03 + a * 0.12, 0, Math.PI * 2); c.fill();
       } else if (f.type === "fizzle" && a < 0.25) {
         c.fillStyle = "rgba(240,181,74," + (0.6 - a * 2.4) + ")"; c.fillRect(f.x - 0.004, f.y - 0.004, 0.008, 0.008);
       }
@@ -203,6 +215,14 @@
     // Our ship in the center.
     var ssp = sprite(m.data.classId === "gunboat" ? "gunboat" : "warship:" + m.data.classId);
     if (ssp) { var sh = R.shipH, sw = sh / ssp.aspect; c.drawImage(ssp.cv, R.cx - sw / 2, R.cy - sh / 2, sw, sh); }
+    // CIWS mounts (heavy cruiser and up): lit while the CIWS holds charge, flashing as they fire.
+    var pdS = m.sys("pd");
+    tu.ciwsMounts().forEach(function (p) {
+      var firing = tu.effects.some(function (f) { return f.type === "ciws" && t - f.at < 0.06 && f.x === p.x && f.y === p.y; });
+      c.fillStyle = "#1b2430"; c.beginPath(); c.arc(p.x, p.y, 0.008, 0, Math.PI * 2); c.fill();
+      c.fillStyle = firing ? "#fff1b0" : pdS && pdS.mj > 1 ? "rgba(255,214,102,0.85)" : "rgba(120,130,140,0.6)";
+      c.beginPath(); c.arc(p.x, p.y, firing ? 0.006 : 0.004, 0, Math.PI * 2); c.fill();
+    });
 
     drawShield(c, S, m, tu, t, lastShield, lastHull);
 
@@ -255,6 +275,23 @@
     }
     c.restore();
   };
+
+  // A drive strike: a teal missile on a curve around the shield to the stern, its path dotted
+  // teal, the drive ringed as it closes.
+  function drawStrike(c, S, tu, tp, t, m) {
+    var p0 = Math.max(0, Math.min(1, (m.t - tp.t0) / Math.max(0.1, tp.t1 - tp.t0)));
+    c.strokeStyle = "rgba(51,203,187,0.3)"; c.setLineDash([0.006, 0.01]); c.beginPath(); c.moveTo(tp.x, tp.y);
+    for (var k = 1; k <= 12; k++) { var q = tu.strikeAt(tp, p0 + (1 - p0) * k / 12); c.lineTo(q.x, q.y); }
+    c.stroke(); c.setLineDash([]);
+    var ang = Math.atan2(tp.dy || (tp.y1 - tp.y), tp.dx || (tp.x1 - tp.x));
+    c.save(); c.translate(tp.x, tp.y); c.rotate(ang); c.scale(1.4, 1.4);
+    c.fillStyle = "rgba(255,170,80," + (0.6 + 0.4 * Math.random()).toFixed(2) + ")";
+    c.beginPath(); c.moveTo(-0.01, -0.003); c.lineTo(-0.02 - Math.random() * 0.008, 0); c.lineTo(-0.01, 0.003); c.fill();
+    c.fillStyle = "#a6fff2"; c.strokeStyle = "#0a5a52"; c.lineWidth = 1 / S;
+    c.beginPath(); c.moveTo(0.013, 0); c.lineTo(0.004, -0.0045); c.lineTo(-0.011, -0.0045); c.lineTo(-0.011, 0.0045); c.lineTo(0.004, 0.0045); c.closePath(); c.fill(); c.stroke();
+    c.restore(); c.lineWidth = 1.5 / S;
+    if (tp.t1 - m.t < 1.4) { c.strokeStyle = Math.floor(t * 8) % 2 ? "rgba(51,203,187,0.95)" : "rgba(51,203,187,0.3)"; c.beginPath(); c.arc(tp.x1, tp.y1, 0.022, 0, Math.PI * 2); c.stroke(); }
+  }
 
   // A drifting mine: a dark spiked ball with a blinking light, its path a faint grey line.
   function drawMine(c, S, tp, t, m) {

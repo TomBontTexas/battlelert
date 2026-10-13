@@ -8,7 +8,7 @@
   var stars = null;
   // Approved art (art.js), rasterized once into small canvases so drawing stays cheap.
   var sprites = {};
-  var SHIP_ART = { raiders: "raider", interceptors: "interceptor", siege: "siege", hunters: "hunter", frigate: "frigate" };
+  var SHIP_ART = { raiders: "raider", interceptors: "interceptor", siege: "siege", hunters: "hunter", frigate: "frigate", cruiserA: "cruiserA" };
   var TURRET_ART = { pulse: "turretPulse", rail: "turretRail", ion: "turretIon" };
   function sprite(name) {
     var s = sprites[name];

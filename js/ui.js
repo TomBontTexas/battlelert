@@ -135,6 +135,7 @@
       $("brief-gmain").hidden = !sim.turret.firesMain;
       $("brief-gmines").hidden = sim.route.indexOf("minefield") < 0;
       $("brief-gwing").hidden = !sim.sys("hangar");
+      $("brief-gciws").hidden = !sim.sys("pd");
       var bats = sim.turret.bats;
       // The guns and their arcs; how they work is in How to play.
       $("brief-guns").innerHTML = "<b>" + (bats.length > 1 ? "Guns" : "Gun") + ":</b> " + bats.map(function (b) {
@@ -343,7 +344,7 @@
       s.kind === "shield" ? "Salvos drain it; what it can't stop hits the hull." :
       s.kind === "life" ? "Drains " + s.drainMW + " MW all the time. Empty = crippled crew." :
       s.kind === "main" ? "Fires by itself the moment it is full and a target is up: the whole charge in one heavy shot. Keep feeding it to keep it firing." :
-      s.kind === "pd" ? "Point defense: each drive strike it stops costs a chunk of charge. Shields don't stop drive strikes." :
+      s.kind === "pd" ? "CIWS (close-in weapon system): each drive strike it stops costs a chunk of charge. Shields don't stop drive strikes." :
       s.kind === "buster" ? "The planet buster: charges from the start, keeps its charge, can't charge in GravSpace. Must be full for the final jump." :
       s.kind === "hangar" ? "Launchers while the squadron is aboard: full when the bridge calls the launch, to kick the gunboats out. Arresters while it is out: full when the bridge calls the recovery. No jump until the gunboats are aboard." :
       "Must be full for the captain to jump.";
@@ -623,7 +624,7 @@
         el.classList.toggle("short", shieldLeft < 0);
       } else if (e.type === "strike") {
         pdLeft -= e.mj;
-        label = "✈ DRIVE STRIKE · PD " + e.mj + " MJ" + secs + (pdLeft >= 0 ? " · ✔ covered" : " · PD short");
+        label = "✈ DRIVE STRIKE · CIWS " + e.mj + " MJ" + secs + (pdLeft >= 0 ? " · ✔ covered" : " · CIWS short");
         el.classList.toggle("short", pdLeft < 0);
       } else if (e.type === "burn") {
         label = sim.encounter().mines ? "▲ WEAVE " + e.g + " G · engines need " + Math.round(e.g * sim.perG()) + " MW free for " + e.dur + " s" + secs
@@ -863,6 +864,7 @@
     $("tu-tally").innerHTML = (g.mines ? "<span>Mines shot down</span><b>" + (g.minesDowned || 0) + " / " + g.mines + "</b>"
       : "<span>Ships destroyed</span><b>" + (g.kills || 0) + " / " + (g.ships || 0) + "</b><span>Torpedoes shot down</span><b>" + (g.downed || 0) + " / " + (g.torps || 0) + "</b>") +
       (g.mainShots ? "<span>Main gun hits</span><b>" + g.mainHits + " / " + g.mainShots + "</b>" : "") +
+      (g.strikes ? "<span>Drive strikes stopped</span><b>" + (g.strikesCiws + g.strikesShot) + " / " + g.strikes + "</b>" : "") +
       "<span>Hits</span><b>" + (g.hits || 0) + " / " + (g.shots || 0) + "</b>" + (ship.crippled ? '<span class="bad">✖ Crew crippled: slow fire</span><b></b>' : "");
   }
 
@@ -1055,6 +1057,7 @@
       "<li>Torpedoes shot down: " + g.downed + " of " + g.torps + "</li>" +
       (g.mines ? "<li>Mines shot down: " + g.minesDowned + " of " + g.mines + "</li>" : "") +
       (g.mainShots ? "<li>Main gun: " + g.mainHits + " hits of " + g.mainShots + " shots</li>" : "") +
+      (g.strikes ? "<li>Drive strikes: " + g.strikes + "; the CIWS stopped " + g.strikesCiws + ", guns shot down " + g.strikesShot + ", " + g.strikesHit + " hit the drive</li>" : "") +
       (g.ptFired ? "<li>Our torpedoes: " + g.ptHits + " hits of " + g.ptFired + " launched. Both tubes are reloaded.</li>" : "") +
       "<li>Hits: " + g.hits + " of " + g.shots + " shots" + (g.shots ? " (" + Math.round(100 * g.hits / g.shots) + "%)" : "") + "</li>" +
       "<li>Torpedoes stopped by shields: " + js.shielded + " of " + js.salvos + "</li>" +
@@ -1183,6 +1186,7 @@
     ]);
     if (g.mines) rows.push(["Mines shot down", g.minesDowned + " / " + g.mines]);
     if (g.mainShots) rows.push(["Main gun", g.mainHits + " hits of " + g.mainShots + " shots"]);
+    if (g.strikes) rows.push(["Drive strikes", g.strikes + ": CIWS stopped " + g.strikesCiws + ", guns shot down " + g.strikesShot + ", " + g.strikesHit + " hit the drive"]);
     if (r.classId === "gunboat") rows.push(["Torpedoes", g.ptFired ? g.ptHits + " hits of " + g.ptFired + " launched (" + g.ptDowned + " shot down, " + g.ptMissed + " missed)" : "none launched"]);
     $("db-detail").innerHTML = rows.map(function (x) { return "<div><span>" + x[0] + ":</span> " + x[1] + "</div>"; }).join("");
     $("db-career").hidden = !report;

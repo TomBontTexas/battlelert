@@ -533,6 +533,7 @@
       torps: st.torps, downed: st.downed, hullTorps: st.hullTorps, damage: Math.round(st.damage), dryTime: Math.round(st.dryTime), calls: st.calls,
       ptFired: st.ptFired, ptHits: st.ptHits, ptDowned: st.ptDowned, ptMissed: st.ptMissed,
       mines: st.mines || 0, minesDowned: st.minesDowned || 0, mainShots: st.mainShots || 0, mainHits: st.mainHits || 0,
+      strikes: st.strikes || 0, strikesCiws: st.strikesCiws || 0, strikesShot: st.strikesShot || 0, strikesHit: st.strikesHit || 0,
       guns: m.turret.bats.map(function (b) { return { gun: b.gunNo, weapon: b.weaponId, shots: b.shots, hits: b.hits, aiShots: b.aiShots, aiHits: b.aiHits }; }),
       jumps: m.turret.jumps.map(function (j) { return j ? Object.assign({}, j) : null; })
     };

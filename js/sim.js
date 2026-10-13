@@ -43,7 +43,7 @@
     this.dt = 1 / BL.TICK_RATE;
     this.quiet = !!opts.quiet;              // harness: skip chatter text and sound cues
 
-    this.route = this.planRoute();
+    this.route = this.planRoute(!!opts.gunner);
     this.jumpIndex = 0;
     this.phase = "briefing";                // briefing | arrival | engage | countdown | gravspace | done
     this.t = 0;                             // seconds since arrival in the current system
@@ -74,8 +74,8 @@
   }
   BL.Mission = Mission;
 
-  Mission.prototype.planRoute = function () {
-    var types = (this.data.encounters || Object.keys(BL.ENCOUNTERS)).slice(), route = [];
+  Mission.prototype.planRoute = function (gunner) {
+    var types = ((gunner && this.data.gunnerEncounters) || this.data.encounters || Object.keys(BL.ENCOUNTERS)).slice(), route = [];
     for (var i = 0; i < this.cfg.jumps; i++) route.push(this.rng.pick(types));
     // On longer routes every encounter type appears at least once.
     if (route.length >= types.length) types.forEach(function (ty, k) {
@@ -304,7 +304,7 @@
     for (var i = 0; i < n; i++) {
       if (i > 0) at += r.range(w.salvoGap);
       var surprise = r.chance(enc.surpriseChance);
-      // Drive hunters fire drive strikes (mj = point-defense charge needed to stop one).
+      // Drive hunters fire drive strikes (mj = CIWS charge needed to stop one).
       this.events.push({ id: this.nextId++, type: w.strikes ? "strike" : "salvo", wave: wave.id, at: at, mj: Math.round(r.range(w.salvoMJ) * th.dmg),
         announceAt: Math.max(t, at - enc.salvoWarning), announced: false, visible: !surprise });
       // A frigate fires in pairs: a second, equal salvo half a second behind the first.
@@ -448,7 +448,7 @@
     if (this.rng.chance(Math.min(0.85, overflow / 110))) this.damageSystem();
   };
 
-  // A drive strike: point defense stops it if it holds the charge; shields don't help.
+  // A drive strike: the CIWS stops it if it holds the charge; shields don't help.
   // One that gets through drains a slice of the GravSpace drive (the hull is untouched).
   Mission.prototype.strikeHits = function (e) {
     var pd = this.sys("pd"), drive = this.sys("drive"), st = this.stats, enc = this.encounter();
@@ -458,14 +458,16 @@
       st.intercepts++; if (e.visible) st.strikesStopped++;
       this.cue("kill"); this.chat("intercepted", null, "good"); return;
     }
-    if (pd && pd.mj >= e.mj - 0.5) {
+    // At the gun the CIWS mounts already fired on it as it came in (ring.js); it got through.
+    var seen = this.turret && this.turret.ring;
+    if (pd && !seen && pd.mj >= e.mj - 0.5) {
       pd.mj -= e.mj;
       if (e.visible) st.strikesStopped++;
       this.cue("pd");
       if (this.rng.chance(0.4)) this.chat("pdStopped", null, "good");
       return;
     }
-    if (pd) pd.mj = 0;                              // it fired everything it had and missed
+    if (pd && !seen) pd.mj = 0;                     // it fired everything it had and missed
     if (drive) {
       var loss = Math.min(drive.mj, drive.maxMJ * enc.driveDrain);
       drive.mj -= loss; st.driveDrainedMJ += loss;

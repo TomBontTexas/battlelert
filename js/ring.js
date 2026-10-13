@@ -31,6 +31,7 @@
     this.mainFx = null; this.mainWasReady = false; this.nextMineAt = Infinity;
     this.wing = []; this.lastSquadron = m.squadron;   // the gunboat squadron, while it's out
     this.stats.mines = 0; this.stats.minesDowned = 0; this.stats.mainShots = 0; this.stats.mainHits = 0;
+    this.stats.strikes = 0; this.stats.strikesCiws = 0; this.stats.strikesShot = 0; this.stats.strikesHit = 0;
   }
   RingTurret.prototype = Object.create(BL.Turret.prototype);
   RingTurret.prototype.constructor = RingTurret;
@@ -38,6 +39,7 @@
   RingTurret.prototype.reset = function () {
     BL.Turret.prototype.reset.call(this);
     this.cur.mines = 0; this.cur.minesDowned = 0; this.cur.mainShots = 0; this.cur.mainHits = 0;
+    this.cur.strikes = 0; this.cur.strikesCiws = 0; this.cur.strikesShot = 0; this.cur.strikesHit = 0;
     this.nextMineAt = this.m.cfg.arrivalSeconds + 2; this.pilotTarget = null; this.mainFx = null;
     this.wing = []; this.lastSquadron = this.m.squadron;
   };
@@ -53,6 +55,13 @@
     var R = this.R, s = Math.sin(phi * RAD), c = Math.cos(phi * RAD);
     var nx = s / R.rx, ny = -c / R.ry, l = Math.hypot(nx, ny);
     return { x: R.cx + R.rx * s, y: R.cy - R.ry * c, nx: nx / l, ny: ny / l };
+  };
+  // The GravSpace drive, in the stern (drive strikes aim here), and the CIWS mounts on the hull.
+  // The ship is drawn about 0.37 times as wide as it is long.
+  RingTurret.prototype.drivePoint = function () { var R = this.R; return { x: R.cx, y: R.cy + R.shipH * 0.4 }; };
+  RingTurret.prototype.ciwsMounts = function () {
+    var R = this.R, w = R.shipH * 0.37;
+    return this.m.sys("pd") ? this.G.ring.ciws.mounts.map(function (q) { return { x: R.cx + q[0] * w, y: R.cy + q[1] * R.shipH }; }) : [];
   };
   RingTurret.prototype.bearingOf = function (x, y) { return Math.atan2(x - this.R.cx, -(y - this.R.cy)) / RAD; };
   RingTurret.prototype.placeBattery = function (b) {
@@ -157,6 +166,7 @@
     this.moveShips(dt);
     this.runWing(dt);
     this.launchTorpedoes();
+    this.runCIWS();
     this.dropMines();
     var ms = this.mainState();
     if (ms && ms.ready && !this.mainWasReady) m.chat("mainReady", null, "good");
@@ -203,7 +213,11 @@
     function rot(o, kx, ky) { var dx = o[kx] - R.cx, dy = o[ky] - R.cy; o[kx] = R.cx + dx * ca - dy * sa; o[ky] = R.cy + dx * sa + dy * ca; }
     this.heading += deg;
     this.ships.forEach(function (s) { s.home -= deg; s.bearing -= deg; self.placeShip(s); });
-    this.torps.forEach(function (tp) { rot(tp, "x0", "y0"); rot(tp, "x", "y"); tp.hitB -= deg; var p = self.rim(tp.hitB); tp.x1 = p.x; tp.y1 = p.y; });
+    this.torps.forEach(function (tp) {
+      rot(tp, "x0", "y0"); rot(tp, "x", "y");
+      if (tp.strike) return;                   // it homes on the drive, which turns with the ship
+      tp.hitB -= deg; var p = self.rim(tp.hitB); tp.x1 = p.x; tp.y1 = p.y;
+    });
     this.bolts.forEach(function (b) { rot(b, "x", "y"); var vx = b.vx; b.vx = vx * ca - b.vy * sa; b.vy = vx * sa + b.vy * ca; });
     this.ptTorps.forEach(function (tp) { rot(tp, "x", "y"); tp.a += a; });
     this.wing.forEach(function (g) { rot(g, "x", "y"); g.a += a; });
@@ -329,7 +343,7 @@
     e.torp = tp; this.torps.push(tp);
     count(this, "mines");
   };
-  RingTurret.prototype.downTorpedo = function (tp, b) {
+  RingTurret.prototype.downMine = function (tp, b) {
     if (!tp.mine) return BL.Turret.prototype.downTorpedo.call(this, tp, b);
     var m = this.m, e = tp.ev;
     e.done = true; e.downed = true;
@@ -423,9 +437,90 @@
       var hitB = s.bearing + (self.rng.next() - 0.5) * 24, hit = self.rim(hitB);
       var nose = { x: s.x - Math.sin(s.rot) * s.h / 2, y: s.y + Math.cos(s.rot) * s.h / 2 };
       var torp = { id: self.nextId++, ev: e, x0: nose.x, y0: nose.y, x1: hit.x, y1: hit.y, hitB: hitB, t0: t, t1: e.at, x: nose.x, y: nose.y, weak: !!e.ionized };
+      if (e.type === "strike") {
+        // A drive strike swings wide around the shield and dives into the stern: its curve bends
+        // through a point off the beam on its own side, halfway round to the stern.
+        var dp = self.drivePoint(), sb = norm(s.bearing), mid = (sb >= 0 ? sb + 180 : sb - 180) / 2, R = self.R, far = Math.max(R.ry * 1.9, 0.3);
+        torp.strike = true; torp.x1 = dp.x; torp.y1 = dp.y; torp.hitB = 180;
+        torp.cx = R.cx + far * Math.sin(mid * RAD); torp.cy = R.cy - far * Math.cos(mid * RAD);
+        count(self, "strikes");
+      }
       e.torp = torp; self.torps.push(torp);
       if (self.cur) { self.stats.torps++; self.cur.torps++; } else self.stats.torps++;
       m.cue("torpLaunch");
+    });
+  };
+
+  /* ----------------------------------------------------------------- CIWS
+     Heavy cruiser and up: the CIWS mounts fire on each drive strike by themselves as it closes
+     on the stern. If the CIWS capacitor holds that strike's charge, the burst kills it; if not,
+     it fires what it has and misses, and the strike hits the drive. Any gun can shoot one down
+     first. */
+  RingTurret.prototype.runCIWS = function () {
+    var m = this.m, pd = m.sys("pd"), C = this.G.ring.ciws, self = this, now = m.totalT, dead = [];
+    if (!pd) return;
+    this.torps.forEach(function (tp) {
+      if (!tp.strike) return;
+      var e = tp.ev;
+      if (!tp.ciws && e.at - m.t <= C.engage) {
+        var kill = pd.mj >= e.mj - 0.5, had = pd.mj > 1;
+        pd.mj = kill ? pd.mj - e.mj : 0;
+        tp.ciws = { at: now, kill: kill, fire: kill ? C.burst : had ? C.burst * 0.5 : 0, next: 0 };
+        if (!kill) m.chat("ciwsDry", null, "bad");
+      }
+      var cw = tp.ciws;
+      if (cw && now - cw.at < cw.fire && now >= cw.next) {
+        cw.next = now + 0.05;
+        var mt = self.nearestMount(tp), miss = cw.kill ? 0.006 : 0.04;
+        if (mt) self.effects.push({ type: "ciws", x: mt.x, y: mt.y, x1: tp.x + (self.rng.next() - 0.5) * miss, y1: tp.y + (self.rng.next() - 0.5) * miss, at: now });
+        if (cw.next - cw.at < 0.06) m.cue("pd");
+      }
+      if (cw && cw.kill && now - cw.at >= cw.fire) dead.push(tp);
+    });
+    dead.forEach(function (tp) {
+      var e = tp.ev, st = m.stats;
+      e.done = true; e.downed = true;
+      self.torps = self.torps.filter(function (x) { return x !== tp; });
+      count(self, "strikesCiws");
+      st.strikes++; if (e.visible) { st.strikesAnnounced++; st.strikesStopped++; }
+      self.effects.push({ type: "torpBoom", x: tp.x, y: tp.y, at: now });
+      if (self.rng.chance(0.4)) m.chat("pdStopped", null, "good");
+    });
+  };
+  RingTurret.prototype.nearestMount = function (tp) {
+    var best = null, bd = 1e9;
+    this.ciwsMounts().forEach(function (p) { var d = Math.hypot(p.x - tp.x, p.y - tp.y); if (d < bd) { bd = d; best = p; } });
+    return best;
+  };
+  // Where a drive strike is at share p of its flight (a curve through cx, cy), and its heading.
+  RingTurret.prototype.strikeAt = function (tp, p) {
+    var u = 1 - p;
+    return { x: u * u * tp.x0 + 2 * u * p * tp.cx + p * p * tp.x1, y: u * u * tp.y0 + 2 * u * p * tp.cy + p * p * tp.y1,
+             dx: 2 * u * (tp.cx - tp.x0) + 2 * p * (tp.x1 - tp.cx), dy: 2 * u * (tp.cy - tp.y0) + 2 * p * (tp.y1 - tp.cy) };
+  };
+  RingTurret.prototype.downTorpedo = function (tp, b) {
+    if (tp.strike) count(this, "strikesShot");
+    return this.downMine(tp, b);
+  };
+  // Drive strikes fly their curve; one that lands blows up on the drive. The rest land as usual.
+  RingTurret.prototype.landTorpedoes = function () {
+    var m = this.m, self = this, strikes = [];
+    this.torps = this.torps.filter(function (tp) { if (tp.strike) strikes.push(tp); return !tp.strike; });
+    BL.Turret.prototype.landTorpedoes.call(this);
+    strikes.forEach(function (tp) {
+      var e = tp.ev;
+      if (e.done) {
+        if (!e.downed) {
+          count(self, "strikesHit");
+          self.effects.push({ type: "boom", x: tp.x1, y: tp.y1, at: m.totalT, size: 0.09 }, { type: "driveHit", x: tp.x1, y: tp.y1, at: m.totalT });
+        }
+        return;
+      }
+      if (m.events.indexOf(e) < 0) { self.effects.push({ type: "torpBoom", x: tp.x, y: tp.y, at: m.totalT }); return; }
+      tp.t1 = e.at;
+      var q = self.strikeAt(tp, clamp((m.t - tp.t0) / Math.max(0.1, tp.t1 - tp.t0), 0, 1));
+      tp.x = q.x; tp.y = q.y; tp.dx = q.dx; tp.dy = q.dy;
+      self.torps.push(tp);
     });
   };
 
