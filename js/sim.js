@@ -55,7 +55,7 @@
     this.buildShip();
     this.hasDrive = !!this.sys("drive");
     // Gunner station: the player aims one gun (opts.gunner = { weapon, gun }); see gunnery.js.
-    this.turret = opts.gunner ? new BL.Turret(this, opts.gunner) : null;
+    this.turret = !opts.gunner ? null : opts.gunner.ring ? new BL.RingTurret(this, opts.gunner) : new BL.Turret(this, opts.gunner);
     this.stats = {
       heatSum: 0, heatTime: 0,
       deliveredMJ: 0, wastedMJ: 0, trips: 0, looks: 0,

@@ -60,6 +60,13 @@
   };
   function testJob(seed) { return { test: true, station: "engineer", classId: "destroyer", n: 4, tl: 4, ship: "Destroyer", seed: seed }; }
   // The gunner turret test: a gunboat, you at Gun 1 with the gun picked on the title screen.
+  // The ring test: a destroyer's three guns on the rim of its shield, enemies from every side.
+  function ringJob(seed) { return { test: true, station: "gunner", classId: "destroyer", n: 4, tl: 4, ship: "Destroyer", seed: seed, ring: true }; }
+  $("btn-ring").onclick = function () {
+    BL.audio.init(); click();
+    var seed = parseInt($("seed-input").value, 10);
+    startBriefing(ringJob(seed > 0 ? seed : BL.randomSeed()));
+  };
   function gunnerJob(seed) { return { test: true, station: "gunner", classId: "gunboat", n: 1, tl: 4, ship: "Gunboat", seed: seed, weapon: settings.gunPick || "pulse" }; }
   $("gun-pick").value = BL.WEAPONS[settings.gunPick] ? settings.gunPick : "pulse";
   $("gun-pick").onchange = function () { settings.gunPick = this.value; saveSettings(); };
@@ -78,6 +85,8 @@
     var guns = j.station !== "gunner" ? null : j.weapons ? { weapons: j.weapons } : j.weapon && j.test ? { weapon: j.weapon } : { weapons: BL.GUNNERY.loadout[j.classId] || ["pulse"] };
     // Standing orders for the AI gunners, remembered per gun number between missions.
     if (guns) guns.orders = [1, 2, 3, 4, 5, 6, 7, 8].map(function (n) { return (settings.gunOrders || {})[n] || "auto"; });
+    var rc = BL.GUNNERY.ring.classes[j.classId];
+    if (guns && j.ring && rc) { guns.ring = true; guns.arcs = rc.arcs; guns.arcNames = rc.arcNames; guns.weapons = BL.GUNNERY.loadout[j.classId]; delete guns.weapon; }
     sim = new BL.Mission({ seed: j.seed, classId: j.classId, tl: j.tl, gunner: guns });
     if (j.test) $("seed-input").value = j.seed;
     var d = sim.data, cls = BL.classById(j.classId);
@@ -121,7 +130,11 @@
       var en = sim.turret.engineer;
       $("brief-pt").hidden = !sim.data.torpedoes;
       var bats = sim.turret.bats;
-      $("brief-guns").innerHTML = bats.length === 1
+      if (sim.turret.ring) $("brief-guns").innerHTML = "Your ship sits in the middle of the screen inside its oval shield, and enemies come in from every side (on a destroyer mostly ahead and on the flanks). " +
+        "Your guns ride the shield's rim, each inside its own arc, and fire straight out: " +
+        bats.map(function (b) { return "<b>Gun " + b.gunNo + "</b> " + b.w.name.toLowerCase() + " " + b.arcName + " (" + (b.arcH >= 180 ? "all the way round" : (b.arcH * 2) + "°") + ")"; }).join(", ") +
+        ". <b>Right</b> (the key, or moving the mouse or trackpad right) turns your gun clockwise, <b>left</b> counterclockwise; dragging a finger works the same way. You aim one gun; AI gunners work the others. Tap a gun or press its number to take it.";
+      else $("brief-guns").innerHTML = bats.length === 1
         ? "You're at <b>Gun 1</b>, <b>" + an(bats[0].w.name.toLowerCase()) + "</b>: " + bats[0].w.what
         : "You command " + bats.map(function (b) { return "<b>Gun " + b.gunNo + "</b> (" + b.w.name.toLowerCase() + ")"; }).join(" and ") +
           ". You aim one; an AI gunner works the other. Both turrets ride one rail and slide past each other. Tap a turret or press 1 or 2 to switch. " +
@@ -675,8 +688,8 @@
     $("tu-station").textContent = "Gunnery · " + (job.test ? sim.data.className : job.ship + " (" + sim.data.className + ")") + " · tech level " + sim.data.tl;
     $("tu-rec-label").textContent = sim.hasDrive ? "JUMP" : "RECOVERY";
     lastJolt = 0;
-    $("tu-keys").textContent = "← → slide · Space fire (hold) · " + (tu.bats.length > 1 ? "1–" + tu.bats.length + " or tap a turret: switch guns · O orders · " : sim.data.torpedoes ? "1 2 torpedoes · " : "") +
-      "C call for power · P pause · Mouse: move to aim, hold button to fire · Touch: drag to aim, hold FIRE";
+    $("tu-keys").textContent = (tu.ring ? "→ clockwise · ← counterclockwise" : "← → slide") + " · Space fire (hold) · " + (tu.bats.length > 1 ? "1–" + tu.bats.length + " or tap a turret: switch guns · O orders · " : sim.data.torpedoes ? "1 2 torpedoes · " : "") +
+      "C call for power · P pause · " + (tu.ring ? "Mouse or trackpad: move right or left to turn, hold button to fire · Touch: drag right or left, hold FIRE" : "Mouse: move to aim, hold button to fire · Touch: drag to aim, hold FIRE");
     // Battery buttons (two or more guns): tap to take that gun; the AI gunner takes the other.
     $("tu-bats").hidden = tu.bats.length < 2;
     $("tu-bats").innerHTML = tu.bats.map(function (b, i) {
@@ -736,7 +749,7 @@
       }
     });
     sizeTurret();
-    BL.drawTurret(tuCtx, tuSize, sim, tu, ts);
+    (tu.ring ? BL.drawRing : BL.drawTurret)(tuCtx, tuSize, sim, tu, ts);
     showBattery();
     $("tu-jump").innerHTML = (sim.hasDrive ? "Jump" : "Sortie") + " <b>" + (sim.jumpIndex + 1) + "</b> of " + sim.cfg.jumps + " · <b>" + (enc.name || "") + "</b>";
     setText($("tu-phase"), sim.phase === "arrival" ? (sim.hasDrive ? "Engagement in " : "Launching in ") + Math.ceil(sim.cfg.arrivalSeconds - sim.t) + " s" :
@@ -845,23 +858,31 @@
   // Mouse on the view: the turret follows the pointer; hold the button to fire.
   // Touch on the view or the aim pad: drag to slide (relative, so the finger never hides
   // the target); hold the FIRE button to fire.
+  var RING_DEG = 300;                     // degrees the gun turns for a sideways move the width of the view
   function fieldX(ev) { var r = $("tu-canvas").getBoundingClientRect(); return (ev.clientX - r.left) / r.width; }
   (function wireTurretPointer() {
     var cv = $("tu-canvas"), drags = {};
     function startDrag(el, ev) {
       if (!turretActive()) return;
-      drags[ev.pointerId] = { x: ev.clientX, aim: sim.turret.x, width: $("tu-canvas").getBoundingClientRect().width };
+      drags[ev.pointerId] = { x: ev.clientX, lastX: ev.clientX, aim: sim.turret.x, width: $("tu-canvas").getBoundingClientRect().width };
       el.setPointerCapture(ev.pointerId); ev.preventDefault();
     }
     function moveDrag(ev) {
       var d = drags[ev.pointerId]; if (!d || !turretActive()) return;
+      // Ring view: a finger moving right turns the gun clockwise, left counterclockwise.
+      if (sim.turret.ring) { sim.turret.nudge((ev.clientX - d.lastX) / Math.max(100, d.width) * RING_DEG); d.lastX = ev.clientX; return; }
       sim.turret.aimAt(d.aim + (ev.clientX - d.x) / Math.max(100, d.width) * 1.1);
     }
     function endDrag(ev) { delete drags[ev.pointerId]; }
     // A tap or click on another battery's turret takes that gun.
     function turretAt(ev) {
       var r = cv.getBoundingClientRect(), x = (ev.clientX - r.left) / r.width, y = (ev.clientY - r.top) / r.height, tu = sim.turret;
-      if (tu.bats.length < 2 || y < BL.GUNNERY.turretY - 0.08) return -1;
+      if (tu.bats.length < 2) return -1;
+      if (tu.ring) {
+        for (var k = 0; k < tu.bats.length; k++) if (k !== tu.sel && Math.hypot(tu.bats[k].x - x, tu.bats[k].y - y) < 0.05) return k;
+        return -1;
+      }
+      if (y < BL.GUNNERY.turretY - 0.08) return -1;
       for (var i = 0; i < tu.bats.length; i++) if (i !== tu.sel && Math.abs(tu.bats[i].x - x) < 0.05) return i;
       return -1;
     }
@@ -869,12 +890,18 @@
       if (turretActive()) { var hitBat = turretAt(ev); if (hitBat >= 0) { selectBattery(hitBat); ev.preventDefault(); return; } }
       if (ev.pointerType === "mouse") {
         if (!turretActive() || ev.button !== 0) return;
-        sim.turret.aimAt(fieldX(ev)); sim.turret.trigger(true); setFireBtn(true);
+        if (!sim.turret.ring) sim.turret.aimAt(fieldX(ev));
+        sim.turret.trigger(true); setFireBtn(true);
         cv.setPointerCapture(ev.pointerId); ev.preventDefault();
       } else startDrag(cv, ev);
     });
     cv.addEventListener("pointermove", function (ev) {
-      if (ev.pointerType === "mouse") { if (turretActive()) sim.turret.aimAt(fieldX(ev)); }
+      if (ev.pointerType === "mouse") {
+        if (!turretActive()) return;
+        // Ring view: the mouse or trackpad moving right turns the gun clockwise.
+        if (sim.turret.ring) sim.turret.nudge((ev.movementX || 0) / Math.max(100, cv.getBoundingClientRect().width) * RING_DEG);
+        else sim.turret.aimAt(fieldX(ev));
+      }
       else moveDrag(ev);
     });
     function mouseUp(ev) { if (ev.pointerType === "mouse") { if (sim && sim.turret && !keysHeld.fire) { sim.turret.trigger(false); setFireBtn(false); } } else endDrag(ev); }

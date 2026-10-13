@@ -359,7 +359,21 @@
     call: { seconds: 6, cooldown: 4 }, // CALL FOR POWER: rapid-fire request length, wait before the next
     // What each class's batteries carry at the gunner station, Gun 1 first. With two or more,
     // the player aims one and an AI gunner works the others; turrets share one rail and pass freely.
-    loadout: { gunboat: ["pulse"], picket: ["rail"], destroyerEscort: ["pulse", "rail"] },
+    loadout: { gunboat: ["pulse"], picket: ["rail"], destroyerEscort: ["pulse", "rail"], destroyer: ["rail", "pulse", "rail"] },
+    // Ring view (destroyer and up): the ship in the center inside an oval shield (cx, cy, rx, ry);
+    // guns ride its rim inside their arcs ([center bearing, half width], 0 = ahead, clockwise).
+    // reach = how far a bolt flies from the rim; traverse = degrees per second along the rim;
+    // enemies enter from radius `enter` and hold at their look's ringR; bearings = how often a
+    // wave comes from each direction.
+    ring: {
+      cx: 0.5, cy: 0.5, rx: 0.16, ry: 0.27, shipH: 0.4, enter: 0.78, traverse: 140,
+      reach: { pulse: 0.15, rail: 0.45, ion: 0.24 },
+      bearings: { "0": 3, "45": 2, "-45": 2, "90": 2, "-90": 2, "135": 1, "-135": 1, "180": 1 },
+      classes: {
+        // arcs: [center, half width, starting bearing]
+        destroyer: { arcs: [[0, 135, 0], [0, 180, 90], [180, 135, 180]], arcNames: ["on the bow", "amidships", "on the stern"] }
+      }
+    },
     aiGunner: 0.75,                    // skill of the AI gunner on the batteries you aren't aiming
     // Standing orders for AI gunners, one per gun. Each fight one of them is suggested: hunt if
     // the gun's weapon is best against the enemy, else defend against torpedoes. A gun whose
@@ -392,17 +406,17 @@
     // split between them); band = the height they hold; sway = side-to-side swing; dive = how far
     // they swoop down now and then.
     looks: {
-      raiders:      { ship: "raider", count: [3, 3], w: 0.11, h: 0.072, band: [0.13, 0.28], sway: 0.14, period: [6, 8], dive: 0.14, formation: true,
+      raiders:      { ship: "raider", ringR: [0.38, 0.44], count: [3, 3], w: 0.11, h: 0.072, band: [0.13, 0.28], sway: 0.14, period: [6, 8], dive: 0.14, formation: true,
                       what: "big, slow and tough; they hang back near the top and swoop into range now and then" },
-      interceptors: { ship: "interceptor", count: [4, 5], w: 0.06, h: 0.066, band: [0.2, 0.45], sway: 0.28, period: [2.4, 3.4], dive: 0.22,
+      interceptors: { ship: "interceptor", ringR: [0.33, 0.4], count: [4, 5], w: 0.06, h: 0.066, band: [0.2, 0.45], sway: 0.28, period: [2.4, 3.4], dive: 0.22,
                       what: "small, fast and fragile; they weave and dive, and launch torpedoes often" },
-      siege:        { ship: "siege battery", count: [4, 4], w: 0.09, h: 0.075, band: [0.1, 0.2], sway: 0.04, period: [9, 12], dive: 0, formation: true,
+      siege:        { ship: "siege battery", ringR: [0.43, 0.47], count: [4, 4], w: 0.09, h: 0.075, band: [0.1, 0.2], sway: 0.04, period: [9, 12], dive: 0, formation: true,
                       what: "a slow line far up the screen that never stops firing" },
       // Archonian capital ships: one big hull (the wave's toughness minus the escorts' share).
-      frigate:      { ship: "frigate", capital: true, count: [1, 1], w: 0.13, h: 0.25, band: [0.15, 0.2], sway: 0.1, period: [10, 12], dive: 0,
+      frigate:      { ship: "frigate", ringR: [0.42, 0.46], capital: true, count: [1, 1], w: 0.13, h: 0.25, band: [0.15, 0.2], sway: 0.1, period: [10, 12], dive: 0,
                       escorts: { type: "interceptors", count: 2, share: 0.17 },
                       what: "one big hull escorted by two interceptors; it holds near the top and fires torpedoes in pairs" },
-      hunters:      { ship: "drive hunter", count: [3, 3], w: 0.065, h: 0.07, band: [0.18, 0.4], sway: 0.24, period: [3, 4], dive: 0.12,
+      hunters:      { ship: "drive hunter", ringR: [0.35, 0.42], count: [3, 3], w: 0.065, h: 0.07, band: [0.18, 0.4], sway: 0.24, period: [3, 4], dive: 0.12,
                       what: "nimble ships that go for the GravSpace drive" }
     }
   };

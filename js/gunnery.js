@@ -544,6 +544,18 @@
   AIGunner.prototype.think = function (m) {
     var tu = m.turret; if (!tu || m.totalT < this.next) return;
     this.next = m.totalT + 0.1;
+    // Ring view: aim the gun you hold the way the AI gunners do (Free fire), choosing the gun
+    // whose arc and weapon suit the nearest ship.
+    if (tu.ring) {
+      if (m.totalT >= (this.pickAt || 0)) {
+        this.pickAt = m.totalT + 3;
+        var near = tu.ships.filter(function (s) { return !s.dead && s.state !== "leave"; }).sort(function (a, b) { return a.r - b.r; })[0];
+        if (near) tu.bats.forEach(function (b, i) { if (tu.inReachOf(b, near.x, near.y) !== null && b.w.best.indexOf(near.type) >= 0) tu.select(i); });
+      }
+      var held = tu.bat(), keep = held.order; held.order = "free"; held.aiNext = 0;
+      tu.aiBattery(held); held.order = keep;
+      return;
+    }
     var w = tu.w, G = tu.G, top = G.turretY - tu.reach(), target = null, tx = tu.x, best = 1e9;
     // With several batteries, take the one whose weapon suits the nearest ship best.
     if (tu.bats.length > 1 && m.totalT >= (this.pickAt || 0)) {
@@ -578,7 +590,10 @@
   // weapon: one gun for every battery count of one; null = the class's own loadout.
   BL.runGunnerHeadless = function (seed, weapon, classId, tl, skill) {
     classId = classId || "gunboat";
-    var m = new BL.Mission({ seed: seed, quiet: true, classId: classId, tl: tl || 4, gunner: weapon ? { weapon: weapon } : { weapons: BL.GUNNERY.loadout[classId] } });
+    var rc = BL.GUNNERY.ring.classes[classId];
+    var gunner = weapon ? { weapon: weapon } : { weapons: BL.GUNNERY.loadout[classId] };
+    if (rc && !weapon) { gunner.ring = true; gunner.arcs = rc.arcs; gunner.arcNames = rc.arcNames; }
+    var m = new BL.Mission({ seed: seed, quiet: true, classId: classId, tl: tl || 4, gunner: gunner });
     var eng = new BL.AIEngineer(0.5, 0.25, m.turret.engineer.skill), gun = new AIGunner(skill);
     m.beginJump();
     var guard = 0;

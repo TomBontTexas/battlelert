@@ -13,8 +13,9 @@
   function sprite(name) {
     var s = sprites[name];
     if (s) return s.ready ? s : null;
-    if (!BL.ART || !BL.ART[name]) return null;
-    var text = BL.ART[name](), m = /viewBox="([-\d.]+) ([-\d.]+) ([\d.]+) ([\d.]+)"/.exec(text);
+    var parts = name.split(":"), fn = parts[0];
+    if (!BL.ART || !BL.ART[fn]) return null;
+    var text = BL.ART[fn](parts[1]), m = /viewBox="([-\d.]+) ([-\d.]+) ([\d.]+) ([\d.]+)"/.exec(text);
     var vw = +m[3], vh = +m[4], W = 320, H = Math.round(W * vh / vw);
     var cv = document.createElement("canvas"); cv.width = W; cv.height = H;
     s = sprites[name] = { ready: false, cv: cv, aspect: vh / vw, vb: [+m[1], +m[2], vw, vh] };
@@ -23,6 +24,7 @@
     img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(text);
     return null;
   }
+  BL.sprite = sprite;
   BL.preloadArt = function () {
     Object.keys(SHIP_ART).forEach(function (k) { sprite(SHIP_ART[k]); });
     Object.keys(TURRET_ART).forEach(function (k) { sprite(TURRET_ART[k]); });
