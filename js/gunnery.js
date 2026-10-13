@@ -68,7 +68,8 @@
     var E = BL.GUNNERY.engineer, r = BL.rng((seed ^ 0x2c1b3c6d) >>> 0);
     var range = E.skill[classId] || E.skill.other, skill = Math.round(r.range(range) * 100) / 100;
     var rank = E.ranks[skill >= 0.85 ? 2 : skill >= 0.7 ? 1 : 0];
-    return { name: rank + " " + r.pick(E.first) + " " + r.pick(E.last), skill: skill,
+    var first = r.pick(E.first), last = r.pick(E.last);
+    return { name: rank + " " + first + " " + last, who: first + " " + last, skill: skill,
       label: skill >= 0.85 ? "sharp" : skill >= 0.7 ? "steady" : skill >= 0.5 ? "green" : "sloppy" };
   };
 

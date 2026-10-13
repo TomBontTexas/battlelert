@@ -315,6 +315,8 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 .offer .tag.up { background: var(--warn); color: #000; }
 .offer .tag.low { border: 1px solid var(--muted); color: var(--muted); }
 .offer button { grid-row: 1 / span 2; grid-column: 2; }
+.offer-sec { grid-column: 1; font-size: 14px; }
+.offer-sec-h { font: 700 11px var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 4px 0 1px; }
 .profile { display: grid; gap: 12px; max-width: 560px; }
 .pf { display: grid; grid-template-columns: 130px 1fr; gap: 2px 10px; align-items: center; font-size: 14px; }
 .pf-track { position: relative; height: 12px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; }

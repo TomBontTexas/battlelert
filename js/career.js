@@ -123,6 +123,7 @@
     var cls = BL.classByN(n);
     var job = { id: "j" + Math.floor(rng.next() * 1e9).toString(36), station: station, classId: cls.id, n: n, tl: tl,
       ship: BL.shipName(rng, cls.id, tl), seed: 1 + Math.floor(rng.next() * 999999), serious: serious !== false };
+    job.hull = BL.hullNumber(cls.id, job.ship);
     if (station === "gunner") { job.weapons = (BL.GUNNERY.loadout[cls.id] || ["pulse"]).slice(); if (BL.pickEngineer) job.engineer = BL.pickEngineer(job.seed, cls.id); }
     return job;
   }
@@ -218,7 +219,7 @@
     p.missions = n + 1;
     if (success) p.wins++; else p.losses++;
     report.profileAfter = profile(c, job.station);
-    var entry = { date: today(), station: job.station, classId: job.classId, n: job.n, tl: job.tl, ship: job.ship,
+    var entry = { date: today(), station: job.station, classId: job.classId, n: job.n, tl: job.tl, ship: job.ship, hull: BL.hullNumber(job.classId, job.ship),
       seed: job.seed, outcome: r.outcome, score: r.score, rep: report.rep, serious: job.serious };
     c.history.unshift(entry);
     if (c.history.length > 200) c.history.length = 200;

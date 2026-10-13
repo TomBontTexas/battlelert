@@ -77,6 +77,21 @@
 
   BL.SHIP_PREFIX = "TFS ";
 
+  // Each named ship's own hull number, fixed by its place in its class's list: the oldest ships
+  // carry the lowest numbers (CL-101 ... CL-136). A gunboat's PT-1XX number is its name.
+  BL.HULL_CODES = { picket: "DL", destroyerEscort: "DE", destroyer: "DD", lightCruiser: "CL", cruiser: "C", heavyCruiser: "CA", battleship: "BB", dreadnought: "DN" };
+  BL.hullNumber = function (classId, ship) {
+    var list = BL.SHIP_NAMES[classId], name = String(ship || "").replace(BL.SHIP_PREFIX, "");
+    if (!list) return "";
+    for (var i = 0; i < list.length; i++) {
+      var k = list[i].indexOf(name);
+      if (k >= 0) return BL.HULL_CODES[classId] + "-" + (101 + i * 6 + k);
+    }
+    return "";
+  };
+  // "TFS Bartolomeo Colleoni CL-125"; a gunboat is just "PT-117".
+  BL.shipLabel = function (classId, ship) { var h = BL.hullNumber(classId, ship); return ship + (h ? " " + h : ""); };
+
   // A ship for a job: one of the six named ships of that class and tech level, or for a
   // gunboat a fresh hull number PT-101 ... PT-199.
   BL.shipName = function (rng, classId, tl) {

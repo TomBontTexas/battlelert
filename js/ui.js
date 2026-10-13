@@ -102,7 +102,7 @@
       return "<li>" + (sim.hasDrive ? "System " : "Sortie ") + (i + 1) + ": <b>" + e.name + "</b>. " + e.what + ". Tests: " + e.tests.toLowerCase() +
         (sim.hasDrive ? ". Jump window opens " + sim.windowFor(i) + " s after arrival." : ". The carrier recovers you " + sim.windowFor(i) + " s after launch.") + "</li>";
     }).join("") + (sim.hasDrive ? "<li>The Archonian world: drop the planet buster.</li>" : "");
-    $("brief-ship-title").textContent = "Your ship: " + (j.test ? cls.name : j.ship + ", " + cls.name) + ", tech level " + j.tl;
+    $("brief-ship-title").textContent = "Your ship: " + (j.test ? cls.name : BL.shipLabel(j.classId, j.ship) + ", " + cls.name) + ", tech level " + j.tl;
     var html = [
       d.reactors.length > 1 ? "<div><span>Reactors</span> " + d.reactors.map(function (x) { return x.name + " " + x.mw + " MW"; }).join(", ") + "</div>"
         : "<div><span>Reactor safe output</span> " + d.reactorMW + " MW</div>",
@@ -116,7 +116,7 @@
     if (!j.test) html.push("<div><span>Reputation if perfect</span> up to " + BL.career.repFor(j, 100) + "</div>");
     $("brief-ship").innerHTML = html.join("");
     // The approved art: the gunboat carries its hull number, bigger classes their hull letters.
-    $("brief-art").innerHTML = BL.ART ? (j.classId === "gunboat" ? BL.ART.gunboat(/^PT-/.test(j.ship) ? j.ship : "PT") : BL.ART.warship(j.classId)) : "";
+    $("brief-art").innerHTML = BL.ART ? (j.classId === "gunboat" ? BL.ART.gunboat(/^PT-/.test(j.ship) ? j.ship : "PT") : BL.ART.warship(j.classId, j.test ? "" : BL.hullNumber(j.classId, j.ship))) : "";
     if (BL.preloadArt) BL.preloadArt();
     $("brief-main").hidden = !sim.sys("main");
     $("brief-hangar").hidden = !sim.sys("hangar");
@@ -256,7 +256,7 @@
     buildReactors();
     caps.classList.toggle("dense", DISPLAY.length >= 8);
     $("trip-order").classList.toggle("trip-two", DISPLAY.length >= 8);
-    $("hd-station").textContent = "Main Engineering · " + (job.test ? sim.data.className : job.ship + " (" + sim.data.className + ")") + " · tech level " + sim.data.tl;
+    $("hd-station").textContent = "Main Engineering · " + (job.test ? sim.data.className : BL.shipLabel(job.classId, job.ship) + " (" + sim.data.className + ")") + " · tech level " + sim.data.tl;
     $("jump-label").textContent = sim.hasDrive ? "JUMP" : "RECOVERY";
     $("auxbank").hidden = !sim.hasAux() || multiRx();
     document.body.classList.toggle("no-aux", !sim.hasAux());
@@ -691,7 +691,7 @@
   var keysHeld = {}, tuCtx = null, tuSize = 0, lastTuDamage = -1;
   function buildTurret() {
     var tu = sim.turret, w = tu.w;
-    $("tu-station").textContent = "Gunnery · " + (job.test ? sim.data.className : job.ship + " (" + sim.data.className + ")") + " · tech level " + sim.data.tl;
+    $("tu-station").textContent = "Gunnery · " + (job.test ? sim.data.className : BL.shipLabel(job.classId, job.ship) + " (" + sim.data.className + ")") + " · tech level " + sim.data.tl;
     $("tu-rec-label").textContent = sim.hasDrive ? "JUMP" : "RECOVERY";
     lastJolt = 0;
     $("tu-keys").textContent = (tu.ring ? "→ clockwise · ← counterclockwise" : "← → slide") + " · Space fire (hold) · " + (tu.firesMain ? "M main gun · " : "") + (tu.bats.length > 1 ? "1–" + tu.bats.length + " switch guns · O orders · " : sim.data.torpedoes ? "1 2 torpedoes · " : "") +
@@ -1053,7 +1053,7 @@
     show("scr-debrief");
     $("db-title").textContent = r.outcome === "success" ? (r.hasDrive ? "Mission complete: planet buster delivered" : "Sortie complete: recovered by the carrier") :
       r.outcome === "destroyed" ? "Ship destroyed" : "Abandoned ship";
-    $("db-lede").textContent = (job.test ? "" : job.ship + ", " + r.className + ", tech level " + r.tl + " · ") + "Seed " + r.seed + " · " +
+    $("db-lede").textContent = (job.test ? "" : BL.shipLabel(job.classId, job.ship) + ", " + r.className + ", tech level " + r.tl + " · ") + "Seed " + r.seed + " · " +
       r.jumpsDone + " of " + sim.cfg.jumps + (r.hasDrive ? " jumps · " : " sorties · ") + d.minutes + " minutes · hull " + r.hull + " / " + r.hullMax +
       (r.looks ? " · looked at the paused console " + r.looks + (r.looks === 1 ? " time" : " times") + " (−" + (100 - Math.round(100 * r.score / Math.max(1, r.raw))) + "%)" : "");
     $("db-score").textContent = r.score;
@@ -1340,11 +1340,16 @@
   function offerHtml(j, i) {
     var cls = BL.classByN(j.n), q = BL.career.qualified(career, j.station), up = j.n > q, rankName = BL.career.STATION_NAME[j.station];
     var tag = up ? '<span class="tag up">' + (q ? "STEP UP" : "FIRST QUALIFICATION") + "</span>" : !j.serious ? '<span class="tag low">LOWER CLASS</span>' : "";
-    return '<div class="offer' + (up ? " stepup" : "") + '"><h3>' + cls.name + " · " + j.ship + tag + "</h3>" +
+    // Ship and hull number with the tech level; reputation; then who you'd serve with and the guns.
+    var crew = j.engineer ? ["Engineer-" + j.n + " " + esc(j.engineer.who || j.engineer.name.split(" ").slice(-2).join(" ")) + ", " + j.engineer.label + " (skill " + Math.round(j.engineer.skill * 100) + ")"] : [];
+    var arms = j.station === "gunner" ? (j.weapons || ["pulse"]).map(function (id, k) { return "Gun " + (k + 1) + " " + BL.WEAPONS[id].name.toLowerCase(); })
+      .concat(BL.classById(j.classId).mainGun ? ["Main gun"] : [], j.classId === "gunboat" ? ["Two torpedoes"] : []) : [];
+    function sec(title, rows) { return rows.length ? '<div class="offer-sec"><div class="offer-sec-h">' + title + "</div>" + rows.map(function (x) { return "<div>" + x + "</div>"; }).join("") + "</div>" : ""; }
+    return '<div class="offer' + (up ? " stepup" : "") + '"><h3>' + esc(BL.shipLabel(j.classId, j.ship)) + " (TL" + j.tl + ")" + tag + "</h3>" +
       '<button class="primary" data-i="' + i + '">Accept</button>' +
-      '<div class="meta">' + rankName + (j.station === "gunner" ? " · " + (j.weapons || ["pulse"]).map(function (id, k) { return "Gun " + (k + 1) + " " + BL.WEAPONS[id].name.toLowerCase(); }).join(", ") + (j.classId === "gunboat" ? ", two torpedoes" : "") : "") + " · tech level " + j.tl + " (reputation ×" + BL.TECH.repMult(j.tl).toFixed(1) + ") · up to " + BL.career.repFor(j, 100) + " reputation" +
+      '<div class="meta">Reputation ×' + BL.TECH.repMult(j.tl).toFixed(1) + ", max " + BL.career.repFor(j, 100) +
       (up ? " · success qualifies you as " + rankName + "-" + j.n : "") + "</div>" +
-      (j.engineer ? '<div class="meta">Engineer: <b>' + esc(j.engineer.name) + "</b>, " + j.engineer.label + " (skill " + Math.round(j.engineer.skill * 100) + ")</div>" : "") + "</div>";
+      sec("Crew", crew) + sec("Armament", arms) + "</div>";
   }
   var shownJobs = [], offersStation = "engineer";
   function showOffers(mode, station) {
