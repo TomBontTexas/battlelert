@@ -99,6 +99,15 @@
     b.aimRel = this.full(b) ? b.aimRel + deg : clamp(b.aimRel + deg, -b.arcH, b.arcH);
   };
   RingTurret.prototype.aimAt = function () {};          // the rail view's absolute aim has no meaning here
+  // The pointer at (x, y): turn toward its bearing from the ship, inside the arc (a clicked
+  // target being chased keeps the gun until it's on). Right at the center means nothing.
+  RingTurret.prototype.pointAt = function (x, y) {
+    var b = this.bat(), R = this.R;
+    if (b.seek || Math.hypot((x - R.cx) / R.rx, (y - R.cy) / R.ry) < 0.15) return;
+    var rel = norm(this.bearingOf(x, y) - b.arcC);
+    b.dir = 0;
+    b.aimRel = this.full(b) ? b.rel + norm(rel - b.rel) : clamp(rel, -b.arcH, b.arcH);
+  };
   RingTurret.prototype.select = function (i) {
     var ok = BL.Turret.prototype.select.call(this, i);
     if (ok) { var b = this.bat(); b.aimRel = b.rel; this.bats.forEach(function (x) { x.seek = null; }); }

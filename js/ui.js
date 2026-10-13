@@ -133,7 +133,7 @@
       if (sim.turret.ring) $("brief-guns").innerHTML = "Your ship sits in the middle of the screen inside its oval shield, and enemies come in from every side (on a destroyer mostly ahead and on the flanks). " +
         "Your guns ride the shield's rim, each inside its own arc, and fire straight out: " +
         bats.map(function (b) { return "<b>Gun " + b.gunNo + "</b> " + b.w.name.toLowerCase() + " " + b.arcName + " (" + (b.arcH >= 180 ? "all the way round" : (b.arcH * 2) + "°") + ")"; }).join(", ") +
-        ". <b>Right</b> turns your gun clockwise, <b>left</b> counterclockwise. With the mouse or trackpad, it works like a joystick: keep the pointer right of the middle of the view (the marker at the top) and the gun keeps turning, faster the farther out you go; bring it back to the middle to stop. A finger works the same way, measured from where it first touched. You can also click or tap a ship or torpedo: your gun swings to it (it still has to travel) and, if you hold the button, opens fire once it's on. You aim one gun; AI gunners work the others. Press a gun's number or tap its card to take it (switches on the left let you take a gun by clicking it on the view, and turn click-to-aim off).";
+        ". Your gun follows the mouse or trackpad: point anywhere around the ship and the gun turns along the rim toward that side (as far as its arc allows), whether you're firing or not, so you can follow a ship by keeping the pointer on it. A finger on the view does the same; on the aim pad, drag right to turn clockwise, left counterclockwise. The arrow keys turn it too. You can also click or tap a ship or torpedo: your gun swings to it (it still has to travel) and, if you hold the button, opens fire once it's on. You aim one gun; AI gunners work the others. Press a gun's number or tap its card to take it (switches on the left let you take a gun by clicking it on the view, and turn click-to-aim off).";
       else $("brief-guns").innerHTML = bats.length === 1
         ? "You're at <b>Gun 1</b>, <b>" + an(bats[0].w.name.toLowerCase()) + "</b>: " + bats[0].w.what
         : "You command " + bats.map(function (b) { return "<b>Gun " + b.gunNo + "</b> (" + b.w.name.toLowerCase() + ")"; }).join(" and ") +
@@ -174,7 +174,6 @@
     click();
   }
   function resume() {
-    stickHold = true;                    // the gun stays put until the mouse comes back to the middle
     if (!paused) return;
     paused = false; looking = false;
     overlay("ov-pause", false); $("planning-banner").hidden = true;
@@ -688,9 +687,9 @@
     var tu = sim.turret, w = tu.w;
     $("tu-station").textContent = "Gunnery · " + (job.test ? sim.data.className : job.ship + " (" + sim.data.className + ")") + " · tech level " + sim.data.tl;
     $("tu-rec-label").textContent = sim.hasDrive ? "JUMP" : "RECOVERY";
-    lastJolt = 0; stickHold = true;      // a fresh sortie: the mouse steers once it has passed the middle
+    lastJolt = 0;
     $("tu-keys").textContent = (tu.ring ? "→ clockwise · ← counterclockwise" : "← → slide") + " · Space fire (hold) · " + (tu.bats.length > 1 ? "1–" + tu.bats.length + " switch guns · O orders · " : sim.data.torpedoes ? "1 2 torpedoes · " : "") +
-      "C call for power · P pause · " + (tu.ring ? "Mouse or trackpad: right or left of the middle turns, farther is faster; click a target to swing to it; hold button to fire · Touch: slide right or left of where you touched, hold FIRE" : "Mouse: move to aim, hold button to fire · Touch: drag to aim, hold FIRE");
+      "C call for power · P pause · " + (tu.ring ? "Mouse or trackpad: the gun follows the pointer; click a target to swing to it; hold button to fire · Touch: touch the view to point, hold FIRE" : "Mouse: move to aim, hold button to fire · Touch: drag to aim, hold FIRE");
     // Battery buttons (two or more guns): tap to take that gun; the AI gunner takes the other.
     $("tu-bats").hidden = tu.bats.length < 2;
     $("tu-bats").innerHTML = tu.bats.map(function (b, i) {
@@ -764,7 +763,6 @@
       }
     });
     sizeTurret();
-    if (tu.ring) steerRing(tu);
     (tu.ring ? BL.drawRing : BL.drawTurret)(tuCtx, tuSize, sim, tu, ts);
     showBattery();
     $("tu-jump").innerHTML = (sim.hasDrive ? "Jump" : "Sortie") + " <b>" + (sim.jumpIndex + 1) + "</b> of " + sim.cfg.jumps + " · <b>" + (enc.name || "") + "</b>";
@@ -874,49 +872,35 @@
   // Mouse on the view: the turret follows the pointer; hold the button to fire.
   // Touch on the view or the aim pad: drag to slide (relative, so the finger never hides
   // the target); hold the FIRE button to fire.
-  /* Ring view steering works like a joystick. The mouse's distance right or left of the middle
-     of the view (a finger's, from where it touched down) sets how fast the gun turns: none
-     inside the dead zone, full traverse at `full` and beyond. Keys override it while held. */
-  var STICK = { dead: 0.03, full: 0.3 };           // fractions of the view's width
-  var mouseX = null, touchStick = null;            // the mouse's last x on the page; the finger's { id, x0, x }
-  var holdOff = null;                              // the pointer's last offset from the middle
-  var stickHold = false;                           // at the start, after a pause or after a click on a target: the stick waits until the pointer is back in the middle
-  function stickValue(off) {
-    var a = Math.abs(off);
-    return a <= STICK.dead ? 0 : Math.sign(off) * Math.min(1, (a - STICK.dead) / (STICK.full - STICK.dead));
+  /* Ring view: your gun follows the pointer. Wherever the mouse (or a finger on the view) is
+     around the ship, the gun turns along the rim toward that side, staying inside its arc and
+     never faster than its drive, firing or not. On the aim pad a finger nudges it instead. */
+  var RING_DEG = 300;                     // aim pad: degrees the gun turns for a drag the width of the view
+  function pointRing(ev) {
+    var r = $("tu-canvas").getBoundingClientRect();
+    sim.turret.pointAt((ev.clientX - r.left) / r.width, (ev.clientY - r.top) / r.height);
   }
-  function steerRing(tu) {
-    var r = $("tu-canvas").getBoundingClientRect(), w = Math.max(100, r.width), v = 0, cx = 0, px = 0;
-    if (touchStick) { cx = (touchStick.x0 - r.left) / w; px = (touchStick.x - r.left) / w; }
-    else if (mouseX !== null) { cx = 0.5; px = (mouseX - r.left) / w; }
-    if (touchStick || mouseX !== null) v = stickValue(px - cx);
-    // Held: released once the pointer reaches or crosses the middle (or a key is used).
-    var off = px - cx, crossed = holdOff !== null && off * holdOff < 0;
-    if (stickHold) { if (Math.abs(off) <= STICK.dead || crossed || keysHeld.left || keysHeld.right) stickHold = false; else v = 0; }
-    holdOff = touchStick || mouseX !== null ? off : null;
-    if (!turretActive()) v = 0;
-    tu.stick = touchStick || mouseX !== null ? { cx: cx, px: px, v: v, hold: stickHold, dead: STICK.dead, full: STICK.full } : null;
-    if (!keysHeld.left && !keysHeld.right) tu.setDir(v);
-  }
-  document.addEventListener("pointermove", function (ev) { if (ev.pointerType === "mouse") mouseX = ev.clientX; });
-  document.documentElement.addEventListener("mouseleave", function () { mouseX = null; });
-  window.addEventListener("blur", function () { mouseX = null; touchStick = null; });
   function fieldX(ev) { var r = $("tu-canvas").getBoundingClientRect(); return (ev.clientX - r.left) / r.width; }
   (function wireTurretPointer() {
     var cv = $("tu-canvas"), drags = {};
     function startDrag(el, ev) {
       if (!turretActive()) return;
       drags[ev.pointerId] = { x: ev.clientX, aim: sim.turret.x, width: $("tu-canvas").getBoundingClientRect().width };
-      if (sim.turret.ring) touchStick = { id: ev.pointerId, x0: ev.clientX, x: ev.clientX };
+      drags[ev.pointerId].lastX = ev.clientX;
+      if (sim.turret.ring && el === cv) pointRing(ev);
       el.setPointerCapture(ev.pointerId); ev.preventDefault();
     }
     function moveDrag(ev) {
       var d = drags[ev.pointerId]; if (!d || !turretActive()) return;
       // Ring view: a finger moving right turns the gun clockwise, left counterclockwise.
-      if (sim.turret.ring) { if (touchStick && touchStick.id === ev.pointerId) touchStick.x = ev.clientX; return; }
+      if (sim.turret.ring) {
+        if (d.pad) { sim.turret.nudge((ev.clientX - d.lastX) / Math.max(100, d.width) * RING_DEG); d.lastX = ev.clientX; }
+        else pointRing(ev);
+        return;
+      }
       sim.turret.aimAt(d.aim + (ev.clientX - d.x) / Math.max(100, d.width) * 1.1);
     }
-    function endDrag(ev) { delete drags[ev.pointerId]; if (touchStick && touchStick.id === ev.pointerId) touchStick = null; }
+    function endDrag(ev) { delete drags[ev.pointerId]; }
     // A tap or click on another battery's turret takes that gun.
     function turretAt(ev) {
       var r = cv.getBoundingClientRect(), x = (ev.clientX - r.left) / r.width, y = (ev.clientY - r.top) / r.height, tu = sim.turret;
@@ -937,7 +921,6 @@
       if (turretActive() && tu.ring && settings.clickAim !== false && (ev.pointerType !== "mouse" || ev.button === 0)) {
         var r = cv.getBoundingClientRect();
         if (tu.seekAt((ev.clientX - r.left) / r.width, (ev.clientY - r.top) / r.height)) {
-          stickHold = true;
           if (ev.pointerType === "mouse") { tu.trigger(true); setFireBtn(true); cv.setPointerCapture(ev.pointerId); }
           ev.preventDefault(); return;
         }
@@ -952,7 +935,7 @@
     cv.addEventListener("pointermove", function (ev) {
       if (ev.pointerType === "mouse") {
         if (!turretActive()) return;
-        if (!sim.turret.ring) sim.turret.aimAt(fieldX(ev));    // the ring view steers in steerRing
+        if (sim.turret.ring) pointRing(ev); else sim.turret.aimAt(fieldX(ev));
       }
       else moveDrag(ev);
     });
@@ -960,7 +943,7 @@
     cv.addEventListener("pointerup", mouseUp); cv.addEventListener("pointercancel", mouseUp);
     cv.addEventListener("contextmenu", function (ev) { ev.preventDefault(); });
     var pad = $("tu-aimpad");
-    pad.addEventListener("pointerdown", function (ev) { startDrag(pad, ev); if (drags[ev.pointerId]) pad.classList.add("on"); });
+    pad.addEventListener("pointerdown", function (ev) { startDrag(pad, ev); if (drags[ev.pointerId]) { drags[ev.pointerId].pad = true; pad.classList.add("on"); } });
     pad.addEventListener("pointermove", moveDrag);
     function padEnd(ev) { endDrag(ev); pad.classList.remove("on"); }
     pad.addEventListener("pointerup", padEnd); pad.addEventListener("pointercancel", padEnd);
