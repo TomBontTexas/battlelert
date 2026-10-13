@@ -16,7 +16,8 @@
   function RingTurret(m, opts) {
     BL.Turret.call(this, m, opts);
     this.ring = true;
-    this.R = BL.GUNNERY.ring;
+    var cls = BL.GUNNERY.ring.classes[m.data.classId] || {};
+    this.R = Object.assign({ gunSize: 0.06, pull: 0 }, BL.GUNNERY.ring, cls.view || {});
     var arcs = opts.arcs || [], self = this;
     this.bats.forEach(function (b, i) {
       var a = arcs[i] || [0, 180];
@@ -161,7 +162,7 @@
       if (wave.bearing === undefined) wave.bearing = 0;
     }
     var band = look.ringR || [0.36, 0.44], groupPhase = r.next() * Math.PI * 2, groupPeriod = r.range(look.period);
-    var hold = r.range(band), spread = (look.w + 0.05) / hold / RAD;
+    var hold = r.range(band) - R.pull, spread = (look.w + 0.05) / hold / RAD;
     for (var i = 0; i < n; i++) {
       var home = wave.bearing + (i - (n - 1) / 2) * spread;
       var s = {

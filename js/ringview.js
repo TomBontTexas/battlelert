@@ -34,13 +34,14 @@
     c.lineWidth = 1.5 / S;
     var sel = tu.bat();
 
-    // The gun you hold: its arc lit on the rim, and how far its bolts reach.
-    if (sel.arcH < 180) {
-      c.strokeStyle = "rgba(76,195,238,0.35)"; c.lineWidth = 6 / S;
-      c.beginPath();
-      for (var a = -sel.arcH; a <= sel.arcH; a += 5) { var p = tu.rim(sel.arcC + a); if (a === -sel.arcH) c.moveTo(p.x, p.y); else c.lineTo(p.x, p.y); }
-      c.stroke(); c.lineWidth = 1.5 / S;
-    }
+    // The gun you hold: its track lit on the rim (only where it can go; all the way round for an
+    // all-round gun), and how far its bolts reach.
+    c.strokeStyle = "rgba(76,195,238,0.35)"; c.lineWidth = 6 / S;
+    c.beginPath();
+    var tl = Math.min(180, sel.arcH);
+    for (var a = -tl; a <= tl; a += 5) { var p = tu.rim(sel.arcC + a); if (a === -tl) c.moveTo(p.x, p.y); else c.lineTo(p.x, p.y); }
+    if (tl >= 180) c.closePath();
+    c.stroke(); c.lineWidth = 1.5 / S;
     var reach = tu.reach(sel);
     c.strokeStyle = "rgba(240,181,74,0.28)"; c.setLineDash([0.01, 0.012]);
     c.beginPath();
@@ -132,7 +133,7 @@
       var own = i === tu.sel, bg = tu.gun(bt), ready = bg && bg.mj >= bt.w.shotMJ, sp2 = sprite(TURRET_ART[bt.weaponId]);
       c.save(); c.translate(bt.x, bt.y); c.rotate(Math.atan2(bt.nx, -bt.ny));
       if (sp2) {
-        var ww = 0.06, wh = ww * sp2.aspect, baseFrac = (60 - sp2.vb[1]) / sp2.vb[3];
+        var ww = R.gunSize, wh = ww * sp2.aspect, baseFrac = (60 - sp2.vb[1]) / sp2.vb[3];
         c.globalAlpha = (ready ? 1 : 0.6) * (own ? 1 : 0.55);
         c.drawImage(sp2.cv, -ww / 2, 0.012 - wh * baseFrac, ww, wh);
         c.globalAlpha = 1;
@@ -142,7 +143,7 @@
       c.save(); c.setTransform(1, 0, 0, 1, 0, 0); var dpr = c.canvas.width / S; c.scale(dpr, dpr);
       c.font = "700 " + Math.round(S * 0.02) + "px system-ui, sans-serif"; c.textAlign = "center";
       c.fillStyle = own ? "#4cc3ee" : "rgba(214,224,232,0.55)";
-      var lx = bt.x + bt.nx * 0.075, ly = bt.y + bt.ny * 0.075 + 0.006;
+      var lx = bt.x + bt.nx * (R.gunSize + 0.02), ly = bt.y + bt.ny * (R.gunSize + 0.02) + 0.006;
       c.fillText((own ? "GUN " : "AI ") + bt.gunNo, lx * S, ly * S);
       c.restore();
     });
@@ -189,7 +190,19 @@
     c.restore();
     var rimA = (0.4 + 0.5 * frac) * flick + (age < 0.5 ? (1 - age / 0.5) * 0.8 : 0);
     c.strokeStyle = ageH < 0.5 ? "rgba(255,110,90," + Math.min(1, rimA).toFixed(3) + ")" : "rgba(130,225,255," + Math.min(1, rimA).toFixed(3) + ")";
-    c.lineWidth = (2.5 + (age < 0.5 ? 3 * (1 - age / 0.5) : 0)) / S; oval(); c.stroke(); c.lineWidth = 1.5 / S;
+    // The shield's bright edge shows only along the arc of the gun you hold.
+    var sel = tu.bat(), tl = Math.min(180, sel.arcH);
+    c.lineWidth = (2.5 + (age < 0.5 ? 3 * (1 - age / 0.5) : 0)) / S;
+    if (tl >= 180) { oval(); c.stroke(); }
+    else {
+      c.beginPath();
+      for (var e = -tl; e <= tl; e += 3) {
+        var ph2 = (sel.arcC + e) * Math.PI / 180, ex = R.cx + rx * Math.sin(ph2), ey = R.cy - ry * Math.cos(ph2);
+        if (e === -tl) c.moveTo(ex, ey); else c.lineTo(ex, ey);
+      }
+      c.stroke();
+    }
+    c.lineWidth = 1.5 / S;
     if (ageH < 1.2) {
       var ah = 1 - ageH / 1.2, seed = Math.floor(lastHull.at * 1000), cx0 = lastHull.x, cy0 = lastHull.y;
       var inward = Math.atan2(R.cy - cy0, R.cx - cx0);

@@ -370,8 +370,12 @@
       reach: { pulse: 0.15, rail: 0.45, ion: 0.24 },
       bearings: { "0": 3, "45": 2, "-45": 2, "90": 2, "-90": 2, "135": 1, "-135": 1, "180": 1 },
       classes: {
-        // arcs: [center, half width, starting bearing]
-        destroyer: { arcs: [[0, 135, 0], [0, 180, 90], [180, 135, 180]], arcNames: ["on the bow", "amidships", "on the stern"] }
+        // arcs: [center, half width, starting bearing]. view: this class's sizes in the ring view
+        // (shipH, the shield's rx and ry, gun icon size gunSize, and pull = how much closer than
+        // their look's ringR the enemies hold, so the gap from the shield stays the same). The
+        // defaults above are the biggest ships' (dreadnought); smaller classes draw smaller.
+        destroyer: { arcs: [[0, 135, 0], [0, 180, 90], [180, 135, 180]], arcNames: ["on the bow", "amidships", "on the stern"],
+                     view: { shipH: 0.2, rx: 0.085, ry: 0.145, gunSize: 0.045, pull: 0.1 } }
       }
     },
     aiGunner: 0.75,                    // skill of the AI gunner on the batteries you aren't aiming
