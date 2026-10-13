@@ -301,7 +301,7 @@
     mg.mj = 0;
     count(this, "mainShots"); m.stats.mainShots++;
     m.cue("main");
-    this.mainFx = { at: m.totalT, x: p.x, y0: p.y, y1: s ? s.y : -0.05 };
+    this.mainFx = { at: m.totalT, x: p.x, y0: p.y, y1: s ? s.y : p.y - 2 };
     if (!s) { m.chat("mainShotMiss", null, "bad"); return true; }
     count(this, "mainHits"); m.stats.mainDamage += Math.min(dmg, s.hp);
     var name = s.name, kill = dmg >= s.hp;
@@ -484,7 +484,8 @@
         continue;
       }
       b.x = x1; b.y = y1; b.dist += step;
-      if (b.dist < maxD && b.x > -0.05 && b.x < 1.05 && b.y > -0.05 && b.y < 1.05) keep.push(b);
+      // (bolts fly until spent or well past any view: zoomed-out and wide views show beyond the square)
+      if (b.dist < maxD && Math.hypot(b.x - 0.5, b.y - 0.5) < 1.1) keep.push(b);
       else this.effects.push({ type: "fizzle", x: b.x, y: b.y, at: this.m.totalT });
     }
     this.bolts = keep;

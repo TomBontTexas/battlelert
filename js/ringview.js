@@ -1,21 +1,51 @@
 /* Battlelert © 2011–2026 Tom Bont. All rights reserved. See LICENSE. */
 /* Battlelert gunner station, ring view: draws the ship in the center, its oval shield, the
-   guns on the rim and the enemies coming in from every side. Reads the turret, changes nothing. */
+   guns on the rim and the enemies coming in from every side. Reads the turret, changes nothing.
+   The battle is laid out in a 1 x 1 square (the ship at its center, bow up); the view zooms out
+   per class so every gun's range line fits, and in wide view turns a quarter turn, bow right. */
 (function (root) {
   "use strict";
   var BL = root.BL = root.BL || {};
   var stars = null, lastNow = null, lastHead = 0;
-  function wrap(v) { return ((v + 0.1) % 1.2 + 1.2) % 1.2 - 0.1; }   // keep a star in -0.1 .. 1.1
+  function wrap(v) { return ((v + 0.5) % 1 + 1) % 1 - 0.5; }          // keep a star in -0.5 .. 0.5
+  // The last view drawn: canvas size in CSS pixels, pixels per battle unit (k), wide or not.
+  var VIEW = { w: 1, h: 1, k: 1, wide: false };
+  var MARGIN = 0.47;                       // range lines stay this far (in half-views) from the edges
+
+  /* Pixels per battle unit for a turret in a w x h view: as big as it can be (at most one battle
+     unit per view height) while the shield plus the longest gun's reach fits, fore and aft and
+     on the beam. Wide view lies bow right: fore and aft run along the width. */
+  BL.ringScale = function (tu, w, h, wide) {
+    var R = tu.R, reach = 0;
+    tu.bats.forEach(function (b) { reach = Math.max(reach, R.reach[b.weaponId] || 0.3); });
+    var fore = R.ry + reach, beam = R.rx + reach;
+    if (wide) return Math.min(h, h * MARGIN / beam, w * MARGIN / fore);
+    var side = Math.min(w, h);
+    return Math.min(side, side * MARGIN / fore, side * MARGIN / beam);
+  };
+  // A point on the canvas (CSS pixels from its top left) in battle units, for the mouse and taps.
+  BL.ringToWorld = function (px, py) {
+    var V = VIEW, sx = px - V.w / 2, sy = py - V.h / 2;
+    return V.wide ? { x: 0.5 + sy / V.k, y: 0.5 - sx / V.k } : { x: 0.5 + sx / V.k, y: 0.5 + sy / V.k };
+  };
+  function toScreen(x, y) {
+    var V = VIEW, dx = (x - 0.5) * V.k, dy = (y - 0.5) * V.k;
+    return V.wide ? { x: V.w / 2 - dy, y: V.h / 2 + dx } : { x: V.w / 2 + dx, y: V.h / 2 + dy };
+  }
   var BOLT = { pulse: "#7bffb0", rail: "#d8f4ff", ion: "#c49bff" };
   var SHIP_ART = { raiders: "raider", interceptors: "interceptor", siege: "siege", hunters: "hunter", frigate: "frigate" };
   var TURRET_ART = { pulse: "turretPulse", rail: "turretRail", ion: "turretIon" };
 
-  BL.drawRing = function (c, S, m, tu, now) {
-    var R = tu.R, t = m.totalT, sprite = BL.sprite;
-    // Stars fill a square a little bigger than the view, so turning never shows an empty corner.
-    if (!stars) { stars = []; for (var i = 0; i < 230; i++) stars.push({ x: -0.1 + Math.random() * 1.2, y: -0.1 + Math.random() * 1.2, z: 0.25 + Math.random() * 0.75 }); }
+  // vp: { w, h, wide } = the canvas in CSS pixels and the view mode.
+  BL.drawRing = function (c, vp, m, tu, now) {
+    var R = tu.R, t = m.totalT, sprite = BL.sprite, W = vp.w, H = vp.h;
+    var S = BL.ringScale(tu, W, H, vp.wide);          // pixels per battle unit
+    VIEW = { w: W, h: H, k: S, wide: !!vp.wide };
+    // Stars fill a square as wide as the view's diagonal (positions relative to its center), so
+    // turning never shows an empty corner.
+    if (!stars) { stars = []; for (var i = 0; i < 320; i++) stars.push({ x: Math.random() - 0.5, y: Math.random() - 0.5, z: 0.25 + Math.random() * 0.75 }); }
     c.save();
-    c.fillStyle = "#03060b"; c.fillRect(0, 0, S, S);
+    c.fillStyle = "#03060b"; c.fillRect(0, 0, W, H);
     // Shake: a jolt for a shield hit, a hard shake for a hull hit.
     var lastHull = null, lastShield = null;
     tu.effects.forEach(function (f) {
@@ -27,21 +57,26 @@
     if (lastShield) shake = Math.max(shake, Math.max(0, 0.3 - (t - lastShield.at)) * 34);
     if (shake > 0) c.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
     var live = tu.live();
-    // Stars: the ship always flies forward (up the screen), so they always stream straight down.
-    // When the pilot turns, their positions swing around the center the other way; their
-    // motion stays straight down, so the ship never seems to slip sideways or back up.
+    // Stars: the ship always flies forward (up the screen; right in wide view), so they always
+    // stream straight back. When the pilot turns, their positions swing around the center the
+    // other way; their motion stays straight back, so the ship never seems to slip sideways.
     var dt = lastNow === null ? 0 : Math.max(0, Math.min(0.1, (now - lastNow) / 1000)), head = tu.heading || 0, dh = head - lastHead;
     lastNow = now; lastHead = head;
     if (Math.abs(dh) > 30) dh = 0;                // a new mission starts the heading over
     var ra = -dh * Math.PI / 180, ca = Math.cos(ra), sa = Math.sin(ra);
+    var D = Math.hypot(W, H), drift = 0.04 * Math.min(W, H) / D * dt;
     stars.forEach(function (st) {
-      if (dh) { var dx = st.x - 0.5, dy = st.y - 0.5; st.x = 0.5 + dx * ca - dy * sa; st.y = 0.5 + dx * sa + dy * ca; }
-      if (live) st.y += 0.04 * st.z * dt;
+      if (dh) { var dx = st.x, dy = st.y; st.x = dx * ca - dy * sa; st.y = dx * sa + dy * ca; }
+      if (live) { if (vp.wide) st.x -= drift * st.z; else st.y += drift * st.z; }
       st.x = wrap(st.x); st.y = wrap(st.y);
       c.fillStyle = "rgba(200,220,255," + (0.25 + st.z * 0.6).toFixed(2) + ")";
-      c.fillRect(st.x * S, st.y * S, st.z * 1.8, st.z * 1.8 + (live ? st.z * 2 : 0));
+      var streak = live ? st.z * 2 : 0;
+      c.fillRect(W / 2 + st.x * D, H / 2 + st.y * D, st.z * 1.8 + (vp.wide ? streak : 0), st.z * 1.8 + (vp.wide ? 0 : streak));
     });
-    c.scale(S, S);
+    // Into battle units: the square's center at the view's center, a quarter turn in wide view.
+    c.translate(W / 2, H / 2);
+    if (vp.wide) c.rotate(Math.PI / 2);
+    c.scale(S, S); c.translate(-0.5, -0.5);
     c.lineWidth = 1.5 / S;
     var sel = tu.bat();
 
@@ -182,12 +217,12 @@
         c.globalAlpha = 1;
       }
       c.restore();
-      // label just outside the rim, in pixels
-      c.save(); c.setTransform(1, 0, 0, 1, 0, 0); var dpr = c.canvas.width / S; c.scale(dpr, dpr);
-      c.font = "700 " + Math.round(S * 0.02) + "px system-ui, sans-serif"; c.textAlign = "center";
+      // label just outside the rim, upright, in pixels
+      c.save(); c.setTransform(1, 0, 0, 1, 0, 0); var dpr = c.canvas.width / W; c.scale(dpr, dpr);
+      c.font = "700 " + Math.max(11, Math.round(Math.min(W, H) * 0.02)) + "px system-ui, sans-serif"; c.textAlign = "center"; c.textBaseline = "middle";
       c.fillStyle = own ? "#4cc3ee" : "rgba(214,224,232,0.55)";
-      var lx = bt.x + bt.nx * (R.gunSize + 0.02), ly = bt.y + bt.ny * (R.gunSize + 0.02) + 0.006;
-      c.fillText((own ? "GUN " : "AI ") + bt.gunNo, lx * S, ly * S);
+      var lp = toScreen(bt.x + bt.nx * (R.gunSize + 0.025), bt.y + bt.ny * (R.gunSize + 0.025));
+      c.fillText((own ? "GUN " : "AI ") + bt.gunNo, lp.x, lp.y);
       c.restore();
     });
 
@@ -197,7 +232,7 @@
       var bow = tu.rim(0);
       c.strokeStyle = ms.ready ? "rgba(255,214,102," + (0.55 + 0.3 * Math.sin(t * 6)).toFixed(2) + ")" : "rgba(255,214,102,0.14)";
       c.lineWidth = (ms.ready ? 2 : 1.2) / S; c.setLineDash([0.012, 0.01]);
-      c.beginPath(); c.moveTo(bow.x, bow.y - 0.01); c.lineTo(bow.x, 0); c.stroke(); c.setLineDash([]); c.lineWidth = 1.5 / S;
+      c.beginPath(); c.moveTo(bow.x, bow.y - 0.01); c.lineTo(bow.x, bow.y - 2); c.stroke(); c.setLineDash([]); c.lineWidth = 1.5 / S;
       var mf = tu.mainFx, ma = mf ? t - mf.at : 9;
       if (ma < 0.45) {
         var al = 1 - ma / 0.45;
@@ -258,7 +293,7 @@
     if (age < 0.6) {
       var f = ageS <= ageH ? lastShield : lastHull, hull = f === lastHull, a = 1 - age / 0.6, big = Math.min(1.6, 0.6 + (f.mj || 30) / 60);
       c.fillStyle = hull ? "rgba(255,80,60," + (0.4 * a).toFixed(3) + ")" : "rgba(200,245,255," + (0.3 * a * big).toFixed(3) + ")";
-      c.fillRect(0, 0, 1, 1);
+      c.fillRect(-2, -2, 5, 5);                // the whole view, whatever its zoom
       for (var r = 0; r < 3; r++) {
         c.strokeStyle = hull ? "rgba(255,120,90," + (a * 0.9).toFixed(3) + ")" : "rgba(220,250,255," + (a * 0.9).toFixed(3) + ")";
         c.lineWidth = (4 - r) / S; c.beginPath(); c.arc(f.x, f.y, 0.02 + (age + r * 0.06) * 0.5, 0, Math.PI * 2); c.stroke();
@@ -291,9 +326,10 @@
         c.stroke();
       }
       c.lineWidth = 1.5 / S;
-      var vg = c.createRadialGradient(0.5, 0.5, 0.25, 0.5, 0.5, 0.75);
+      var hd = Math.hypot(VIEW.w, VIEW.h) / 2 / VIEW.k;   // the view's half-diagonal in battle units
+      var vg = c.createRadialGradient(0.5, 0.5, hd * 0.35, 0.5, 0.5, hd);
       vg.addColorStop(0, "rgba(255,0,0,0)"); vg.addColorStop(1, "rgba(255,20,10," + (0.55 * ah).toFixed(3) + ")");
-      c.fillStyle = vg; c.fillRect(0, 0, 1, 1);
+      c.fillStyle = vg; c.fillRect(-2, -2, 5, 5);
     }
   }
 })(typeof window !== "undefined" ? window : globalThis);

@@ -689,13 +689,26 @@
   function esc(s) { return String(s).replace(/[&<>]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]; }); }
 
   /* ------------------------------------------------------- Gunner turret */
-  var keysHeld = {}, tuCtx = null, tuSize = 0, lastTuDamage = -1;
+  var keysHeld = {}, tuCtx = null, tuSize = 0, tuW = 0, tuH = 0, lastTuDamage = -1;
+  /* Wide view (W, ring view only): the side panels give way to an overlay and the battle fills
+     the screen, turned a quarter turn so the bow points right. Standard view is the default;
+     the choice is remembered. */
+  function wideOn() { return !!(settings.wideView && sim && sim.turret && sim.turret.ring); }
+  function applyView() {
+    var wide = wideOn();
+    $("scr-turret").classList.toggle("wide", wide);
+    $("tu-hud").hidden = !wide;
+    $("btn-tu-view").hidden = !(sim && sim.turret && sim.turret.ring);
+    $("btn-tu-view").textContent = wide ? "Standard view (W)" : "Wide view (W)";
+    tuSize = 0; sizeTurret();
+  }
+  function toggleWide() { settings.wideView = !settings.wideView; saveSettings(); applyView(); click(); }
   function buildTurret() {
     var tu = sim.turret, w = tu.w;
     $("tu-station").textContent = "Gunnery · " + (job.test ? sim.data.className : BL.shipLabel(job.classId, job.ship) + " (" + sim.data.className + ")") + " · tech level " + sim.data.tl;
     $("tu-rec-label").textContent = sim.hasDrive ? "JUMP" : "RECOVERY";
     lastJolt = 0;
-    $("tu-keys").textContent = (tu.ring ? "→ clockwise · ← counterclockwise" : "← → slide") + " · Space fire (hold) · " + (tu.firesMain ? "M main gun · " : "") + (tu.bats.length > 1 ? "1–" + tu.bats.length + " switch guns · O orders · " : sim.data.torpedoes ? "1 2 torpedoes · " : "") +
+    $("tu-keys").textContent = (tu.ring ? "→ clockwise · ← counterclockwise" : "← → slide") + " · Space fire (hold) · " + (tu.ring ? "W wide view · " : "") + (tu.firesMain ? "M main gun · " : "") + (tu.bats.length > 1 ? "1–" + tu.bats.length + " switch guns · O orders · " : sim.data.torpedoes ? "1 2 torpedoes · " : "") +
       "C call for power · P pause · " + (tu.ring ? "Mouse or trackpad: the gun follows the pointer; click a target to swing to it; hold button to fire · Touch: touch the view to point, hold FIRE" : "Mouse: move to aim, hold button to fire · Touch: drag to aim, hold FIRE");
     // Battery buttons (two or more guns): tap to take that gun; the AI gunner takes the other.
     $("tu-bats").hidden = tu.bats.length < 2;
@@ -704,6 +717,8 @@
     }).join("");
     shownSel = -1; showBattery();
     showToggles();
+    $("hud-guns").innerHTML = tu.bats.length > 1 ? tu.bats.map(function (b, i) { return '<button data-i="' + i + '">' + b.gunNo + " " + b.w.short + "</button>"; }).join("") : "";
+    applyView();
     $("tu-comms").innerHTML = "";
     keysHeld = {}; setFireBtn(false);
   }
@@ -749,10 +764,11 @@
   function sizeTurret() {
     var box = $("tu-field"), cv = $("tu-canvas"), dpr = window.devicePixelRatio || 1;
     var side = Math.floor(Math.max(120, Math.min(box.clientWidth, box.clientHeight)));
-    if (side === tuSize && tuCtx) return;
-    tuSize = side;
-    cv.style.width = cv.style.height = side + "px";
-    cv.width = cv.height = Math.round(side * dpr);
+    var w = wideOn() ? Math.floor(Math.max(120, box.clientWidth)) : side, h = wideOn() ? side : side;
+    if (side === tuSize && w === tuW && h === tuH && tuCtx) return;
+    tuSize = side; tuW = w; tuH = h;
+    cv.style.width = w + "px"; cv.style.height = h + "px";
+    cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
     tuCtx = cv.getContext("2d");
     tuCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
@@ -770,8 +786,10 @@
       }
     });
     sizeTurret();
-    (tu.ring ? BL.drawRing : BL.drawTurret)(tuCtx, tuSize, sim, tu, ts);
+    if (tu.ring) BL.drawRing(tuCtx, { w: tuW, h: tuH, wide: wideOn() }, sim, tu, ts);
+    else BL.drawTurret(tuCtx, tuSize, sim, tu, ts);
     showBattery();
+    if (wideOn()) renderHud(tu);
     $("tu-jump").innerHTML = (sim.hasDrive ? "Jump" : "Sortie") + " <b>" + (sim.jumpIndex + 1) + "</b> of " + sim.cfg.jumps + " · <b>" + (enc.name || "") + "</b>";
     setText($("tu-phase"), sim.phase === "arrival" ? (sim.hasDrive ? "Engagement in " : "Launching in ") + Math.ceil(sim.cfg.arrivalSeconds - sim.t) + " s" :
       sim.phase === "countdown" ? "JUMPING IN " + Math.max(1, Math.ceil(sim.jumpAt - sim.t)) : sim.phase === "engage" ? "T+" + mmss(sim.t) : "");
@@ -853,10 +871,35 @@
       "<span>Hits</span><b>" + (g.hits || 0) + " / " + (g.shots || 0) + "</b>" + (ship.crippled ? '<span class="bad">✖ Crew crippled: slow fire</span><b></b>' : "");
   }
 
+  // The wide view's overlay: the gun you hold, hull, shields, jump or recovery, the tally, the
+  // latest comms, and buttons for touch.
+  function renderHud(tu) {
+    var gun = tu.gun(), w = tu.w, cs = tu.callState(), ship = sim.ship, sh = sim.sys("shield"), drive = sim.sys("drive");
+    var st = gun.tripped ? ['<span class="dry">TRIPPED</span>'] : gun.mj < w.shotMJ ? ['<span class="dry">DRY</span>'] : cs.state === "on" ? ['<span class="call">POWER CALLED</span>'] : ['<span class="ready">READY</span>'];
+    setHtml($("hud-gun"), "GUN " + tu.bat().gunNo + " · " + w.short + ' <i class="hud-bar"><i style="width:' + pct(gun.mj / gun.baseMJ) + ';background:var(--charge)"></i></i> <b>' + Math.floor(gun.mj) + "/" + gun.maxMJ + " MJ</b> " + st[0]);
+    $("hud-hull").style.width = pct(ship.hull / ship.hullMax); setText($("hud-hull-val"), Math.max(0, Math.round(ship.hull)) + "/" + ship.hullMax);
+    $("hud-shield").style.width = pct(sh.mj / sh.maxMJ); setText($("hud-shield-val"), Math.round(sh.mj) + "/" + sh.maxMJ);
+    var wi = sim.windowIn();
+    setHtml($("hud-rec"), drive ? "JUMP <b>" + (wi > 0 ? Math.ceil(wi) + " s" : "open") + "</b> · drive <b>" + Math.floor(drive.mj / drive.maxMJ * 100) + "%</b>" : "RECOVERY <b>" + Math.max(0, Math.ceil(wi)) + " s</b>");
+    var g = tu.cur || {};
+    setHtml($("hud-tally"), g.mines ? "Mines <b>" + (g.minesDowned || 0) + "/" + g.mines + "</b>" : "Ships <b>" + (g.kills || 0) + "/" + (g.ships || 0) + "</b> · Torpedoes <b>" + (g.downed || 0) + "/" + (g.torps || 0) + "</b>");
+    Array.prototype.forEach.call($("hud-guns").children, function (b, i) { b.classList.toggle("on", i === tu.sel); });
+    var log = sim.log, icon = { warn: "⚠ ", bad: "✖ ", good: "✔ ", info: "" };
+    setHtml($("hud-comms"), log.slice(-2).map(function (l) { return '<div class="' + l.kind + '">' + icon[l.kind] + esc(l.text) + "</div>"; }).join(""));
+    var ms = tu.mainState && tu.mainState(), mb = $("hud-main");
+    mb.hidden = !ms;
+    if (ms) { mb.disabled = !ms.ready; mb.classList.toggle("ready", ms.ready); setText(mb, ms.tripped ? "MAIN GUN TRIPPED" : ms.ready ? "FIRE MAIN GUN (M)" : "MAIN GUN " + Math.floor(100 * ms.mj / ms.max) + "%"); }
+    $("hud-tubes").hidden = !tu.pt.length;
+    [0, 1].forEach(function (i) { var b = $("hud-pt-" + (i + 1)); b.disabled = !tu.pt[i] || !tu.live(); setText(b, tu.pt[i] ? "LAUNCH " + (i + 1) : "TUBE " + (i + 1) + " EMPTY"); });
+    var cb = $("hud-call");
+    cb.disabled = cs.state === "wait" || !tu.live(); cb.classList.toggle("on", cs.state === "on");
+    setText(cb, cs.state === "on" ? "POWER COMING " + Math.ceil(cs.left) + " s" : cs.state === "wait" ? "CALL AGAIN IN " + Math.ceil(cs.left) + " s" : "CALL FOR POWER (C)");
+  }
+  function setHtml(el, h) { if (el.innerHTML !== h) el.innerHTML = h; }
   function rate(h, s) { return s ? Math.round(100 * h / s) + "%" : "–"; }
   function frac(h, s) { return s ? "(" + h + "/" + s + ")" : ""; }
   function turretActive() { return running && sim && sim.turret && !paused && sim.phase !== "done" && $("ov-grav").hidden; }
-  function setFireBtn(on) { $("btn-tu-fire").classList.toggle("on", !!on); }
+  function setFireBtn(on) { $("btn-tu-fire").classList.toggle("on", !!on); $("hud-fire").classList.toggle("on", !!on); }
   function releaseTurret() { sim.turret.trigger(false); sim.turret.setDir(0); keysHeld = {}; setFireBtn(false); $("tu-aimpad").classList.remove("on"); }
   function keyDir() { return (keysHeld.right ? 1 : 0) - (keysHeld.left ? 1 : 0); }
   // Keys: ← → (A D) slide, Space or ↑ fire while held, C calls for power, P or Esc pauses.
@@ -864,6 +907,7 @@
     if (!$("ov-grav").hidden) { if (down && ev.key === "Enter") $("btn-grav-go").click(); return; }
     var k = ev.key, kl = k.length === 1 ? k.toLowerCase() : k, tu = sim.turret;
     if (down && (kl === "p" || k === "Escape")) { ev.preventDefault(); if (paused) resume(); else pause(); return; }
+    if (down && kl === "w" && !ev.repeat && tu.ring) { ev.preventDefault(); toggleWide(); return; }
     if (paused) { if (down && k === " ") { ev.preventDefault(); resume(); } return; }
     var name = k === "ArrowLeft" || kl === "a" ? "left" : k === "ArrowRight" || kl === "d" ? "right" : k === " " || k === "Spacebar" || k === "ArrowUp" ? "fire" : null;
     if (name) {
@@ -894,10 +938,9 @@
      around the ship, the gun turns along the rim toward that side, staying inside its arc and
      never faster than its drive, firing or not. On the aim pad a finger nudges it instead. */
   var RING_DEG = 300;                     // aim pad: degrees the gun turns for a drag the width of the view
-  function pointRing(ev) {
-    var r = $("tu-canvas").getBoundingClientRect();
-    sim.turret.pointAt((ev.clientX - r.left) / r.width, (ev.clientY - r.top) / r.height);
-  }
+  // The pointer in battle units (the view may be zoomed out, and turned in wide view).
+  function ringPoint(ev) { var r = $("tu-canvas").getBoundingClientRect(); return BL.ringToWorld(ev.clientX - r.left, ev.clientY - r.top); }
+  function pointRing(ev) { var p = ringPoint(ev); sim.turret.pointAt(p.x, p.y); }
   function fieldX(ev) { var r = $("tu-canvas").getBoundingClientRect(); return (ev.clientX - r.left) / r.width; }
   (function wireTurretPointer() {
     var cv = $("tu-canvas"), drags = {};
@@ -924,7 +967,8 @@
       var r = cv.getBoundingClientRect(), x = (ev.clientX - r.left) / r.width, y = (ev.clientY - r.top) / r.height, tu = sim.turret;
       if (tu.bats.length < 2) return -1;
       if (tu.ring) {
-        for (var k = 0; k < tu.bats.length; k++) if (k !== tu.sel && Math.hypot(tu.bats[k].x - x, tu.bats[k].y - y) < 0.05) return k;
+        var wp = ringPoint(ev);
+        for (var k = 0; k < tu.bats.length; k++) if (k !== tu.sel && Math.hypot(tu.bats[k].x - wp.x, tu.bats[k].y - wp.y) < 0.05) return k;
         return -1;
       }
       if (y < BL.GUNNERY.turretY - 0.08) return -1;
@@ -937,8 +981,8 @@
       // button fires once it's on).
       var tu = sim.turret;
       if (turretActive() && tu.ring && settings.clickAim !== false && (ev.pointerType !== "mouse" || ev.button === 0)) {
-        var r = cv.getBoundingClientRect();
-        if (tu.seekAt((ev.clientX - r.left) / r.width, (ev.clientY - r.top) / r.height)) {
+        var sp = ringPoint(ev);
+        if (tu.seekAt(sp.x, sp.y)) {
           if (ev.pointerType === "mouse") { tu.trigger(true); setFireBtn(true); cv.setPointerCapture(ev.pointerId); }
           ev.preventDefault(); return;
         }
@@ -965,15 +1009,21 @@
     pad.addEventListener("pointermove", moveDrag);
     function padEnd(ev) { endDrag(ev); pad.classList.remove("on"); }
     pad.addEventListener("pointerup", padEnd); pad.addEventListener("pointercancel", padEnd);
-    var fire = $("btn-tu-fire");
-    fire.addEventListener("pointerdown", function (ev) {
-      if (!turretActive()) return;
-      sim.turret.trigger(true); setFireBtn(true); fire.setPointerCapture(ev.pointerId); ev.preventDefault();
-    });
     function fireEnd() { if (sim && sim.turret && !keysHeld.fire) { sim.turret.trigger(false); setFireBtn(false); } }
-    fire.addEventListener("pointerup", fireEnd); fire.addEventListener("pointercancel", fireEnd);
-    fire.addEventListener("contextmenu", function (ev) { ev.preventDefault(); });
+    [$("btn-tu-fire"), $("hud-fire")].forEach(function (fire) {
+      fire.addEventListener("pointerdown", function (ev) {
+        if (!turretActive()) return;
+        sim.turret.trigger(true); setFireBtn(true); fire.setPointerCapture(ev.pointerId); ev.preventDefault();
+      });
+      fire.addEventListener("pointerup", fireEnd); fire.addEventListener("pointercancel", fireEnd);
+      fire.addEventListener("contextmenu", function (ev) { ev.preventDefault(); });
+    });
     $("btn-tu-call").addEventListener("click", function () { if (turretActive()) sim.turret.callPower(); });
+    $("hud-call").addEventListener("click", function () { if (turretActive()) sim.turret.callPower(); this.blur(); });
+    $("hud-main").addEventListener("click", function () { if (turretActive() && sim.turret.firesMain) sim.turret.fireMain(); this.blur(); });
+    [1, 2].forEach(function (i) { $("hud-pt-" + i).addEventListener("click", function () { if (turretActive()) sim.turret.launchPT(i - 1); this.blur(); }); });
+    $("hud-guns").addEventListener("click", function (ev) { var b = ev.target.closest("button[data-i]"); if (b && turretActive()) selectBattery(+b.dataset.i); b && b.blur(); });
+    $("btn-tu-view").addEventListener("click", function () { toggleWide(); this.blur(); });
     [1, 2].forEach(function (i) { $("btn-pt-" + i).addEventListener("click", function () { if (turretActive()) sim.turret.launchPT(i - 1); }); });
     $("btn-tu-main").addEventListener("click", function () { if (turretActive() && sim.turret.firesMain) sim.turret.fireMain(); this.blur(); });
     $("btn-tu-pause").onclick = pause;

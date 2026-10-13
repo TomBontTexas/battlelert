@@ -6,7 +6,7 @@
 <meta name="copyright" content="© 2011–2026 Tom Bont. All rights reserved.">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Battlelert</title>
-<link rel="stylesheet" href="css/style.css?b=0d22205d">
+<link rel="stylesheet" href="css/style.css?b=66694c77">
 </head>
 <body>
 
@@ -130,7 +130,7 @@
       <li id="brief-gmain" hidden>The <b>main gun</b> is yours. It points straight off the bow (the gold dashed line, bright when it's charged). Once the engineer has it full, press <b>M</b> or MAIN GUN: the whole charge goes into the first ship on that line, enough to gut most ships. With nothing on the line, the shot is wasted. The pilot swings the bow toward the biggest target, but it won't sit still and slides away from the bow, so be ready when it crosses.</li>
       <li id="brief-gwing" hidden>Your cruiser carries a <b>gunboat squadron</b>. When the engineer fires the launchers, four gunboats fly out of the hangar bays, circle the enemy ships strafing them and shoot down torpedoes that pass close. Your bolts pass them by. The arresters bring them home before the jump; the captain won't jump without them.</li>
       <li id="brief-gmines" hidden>In a <b>minefield</b>, mines drift in toward the ship. Shoot them before they reach the shield: each one that lands hits like a torpedo. When the engines run short of power the ship drifts, and more mines come.</li>
-      <li><b>Mouse or trackpad:</b> point to turn the gun, click a target to swing to it, hold the button to fire. <b>Touch:</b> touch the view to point, or drag on the aim pad; hold FIRE. <b>Keys:</b> ← → turn, Space fires, C calls for power, P pauses.</li>
+      <li><b>Mouse or trackpad:</b> point to turn the gun, click a target to swing to it, hold the button to fire. <b>Touch:</b> touch the view to point, or drag on the aim pad; hold FIRE. <b>Keys:</b> ← → turn, Space fires, C calls for power, W switches to wide view (the battle fills the screen, bow to the right), P pauses.</li>
     </ul>
     <ul class="tight" id="brief-eng">
       <li>The <b>forecast strip</b> at the top shows what the bridge needs in the next 15 seconds. Charge for it before it lands.</li>
@@ -257,6 +257,7 @@
     <span class="hd-item" id="tu-jump"></span>
     <span class="hd-item hd-phase" id="tu-phase"></span>
     <span class="hd-spacer"></span>
+    <button id="btn-tu-view" class="small">Wide view (W)</button>
     <button id="btn-tu-options" class="small">Options</button>
     <button id="btn-tu-pause" class="small">Pause</button>
     <span class="hd-ver">v<span class="app-version"></span></span>
@@ -284,7 +285,26 @@
       <div id="tu-tdmg" class="tu-tdmg"></div>
       <div id="tu-aimpad" class="tu-pad">◀ drag to aim ▶</div>
     </aside>
-    <div class="tu-field" id="tu-field"><canvas id="tu-canvas"></canvas></div>
+    <div class="tu-field" id="tu-field"><canvas id="tu-canvas"></canvas>
+      <!-- Wide view: the side panels give way to this overlay -->
+      <div class="tu-hud" id="tu-hud" hidden>
+        <div class="hud-top">
+          <span class="hud-guns" id="hud-guns"></span>
+          <span id="hud-gun"></span>
+          <span>HULL <i class="hud-bar"><i id="hud-hull" class="hull-fill"></i></i> <b id="hud-hull-val"></b></span>
+          <span>SHIELDS <i class="hud-bar"><i id="hud-shield" class="tu-shield-fill"></i></i> <b id="hud-shield-val"></b></span>
+          <span id="hud-rec"></span>
+          <span id="hud-tally"></span>
+        </div>
+        <div class="hud-bottom" id="hud-comms"></div>
+        <div class="hud-btns">
+          <span class="hud-tubes" id="hud-tubes"><button id="hud-pt-1">LAUNCH 1</button><button id="hud-pt-2">LAUNCH 2</button></span>
+          <button id="hud-main" hidden>MAIN GUN</button>
+          <button id="hud-call">CALL FOR POWER</button>
+          <button id="hud-fire" class="hud-fire">FIRE</button>
+        </div>
+      </div>
+    </div>
     <aside class="panel tu-side">
       <div class="panel-title">SHIP</div>
       <div class="row-label"><span>HULL</span><span id="tu-hull-val"></span></div>
@@ -412,6 +432,7 @@
       <tr><td>Space (or ↑)</td><td>Fire (hold)</td></tr>
       <tr><td>C</td><td>Call for power</td></tr>
       <tr><td>1 / 2</td><td>Launch torpedo 1 or 2 (gunboat), or take Gun 1 or 2 (two guns or more)</td></tr>
+      <tr><td>W</td><td>Switch between standard view and wide view (the battle fills the screen, bow to the right)</td></tr>
       <tr><td>M</td><td>Fire the main gun (light cruiser and up) once it's charged: one heavy shot straight off the bow</td></tr>
       <tr><td>O</td><td>Cycle the standing order of the gun you hold: P point defense, L stop launches, H hunt, F free fire</td></tr>
       <tr><td>P / Esc</td><td>Pause</td></tr>
@@ -450,14 +471,14 @@
 <script src="js/sim.js?b=c41f53b1"></script>
 <script src="js/agents.js?b=781a8ccb"></script>
 <script src="js/gunnery.js?b=ffd194d0"></script>
-<script src="js/ring.js?b=b5270e28"></script>
+<script src="js/ring.js?b=28e9c77d"></script>
 <script src="js/art.js?b=3b0d069a"></script>
 <script src="js/turretview.js?b=a28d1970"></script>
-<script src="js/ringview.js?b=40d88cd2"></script>
+<script src="js/ringview.js?b=b0da0572"></script>
 <script src="js/names.js?b=1469f64a"></script>
 <script src="js/career.js?b=857b8369"></script>
 <script src="js/speech.js?b=82211578"></script>
 <script src="js/audio.js?b=273e5325"></script>
-<script src="js/ui.js?b=9bab8a8c"></script>
+<script src="js/ui.js?b=ab01995f"></script>
 </body>
 </html>

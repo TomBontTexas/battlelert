@@ -421,6 +421,33 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 .tu-fire.on { background: var(--bad); }
 @keyframes jolt { 0% { transform: translate(0, 0); } 15% { transform: translate(-7px, 4px); } 30% { transform: translate(6px, -5px); } 45% { transform: translate(-5px, -3px); } 60% { transform: translate(4px, 4px); } 80% { transform: translate(-2px, 1px); } 100% { transform: translate(0, 0); } }
 #scr-turret.jolt { animation: jolt .45s linear; }
+/* Wide view: the battle fills the screen; an overlay replaces the side panels. */
+#scr-turret.wide .tu-main { grid-template-columns: minmax(0, 1fr); }
+#scr-turret.wide .tu-side { display: none; }
+.tu-hud { position: absolute; inset: 0; pointer-events: none; font-size: 13px; color: var(--muted); }
+.tu-hud[hidden] { display: none; }
+.hud-top { position: absolute; top: 6px; left: 8px; right: 8px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; padding: 5px 10px; background: rgba(3,6,11,.6); border-radius: 6px; }
+.hud-top b { color: var(--text); font-family: var(--mono); font-weight: 400; }
+.hud-top .ready { color: var(--good); } .hud-top .dry { color: var(--bad); } .hud-top .call { color: var(--warn); }
+.hud-bar { display: inline-block; width: 70px; height: 7px; background: rgba(255,255,255,.1); border-radius: 3px; vertical-align: middle; overflow: hidden; }
+.hud-bar > i { display: block; height: 100%; width: 0; }
+.hud-guns { display: flex; gap: 4px; pointer-events: auto; }
+.hud-guns:empty { display: none; }
+.hud-guns button { padding: 2px 7px; font-size: 12px; }
+.hud-guns button.on { border-color: var(--sel); color: var(--sel); }
+.hud-bottom { position: absolute; left: 8px; bottom: 8px; right: 180px; padding: 4px 10px; background: rgba(3,6,11,.6); border-radius: 6px; }
+.hud-bottom:empty { display: none; }
+.hud-bottom .warn { color: var(--warn); } .hud-bottom .bad { color: var(--bad); } .hud-bottom .good { color: var(--good); }
+.hud-btns { position: absolute; right: 8px; bottom: 8px; width: 160px; display: flex; flex-direction: column; gap: 6px; pointer-events: auto; }
+.hud-btns button { padding: 8px 6px; font-size: 13px; background: rgba(24,34,45,.85); touch-action: manipulation; }
+.hud-btns button[hidden] { display: none; }
+.hud-btns button.ready { border-color: #ffd666; color: #ffd666; }
+.hud-btns button.on { border-color: var(--warn); color: var(--warn); }
+.hud-tubes { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.hud-tubes[hidden] { display: none; }
+.hud-tubes button { padding: 6px 2px; font-size: 12px; }
+.hud-fire { padding: 16px 6px !important; font-size: 18px !important; font-weight: 800; letter-spacing: .1em; color: #fff; background: rgba(255,107,90,.55) !important; border-color: var(--bad); }
+.hud-fire.on { background: rgba(255,107,90,.9) !important; }
 @media (prefers-reduced-motion: reduce) { #scr-turret.jolt { animation: none; } }
 
 @keyframes blink { 50% { opacity: .35; } }
