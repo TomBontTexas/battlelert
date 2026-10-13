@@ -518,7 +518,7 @@
   BL.scoreGunner = function (m, outcome) {
     var r = BL.score(m, outcome), st = m.turret.stats;
     var accuracy = st.shots ? st.hits / st.shots : 0;
-    var threats = st.ships + st.torps ? (st.kills + st.downed) / (st.ships + st.torps) : 0;
+    var all = st.ships + st.torps + (st.mines || 0), threats = all ? (st.kills + st.downed + (st.minesDowned || 0)) / all : 0;
     r.station = "gunner";
     r.aggression = st.liveTime ? Math.min(1, st.firingTime / st.liveTime * 1.5) : 0;
     r.engineer = m.turret.engineer;
@@ -531,6 +531,7 @@
       shots: st.shots, hits: st.hits, accuracyPct: Math.round(accuracy * 100), ships: st.ships, kills: st.kills,
       torps: st.torps, downed: st.downed, hullTorps: st.hullTorps, damage: Math.round(st.damage), dryTime: Math.round(st.dryTime), calls: st.calls,
       ptFired: st.ptFired, ptHits: st.ptHits, ptDowned: st.ptDowned, ptMissed: st.ptMissed,
+      mines: st.mines || 0, minesDowned: st.minesDowned || 0, mainShots: st.mainShots || 0, mainHits: st.mainHits || 0,
       guns: m.turret.bats.map(function (b) { return { gun: b.gunNo, weapon: b.weaponId, shots: b.shots, hits: b.hits, aiShots: b.aiShots, aiHits: b.aiHits }; }),
       jumps: m.turret.jumps.map(function (j) { return j ? Object.assign({}, j) : null; })
     };
@@ -556,6 +557,7 @@
       var held = tu.bat(), keep = held.order; held.order = "free"; held.aiNext = 0;
       tu.aiBattery(held); held.order = keep;
       this.launchTorps(tu);
+      if (tu.firesMain && tu.mainState().ready && tu.mainLine()) tu.fireMain();
       return;
     }
     var w = tu.w, G = tu.G, top = G.turretY - tu.reach(), target = null, tx = tu.x, best = 1e9;

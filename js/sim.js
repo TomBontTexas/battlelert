@@ -397,7 +397,7 @@
   };
 
   Mission.prototype.fire = function (e) {
-    if (e.type === "salvo") this.salvoHits(e);
+    if (e.type === "salvo" || e.type === "mine") this.salvoHits(e);
     else if (e.type === "strike") this.strikeHits(e);
     else if (e.type === "burn") {
       this.endBurn();
@@ -634,7 +634,8 @@
         ship.starved = true;
         if (this.curBurn) this.curBurn.short += dt;
         if (!this.starvedSaid) { this.starvedSaid = true; this.chat("starved", null, "bad"); }
-        if (this.rng.chance(enc.mines.strikePerSec * Math.min(1, short / Math.max(1, ship.gWant)) * dt)) this.mineStrike(enc);
+        // (At the gunner station the mines are seen and shot instead; starving brings more of them.)
+        if (!(this.turret && this.turret.ring) && this.rng.chance(enc.mines.strikePerSec * Math.min(1, short / Math.max(1, ship.gWant)) * dt)) this.mineStrike(enc);
       } else if (short < 0.05) this.starvedSaid = false;
     }
     ship.engineMW = ship.g * perG;
@@ -661,7 +662,8 @@
      salvos and strafes the enemy) and the arresters while it is out (full = recovered). */
   Mission.prototype.runCalls = function (dt) {
     var t = this.t, list = this.ship.systems, hgd = this.data.hangar;
-    var mg = this.sys("main"), tw = mg && !mg.tripped && mg.mj >= mg.maxMJ - 0.5 ? this.liveWave() : null;
+    // At the gunner station (ring view) the gunner fires the main gun; see ring.js.
+    var mg = this.sys("main"), tw = mg && !mg.tripped && mg.mj >= mg.maxMJ - 0.5 && !(this.turret && this.turret.firesMain) ? this.liveWave() : null;
     if (tw) {
       var dmg = mg.mj * this.data.mainGun.dmgPerMJ;
       mg.mj = 0;

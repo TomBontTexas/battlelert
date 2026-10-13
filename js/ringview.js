@@ -11,7 +11,7 @@
 
   BL.drawRing = function (c, S, m, tu, now) {
     var R = tu.R, t = m.totalT, sprite = BL.sprite;
-    if (!stars) { stars = []; for (var i = 0; i < 160; i++) stars.push({ x: Math.random(), y: Math.random(), z: 0.25 + Math.random() * 0.75 }); }
+    if (!stars) { stars = []; for (var i = 0; i < 260; i++) stars.push({ x: Math.random(), y: Math.random(), z: 0.25 + Math.random() * 0.75 }); }
     c.save();
     c.fillStyle = "#03060b"; c.fillRect(0, 0, S, S);
     // Shake: a jolt for a shield hit, a hard shake for a hull hit.
@@ -25,11 +25,14 @@
     if (lastShield) shake = Math.max(shake, Math.max(0, 0.3 - (t - lastShield.at)) * 34);
     if (shake > 0) c.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
     var live = tu.live();
+    // Stars stream past; when the pilot turns the ship they swing around the center with it.
+    c.save(); c.translate(S / 2, S / 2); c.rotate(-(tu.heading || 0) * Math.PI / 180); c.translate(-S * 0.75, -S * 0.75);
     stars.forEach(function (st) {
       var y = (st.y + (live ? now * 0.00004 * st.z : 0)) % 1;
       c.fillStyle = "rgba(200,220,255," + (0.25 + st.z * 0.6).toFixed(2) + ")";
-      c.fillRect(st.x * S, y * S, st.z * 1.8, st.z * 1.8 + (live ? st.z * 2 : 0));
+      c.fillRect(st.x * S * 1.5, y * S * 1.5, st.z * 1.8, st.z * 1.8 + (live ? st.z * 2 : 0));
     });
+    c.restore();
     c.scale(S, S);
     c.lineWidth = 1.5 / S;
     var sel = tu.bat();
@@ -83,9 +86,10 @@
       }
     });
 
-    // Torpedoes heading for the shield.
+    // Torpedoes heading for the shield (and mines drifting in).
     var tsp = sprite("torpedo");
     tu.torps.forEach(function (tp) {
+      if (tp.mine) { drawMine(c, S, tp, t, m); return; }
       var dx = tp.x1 - tp.x0, dy = tp.y1 - tp.y0, len = Math.hypot(dx, dy) || 1, ux = dx / len, uy = dy / len;
       c.strokeStyle = "rgba(255,90,70,0.25)"; c.setLineDash([0.006, 0.01]);
       c.beginPath(); c.moveTo(tp.x, tp.y); c.lineTo(tp.x1, tp.y1); c.stroke(); c.setLineDash([]);
@@ -167,6 +171,22 @@
       c.restore();
     });
 
+    // The main gun's line straight off the bow: bright when it's charged, and its shot.
+    var ms = tu.mainState && tu.mainState();
+    if (ms) {
+      var bow = tu.rim(0);
+      c.strokeStyle = ms.ready ? "rgba(255,214,102," + (0.55 + 0.3 * Math.sin(t * 6)).toFixed(2) + ")" : "rgba(255,214,102,0.14)";
+      c.lineWidth = (ms.ready ? 2 : 1.2) / S; c.setLineDash([0.012, 0.01]);
+      c.beginPath(); c.moveTo(bow.x, bow.y - 0.01); c.lineTo(bow.x, 0); c.stroke(); c.setLineDash([]); c.lineWidth = 1.5 / S;
+      var mf = tu.mainFx, ma = mf ? t - mf.at : 9;
+      if (ma < 0.45) {
+        var al = 1 - ma / 0.45;
+        c.strokeStyle = "rgba(255,240,190," + al.toFixed(2) + ")"; c.lineWidth = (10 * al + 2) / S;
+        c.beginPath(); c.moveTo(mf.x, mf.y0); c.lineTo(mf.x, mf.y1); c.stroke();
+        c.strokeStyle = "rgba(255,255,255," + al.toFixed(2) + ")"; c.lineWidth = 3 / S; c.stroke(); c.lineWidth = 1.5 / S;
+      }
+    }
+
     // Your gun's line of fire, out to its reach.
     var ready2 = tu.gun().mj >= sel.w.shotMJ, ex = sel.x + sel.nx * reach, ey = sel.y + sel.ny * reach;
     c.strokeStyle = ready2 ? "rgba(123,224,166,0.8)" : "rgba(255,107,90,0.7)";
@@ -180,6 +200,24 @@
     }
     c.restore();
   };
+
+  // A drifting mine: a dark spiked ball with a blinking light, its path a faint grey line.
+  function drawMine(c, S, tp, t, m) {
+    c.strokeStyle = "rgba(180,190,200,0.18)"; c.setLineDash([0.006, 0.012]);
+    c.beginPath(); c.moveTo(tp.x, tp.y); c.lineTo(tp.x1, tp.y1); c.stroke(); c.setLineDash([]);
+    var r = 0.013, sp = tp.spin + t * 0.8;
+    c.save(); c.translate(tp.x, tp.y); c.rotate(sp);
+    c.strokeStyle = "#8a96a3"; c.lineWidth = 2.5 / S;
+    for (var k = 0; k < 8; k++) { var a = k * Math.PI / 4; c.beginPath(); c.moveTo(Math.cos(a) * r * 0.8, Math.sin(a) * r * 0.8); c.lineTo(Math.cos(a) * r * 1.55, Math.sin(a) * r * 1.55); c.stroke(); }
+    var g = c.createRadialGradient(-r * 0.3, -r * 0.3, 0, 0, 0, r);
+    g.addColorStop(0, "#9aa6b2"); g.addColorStop(1, "#2a323a");
+    c.fillStyle = g; c.beginPath(); c.arc(0, 0, r, 0, Math.PI * 2); c.fill();
+    c.restore();
+    c.fillStyle = Math.floor(t * 3 + tp.spin) % 2 ? "rgba(255,80,60,0.95)" : "rgba(255,80,60,0.25)";
+    c.beginPath(); c.arc(tp.x, tp.y, 0.004, 0, Math.PI * 2); c.fill();
+    c.lineWidth = 1.5 / S;
+    if (tp.t1 - m.t < 1.2) { c.strokeStyle = Math.floor(t * 8) % 2 ? "rgba(255,90,70,0.9)" : "rgba(255,90,70,0.3)"; c.beginPath(); c.arc(tp.x1, tp.y1, 0.02, 0, Math.PI * 2); c.stroke(); }
+  }
 
   // The oval shield: brighter with more charge, flickering when low; flares, ripples and wobbles
   // where a torpedo strikes; cracks and floods the view red on a hull hit.

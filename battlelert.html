@@ -6,7 +6,7 @@
 <meta name="copyright" content="© 2011–2026 Tom Bont. All rights reserved.">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Battlelert</title>
-<link rel="stylesheet" href="css/style.css?b=3a553ebd">
+<link rel="stylesheet" href="css/style.css?b=dc6f3722">
 </head>
 <body>
 
@@ -15,7 +15,7 @@
   <div class="title-card">
     <div class="logo">BATTLELERT</div>
     <div class="subtitle">Main Engineering</div>
-    <p class="phase-note">The engineer path is open on every class; the gunner path runs from the gunboat to the destroyer escort.</p>
+    <p class="phase-note">The engineer path is open on every class; the gunner path runs from the gunboat to the light cruiser.</p>
     <div class="menu">
       <button id="btn-continue" class="big primary" hidden>Continue career</button>
       <button id="btn-enlist" class="big">Enlist (new career)</button>
@@ -122,12 +122,14 @@
       <li id="brief-engineer"></li>
       <li id="brief-guns"></li>
       <li id="brief-orders" hidden></li>
-      <li><b>Slide the turret</b> left and right and fire straight up. A bolt hits the first ship or torpedo it reaches; it flies only as far as the gun's range line.</li>
+      <li>Each gun <b>fires straight out</b> from the shield's rim. A bolt hits the first ship or torpedo it reaches. Rail and ion bolts stop at the gun's range line (dashed); pulse bolts fly on past it but hit far weaker.</li>
       <li>Enemy salvos come down as <b>torpedoes</b>. The shields take them, but you can shoot one down before it lands. Killing a ship stops the torpedoes it hasn't fired yet.</li>
-      <li>Your gun sits outside the shields. A torpedo that gets through can damage its charger and its turret: it slides slower, fires slower or loses range. Damage control repairs half of it between sorties.</li>
+      <li>Your gun sits outside the shields. A torpedo that gets through can damage its charger and its turret: it turns slower, fires slower or loses range. Damage control repairs half of it between sorties.</li>
       <li id="brief-pt">Your gunboat carries <b>two torpedoes</b>: LAUNCH 1 and LAUNCH 2 (keys 1 and 2). They need no power and the carrier reloads them every sortie. Each one is slow and homes on the nearest frigate or siege battery; the target can dodge it or shoot it down, but a hit does more damage than anything else you carry.</li>
       <li><b>Every shot drains your gun's capacitor.</b> Hold FIRE and the gun fires as fast as it can while the charge lasts. <b>Call for power</b> and the engineer pours charge into your gun for a few seconds.</li>
-      <li><b>Touch:</b> drag on the view or the aim pad to slide; hold FIRE. <b>Mouse:</b> move to aim, hold the button to fire. <b>Keys:</b> ← → slide, Space fires, C calls for power, P pauses.</li>
+      <li id="brief-gmain" hidden>The <b>main gun</b> is yours. It points straight off the bow (the gold dashed line, bright when it's charged). Once the engineer has it full, press <b>M</b> or MAIN GUN: the whole charge goes into the first ship on that line, enough to gut most ships. With nothing on the line, the shot is wasted. The pilot swings the bow toward the biggest target, but it won't sit still and slides away from the bow, so be ready when it crosses.</li>
+      <li id="brief-gmines" hidden>In a <b>minefield</b>, mines drift in toward the ship. Shoot them before they reach the shield: each one that lands hits like a torpedo. When the engines run short of power the ship drifts, and more mines come.</li>
+      <li><b>Mouse or trackpad:</b> point to turn the gun, click a target to swing to it, hold the button to fire. <b>Touch:</b> touch the view to point, or drag on the aim pad; hold FIRE. <b>Keys:</b> ← → turn, Space fires, C calls for power, P pauses.</li>
     </ul>
     <ul class="tight" id="brief-eng">
       <li>The <b>forecast strip</b> at the top shows what the bridge needs in the next 15 seconds. Charge for it before it lands.</li>
@@ -298,6 +300,7 @@
         <button id="btn-pt-1" class="tu-pt">LAUNCH 1 <small>(1)</small></button>
         <button id="btn-pt-2" class="tu-pt">LAUNCH 2 <small>(2)</small></button>
       </div>
+      <button id="btn-tu-main" class="tu-main" hidden>MAIN GUN <small>(M)</small><i class="tu-main-bar"><i id="tu-main-fill"></i></i></button>
       <button id="btn-tu-call" class="tu-call">CALL FOR POWER <small>(C)</small></button>
       <button id="btn-tu-fire" class="tu-fire">FIRE</button>
     </aside>
@@ -408,6 +411,7 @@
       <tr><td>Space (or ↑)</td><td>Fire (hold)</td></tr>
       <tr><td>C</td><td>Call for power</td></tr>
       <tr><td>1 / 2</td><td>Launch torpedo 1 or 2 (gunboat), or take Gun 1 or 2 (two guns or more)</td></tr>
+      <tr><td>M</td><td>Fire the main gun (light cruiser and up) once it's charged: one heavy shot straight off the bow</td></tr>
       <tr><td>O</td><td>Cycle the standing order of the gun you hold: D defend, S stop launches, H hunt, F free fire</td></tr>
       <tr><td>P / Esc</td><td>Pause</td></tr>
       <tr><td>Mouse</td><td>The gun follows the pointer around the ship; click a ship or torpedo to swing to it; hold the button to fire</td></tr>
@@ -441,18 +445,18 @@
 
 <script src="version.js?b=a97d0349"></script>
 <script src="update-banner.js?b=ec7860dd"></script>
-<script src="js/data.js?b=5b7c1e8c"></script>
-<script src="js/sim.js?b=c23a5ff2"></script>
+<script src="js/data.js?b=87ef8cc3"></script>
+<script src="js/sim.js?b=d3db1e1f"></script>
 <script src="js/agents.js?b=781a8ccb"></script>
-<script src="js/gunnery.js?b=756badfc"></script>
-<script src="js/ring.js?b=bf4f8dad"></script>
+<script src="js/gunnery.js?b=6254534a"></script>
+<script src="js/ring.js?b=28f83eb3"></script>
 <script src="js/art.js?b=3b0d069a"></script>
 <script src="js/turretview.js?b=a28d1970"></script>
-<script src="js/ringview.js?b=17f36b95"></script>
+<script src="js/ringview.js?b=e4083b75"></script>
 <script src="js/names.js?b=21429dc4"></script>
-<script src="js/career.js?b=3e20dc97"></script>
+<script src="js/career.js?b=33e9068f"></script>
 <script src="js/speech.js?b=82211578"></script>
 <script src="js/audio.js?b=273e5325"></script>
-<script src="js/ui.js?b=a9fb28e5"></script>
+<script src="js/ui.js?b=0a83daad"></script>
 </body>
 </html>

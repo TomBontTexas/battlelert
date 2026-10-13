@@ -328,7 +328,11 @@
       tests: "Keeping engines fed",
       firstWave: [0, 0], waveEvery: [999, 999],
       burns: { every: [7, 11], g: [6, 8], duration: [6, 9], warning: 6 },
-      mines: { strikePerSec: 0.5, mj: [90, 140], engineMult: 2 },   // weaving takes twice the engine power
+      mines: { strikePerSec: 0.5, mj: [90, 140], engineMult: 2,     // weaving takes twice the engine power
+               // At the gunner station the mines are seen: one drifts in every `every` s (twice as
+               // often while the engines are starved), `drift` fields/s; one that reaches the shield
+               // hits like a torpedo of mj x the class's threat dmg. No random strikes there.
+               gunner: { every: [1.8, 2.8], drift: [0.06, 0.09], mj: [45, 70], starvedMult: 2 } },
       windowScale: 0.7,                // the captain wants out: the jump window comes sooner
       surpriseChance: 0
     }
@@ -362,7 +366,8 @@
     call: { seconds: 6, cooldown: 4 }, // CALL FOR POWER: rapid-fire request length, wait before the next
     // What each class's batteries carry at the gunner station, Gun 1 first. With two or more,
     // the player aims one and an AI gunner works the others; turrets share one rail and pass freely.
-    loadout: { gunboat: ["pulse"], picket: ["rail"], destroyerEscort: ["pulse", "rail"], destroyer: ["rail", "pulse", "rail"] },
+    loadout: { gunboat: ["pulse"], picket: ["rail"], destroyerEscort: ["pulse", "rail"], destroyer: ["rail", "pulse", "rail"],
+               lightCruiser: ["rail", "rail", "pulse", "pulse"] },
     // Ring view (every class): the ship in the center inside an oval shield (cx, cy, rx, ry);
     // guns ride its rim inside their arcs ([center bearing, half width], 0 = ahead, clockwise).
     // reach = how far a bolt flies from the rim; traverse = degrees per second along the rim;
@@ -384,7 +389,14 @@
         destroyerEscort: { arcs: [[0, 100, 0], [180, 100, 180]], arcNames: ["on the bow", "on the stern"],
                            view: { shipH: 0.165, rx: 0.07, ry: 0.12, gunSize: 0.042, pull: 0.12 } },
         destroyer: { arcs: [[0, 100, 0], [0, 180, 90], [180, 100, 180]], arcNames: ["on the bow", "amidships", "on the stern"],
-                     view: { shipH: 0.2, rx: 0.085, ry: 0.145, gunSize: 0.045, pull: 0.1 } }
+                     view: { shipH: 0.2, rx: 0.085, ry: 0.145, gunSize: 0.045, pull: 0.1 } },
+        // pilot (main gun ships): the AI pilot turns the ship up to `turn` degrees per second to
+        // put the bow on the big target; that target slides away at `evade` degrees per second
+        // while it's within `dodge` degrees of the bow.
+        lightCruiser: { arcs: [[-90, 100, -90], [90, 100, 90], [0, 180, -150], [0, 180, 150]],
+                        arcNames: ["to port", "to starboard", "aft, port side", "aft, starboard side"],
+                        view: { shipH: 0.255, rx: 0.112, ry: 0.185, gunSize: 0.048, pull: 0.065 },
+                        pilot: { turn: 10, evade: 5, dodge: 30 } }
       }
     },
     aiGunner: 0.75,                    // skill of the AI gunner on the batteries you aren't aiming
@@ -466,6 +478,12 @@
     killedOther: ["Tactical: {enemy} destroyed.", "Tactical: {enemy} breaking up."],
     mainFired:   ["Gunnery: main gun fired! Direct hit.", "Gunnery: main gun away! {enemy} is hurting.", "Gunnery: main gun on target. Keep it coming, Engineering!"],
     mainKill:    ["Gunnery: main gun fired! {enemy} gutted.", "Bridge: main gun on target. Scratch one {enemy}."],
+    // The main gun at the gunner station: you fire it.
+    mainReady:   ["Engineering: main gun's charged. Your shot, Gunnery.", "Bridge: main gun ready. Wait for the bow to come on.", "Helm: main gun's up. I'm bringing her around."],
+    mainShotHit: ["Bridge: main gun hit! The {enemy} is hurting.", "Tactical: direct hit on the {enemy}!"],
+    mainShotKill:["Bridge: main gun on target. Scratch one {enemy}!", "Tactical: {enemy} gutted. Beautiful shot."],
+    mainShotMiss:["Bridge: main gun missed! Nothing on the bow.", "Tactical: clean miss. That's a minute of charge gone."],
+    mineDown:    ["Tactical: mine destroyed.", "Helm: thanks, Gunnery. That one was close.", "Tactical: mine cleared."],
     launchCall:  ["Flight deck: squadron launch in {t} s. Charge the launchers.", "Bridge: launching gunboats in {t} seconds. Launchers must be full.", "Flight deck: gunboats to launch in {t}. Need full launchers."],
     launched:    ["Flight deck: squadron away!", "Flight deck: gunboats launched. They'll screen us."],
     launchMissed:["Flight deck: launchers weren't charged. Launch scrubbed.", "Bridge: no launch, Engineering. The launchers were short."],

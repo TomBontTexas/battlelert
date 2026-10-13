@@ -130,6 +130,8 @@
     if (gunner) {
       var en = sim.turret.engineer;
       $("brief-pt").hidden = !sim.data.torpedoes;
+      $("brief-gmain").hidden = !sim.turret.firesMain;
+      $("brief-gmines").hidden = sim.route.indexOf("minefield") < 0;
       var bats = sim.turret.bats;
       if (sim.turret.ring) $("brief-guns").innerHTML = "Your ship sits in the middle of the screen inside its oval shield, and enemies come in from every side (mostly ahead and on the flanks). " +
         (bats.length > 1 ? "Your guns ride the shield's rim, each inside its own arc, and fire straight out: " : "Your gun rides the shield's rim and fires straight out: ") +
@@ -692,7 +694,7 @@
     $("tu-station").textContent = "Gunnery · " + (job.test ? sim.data.className : job.ship + " (" + sim.data.className + ")") + " · tech level " + sim.data.tl;
     $("tu-rec-label").textContent = sim.hasDrive ? "JUMP" : "RECOVERY";
     lastJolt = 0;
-    $("tu-keys").textContent = (tu.ring ? "→ clockwise · ← counterclockwise" : "← → slide") + " · Space fire (hold) · " + (tu.bats.length > 1 ? "1–" + tu.bats.length + " switch guns · O orders · " : sim.data.torpedoes ? "1 2 torpedoes · " : "") +
+    $("tu-keys").textContent = (tu.ring ? "→ clockwise · ← counterclockwise" : "← → slide") + " · Space fire (hold) · " + (tu.firesMain ? "M main gun · " : "") + (tu.bats.length > 1 ? "1–" + tu.bats.length + " switch guns · O orders · " : sim.data.torpedoes ? "1 2 torpedoes · " : "") +
       "C call for power · P pause · " + (tu.ring ? "Mouse or trackpad: the gun follows the pointer; click a target to swing to it; hold button to fire · Touch: touch the view to point, hold FIRE" : "Mouse: move to aim, hold button to fire · Touch: drag to aim, hold FIRE");
     // Battery buttons (two or more guns): tap to take that gun; the AI gunner takes the other.
     $("tu-bats").hidden = tu.bats.length < 2;
@@ -815,6 +817,14 @@
       b.disabled = !loaded || !tu.live();
       b.firstChild.nodeValue = loaded ? "LAUNCH " + (i + 1) + " " : "TUBE " + (i + 1) + " EMPTY ";
     });
+    var ms = tu.mainState && tu.mainState(), mb = $("btn-tu-main");
+    mb.hidden = !ms;
+    if (ms) {
+      mb.disabled = !ms.ready;
+      setCls(mb, "tu-main" + (ms.ready ? " ready" : ""));
+      mb.firstChild.nodeValue = ms.tripped ? "MAIN GUN TRIPPED " : ms.ready ? "FIRE MAIN GUN " : "MAIN GUN " + Math.floor(100 * ms.mj / ms.max) + "% ";
+      $("tu-main-fill").style.width = pct(ms.mj / ms.max);
+    }
     var cb = $("btn-tu-call");
     cb.disabled = cs.state === "wait" || !tu.live();
     setCls(cb, "tu-call" + (cs.state === "on" ? " on" : ""));
@@ -836,8 +846,10 @@
       $("tu-rec").style.width = pct(sim.t / sim.windowAt());
     }
     var g = tu.cur || {};
-    $("tu-tally").innerHTML = "<span>Ships destroyed</span><b>" + (g.kills || 0) + " / " + (g.ships || 0) + "</b><span>Torpedoes shot down</span><b>" + (g.downed || 0) + " / " + (g.torps || 0) +
-      "</b><span>Hits</span><b>" + (g.hits || 0) + " / " + (g.shots || 0) + "</b>" + (ship.crippled ? '<span class="bad">✖ Crew crippled: slow fire</span><b></b>' : "");
+    $("tu-tally").innerHTML = (g.mines ? "<span>Mines shot down</span><b>" + (g.minesDowned || 0) + " / " + g.mines + "</b>"
+      : "<span>Ships destroyed</span><b>" + (g.kills || 0) + " / " + (g.ships || 0) + "</b><span>Torpedoes shot down</span><b>" + (g.downed || 0) + " / " + (g.torps || 0) + "</b>") +
+      (g.mainShots ? "<span>Main gun hits</span><b>" + g.mainHits + " / " + g.mainShots + "</b>" : "") +
+      "<span>Hits</span><b>" + (g.hits || 0) + " / " + (g.shots || 0) + "</b>" + (ship.crippled ? '<span class="bad">✖ Crew crippled: slow fire</span><b></b>' : "");
   }
 
   function rate(h, s) { return s ? Math.round(100 * h / s) + "%" : "–"; }
@@ -861,6 +873,7 @@
       return;
     }
     if (down && kl === "c" && turretActive()) { ev.preventDefault(); tu.callPower(); }
+    if (down && kl === "m" && turretActive() && tu.firesMain) { ev.preventDefault(); tu.fireMain(); }
     // O: change the standing order of the gun the AI gunner has (the first one you aren't aiming).
     // O: cycle the standing order of the gun you hold (the AI follows it once you switch away).
     if (down && kl === "o" && turretActive() && tu.bats.length > 1) { ev.preventDefault(); cycleOrder(tu.sel); }
@@ -961,6 +974,7 @@
     fire.addEventListener("contextmenu", function (ev) { ev.preventDefault(); });
     $("btn-tu-call").addEventListener("click", function () { if (turretActive()) sim.turret.callPower(); });
     [1, 2].forEach(function (i) { $("btn-pt-" + i).addEventListener("click", function () { if (turretActive()) sim.turret.launchPT(i - 1); }); });
+    $("btn-tu-main").addEventListener("click", function () { if (turretActive() && sim.turret.firesMain) sim.turret.fireMain(); this.blur(); });
     $("btn-tu-pause").onclick = pause;
     $("btn-tu-options").onclick = openOptions;
   })();
@@ -993,6 +1007,8 @@
     return "<p>Fighting has stopped. " + (sim.hasDrive ? "The ship is in GravSpace." : "The carrier has you on deck and is carrying you through GravSpace.") + "</p><ul class='grav-list'>" +
       "<li>Enemy ships destroyed: " + g.kills + " of " + g.ships + "</li>" +
       "<li>Torpedoes shot down: " + g.downed + " of " + g.torps + "</li>" +
+      (g.mines ? "<li>Mines shot down: " + g.minesDowned + " of " + g.mines + "</li>" : "") +
+      (g.mainShots ? "<li>Main gun: " + g.mainHits + " hits of " + g.mainShots + " shots</li>" : "") +
       (g.ptFired ? "<li>Our torpedoes: " + g.ptHits + " hits of " + g.ptFired + " launched. Both tubes are reloaded.</li>" : "") +
       "<li>Hits: " + g.hits + " of " + g.shots + " shots" + (g.shots ? " (" + Math.round(100 * g.hits / g.shots) + "%)" : "") + "</li>" +
       "<li>Torpedoes stopped by shields: " + js.shielded + " of " + js.salvos + "</li>" +
@@ -1022,7 +1038,9 @@
   // What the gunner should expect from an encounter, and which of their guns has the edge.
   function gunnerTip(encId) {
     var look = BL.GUNNERY.looks[encId] || {}, bats = sim.turret.bats;
-    var good = bats.filter(function (b) { return b.w.best.indexOf(encId) >= 0; }).map(function (b) { return b.w.name.toLowerCase(); });
+    if (encId === "minefield") return "Mines drift in toward the ship: shoot them before they reach the shield. One hit from any gun kills a mine.";
+    var good = bats.filter(function (b) { return b.w.best.indexOf(encId) >= 0; }).map(function (b) { return b.w.name.toLowerCase(); })
+      .filter(function (n, i, a) { return a.indexOf(n) === i; });
     var gun = bats.length === 1 ? "Your " + bats[0].w.name.toLowerCase() : "None of your guns";
     return (look.ship ? "Expect " + BL.plural(look.ship) + ": " + look.what + ". " : "") +
       (good.length ? "Your " + good.join(" and ") + " does extra damage to them." : gun + (bats.length === 1 ? " gets" : " get") + " no bonus against them.");
@@ -1116,6 +1134,8 @@
       ["Hull lost", d.hullLost],
       ["Damage reports", r.damage.length]
     ]);
+    if (g.mines) rows.push(["Mines shot down", g.minesDowned + " / " + g.mines]);
+    if (g.mainShots) rows.push(["Main gun", g.mainHits + " hits of " + g.mainShots + " shots"]);
     if (r.classId === "gunboat") rows.push(["Torpedoes", g.ptFired ? g.ptHits + " hits of " + g.ptFired + " launched (" + g.ptDowned + " shot down, " + g.ptMissed + " missed)" : "none launched"]);
     $("db-detail").innerHTML = rows.map(function (x) { return "<div><span>" + x[0] + ":</span> " + x[1] + "</div>"; }).join("");
     $("db-career").hidden = !report;
@@ -1335,7 +1355,7 @@
       shownJobs = BL.career.offers(career, station);
       $("offers-title").textContent = who + " jobs";
       $("offers-lede").textContent = (station === "gunner"
-        ? "Postings for gunners at your level. Each lists the ship's guns and names the engineer who'll run your power. The gunner station is built up to the destroyer escort so far."
+        ? "Postings for gunners at your level. Each lists the ship's guns and names the engineer who'll run your power. The gunner station is built up to the light cruiser so far."
         : "Postings for engineers at your level. Lower tech levels are harder (smaller reactor and capacitors, weaker guns) and earn more reputation.") +
         (q && BL.career.built(station, q + 1) ? " There's always a tech-level-1 posting for your class and for the class above it." : " There's always a tech-level-1 posting.");
     } else {

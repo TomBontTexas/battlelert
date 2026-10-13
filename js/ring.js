@@ -25,10 +25,21 @@
       b.rel = b.aimRel = a[2] === undefined ? 0 : norm(a[2] - a[0]);
       self.placeBattery(b);
     });
+    this.pilot = cls.pilot || null;            // main gun ships: the AI pilot turns the bow onto the big target
+    this.heading = 0;                          // degrees the ship has turned (the starfield turns with it)
+    this.firesMain = !!m.sys("main");          // the main gun is yours: one heavy shot straight off the bow
+    this.mainFx = null; this.mainWasReady = false; this.nextMineAt = Infinity;
+    this.stats.mines = 0; this.stats.minesDowned = 0; this.stats.mainShots = 0; this.stats.mainHits = 0;
   }
   RingTurret.prototype = Object.create(BL.Turret.prototype);
   RingTurret.prototype.constructor = RingTurret;
   BL.RingTurret = RingTurret;
+  RingTurret.prototype.reset = function () {
+    BL.Turret.prototype.reset.call(this);
+    this.cur.mines = 0; this.cur.minesDowned = 0; this.cur.mainShots = 0; this.cur.mainHits = 0;
+    this.nextMineAt = this.m.cfg.arrivalSeconds + 2; this.pilotTarget = null; this.mainFx = null;
+  };
+  function count(self, key) { self.stats[key]++; if (self.cur) self.cur[key]++; }
 
   /* ------------------------------------------------------------- Geometry */
   // Point on the shield's rim at bearing phi, and the outward direction a gun there fires in.
@@ -123,6 +134,7 @@
       if (s.state !== "leave" && !s.dead && !m.waves.some(function (w) { return w.id === s.wave; })) s.state = "leave";
     });
     this.bats.forEach(function (b, i) { if (i !== self.sel) self.aiBattery(b); });
+    this.steer(dt);
     // Turn each gun toward its aim along its arc, never faster than its drive.
     var held = this.bat();
     if (held.seek) this.trackSeek(held);
@@ -138,6 +150,10 @@
     if (this.live() && m.phase !== "arrival") { this.stats.liveTime += dt; if (this.firing) this.stats.firingTime += dt; }
     this.moveShips(dt);
     this.launchTorpedoes();
+    this.dropMines();
+    var ms = this.mainState();
+    if (ms && ms.ready && !this.mainWasReady) m.chat("mainReady", null, "good");
+    this.mainWasReady = !!(ms && ms.ready);
     this.ships.forEach(function (s) { s.chargeAt = 0; });
     m.events.forEach(function (e) {
       if ((e.type !== "salvo" && e.type !== "strike") || e.done || e.torp || !e.announced || !e.visible) return;
@@ -152,16 +168,112 @@
     this.effects = this.effects.filter(function (f) { return now - f.at < 1.6; });
   };
 
+  /* ------------------------------------------------------------ The pilot
+     On a ship with a main gun the AI pilot swings the bow toward the big target (a siege
+     battery or capital ship first, else the toughest ship up). The ship stays drawn nose up,
+     so turning swings everything outside it the other way around the center. */
+  RingTurret.prototype.steer = function (dt) {
+    var P = this.pilot;
+    if (!P || !this.live()) return;
+    var tg = this.pilotTarget;
+    if (!tg || tg.dead || tg.state === "leave" || this.ships.indexOf(tg) < 0) tg = this.pilotTarget = this.bigTarget();
+    if (!tg) return;
+    var mv = P.turn * dt * (this.m.ship.crippled ? 0.7 : 1), turn = clamp(norm(tg.bearing), -mv, mv);
+    if (Math.abs(turn) > 1e-4) this.rotate(turn);
+  };
+  RingTurret.prototype.bigTarget = function () {
+    var best = null, bs = -1;
+    this.ships.forEach(function (s) {
+      if (s.dead || s.state === "leave") return;
+      var sc = s.hp + (s.lockable ? 1e4 : 0);
+      if (sc > bs) { bs = sc; best = s; }
+    });
+    return best;
+  };
+  // The ship turns `deg` clockwise.
+  RingTurret.prototype.rotate = function (deg) {
+    var R = this.R, a = -deg * RAD, ca = Math.cos(a), sa = Math.sin(a), self = this;
+    function rot(o, kx, ky) { var dx = o[kx] - R.cx, dy = o[ky] - R.cy; o[kx] = R.cx + dx * ca - dy * sa; o[ky] = R.cy + dx * sa + dy * ca; }
+    this.heading += deg;
+    this.ships.forEach(function (s) { s.home -= deg; s.bearing -= deg; self.placeShip(s); });
+    this.torps.forEach(function (tp) { rot(tp, "x0", "y0"); rot(tp, "x", "y"); tp.hitB -= deg; var p = self.rim(tp.hitB); tp.x1 = p.x; tp.y1 = p.y; });
+    this.bolts.forEach(function (b) { rot(b, "x", "y"); var vx = b.vx; b.vx = vx * ca - b.vy * sa; b.vy = vx * sa + b.vy * ca; });
+    this.ptTorps.forEach(function (tp) { rot(tp, "x", "y"); tp.a += a; });
+  };
+
+  /* ------------------------------------------------------------ Main gun
+     Yours to fire once it's full (M or the MAIN GUN button): the whole charge in one shot
+     straight off the bow, into the first ship on that line. Nothing there, and it's wasted. */
+  RingTurret.prototype.mainState = function () {
+    var mg = this.firesMain ? this.m.sys("main") : null;
+    if (!mg) return null;
+    return { mj: mg.mj, max: mg.maxMJ, tripped: mg.tripped, ready: !mg.tripped && mg.mj >= mg.maxMJ - 0.5 && this.live() };
+  };
+  RingTurret.prototype.mainLine = function () {
+    var p = this.rim(0), best = null, by = -1e9;
+    this.ships.forEach(function (s) {
+      if (s.dead || s.state === "leave" || s.y >= p.y) return;
+      if (Math.abs(s.x - p.x) <= Math.max(s.w, s.h) * 0.45 && s.y > by) { by = s.y; best = s; }
+    });
+    return best;
+  };
+  RingTurret.prototype.fireMain = function () {
+    var m = this.m, mg = m.sys("main"), st = this.mainState();
+    if (!st || !st.ready) return false;
+    var dmg = mg.mj * m.data.mainGun.dmgPerMJ, s = this.mainLine(), p = this.rim(0);
+    mg.mj = 0;
+    count(this, "mainShots"); m.stats.mainShots++;
+    m.cue("main");
+    this.mainFx = { at: m.totalT, x: p.x, y0: p.y, y1: s ? s.y : -0.05 };
+    if (!s) { m.chat("mainShotMiss", null, "bad"); return true; }
+    count(this, "mainHits"); m.stats.mainDamage += Math.min(dmg, s.hp);
+    var name = s.name, kill = dmg >= s.hp;
+    s.flashAt = m.totalT;
+    this.effects.push({ type: "boom", x: s.x, y: s.y, at: m.totalT, size: 0.16 });
+    this.damageShip(s, dmg, 0, true);
+    m.chat(kill ? "mainShotKill" : "mainShotHit", { enemy: name }, "good");
+    return true;
+  };
+
+  /* --------------------------------------------------------------- Mines
+     In a minefield, mines drift in from ahead and the flanks toward the shield. They fly like
+     torpedoes (same list, so guns, clicks and AI gunners treat them alike); one that reaches the
+     shield hits like a torpedo. */
+  RingTurret.prototype.dropMines = function () {
+    var m = this.m, enc = m.encounter(), M = enc && enc.mines && enc.mines.gunner, R = this.R, r = this.rng;
+    if (!M || (m.phase !== "engage" && m.phase !== "countdown") || m.t < this.nextMineAt) return;
+    this.nextMineAt = m.t + r.range(M.every) / (m.ship.starved ? M.starvedMult : 1);
+    var b0 = this.pickBearing(), hitB = b0 + (r.next() - 0.5) * 20, p = this.rim(hitB);
+    var x0 = R.cx + R.enter * Math.sin(b0 * RAD), y0 = R.cy - R.enter * Math.cos(b0 * RAD);
+    var travel = Math.hypot(x0 - p.x, y0 - p.y) / r.range(M.drift);
+    var e = { id: m.nextId++, type: "mine", at: m.t + travel, mj: Math.round(r.range(M.mj) * m.data.threat.dmg), announced: true, visible: true };
+    m.events.push(e);
+    var tp = { id: this.nextId++, ev: e, mine: true, x0: x0, y0: y0, x1: p.x, y1: p.y, hitB: hitB, t0: m.t, t1: e.at, x: x0, y: y0, spin: r.next() * 6 };
+    e.torp = tp; this.torps.push(tp);
+    count(this, "mines");
+  };
+  RingTurret.prototype.downTorpedo = function (tp, b) {
+    if (!tp.mine) return BL.Turret.prototype.downTorpedo.call(this, tp, b);
+    var m = this.m, e = tp.ev;
+    e.done = true; e.downed = true;
+    this.torps = this.torps.filter(function (x) { return x !== tp; });
+    if (b && b.mine) count(this, "minesDowned");
+    this.effects.push({ type: "boom", x: tp.x, y: tp.y, at: m.totalT, size: 0.07 });
+    m.cue("torpDown");
+    if (this.rng.chance(0.25)) m.chat("mineDown", null, "good");
+  };
+
   /* --------------------------------------------------------------- Enemies */
-  // A wave comes in from one bearing (mostly ahead and on the flanks on a destroyer) and its
-  // ships spread out around it at their holding distance.
+  // Where a wave (or a mine) comes from: mostly ahead and on the flanks.
+  RingTurret.prototype.pickBearing = function () {
+    var r = this.rng, bw = this.R.bearings, keys = Object.keys(bw), tot = 0, pick = r.next() * keys.reduce(function (a, k) { return a + bw[k]; }, 0);
+    for (var q = 0; q < keys.length; q++) { tot += bw[keys[q]]; if (pick <= tot) return +keys[q] + (r.next() - 0.5) * 30; }
+    return 0;
+  };
+  // A wave comes in from one bearing and its ships spread out around it at their holding distance.
   RingTurret.prototype.addGroup = function (list, wave, type, look, n, totalHp) {
     var r = this.rng, t = this.m.t, R = this.R, hp = totalHp / n;
-    if (wave.bearing === undefined) {
-      var bw = R.bearings, keys = Object.keys(bw), tot = 0, pick = r.next() * keys.reduce(function (a, k) { return a + bw[k]; }, 0);
-      for (var q = 0; q < keys.length; q++) { tot += bw[keys[q]]; if (pick <= tot) { wave.bearing = +keys[q] + (r.next() - 0.5) * 30; break; } }
-      if (wave.bearing === undefined) wave.bearing = 0;
-    }
+    if (wave.bearing === undefined) wave.bearing = this.pickBearing();
     var band = look.ringR || [0.36, 0.44], groupPhase = r.next() * Math.PI * 2, groupPeriod = r.range(look.period);
     var hold = r.range(band) - R.pull, spread = (look.w + 0.05) / hold / RAD;
     for (var i = 0; i < n; i++) {
@@ -192,6 +304,9 @@
       if (s.dead) continue;
       // A big ship sidesteps a torpedo closing on it (fields per second, turned into degrees).
       if (t < s.jinkUntil) s.home += s.jinkDir * (this.G.pt.jink[s.type] || 0) / Math.max(0.1, s.r) / RAD * dt;
+      // The pilot's target won't sit on our bow: it slides away while it's near it.
+      var P = this.pilot;
+      if (P && s === this.pilotTarget && s.state !== "leave" && Math.abs(norm(s.bearing)) < P.dodge) s.home += (norm(s.bearing) >= 0 ? 1 : -1) * P.evade * dt;
       var swing = Math.sin((t - s.born) * 2 * Math.PI / s.period + s.phase);
       var want = s.home + s.sway * swing;
       if (s.state === "leave") { s.r += 0.3 * dt; if (s.r > 0.85) continue; }
@@ -228,9 +343,9 @@
         e.ionized = true; e.at += ion.delay; e.mj = Math.round(e.mj * ion.salvoMult);
         if (t < e.at - G.torpedo.travel) return;
       }
-      var hit = self.rim(s.bearing + (self.rng.next() - 0.5) * 24);
+      var hitB = s.bearing + (self.rng.next() - 0.5) * 24, hit = self.rim(hitB);
       var nose = { x: s.x - Math.sin(s.rot) * s.h / 2, y: s.y + Math.cos(s.rot) * s.h / 2 };
-      var torp = { id: self.nextId++, ev: e, x0: nose.x, y0: nose.y, x1: hit.x, y1: hit.y, t0: t, t1: e.at, x: nose.x, y: nose.y, weak: !!e.ionized };
+      var torp = { id: self.nextId++, ev: e, x0: nose.x, y0: nose.y, x1: hit.x, y1: hit.y, hitB: hitB, t0: t, t1: e.at, x: nose.x, y: nose.y, weak: !!e.ionized };
       e.torp = torp; self.torps.push(torp);
       if (self.cur) { self.stats.torps++; self.cur.torps++; } else self.stats.torps++;
       m.cue("torpLaunch");
