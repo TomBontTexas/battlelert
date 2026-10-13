@@ -59,7 +59,8 @@
   };
 
   /* ---------------------------------------------------------- Player input */
-  // Right turns clockwise, left counterclockwise; d = -1, 0 or 1 while a key is held.
+  // Right turns clockwise, left counterclockwise; d runs -1..1, the share of full traverse
+  // (a key gives 1, the mouse or a finger anything between).
   RingTurret.prototype.setDir = function (d) { var b = this.bat(); b.dir = d; if (!d) b.aimRel = b.rel; };
   // Mouse, trackpad or a finger moving sideways: degrees to turn (right = clockwise).
   RingTurret.prototype.nudge = function (deg) {
@@ -85,7 +86,7 @@
     // Turn each gun toward its aim along its arc, never faster than its drive.
     this.bats.forEach(function (b) {
       var mv = self.traverse(b) * dt;
-      if (b.dir) b.aimRel = self.full(b) ? b.rel + b.dir * mv * 3 : clamp(b.rel + b.dir * mv * 3, -b.arcH, b.arcH);
+      if (b.dir) b.aimRel = self.full(b) ? b.rel + b.dir * mv : clamp(b.rel + b.dir * mv, -b.arcH, b.arcH);
       var diff = self.full(b) ? norm(b.aimRel - b.rel) : b.aimRel - b.rel;
       b.rel += clamp(diff, -mv, mv);
       if (self.full(b)) { b.rel = norm(b.rel); b.aimRel = b.rel + norm(b.aimRel - b.rel); }

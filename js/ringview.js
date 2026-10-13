@@ -152,8 +152,27 @@
     c.strokeStyle = ready2 ? "rgba(123,224,166,0.8)" : "rgba(255,107,90,0.7)";
     c.setLineDash([0.004, 0.014]); c.beginPath(); c.moveTo(sel.x + sel.nx * 0.04, sel.y + sel.ny * 0.04); c.lineTo(ex, ey); c.stroke(); c.setLineDash([]);
     c.beginPath(); c.arc(ex, ey, 0.016, 0, Math.PI * 2); c.stroke();
+    if (tu.stick) drawStick(c, S, tu.stick);
     c.restore();
   };
+
+  // The steering marker along the top: the center notch with its dead zone, and a bar out to the
+  // pointer that turns from blue to green as the gun reaches full speed.
+  function drawStick(c, S, st) {
+    var y = 0.022, lo = st.cx - st.full, hi = st.cx + st.full, px = Math.max(lo, Math.min(hi, st.px));
+    c.lineWidth = 2 / S; c.strokeStyle = "rgba(214,224,232,0.18)";
+    c.beginPath(); c.moveTo(lo, y); c.lineTo(hi, y); c.stroke();
+    c.fillStyle = "rgba(214,224,232,0.12)"; c.fillRect(st.cx - st.dead, y - 0.006, st.dead * 2, 0.012);
+    c.fillStyle = "rgba(214,224,232,0.8)";
+    c.beginPath(); c.moveTo(st.cx - 0.009, y - 0.016); c.lineTo(st.cx + 0.009, y - 0.016); c.lineTo(st.cx, y - 0.004); c.closePath(); c.fill();
+    var a = Math.abs(st.v);
+    if (a > 0) {
+      c.strokeStyle = a >= 1 ? "rgba(123,224,166,0.9)" : "rgba(76,195,238," + (0.4 + a * 0.5).toFixed(2) + ")";
+      c.lineWidth = 4 / S; c.beginPath(); c.moveTo(st.cx, y); c.lineTo(px, y); c.stroke();
+    }
+    c.fillStyle = a > 0 ? (a >= 1 ? "#7be0a6" : "#4cc3ee") : "rgba(214,224,232,0.6)";
+    c.beginPath(); c.arc(px, y, 0.006, 0, Math.PI * 2); c.fill();
+  }
 
   // The oval shield: brighter with more charge, flickering when low; flares, ripples and wobbles
   // where a torpedo strikes; cracks and floods the view red on a hull hit.
