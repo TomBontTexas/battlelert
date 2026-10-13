@@ -1341,7 +1341,13 @@
     var cls = BL.classByN(j.n), q = BL.career.qualified(career, j.station), up = j.n > q, rankName = BL.career.STATION_NAME[j.station];
     var tag = up ? '<span class="tag up">' + (q ? "STEP UP" : "FIRST QUALIFICATION") + "</span>" : !j.serious ? '<span class="tag low">LOWER CLASS</span>' : "";
     // Ship and hull number with the tech level; reputation; then who you'd serve with and the guns.
-    var crew = j.engineer ? ["Engineer-" + j.n + " " + esc(j.engineer.who || j.engineer.name.split(" ").slice(-2).join(" ")) + ", " + j.engineer.label + " (skill " + Math.round(j.engineer.skill * 100) + ")"] : [];
+    // Crew: everyone at the other stations the job names (j.engineer, j.gunner, j.pilot, each
+    // { name, who, label, skill }). Gunner jobs name the engineer today; engineer jobs will add
+    // the gunner and pilot, gunner jobs the pilot, and pilot jobs the engineer and gunner.
+    var crew = BL.career.STATIONS.filter(function (st) { return st !== j.station && j[st]; }).map(function (st) {
+      var p = j[st];
+      return BL.career.STATION_NAME[st] + "-" + j.n + " " + esc(p.who || p.name.split(" ").slice(-2).join(" ")) + ", " + p.label + " (skill " + Math.round(p.skill * 100) + ")";
+    });
     var arms = j.station === "gunner" ? (j.weapons || ["pulse"]).map(function (id, k) { return "Gun " + (k + 1) + " " + BL.WEAPONS[id].name.toLowerCase(); })
       .concat(BL.classById(j.classId).mainGun ? ["Main gun"] : [], j.classId === "gunboat" ? ["Two torpedoes"] : []) : [];
     function sec(title, rows) { return rows.length ? '<div class="offer-sec"><div class="offer-sec-h">' + title + "</div>" + rows.map(function (x) { return "<div>" + x + "</div>"; }).join("") + "</div>" : ""; }

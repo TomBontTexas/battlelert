@@ -118,7 +118,11 @@
      Generic postings for now: a ship class, a tech level and a ship name; one list per station.
      Always a tech-level-1 offer for the class you're on and, once you're qualified, one
      for the class above; more offers from the class above come as reputation grows.
-     A gunner job names the engineer you'd serve with (the same one the mission will roll). */
+     A gunner job names the engineer you'd serve with (the same one the mission will roll).
+     Crew hooks: a job names each crewmate it knows as job.engineer, job.gunner or job.pilot
+     ({ name, who, label, skill }); the listing shows whichever are there. To come: engineer
+     jobs name the gunner and pilot, gunner jobs the pilot, pilot jobs the engineer and gunner,
+     each picked from the job seed so the mission gets the same people. */
   function makeJob(rng, station, n, tl, serious) {
     var cls = BL.classByN(n);
     var job = { id: "j" + Math.floor(rng.next() * 1e9).toString(36), station: station, classId: cls.id, n: n, tl: tl,
