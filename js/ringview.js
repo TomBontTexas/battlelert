@@ -343,14 +343,12 @@
     if (Math.abs(helm.omega) > 0.5) tick(rel(helm, helm.stopHeading()), "rgba(255,255,255,0.9)", 0.05, 2.5);
     tick(0, "rgba(255,255,255,0.55)", 0.07, 3);
   }
-  // The compass tape across the top of the view: 60 degrees either side of the heading, with the
-  // same marks as the ring. Taps on it steer there on autopilot (BL.compassAt). While a course is
-  // being dialed (helm.dial) the tape centers on that course instead, like a dial, and the ship's
-  // own heading is the white mark sliding toward it.
+  // The compass tape across the top of the view: the ship's heading, 60 degrees either side, with
+  // the same marks as the ring. A tap on it steers there on autopilot (BL.compassAt).
   var TAPE = null;
   function drawCompass(c, W, H, helm, t) {
-    var dialing = helm.dial !== null && helm.dial !== undefined, ship = helm.compass();
-    var w = Math.min(W - 24, 560), h = 30, x0 = (W - w) / 2, y0 = 6, span = 60, k = w / (2 * span), hdg = dialing ? helm.dial : ship;
+    var hdg = helm.compass();
+    var w = Math.min(W - 24, 560), h = 30, x0 = (W - w) / 2, y0 = 6, span = 60, k = w / (2 * span);
     TAPE = { x0: x0, y0: y0, w: w, h: h, k: k, hdg: hdg, W: W };
     c.save();
     c.fillStyle = "rgba(3,6,11,0.72)"; c.strokeStyle = "rgba(214,224,232,0.25)"; c.lineWidth = 1;
@@ -378,70 +376,74 @@
     var jv2 = helm.jumpView();
     if (jv2) mark(jv2.hdg, "#63d48f", "jump");
     if (o) mark(o.hdg, helm.onOrder({ hdg: o.hdg, eng: o.eng }) ? "#63d48f" : "#f0b54a", "tri");
-    if (dialing) mark(ship, "#ffffff", "ship");
-    else {
-      if (helm.auto) mark(helm.autoHdg, "#4cc3ee", "dia");
-      if (Math.abs(helm.omega) > 0.5) mark(helm.stopHeading(), "#ffffff", "line");
-    }
+    if (helm.auto) mark(helm.autoHdg, "#4cc3ee", "dia");
+    if (Math.abs(helm.omega) > 0.5) mark(helm.stopHeading(), "#ffffff", "line");
     c.restore();
-    var col = dialing ? "#4cc3ee" : "#ffffff";
-    c.fillStyle = col; c.beginPath(); c.moveTo(W / 2, y0 + h + 7); c.lineTo(W / 2 - 6, y0 + h + 15); c.lineTo(W / 2 + 6, y0 + h + 15); c.closePath(); c.fill();
+    c.fillStyle = "#ffffff"; c.beginPath(); c.moveTo(W / 2, y0 + h + 7); c.lineTo(W / 2 - 6, y0 + h + 15); c.lineTo(W / 2 + 6, y0 + h + 15); c.closePath(); c.fill();
     c.font = "700 13px ui-monospace, Consolas, monospace"; c.textAlign = "center"; c.textBaseline = "top";
-    if (dialing) {
-      c.fillText("SET " + BL.hdgText(hdg), W / 2, y0 + h + 17);
-      c.fillStyle = "#ffffff"; c.textAlign = "left"; c.fillText("ship " + BL.hdgText(ship), W / 2 + 46, y0 + h + 17);
-      return;
-    }
     c.fillText(BL.hdgText(hdg), W / 2, y0 + h + 17);
     if (helm.auto) { c.fillStyle = "#4cc3ee"; c.textAlign = "left"; c.fillText("AUTO → " + BL.hdgText(helm.autoHdg), W / 2 + 26, y0 + h + 17); }
   }
-  // The compass strip at the far right of the screen: the same compass standing up, headings
-  // rising upward, `span` degrees either side of the heading. It mirrors the tape across the top
-  // (both center on the course being dialed), so the pilot can dial on the strip, clear of the
-  // battle, and watch the tape.
+  // The strip at the far right of the screen (clear of the battle); the tape across the top always
+  // shows the ship's heading.
+  // - On autopilot it's the heading set point: a compass standing up, headings rising upward,
+  //   `span` degrees either side of the course set, with the ship's heading as the white line
+  //   moving toward it. Drag it to set the course; the autopilot speeds up and slows the turn.
+  // - By hand it's a wheel that slides up and down: no numbers; the farther from the middle, the
+  //   harder the rudder (down for starboard, up for port; it stays where it's left).
   var STRIP = null;
+  BL.STRIP_WHEEL = 0.4;                  // full rudder this share of the strip's height from the middle
   BL.drawCompassStrip = function (c, W, H, helm) {
-    var dialing = helm.dial !== null && helm.dial !== undefined, ship = helm.compass(), hdg = dialing ? helm.dial : ship;
-    var span = 45, k = H / (2 * span), cy = H / 2, tx = 14;
-    STRIP = { H: H, k: k, hdg: hdg };
+    var cy = H / 2, tx = 14;
     c.clearRect(0, 0, W, H);
     c.fillStyle = "rgba(3,6,11,0.9)"; c.fillRect(0, 0, W, H);
+    if (!helm.auto) {
+      STRIP = { H: H, k: 0, hdg: null };
+      var R = H * BL.STRIP_WHEEL, y = cy + helm.wheel * R;
+      c.strokeStyle = "rgba(214,224,232,0.25)"; c.lineWidth = 1;
+      for (var q = -4; q <= 4; q++) { var yq = cy + q / 4 * R; c.beginPath(); c.moveTo(0, yq); c.lineTo(q % 4 === 0 ? W : 12, yq); c.stroke(); }
+      c.fillStyle = "rgba(240,181,74,0.35)"; c.fillRect(W / 2 - 9, Math.min(cy, y), 18, Math.abs(y - cy));
+      c.strokeStyle = "#ffffff"; c.lineWidth = 2; c.beginPath(); c.moveTo(0, cy); c.lineTo(W, cy); c.stroke();
+      c.fillStyle = "#f0b54a"; c.fillRect(4, y - 7, W - 8, 14);
+      c.font = "700 11px ui-monospace, Consolas, monospace"; c.textAlign = "center"; c.textBaseline = "middle";
+      c.fillStyle = "rgba(214,224,232,0.7)"; c.fillText("▲ PORT", W / 2, 14); c.fillText("STBD ▼", W / 2, H - 14);
+      c.fillText("WHEEL", W / 2, cy - R - 18);
+      return;
+    }
+    var span = 45, k = H / (2 * span), ship = helm.compass(), hdg = helm.autoHdg;
+    STRIP = { H: H, k: k, hdg: hdg };
     c.font = "600 12px ui-monospace, Consolas, monospace"; c.textAlign = "right"; c.textBaseline = "middle";
     var first = Math.ceil((hdg - span) / 5) * 5;
     for (var d = first; d <= hdg + span; d += 5) {
-      var y = cy - (d - hdg) * k, ten = d % 10 === 0, big = d % 30 === 0;
+      var yd = cy - (d - hdg) * k, ten = d % 10 === 0, big = d % 30 === 0;
       c.strokeStyle = big ? "rgba(214,224,232,0.85)" : ten ? "rgba(214,224,232,0.55)" : "rgba(214,224,232,0.3)";
-      c.lineWidth = 1; c.beginPath(); c.moveTo(0, y); c.lineTo(big ? 16 : ten ? 11 : 6, y); c.stroke();
-      if (ten) { c.fillStyle = big ? "rgba(214,224,232,0.95)" : "rgba(214,224,232,0.6)"; c.fillText(BL.hdgText(d), W - 6, y); }
+      c.lineWidth = 1; c.beginPath(); c.moveTo(0, yd); c.lineTo(big ? 16 : ten ? 11 : 6, yd); c.stroke();
+      if (ten) { c.fillStyle = big ? "rgba(214,224,232,0.95)" : "rgba(214,224,232,0.6)"; c.fillText(BL.hdgText(d), W - 6, yd); }
     }
     function mark(hd, col, shape) {
-      var d = ((hd - hdg) % 360 + 540) % 360 - 180, edge = Math.abs(d) > span, y = cy - Math.max(-span, Math.min(span, d)) * k;
+      var dd = ((hd - hdg) % 360 + 540) % 360 - 180, edge = Math.abs(dd) > span, ym = cy - Math.max(-span, Math.min(span, dd)) * k;
       c.fillStyle = col; c.strokeStyle = col;
-      if (shape === "tri") { c.beginPath(); c.moveTo(tx + 12, y); c.lineTo(tx, y - 8); c.lineTo(tx, y + 8); c.closePath(); if (edge) { c.lineWidth = 2; c.stroke(); } else c.fill(); }
-      else if (shape === "dia") { c.save(); c.translate(tx + 6, y); c.rotate(Math.PI / 4); c.fillRect(-4.5, -4.5, 9, 9); c.restore(); }
-      else if (shape === "jump") { c.lineWidth = 2; c.strokeRect(tx, y - 7, 14, 14); c.font = "700 10px ui-monospace, Consolas, monospace"; c.textAlign = "center"; c.fillText("J", tx + 7, y + 1); c.textAlign = "right"; }
-      else if (shape === "ship") { c.lineWidth = 3; c.beginPath(); c.moveTo(0, y); c.lineTo(W, y); c.stroke(); }
-      else { c.lineWidth = 2; c.beginPath(); c.moveTo(0, y); c.lineTo(tx + 14, y); c.stroke(); }
+      if (shape === "tri") { c.beginPath(); c.moveTo(tx + 12, ym); c.lineTo(tx, ym - 8); c.lineTo(tx, ym + 8); c.closePath(); if (edge) { c.lineWidth = 2; c.stroke(); } else c.fill(); }
+      else if (shape === "jump") { c.lineWidth = 2; c.strokeRect(tx, ym - 7, 14, 14); c.font = "700 10px ui-monospace, Consolas, monospace"; c.textAlign = "center"; c.fillText("J", tx + 7, ym + 1); c.textAlign = "right"; }
+      else if (shape === "ship") { c.lineWidth = 3; c.beginPath(); c.moveTo(0, ym); c.lineTo(W, ym); c.stroke(); }
+      else { c.lineWidth = 2; c.beginPath(); c.moveTo(0, ym); c.lineTo(tx + 14, ym); c.stroke(); }
     }
     var o = helm.orderView(), jv = helm.jumpView();
     if (jv) mark(jv.hdg, "#63d48f", "jump");
     if (o) mark(o.hdg, helm.onOrder({ hdg: o.hdg, eng: o.eng }) ? "#63d48f" : "#f0b54a", "tri");
-    if (dialing) mark(ship, "#ffffff", "ship");
-    else {
-      if (helm.auto) mark(helm.autoHdg, "#4cc3ee", "dia");
-      if (Math.abs(helm.omega) > 0.5) mark(helm.stopHeading(), "#ffffff", "line");
-    }
-    // The center window: the heading (or the course being set).
-    var col = dialing ? "#4cc3ee" : "#ffffff", bh = 26;
+    mark(ship, "#ffffff", "ship");
+    // The center window: the course set.
+    var bh = 26;
     c.fillStyle = "rgba(3,6,11,0.95)"; c.fillRect(1, cy - bh / 2, W - 2, bh);
-    c.strokeStyle = col; c.lineWidth = 2; c.strokeRect(1, cy - bh / 2, W - 2, bh);
-    c.fillStyle = col; c.font = "700 15px ui-monospace, Consolas, monospace"; c.textAlign = "center";
+    c.strokeStyle = "#4cc3ee"; c.lineWidth = 2; c.strokeRect(1, cy - bh / 2, W - 2, bh);
+    c.fillStyle = "#4cc3ee"; c.font = "700 15px ui-monospace, Consolas, monospace"; c.textAlign = "center";
     c.fillText(BL.hdgText(hdg), W / 2, cy + 1);
+    c.font = "700 10px ui-monospace, Consolas, monospace"; c.fillText("SET", W / 2, cy - bh / 2 - 9);
   };
   BL.stripScale = function () { return STRIP ? STRIP.k : 7; };       // pixels per degree on the strip
-  // A tap at height py (CSS pixels) on the strip: the compass heading there.
+  // A tap at height py (CSS pixels) on the strip: the compass heading there (autopilot), else null.
   BL.stripAt = function (py) {
-    var T = STRIP; if (!T) return null;
+    var T = STRIP; if (!T || T.hdg === null) return null;
     return ((T.hdg + (T.H / 2 - py) / T.k) % 360 + 360) % 360;
   };
   BL.compassScale = function () { return TAPE ? TAPE.k : 4; };      // pixels per degree on the tape

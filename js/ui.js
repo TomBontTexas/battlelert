@@ -740,7 +740,7 @@
     if (helm) {
       $("tu-tubes").hidden = true; $("btn-tu-main").hidden = true;
       $("tu-station").textContent = "Helm · " + (job.test ? sim.data.className : BL.shipLabel(job.classId, job.ship) + " (" + sim.data.className + ")") + " · tech level " + sim.data.tl;
-      $("tu-keys").textContent = "← → wheel · 0 midships · ↑ ↓ both engines · Q A port · P L starboard · + − 1 G · T autopilot · E warn engineering · Space launch · Esc pause · Drag the wheel · Tap the telegraph · Tap or dial the compass (top, or the strip at the right) for autopilot";
+      $("tu-keys").textContent = "← → wheel · 0 midships · ↑ ↓ both engines · Q A port · P L starboard · + − 1 G · T autopilot · E warn engineering · Space launch · Esc pause · Drag the wheel · Tap the telegraph · Tap the compass for autopilot · Right strip: course on autopilot, wheel by hand";
       buildHelm();
     }
   }
@@ -1016,14 +1016,13 @@
       return -1;
     }
     cv.addEventListener("pointerdown", function (ev) {
-      // At the helm: tap the compass to steer to the heading tapped, on autopilot; or drag it
-      // like a dial: the tape centers on the course being set while the finger is down, and
-      // sliding it brings the course you want under the center pointer.
+      // At the helm: tap the compass tape to steer to the heading tapped, on autopilot. (The
+      // tape only shows the ship's heading: the course is set on the strip at the right.)
       if (sim && sim.helm) {
         if (turretActive()) {
           var cr = cv.getBoundingClientRect(), hd = BL.compassAt(ev.clientX - cr.left, ev.clientY - cr.top), hm = sim.helm;
           if (hd !== null) {
-            compassDrag = { id: ev.pointerId, x: ev.clientX, tap: Math.round(hd), base: hm.auto ? hm.autoHdg : Math.round(hm.compass()), moved: false, raw: null };
+            compassDrag = { id: ev.pointerId, x: ev.clientX, tap: Math.round(hd), moved: false };
             try { cv.setPointerCapture(ev.pointerId); } catch (e) {}
           }
         }
@@ -1049,10 +1048,8 @@
     });
     cv.addEventListener("pointermove", function (ev) {
       if (sim && sim.helm) {
-        var cd = compassDrag, dx = cd ? ev.clientX - cd.x : 0;
-        if (!cd || cd.id !== ev.pointerId || !turretActive() || (!cd.moved && Math.abs(dx) < 6)) return;
-        cd.moved = true;
-        dialTo(cd, cd.base - dx / BL.compassScale());   // tape moves with the finger
+        var cd = compassDrag;
+        if (cd && cd.id === ev.pointerId && Math.abs(ev.clientX - cd.x) >= 6) cd.moved = true;   // a slide isn't a tap
         return;
       }
       if (ev.pointerType === "mouse") {
@@ -1061,46 +1058,41 @@
       }
       else moveDrag(ev);
     });
-    // Dial the course to `raw` degrees. A finger resting on the screen wanders a pixel or two:
-    // the course moves only once the finger has moved `DIAL_DEAD` degrees, or it (and the
-    // tape centered on it) flickers back and forth.
-    var DIAL_DEAD = 0.75;
-    function dialTo(cd, raw) {
-      if (cd.raw !== null && Math.abs(raw - cd.raw) < DIAL_DEAD) return;
-      cd.raw = raw;
-      var set = (Math.round(raw) % 360 + 360) % 360;
-      if (sim.helm.dial === set) return;
-      sim.helm.dial = set; sim.helm.setAuto(true, set);
-    }
-    // The compass strip (far right): the same compass standing up. Tap a heading to fly it on
-    // autopilot, or drag up and down like a dial (headings rise upward; the strip moves with the
-    // finger), watching the tape across the top.
-    var strip = $("hm-strip-cv"), stripDrag = null;
+    // The strip at the far right. On autopilot it's the heading set point: drag it (headings rise
+    // upward; it moves with the finger) and the autopilot turns her onto the course; or tap a
+    // heading. A finger resting on the screen wanders a pixel or two, so the course moves only
+    // once the finger has moved `SET_DEAD` degrees. By hand it's a wheel sliding up and down:
+    // the farther from where the finger came down, the more rudder (down for starboard).
+    var SET_DEAD = 0.75, strip = $("hm-strip-cv"), stripDrag = null;
     strip.addEventListener("pointerdown", function (ev) {
       if (!sim || !sim.helm || !turretActive()) return;
-      var r = strip.getBoundingClientRect(), hd = BL.stripAt(ev.clientY - r.top), hm = sim.helm;
-      if (hd === null) return;
-      stripDrag = { id: ev.pointerId, y: ev.clientY, tap: Math.round(hd), base: hm.auto ? hm.autoHdg : Math.round(hm.compass()), moved: false, raw: null };
+      var r = strip.getBoundingClientRect(), hm = sim.helm, hd = BL.stripAt(ev.clientY - r.top);
+      stripDrag = hm.auto ? { id: ev.pointerId, y: ev.clientY, set: true, tap: hd === null ? null : Math.round(hd), base: hm.autoHdg, raw: null, moved: false }
+                          : { id: ev.pointerId, y: ev.clientY, set: false, base: hm.wheel, moved: false };
       try { strip.setPointerCapture(ev.pointerId); } catch (e) {}
       ev.preventDefault();
     });
     strip.addEventListener("pointermove", function (ev) {
-      var sd = stripDrag, dy = sd ? ev.clientY - sd.y : 0;
-      if (!sd || sd.id !== ev.pointerId || !sim || !sim.helm || !turretActive() || (!sd.moved && Math.abs(dy) < 6)) return;
+      var sd = stripDrag, dy = sd ? ev.clientY - sd.y : 0, hm = sim && sim.helm;
+      if (!sd || sd.id !== ev.pointerId || !hm || !turretActive() || (!sd.moved && Math.abs(dy) < (sd.set ? 6 : 3))) return;
       sd.moved = true;
-      dialTo(sd, sd.base + dy / BL.stripScale());
+      if (!sd.set) { hm.setWheel(sd.base + dy / (strip.clientHeight * BL.STRIP_WHEEL)); return; }
+      var raw = sd.base + dy / BL.stripScale();
+      if (sd.raw !== null && Math.abs(raw - sd.raw) < SET_DEAD) return;
+      sd.raw = raw;
+      var set = (Math.round(raw) % 360 + 360) % 360;
+      if (set !== hm.autoHdg) hm.setAuto(true, set);
     });
     function stripUp(ev) {
-      if (!stripDrag || stripDrag.id !== ev.pointerId) return;
-      if (!stripDrag.moved && sim && sim.helm && turretActive()) sim.helm.setAuto(true, stripDrag.tap);
-      if (sim && sim.helm) sim.helm.dial = null;
+      var sd = stripDrag;
+      if (!sd || sd.id !== ev.pointerId) return;
+      if (sd.set && !sd.moved && sd.tap !== null && sim && sim.helm && turretActive()) sim.helm.setAuto(true, sd.tap);
       stripDrag = null;
     }
     strip.addEventListener("pointerup", stripUp); strip.addEventListener("pointercancel", stripUp);
     function mouseUp(ev) {
       if (compassDrag && compassDrag.id === ev.pointerId) {
         if (!compassDrag.moved && sim && sim.helm && turretActive()) sim.helm.setAuto(true, compassDrag.tap);
-        if (sim && sim.helm) sim.helm.dial = null;
         compassDrag = null;
       }
       if (ev.pointerType === "mouse") { if (sim && sim.turret && !keysHeld.fire) { sim.turret.trigger(false); setFireBtn(false); } } else endDrag(ev);
