@@ -607,7 +607,8 @@
     // The captain's call on each torpedo: evade if the shields hold less than `cover` x its
     // charge, else with `chance`; one break covers a burst launched within `burst` s; never two
     // breaks within `gap` s; "take it" is said at most every `holdSayEvery` s.
-    evade: { cover: 1.2, chance: 0.5, burst: 1.2, gap: 6, holdSayEvery: 8 },     // gap: seconds between breaks
+    // disobeyCost: share of the mission's score lost each time the pilot dodges a torpedo the captain said to take
+    evade: { cover: 1.2, chance: 0.5, burst: 1.2, gap: 6, holdSayEvery: 8, disobeyCost: 0.05 },     // gap: seconds between breaks
     // A gunner's request to bring the ship round: after `idle` s with an empty arc; `seconds` to
     // answer it; `cooldown` before that gun asks again.
     request: { idle: 4, seconds: 10, cooldown: 15 },
@@ -708,6 +709,7 @@
     dodged:      ["Tactical: it missed! Nice flying.", "Tactical: torpedo went wide!", "Tactical: clean miss!"],
     evade:       ["{who}: torpedo away! Break {dir}, now!", "{who}: evasive! Hard {dir}!", "{who}: break {dir}, Helm! Break {dir}!"],
     evadeHold:   ["{who}: steady, Helm. Let the shields take it.", "{who}: hold your course. We'll take this one.", "{who}: steady as she goes. Shields will hold."],
+    disobey:     ["{who}: Helm, I said hold your course!", "{who}: that was not my order, Helm. It goes in my report.", "{who}: Helm! Steady means steady!"],
     evadeMissed: ["{who}: too slow on that break, Helm!", "{who}: I said break, Helm!"],
     helmReq:     ["Gunner {n}: Helm, bring her {dir} {deg}, {weapon} target {side}!", "Gunner {n}: nothing in my arc. Come {dir} {deg}, Helm!", "Gunner {n}: Helm, {dir} {deg} and I've got the shot!"],
     helmReqMet:  ["Gunner {n}: got it, thanks Helm!", "Gunner {n}: on target!"],

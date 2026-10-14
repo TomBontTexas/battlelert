@@ -37,7 +37,7 @@
     this.inTube = false; this.launchAt = -99; this.clearAt = 0;
     this.curOrder = null; this.nextOrderAt = Infinity; this.warnReadyAt = 0;
     this.stats = { orders: 0, ordersMet: 0, stressHits: 0, flankHits: 0, autoT: 0, manualT: 0, overT: 0, hardT: 0, liveT: 0, launches: [],
-      torps: 0, dodged: 0, requests: 0, requestsMet: 0, evasive: 0, evasiveMet: 0 };
+      torps: 0, dodged: 0, requests: 0, requestsMet: 0, evasive: 0, evasiveMet: 0, disobeyed: 0 };
     this.evade = null;                    // the captain's order to break (dodge) the torpedo just launched
     this.req = null;                      // a gunner's request to bring the ship round (ring.js makes them)
     this.jumpHdg = null; this.jumpShown = false;
@@ -82,7 +82,13 @@
 
   /* ---------------------------------------------------------- Pilot input */
   // The wheel stays where it's put. Touching it takes the ship off autopilot.
-  Helm.prototype.setWheel = function (v) { if (this.inTube) return; this.wheel = clamp(v, -1, 1); this.auto = false; };
+  Helm.prototype.setWheel = function (v) {
+    if (this.inTube) return;
+    v = clamp(v, -1, 1);
+    // The pilot steered (see disobeying); steering through a break the captain ordered doesn't count.
+    if (Math.abs(v - this.wheel) > 0.01 && !(this.evade && this.m.t <= this.evade.until)) this.steerAt = this.m.t;
+    this.wheel = v; this.auto = false;
+  };
   Helm.prototype.nudgeWheel = function (d) { this.setWheel(Math.round((this.wheel + d) * 100) / 100); };
   Helm.prototype.midships = function () { this.setWheel(0); };
   // side: "port", "stbd" or "both"; id: an engine order from BL.HELM.orders.
@@ -121,6 +127,7 @@
   Helm.prototype.setAuto = function (on, hdg) {
     if (this.inTube) return;
     if (this.auto !== !!on) this.m.cue("toggle");      // (no click for every step of a drag on the compass)
+    if (on && hdg !== undefined && Math.abs(norm(hdg - this.compass())) > 2) this.steerAt = this.m.t;   // a new heading is steering
     this.auto = !!on;
     if (on) this.autoHdg = hdg === undefined ? this.compass() : to360(hdg);
   };
@@ -162,8 +169,8 @@
     this.out.port = this.out.stbd = this.speed = g;
     this.rollTurn();
     this.nextOrderAt = enc.burns ? m.cfg.arrivalSeconds + Math.max(this.H.order.minGap, r.range(enc.burns.every) * 0.6) : Infinity;
-    this.cur = { orders: 0, ordersMet: 0, stressHits: 0, launchWait: 0, torps: 0, dodged: 0, requests: 0, requestsMet: 0, evasive: 0, evasiveMet: 0 };
-    this.evade = null; this.holdSaidAt = -99; this.lastBreak = -99;
+    this.cur = { orders: 0, ordersMet: 0, stressHits: 0, launchWait: 0, torps: 0, dodged: 0, requests: 0, requestsMet: 0, evasive: 0, evasiveMet: 0, disobeyed: 0 };
+    this.evade = null; this.holdSaidAt = -99; this.lastBreak = -99; this.lastDisobey = -99; this.steerAt = -99;
     this.jumps[m.jumpIndex] = this.cur;
     this.req = null; this.jumpSaid = false; this.conT = 0; this.conTaken = false;
     // Ships with a GravSpace drive jump on a heading Navigation gives on arrival.
@@ -221,7 +228,11 @@
      lands (big ships). A break carried out in time (the bow BL.HELM.dodge.turn degrees or more
      off where a steady turn would have put it, when the torpedo arrives) makes it miss, and
      counts as an order met. Torpedoes launched in the same burst are covered by the same break.
-     Turning on your own dodges nothing. */
+     The pilot can still dodge on their own (the same 15 degrees), but dodging a torpedo the
+     captain said to take is disobeying an order: it counts as an order not met and costs
+     BL.HELM.evade.disobeyCost of the mission's score. It's disobeying only if the pilot steered
+     after the call (moved the wheel, or set the autopilot to a new heading); finishing a turn
+     already under way, or turning for the captain's own course order, is fine. */
   Helm.prototype.aimSnap = function () { return { hdg: this.compass(), omega: this.omega, t: this.m.t }; };
   Helm.prototype.dodged = function (snap) {
     return Math.abs(norm(this.compass() - (snap.hdg + snap.omega * (this.m.t - snap.t)))) >= this.H.dodge.turn;
@@ -234,12 +245,16 @@
   // A torpedo just launched at us from ship s (ring.js calls this).
   Helm.prototype.torpedoLaunched = function (e, s) {
     var m = this.m, E = this.H.evade, ev = this.evade, now = m.t;
+    e.snap = this.aimSnap();                                            // what the enemy aimed for
     if (ev && now - ev.at < E.burst) { e.evade = ev; return; }          // the same burst: the same break
-    if (ev && now < ev.until) return;                                   // mid-break already: this one lands
+    if (ev && now < ev.until) return;                                   // mid-break already: no new call
     var sh = m.sys("shield"), o = this.orderView();
     var busy = this.curOrder || o || (this.jumpNear() && this.onJumpHeading()) || this.locked() || now - this.lastBreak < E.gap;
     var evade = this.canBreak(e.at - now) && !busy && (sh.mj < e.mj * E.cover || this.rng.chance(E.chance));
     if (!evade) {
+      // The captain's call: take it. (During a course order, swerving already fails the order, so
+      // that's not counted again as disobeying.)
+      e.hold = !(this.curOrder || o);
       if (now - this.holdSaidAt > E.holdSayEvery) { this.holdSaidAt = now; m.chat("evadeHold", { who: this.who }, "info"); }
       return;
     }
@@ -256,10 +271,15 @@
     var ev = e.evade, m = this.m;
     if (!e.torp) return false;
     this.stats.torps++; if (this.cur) this.cur.torps++;
-    if (!ev) return false;
-    var miss = this.dodged(ev.snap);
-    if (!miss) return false;
+    if (!this.dodged(ev ? ev.snap : e.snap || { hdg: this.compass(), omega: this.omega, t: m.t })) return false;
     this.stats.dodged++; if (this.cur) this.cur.dodged++;
+    // Dodged against the captain's call (one count per burst; turning for the captain's own course
+    // order, announced or under way, is fine, and so is the captain's own turn for the jump).
+    if (!ev && e.hold && e.snap && this.steerAt >= e.snap.t && !this.orderView() && !this.conTaken && m.t - this.lastDisobey > this.H.evade.burst + 0.5) {
+      this.lastDisobey = m.t;
+      this.stats.disobeyed++; if (this.cur) this.cur.disobeyed++;
+      m.chat("disobey", { who: this.who }, "bad"); m.cue("warn");
+    }
     return true;
   };
   // A break is judged when its torpedo would land, whether or not the crew shot it down first.
@@ -446,19 +466,20 @@
      and burned-out thrusters) for the helm. Time on autopilot earns less (BL.HELM.autopilotRep). */
   BL.scoreHelm = function (m, outcome) {
     var r = BL.score(m, outcome), h = m.helm, st = h.stats, tu = m.turret;
-    var asked = st.orders + st.requests + st.evasive, orders = asked ? (st.ordersMet + st.requestsMet + st.evasiveMet) / asked : 1;
+    // (a disobeyed "take it" counts as an order not met)
+    var asked = st.orders + st.requests + st.evasive + st.disobeyed, orders = asked ? (st.ordersMet + st.requestsMet + st.evasiveMet) / asked : 1;
     var handling = Math.max(0, 1 - 0.2 * st.stressHits - 0.2 * st.flankHits);
     var live = st.autoT + st.manualT, autoShare = live ? st.autoT / live : 0, f = 1 - autoShare * (1 - BL.HELM.autopilotRep);
     r.station = "pilot";
     r.parts = { objective: r.parts.objective, condition: r.parts.condition, orders: Math.round(25 * orders * f), handling: Math.round(25 * handling * f) };
     r.raw = r.parts.objective + r.parts.condition + r.parts.orders + r.parts.handling;
-    r.score = Math.round(r.raw * Math.pow(1 - m.cfg.lookCostPct / 100, r.looks));
+    r.score = Math.round(r.raw * Math.pow(1 - m.cfg.lookCostPct / 100, r.looks) * Math.pow(1 - BL.HELM.evade.disobeyCost, st.disobeyed));
     r.aggression = st.liveT ? Math.min(1, (st.overT + st.hardT) / st.liveT * 2) : 0;
     r.engineer = tu.engineer;
     r.crew = tu.bats.map(function (b) { return b.crew; }).filter(Boolean);
     r.helm = {
       orders: st.orders, ordersMet: st.ordersMet, stressHits: st.stressHits, flankHits: st.flankHits,
-      torpsAtUs: st.torps, dodged: st.dodged, requests: st.requests, requestsMet: st.requestsMet, evasive: st.evasive, evasiveMet: st.evasiveMet,
+      torpsAtUs: st.torps, dodged: st.dodged, requests: st.requests, requestsMet: st.requestsMet, evasive: st.evasive, evasiveMet: st.evasiveMet, disobeyed: st.disobeyed,
       autoPct: Math.round(autoShare * 100), launches: st.launches.slice(),
       ships: tu.stats.ships, kills: tu.stats.kills, torps: tu.stats.torps, downed: tu.stats.downed, ptFired: tu.stats.ptFired, ptHits: tu.stats.ptHits,
       jumps: h.jumps.map(function (j) { return j ? Object.assign({}, j) : null; })

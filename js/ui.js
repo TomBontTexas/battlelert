@@ -1129,7 +1129,7 @@
     // a call or the jump heading to fly it on autopilot)
     var al = [], D = BL.HELM.dodge, ev = h.evadeView(), inbound = tu.torps.filter(function (tp) { return tp.ev && tp.ev.type === "salvo" && !tp.ev.done && !tp.mine; });
     if (ev && ev.left > 0) al.push('<div class="torp">⚠ BREAK ' + (ev.dir > 0 ? "RIGHT" : "LEFT") + " NOW: " + ev.left.toFixed(1) + " s · " + Math.round(ev.off) + "° of " + D.turn + "°</div>");
-    else if (inbound.length) al.push('<div class="hold">' + inbound.length + (inbound.length === 1 ? " torpedo" : " torpedoes") + " inbound: hold your course, the shields take " + (inbound.length === 1 ? "it" : "them") + "</div>");
+    else if (inbound.length) al.push('<div class="hold">' + inbound.length + (inbound.length === 1 ? " torpedo" : " torpedoes") + " inbound. " + h.who + ": hold your course, the shields take " + (inbound.length === 1 ? "it" : "them") + ". (Dodging anyway is disobeying.)</div>");
     if (h.req) al.push('<div class="req" data-hdg="' + h.req.hdg + '">Gun ' + h.req.gun + ": come " + (h.req.turn > 0 ? "right" : "left") + " to <b>" + BL.hdgText(h.req.hdg) + "</b> · " + Math.max(0, Math.ceil(h.req.until - sim.t)) + " s</div>");
     var jv = h.jumpView();
     if (jv) al.push('<div class="jump' + (jv.on ? "" : jv.in < 30 ? " off" : "") + '" data-hdg="' + jv.hdg + '">Jump heading <b>' + BL.hdgText(jv.hdg) + "</b> · " + (jv.in > 0 ? "window in " + Math.ceil(jv.in) + " s" : "window open") + (jv.on ? " ✔" : "") + "</div>");
@@ -1184,6 +1184,7 @@
     setHtml($("tu-tally"), "<span>Orders met</span><b>" + (c.ordersMet || 0) + " / " + (c.orders || 0) + "</b>" +
       (c.requests ? "<span>Gunners' calls answered</span><b>" + c.requestsMet + " / " + c.requests + "</b>" : "") +
       "<span>Breaks made</span><b>" + (c.evasiveMet || 0) + " / " + (c.evasive || 0) + "</b>" +
+      (c.disobeyed ? '<span class="bad">Disobeyed the ' + h.who.toLowerCase() + "</span><b>" + c.disobeyed + "</b>" : "") +
       "<span>Torpedoes dodged</span><b>" + (c.dodged || 0) + " / " + (c.torps || 0) + "</b>" +
       "<span>Ships destroyed</span><b>" + (g.kills || 0) + " / " + (g.ships || 0) + "</b><span>Torpedoes shot down</span><b>" + (g.downed || 0) + " / " + (g.torps || 0) + "</b>" +
       (tu.pt.length ? "<span>Our torpedoes</span><b>" + (g.ptHits || 0) + " hit / " + (g.ptFired || 0) + "</b>" : "") +
@@ -1241,6 +1242,7 @@
       "<li>Orders met: " + c.ordersMet + " of " + c.orders + "</li>" +
       (c.requests ? "<li>Gunners' calls answered: " + c.requestsMet + " of " + c.requests + "</li>" : "") +
       (c.evasive ? "<li>Breaks the " + sim.helm.who.toLowerCase() + " ordered: " + c.evasiveMet + " made of " + c.evasive + "</li>" : "") +
+      (c.disobeyed ? "<li>Dodged when told to hold course: " + c.disobeyed + " (each costs " + Math.round(BL.HELM.evade.disobeyCost * 100) + "% of the mission's score)</li>" : "") +
       "<li>Torpedoes dodged: " + (c.dodged || 0) + " of " + (c.torps || 0) + "</li>" +
       (sim.hasDrive ? "" : "<li>Launch: " + (c.launchWait ? c.launchWait + " s after the call" : "right away") + "</li>") +
       (c.stressHits ? "<li>Structural hits from hard turns: " + c.stressHits + "</li>" : "") +
@@ -1267,6 +1269,7 @@
       ["Gun crew", r.crew.map(function (c) { return esc(c.name) + ", " + c.label + " (" + Math.round(c.skill * 100) + ")"; }).join(" · ")],
       ["Orders met", hm.ordersMet + " / " + hm.orders]].concat(hm.requests ? [["Gunners' calls answered", hm.requestsMet + " / " + hm.requests]] : [], [
       ["Breaks ordered and made", hm.evasiveMet + " / " + hm.evasive],
+      ["Disobeyed (dodged when told to hold course)", hm.disobeyed ? hm.disobeyed + " (−" + Math.round(BL.HELM.evade.disobeyCost * 100) + "% of the score each)" : "never"],
       ["Torpedoes dodged", hm.dodged + " / " + hm.torpsAtUs],
       ["Steering", hm.autoPct ? hm.autoPct + "% on autopilot (earns " + Math.round(BL.HELM.autopilotRep * 100) + "% for that time)" : "all by hand"],
       ["Structural hits from hard turns", hm.stressHits],
@@ -1296,6 +1299,7 @@
   }
   function worstHelm(r) {
     var hm = r.helm;
+    if (hm.disobeyed) return "You dodged " + hm.disobeyed + (hm.disobeyed === 1 ? " time" : " times") + " when the " + (r.hasDrive ? "captain" : "coxswain") + " said to hold course. Each one went in the report: −" + Math.round(BL.HELM.evade.disobeyCost * 100) + "% of the score.";
     if (hm.stressHits >= 2) return hm.stressHits + " structural hits from turning past the safe rate. Ease off before the stress bar fills.";
     if (hm.orders && hm.ordersMet / hm.orders < 0.6) return "Only " + hm.ordersMet + " of " + hm.orders + " orders met. Start the turn early (watch the white stop tick) and set the engine order too.";
     if (hm.flankHits) return "Flank held too long burned out a thruster.";
