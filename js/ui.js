@@ -472,14 +472,15 @@
     if (sim.phase === "gravspace" && !gravShown) {
       gravShown = true;
       flashJump();
-      setTimeout(showGrav, 1000);
+      setTimeout(function () { showGrav(false); }, 1000);
     } else if (sim.phase !== "gravspace") gravShown = false;
     if (sim.phase === "done" && !doneShown) {
       doneShown = true; running = false;
       report = null;
       if (!job.test && career) { report = BL.career.applyResult(career, job, sim.result); saveCareer(); }
-      if (sim.result.outcome === "success") flashJump();
-      setTimeout(showDebrief, sim.result.outcome === "abandoned" ? 400 : 1600);
+      // A finished mission gets the last jump's report too (as every jump before it did), then the debriefing.
+      if (sim.result.outcome === "success") { flashJump(); setTimeout(function () { showGrav(true); }, 1600); }
+      else setTimeout(showDebrief, sim.result.outcome === "abandoned" ? 400 : 1600);
     }
   }
   function flashJump() {
@@ -1287,9 +1288,9 @@
     });
     $("hm-alerts").addEventListener("click", function (ev) { var d = ev.target.closest("[data-hdg]"); if (d && turretActive()) sim.helm.setAuto(true, +d.dataset.hdg); });
   })();
-  function gravHelm(js, dmg, next) {
-    var c = sim.helm.jumps[sim.jumpIndex - 1] || {}, g = sim.turret.jumps[sim.jumpIndex - 1] || {};
-    return "<p>Fighting has stopped. " + (sim.hasDrive ? "The ship is in GravSpace." : "The carrier has you on deck and is carrying you through GravSpace.") + "</p><ul class='grav-list'>" +
+  function gravHelm(js, dmg, next, n) {
+    var c = sim.helm.jumps[n - 1] || {}, g = sim.turret.jumps[n - 1] || {};
+    return "<p>Fighting has stopped." + (next ? (sim.hasDrive ? " The ship is in GravSpace." : " The carrier has you on deck and is carrying you through GravSpace.") : "") + "</p><ul class='grav-list'>" +
       "<li>Orders met: " + c.ordersMet + " of " + c.orders + "</li>" +
       (c.requests ? "<li>Gunners' calls answered: " + c.requestsMet + " of " + c.requests + "</li>" : "") +
       (c.evasive ? "<li>Breaks the " + sim.helm.who.toLowerCase() + " ordered: " + c.evasiveMet + " made of " + c.evasive + "</li>" : "") +
@@ -1303,9 +1304,9 @@
       "<li>Torpedoes stopped by shields: " + js.shielded + " of " + js.salvos + "</li>" +
       "<li>Hull damage taken: " + js.hullLost + "</li>" +
       (dmg.length ? "<li>Damage: " + dmg.map(function (d) { return d.what; }).join("; ") + "</li>" : "") +
-      (sim.lastRepairs && sim.lastRepairs.length ? "<li>Damage control repaired half of it: " + sim.lastRepairs.join("; ") + "</li>" : "") +
-      "</ul><h2>Next: " + next.name + "</h2><p>" + gunnerTip(sim.route[sim.jumpIndex]) + (sim.hasDrive ? "" : " You'll be back in the launch tube.") + "</p>" +
-      "<p class='muted'>Take a breath; the clock is stopped.</p>";
+      (next && sim.lastRepairs && sim.lastRepairs.length ? "<li>Damage control repaired half of it: " + sim.lastRepairs.join("; ") + "</li>" : "") +
+      "</ul>" + (next ? "<h2>Next: " + next.name + "</h2><p>" + gunnerTip(sim.route[sim.jumpIndex]) + (sim.hasDrive ? "" : " You'll be back in the launch tube.") + "</p>" +
+      "<p class='muted'>Take a breath; the clock is stopped.</p>" : "");
   }
   function debriefHelm(r) {
     var hm = r.helm, d = r.detail;
@@ -1360,14 +1361,18 @@
   }
 
   /* ----------------------------------------------------------- GravSpace */
-  function showGrav() {
-    var js = sim.stats.jumps[sim.stats.jumps.length - 1], next = sim.encounter();
-    var dmg = sim.stats.damageReports.filter(function (d) { return d.jump === sim.jumpIndex; });
-    $("grav-title").textContent = sim.hasDrive ? "In GravSpace: jump " + sim.jumpIndex + " of " + sim.cfg.jumps + " complete"
-      : "Aboard the carrier: sortie " + sim.jumpIndex + " of " + sim.cfg.jumps + " complete";
-    if (sim.turret) { $("grav-body").innerHTML = sim.helm ? gravHelm(js, dmg, next) : gravGunner(js, dmg, next); $("btn-grav-go").textContent = sim.hasDrive ? "Drop out of GravSpace" : "Launch"; overlay("ov-grav", true); return; }
+  // The report after each jump (sortie); final: after the mission's last one, on the way to the debriefing.
+  var gravFinal = false;
+  function showGrav(final) {
+    gravFinal = !!final;
+    var n = sim.stats.jumps.length, js = sim.stats.jumps[n - 1], next = final ? null : sim.encounter();
+    var dmg = sim.stats.damageReports.filter(function (d) { return d.jump === n; });
+    $("grav-title").textContent = final ? (sim.hasDrive ? "Jump " + n + " of " + sim.cfg.jumps + " complete: planet buster away" : "Sortie " + n + " of " + sim.cfg.jumps + " complete: back aboard the carrier")
+      : sim.hasDrive ? "In GravSpace: jump " + n + " of " + sim.cfg.jumps + " complete" : "Aboard the carrier: sortie " + n + " of " + sim.cfg.jumps + " complete";
+    $("btn-grav-go").textContent = final ? "Mission debriefing" : sim.hasDrive ? "Drop out of GravSpace" : "Launch";
+    if (sim.turret) { $("grav-body").innerHTML = sim.helm ? gravHelm(js, dmg, next, n) : gravGunner(js, dmg, next, n); overlay("ov-grav", true); return; }
     $("grav-body").innerHTML =
-      "<p>Fighting has stopped." + (sim.hasDrive ? "" : " The carrier has you on deck and is carrying you through GravSpace.") + (sim.hasAux() ? " The aux bank is refilled." : "") + "</p>" +
+      "<p>Fighting has stopped." + (final ? "" : (sim.hasDrive ? "" : " The carrier has you on deck and is carrying you through GravSpace.") + (sim.hasAux() ? " The aux bank is refilled." : "")) + "</p>" +
       "<ul class='grav-list'>" +
       "<li>Salvos stopped by shields: " + js.shielded + " of " + js.salvos + "</li>" +
       "<li>Hull damage taken: " + js.hullLost + "</li>" +
@@ -1375,16 +1380,15 @@
       "<li>Enemies destroyed: " + js.kills + "</li>" +
       (sim.hasDrive ? "<li>Jump " + (js.onTime ? "on time" : "late: the drive wasn't full when the window opened") + "</li>" : "") +
       (dmg.length ? "<li>Damage: " + dmg.map(function (d) { return d.what; }).join("; ") + "</li>" : "") +
-      (sim.lastRepairs && sim.lastRepairs.length ? "<li>Damage control repaired half of it: " + sim.lastRepairs.join("; ") + "</li>" : "") +
+      (!final && sim.lastRepairs && sim.lastRepairs.length ? "<li>Damage control repaired half of it: " + sim.lastRepairs.join("; ") + "</li>" : "") +
       "</ul>" +
-      "<h2>Next: " + next.name + "</h2><p>" + next.what + ". Tests: " + next.tests.toLowerCase() + (sim.hasDrive ? ". The drive will be empty again on arrival." : ". The carrier launches you again on arrival.") + "</p>" +
-      "<p class='muted'>Take a breath; the clock is stopped. You can adjust the priority order once you're back on the console.</p>";
-    $("btn-grav-go").textContent = sim.hasDrive ? "Drop out of GravSpace" : "Launch";
+      (final ? "" : "<h2>Next: " + next.name + "</h2><p>" + next.what + ". Tests: " + next.tests.toLowerCase() + (sim.hasDrive ? ". The drive will be empty again on arrival." : ". The carrier launches you again on arrival.") + "</p>" +
+      "<p class='muted'>Take a breath; the clock is stopped. You can adjust the priority order once you're back on the console.</p>");
     overlay("ov-grav", true);
   }
-  function gravGunner(js, dmg, next) {
-    var g = sim.turret.jumps[sim.jumpIndex - 1] || {};
-    return "<p>Fighting has stopped. " + (sim.hasDrive ? "The ship is in GravSpace." : "The carrier has you on deck and is carrying you through GravSpace.") + "</p><ul class='grav-list'>" +
+  function gravGunner(js, dmg, next, n) {
+    var g = sim.turret.jumps[n - 1] || {};
+    return "<p>Fighting has stopped." + (next ? (sim.hasDrive ? " The ship is in GravSpace." : " The carrier has you on deck and is carrying you through GravSpace.") : "") + "</p><ul class='grav-list'>" +
       "<li>Enemy ships destroyed: " + g.kills + " of " + g.ships + "</li>" +
       "<li>Torpedoes shot down: " + g.downed + " of " + g.torps + "</li>" +
       (g.mines ? "<li>Mines shot down: " + g.minesDowned + " of " + g.mines + "</li>" : "") +
@@ -1395,9 +1399,9 @@
       "<li>Torpedoes stopped by shields: " + js.shielded + " of " + js.salvos + "</li>" +
       "<li>Hull damage taken: " + js.hullLost + "</li>" +
       (dmg.length ? "<li>Damage: " + dmg.map(function (d) { return d.what; }).join("; ") + "</li>" : "") +
-      (sim.lastRepairs && sim.lastRepairs.length ? "<li>Damage control repaired half of it: " + sim.lastRepairs.join("; ") + "</li>" : "") +
-      "</ul><h2>Next: " + next.name + "</h2><p>" + gunnerTip(sim.route[sim.jumpIndex]) + (sim.hasDrive ? "" : " The carrier launches you again on arrival.") + "</p>" +
-      "<p class='muted'>Take a breath; the clock is stopped.</p>";
+      (next && sim.lastRepairs && sim.lastRepairs.length ? "<li>Damage control repaired half of it: " + sim.lastRepairs.join("; ") + "</li>" : "") +
+      "</ul>" + (next ? "<h2>Next: " + next.name + "</h2><p>" + gunnerTip(sim.route[sim.jumpIndex]) + (sim.hasDrive ? "" : " The carrier launches you again on arrival.") + "</p>" +
+      "<p class='muted'>Take a breath; the clock is stopped.</p>" : "");
   }
   var ENGINEER_NOTE = {
     sharp: "Keeps the shields full and answers a call for power fast.",
@@ -1427,7 +1431,11 @@
     return (look.ship && !brief ? "Expect " + (look.only ? "the " + look.ship : BL.plural(look.ship)) + ": " + look.what + ". " : "") +
       (good.length ? "Your " + good.join(" and ") + " does extra damage to them." : gun + (bats.length === 1 ? " gets" : " get") + " no bonus against them.");
   }
-  $("btn-grav-go").onclick = function () { click(); overlay("ov-grav", false); BL.speech.unlock(); sim.beginJump(); speakNew(); };
+  $("btn-grav-go").onclick = function () {
+    click(); overlay("ov-grav", false);
+    if (gravFinal) { gravFinal = false; showDebrief(); return; }
+    BL.speech.unlock(); sim.beginJump(); speakNew();
+  };
 
   /* ---------------------------------------------------------- Debriefing */
   function showDebrief() {
