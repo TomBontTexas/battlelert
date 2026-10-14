@@ -620,7 +620,10 @@
     // jump calls, warnings and damage, so an order is never stuck behind other talk.
     quiet: ["salvo", "waveIn", "withdrew", "straggler", "surprise", "shielded", "dodged", "intercepted", "pdStopped",
             "torpDown", "chargeStopped", "killed", "killedOther", "request", "requestDry",
-            "ptAway", "ptHit", "ptMiss", "ptDowned", "helmMet", "shipKill", "mineDown", "mainShotHit", "mainShotKill", "mainShotMiss", "mainFired", "mainKill"]
+            "ptAway", "ptHit", "ptMiss", "ptDowned", "helmMet", "shipKill", "mineDown", "mainShotHit", "mainShotKill", "mainShotMiss", "mainFired", "mainKill",
+            // the engineer's business on the big ships: the squadron's launchers and arresters, drive strikes, power
+            "launchCall", "launchMissed", "launched", "recoverCall", "recovered2", "recoverLate", "strike",
+            "auxEmpty", "auxEmptyR", "heat", "heatR", "trip", "reclose"]
   };
 
   /* ------------------------------------------------------------ Chatter

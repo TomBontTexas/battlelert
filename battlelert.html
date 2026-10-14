@@ -15,7 +15,7 @@
   <div class="title-card">
     <div class="logo">BATTLELERT</div>
     <div class="subtitle">Main Engineering</div>
-    <p class="phase-note">The engineer and gunner paths are open on every class, gunboat to dreadnought. The pilot station is being built: try the helm test below.</p>
+    <p class="phase-note">The engineer and gunner paths are open on every class, gunboat to dreadnought. The pilot station is being built: try the helm test below, on any ship.</p>
     <div class="menu">
       <button id="btn-continue" class="big primary" hidden>Continue career</button>
       <button id="btn-enlist" class="big">Enlist (new career)</button>
@@ -36,7 +36,11 @@
         </select>
       </div>
       <div class="seed-row"><button id="btn-ring" class="small">Gunner ring test (Destroyer)</button></div>
-      <div class="seed-row"><button id="btn-helm" class="small">Pilot helm test (Gunboat)</button></div>
+      <div class="seed-row">
+        <button id="btn-helm" class="small">Pilot helm test</button>
+        <label for="ship-pick">ship</label>
+        <select id="ship-pick"></select>
+      </div>
       <div class="seed-row">
         <label for="seed-input">seed</label>
         <input id="seed-input" type="number" min="1" max="999999" inputmode="numeric">
@@ -547,7 +551,7 @@
 
 <script src="version.js?b=cd41189c"></script>
 <script src="update-banner.js?b=ec7860dd"></script>
-<script src="js/data.js?b=5f364b7a"></script>
+<script src="js/data.js?b=5e8d0d4b"></script>
 <script src="js/sim.js?b=ad9cc346"></script>
 <script src="js/agents.js?b=35307cbd"></script>
 <script src="js/gunnery.js?b=6f7c1736"></script>
@@ -560,6 +564,6 @@
 <script src="js/career.js?b=26a32bc8"></script>
 <script src="js/speech.js?b=f9e428ef"></script>
 <script src="js/audio.js?b=273e5325"></script>
-<script src="js/ui.js?b=718367a6"></script>
+<script src="js/ui.js?b=b4775ba2"></script>
 </body>
 </html>

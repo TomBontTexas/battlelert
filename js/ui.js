@@ -67,8 +67,18 @@
     var seed = parseInt($("seed-input").value, 10);
     startBriefing(ringJob(seed > 0 ? seed : BL.randomSeed()));
   };
-  // The pilot helm test: a gunboat, you at the helm, a gunner on the gun.
-  function helmJob(seed) { return { test: true, station: "pilot", classId: "gunboat", n: 1, tl: 4, ship: "Gunboat", seed: seed, helm: true }; }
+  // The pilot helm test: the ship picked on the title screen (gunboat to dreadnought), you at the
+  // helm, a gun crew on the guns. A gunboat flies three sorties from the carrier; a ship with a
+  // drive makes three jumps.
+  Object.keys(BL.HELM.classes).forEach(function (id) {
+    var o = document.createElement("option"); o.value = id; o.textContent = BL.classById(id).name; $("ship-pick").appendChild(o);
+  });
+  $("ship-pick").value = BL.HELM.classes[settings.helmPick] ? settings.helmPick : "gunboat";
+  $("ship-pick").onchange = function () { settings.helmPick = this.value; saveSettings(); };
+  function helmJob(seed) {
+    var id = $("ship-pick").value;
+    return { test: true, station: "pilot", classId: id, n: 1, tl: 4, ship: BL.classById(id).name, seed: seed, helm: true };
+  }
   $("btn-helm").onclick = function () {
     BL.audio.init(); click();
     var seed = parseInt($("seed-input").value, 10);
