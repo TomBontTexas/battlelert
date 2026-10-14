@@ -18,8 +18,8 @@
   var MAX_QUEUE = 3;
 
   // Each speaker gets its own real voice where the device has enough; pitch and pace only
-  // nudge it (strong shifts make a voice sound broken). vol scales the Voices volume.
-  // order = who gets the best voices first.
+  // nudge it (strong shifts make a voice sound broken). order = who gets the best voices first;
+  // smooth = take the best-quality woman's voice the device has, if any.
   var PROFILE = {
     "Tactical":       { pitch: 1.0,  rate: 1.15, order: 0 },
     "Helm":           { pitch: 1.05, rate: 1.1,  order: 1 },
@@ -32,7 +32,7 @@
     "Navigation":     { pitch: 1.0,  rate: 1.05, order: 8 },
     "Reactor room":   { pitch: 0.92, rate: 1.1,  order: 9 },
     "Coxswain":       { pitch: 0.95, rate: 1.05, order: 10 },
-    "Carrier":        { pitch: 1.0,  rate: 1.25, vol: 0.7, order: 11 },   // launch control: quick and quiet
+    "Carrier":        { pitch: 0.98, rate: 1.1,  order: 11, smooth: true },   // launch control: brisk and smooth
     "Captain":        { pitch: 0.92, rate: 1.0,  order: 12 },
     "Failsafe":       { pitch: 0.85, rate: 1.0,  order: 13 },
     "Gunnery":        { pitch: 0.9,  rate: 1.05, order: 14 },
@@ -87,8 +87,13 @@
 
   // Speakers in order get distinct voices; once they run out, voices are reused with a small
   // pitch offset so two speakers sharing a voice still sound a little different.
+  var SMOOTH = /^(Ava|Allison|Samantha|Susan|Zoe|Serena|Karen|Moira|Tessa|Fiona|Victoria|Kate|Catherine|Nicky|Libby|Sonia|Natasha|Jenny|Aria|Michelle|Emma|Hazel|Zira|Google UK English Female|Google US English)/i;
   function voiceFor(speaker) {
     if (assigned[speaker]) return assigned[speaker];
+    var k0 = SPEAKERS.indexOf(speaker), taken = voices.slice(0, Math.max(0, k0));   // voices of the speakers ahead
+    var smooth = PROFILE[speaker] && PROFILE[speaker].smooth && voices.filter(function (v) { return SMOOTH.test(v.name); })
+      .sort(function (a, b) { return (taken.indexOf(a) < 0 ? 0 : 1) - (taken.indexOf(b) < 0 ? 0 : 1) || quality(b) - quality(a); })[0];
+    if (smooth) return (assigned[speaker] = { voice: smooth, shift: 0 });
     var k = SPEAKERS.indexOf(speaker); if (k < 0) k = SPEAKERS.length - 1;
     var n = voices.length;
     assigned[speaker] = { voice: n ? voices[k % n] : null, shift: n ? [0, -0.06, 0.06][Math.floor(k / n) % 3] : 0 };
@@ -134,7 +139,7 @@
     var u = new SpeechSynthesisUtterance(item.words);
     var a = voiceFor(item.speaker);
     if (a.voice) { u.voice = a.voice; u.lang = a.voice.lang; }
-    u.pitch = p.pitch + a.shift; u.rate = p.rate; u.volume = volume * (p.vol || 1);
+    u.pitch = p.pitch + a.shift; u.rate = p.rate; u.volume = volume;
     u.onstart = function () { if (current === u) stats.started++; };
     u.onend = function () { if (current !== u) return; stats.finished++; speaking = false; current = null; next(); };
     u.onerror = function (ev) {
