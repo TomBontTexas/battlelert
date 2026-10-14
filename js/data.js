@@ -628,14 +628,15 @@
   };
 
   /* ------------------------------------------------------------ Chatter
-     Several lines per event; {placeholders} are filled in by the simulation. */
+     Several lines per event; {placeholders} are filled in by the simulation. Only the captain
+     gives orders or chases a station; Bridge only announces (jump in 5, out of GravSpace). */
   BL.CHATTER = {
     launch:      ["Coxswain: launch! We're clear of the carrier.", "Carrier: gunboat away. Good hunting.", "Coxswain: off the deck and into it."],
     recoveryNotice: ["Carrier: recovery in {t} s. Hold on out there.", "Coxswain: carrier picks us up in {t} seconds."],
     recovered:   ["Carrier: gunboat recovered. Well flown.", "Coxswain: we're on the deck. Nice work, Engineering."],
-    arrival:     ["Bridge: dropping out of GravSpace. Drive is empty.", "Bridge: we're out of GravSpace. Start charging the drive, Engineering.", "Helm: normal space. Drive reads empty."],
+    arrival:     ["Bridge: dropping out of GravSpace. Drive is empty.", "Captain: we're out of GravSpace. Start charging the drive, Engineering.", "Helm: normal space. Drive reads empty."],
     briefing:    ["Tactical: expect {enemies}. {what}.", "Tactical: scopes show {enemies} on approach."],
-    fortressIn:  ["Tactical: the homeworld fortress, dead ahead. Hold it off until the buster's away.", "Bridge: there's the fortress guarding their world. Guns, keep it off us.",
+    fortressIn:  ["Tactical: the homeworld fortress, dead ahead. Hold it off until the buster's away.", "Captain: there's the fortress guarding their world. Guns, keep it off us.",
                   "Tactical: Archonian fortress dead ahead. It won't move and it won't stop firing."],
     waveIn:      ["Tactical: {enemy} on scope.", "Tactical: new contacts, {enemy}.", "Tactical: {enemy} closing."],
     salvo:       ["Tactical: enemy salvo in {t} s.", "Tactical: incoming fire, {t} seconds.", "Tactical: they're locking on. Salvo in {t}."],
@@ -655,24 +656,24 @@
     lifeOut:     ["Medical: crew passing out! Gunners are slowing down.", "Medical: life support's out. The crew can't keep this up."],
     lifeBack:    ["Medical: air's back. Crew recovering."],
     jumpNotice:  ["Navigation: jump window in {t} s. Drive must be full.", "Bridge: jump window opens in {t} seconds."],
-    jumpOpen:    ["Navigation: jump window open. Waiting on the drive.", "Bridge: window's open. Where's my drive, Engineering?"],
+    jumpOpen:    ["Navigation: jump window open. Waiting on the drive.", "Captain: window's open. Where's my drive, Engineering?"],
     jumpGo:      ["Bridge: drive full. Jumping in {t}.", "Bridge: all hands, jump in {t}."],
     damaged:     ["Damage control: {what}."],
     killedOther: ["Tactical: {enemy} destroyed.", "Tactical: {enemy} breaking up."],
     mainFired:   ["Gunnery: main gun fired! Direct hit.", "Gunnery: main gun away! {enemy} is hurting.", "Gunnery: main gun on target. Keep it coming, Engineering!"],
     mainKill:    ["Gunnery: main gun fired! {enemy} gutted.", "Bridge: main gun on target. Scratch one {enemy}."],
     // The main gun at the gunner station: you fire it.
-    mainReady:   ["Engineering: main gun's charged. Your shot, Gunnery.", "Bridge: main gun ready. Wait for the bow to come on.", "Helm: main gun's up. I'm bringing her around."],
+    mainReady:   ["Engineering: main gun's charged. Your shot, Gunnery.", "Captain: main gun ready. Wait for the bow to come on.", "Helm: main gun's up. I'm bringing her around."],
     mainShotHit: ["Bridge: main gun hit! The {enemy} is hurting.", "Tactical: direct hit on the {enemy}!"],
     mainShotKill:["Bridge: main gun on target. Scratch one {enemy}!", "Tactical: {enemy} gutted. Beautiful shot."],
     mainShotMiss:["Bridge: main gun missed! Nothing on the bow.", "Tactical: clean miss. That's a minute of charge gone."],
     mineDown:    ["Tactical: mine destroyed.", "Helm: thanks, Gunnery. That one was close.", "Tactical: mine cleared."],
-    launchCall:  ["Flight deck: squadron launch in {t} s. Charge the launchers.", "Bridge: launching gunboats in {t} seconds. Launchers must be full.", "Flight deck: gunboats to launch in {t}. Need full launchers."],
+    launchCall:  ["Flight deck: squadron launch in {t} s. Charge the launchers.", "Captain: launching gunboats in {t} seconds. Launchers must be full.", "Flight deck: gunboats to launch in {t}. Need full launchers."],
     launched:    ["Bridge: Transferring launch control to gunboats. Launch when ready."],
-    launchMissed:["Flight deck: launchers weren't charged. Launch scrubbed.", "Bridge: no launch, Engineering. The launchers were short."],
-    recoverCall: ["Flight deck: recovering the squadron in {t} s. Charge the arresters.", "Bridge: gunboats coming home in {t} seconds. Arresters must be full."],
+    launchMissed:["Flight deck: launchers weren't charged. Launch scrubbed.", "Captain: no launch, Engineering. The launchers were short."],
+    recoverCall: ["Flight deck: recovering the squadron in {t} s. Charge the arresters.", "Captain: gunboats coming home in {t} seconds. Arresters must be full."],
     recovered2:  ["Flight deck: squadron recovered. All gunboats aboard.", "Flight deck: arresters caught them. Squadron's home."],
-    recoverLate: ["Flight deck: arresters aren't charged! The gunboats are circling.", "Bridge: we can't take the squadron aboard, Engineering. Charge those arresters!"],
+    recoverLate: ["Flight deck: arresters aren't charged! The gunboats are circling.", "Captain: we can't take the squadron aboard, Engineering. Charge those arresters!"],
     holdForSquadron: ["Bridge: holding the jump until the squadron is aboard.", "Captain: we don't leave without our gunboats."],
     squadronLeft:["Captain: we can't wait for the gunboats. Jumping now!", "Bridge: hull's too far gone. We're leaving the squadron behind."],
     intercepted: ["Squadron: we caught that salvo!", "Flight deck: gunboats knocked down a salvo."],
@@ -687,7 +688,7 @@
     starved:     ["Helm: engines are starved! I can't hold the course!", "Helm: not enough power to the engines, we're drifting into the mines!"],
     auxEmpty:    ["Aux bank is empty."],
     // Gunner station. A key ending in G replaces the plain one while the player is at a gun.
-    arrivalG:    ["Bridge: dropping out of GravSpace. Guns, stand by.", "Bridge: normal space. Gunnery, weapons free.", "Helm: we're out of GravSpace. Guns up!"],
+    arrivalG:    ["Captain: dropping out of GravSpace. Guns, stand by.", "Captain: normal space. Gunnery, weapons free.", "Helm: we're out of GravSpace. Guns up!"],
     recoveredG:  ["Carrier: gunboat recovered. Good shooting.", "Coxswain: we're on the deck. Nice shooting, Guns."],
     burnG:       [],                     // the helm's burns matter to the engineer, not the gunner
     surpriseG:   ["Tactical: torpedo out of nowhere!", "Tactical: didn't see that one launch!"],
@@ -702,7 +703,7 @@
     ptMiss:      ["Tactical: torpedo missed.", "Coxswain: it slipped the torpedo."],
     // The helm. A key ending in H replaces the plain one (and the gunner's G one) at the helm.
     launchH:     ["Carrier: Transferring launch control to gunboats. Launch when ready."],   // TexasBont's launch line (Oct 13, 2026)
-    arrivalH:    ["Navigation: out of GravSpace. Jump heading {hdg}, Helm.", "Bridge: normal space. Helm, she's yours; jump heading is {hdg}."],
+    arrivalH:    ["Navigation: out of GravSpace. Jump heading {hdg}, Helm.", "Captain: normal space. Helm, she's yours; jump heading is {hdg}."],
     takeConn:    ["Captain: I have the conn. Coming to {hdg} for the jump.", "Captain: I'll take her, Helm. Jump heading {hdg}."],
     recoveredH:  ["Carrier: gunboat recovered. Nice flying.", "Coxswain: we're on the deck. Good flying, Helm."],
     burnH:       [],                     // the captain's orders replace the bridge's burns at the helm
