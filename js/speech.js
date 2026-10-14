@@ -18,7 +18,8 @@
   var MAX_QUEUE = 3;
 
   // Each speaker gets its own real voice where the device has enough; pitch and pace only
-  // nudge it (strong shifts make a voice sound broken). order = who gets the best voices first.
+  // nudge it (strong shifts make a voice sound broken). vol scales the Voices volume.
+  // order = who gets the best voices first.
   var PROFILE = {
     "Tactical":       { pitch: 1.0,  rate: 1.15, order: 0 },
     "Helm":           { pitch: 1.05, rate: 1.1,  order: 1 },
@@ -31,7 +32,7 @@
     "Navigation":     { pitch: 1.0,  rate: 1.05, order: 8 },
     "Reactor room":   { pitch: 0.92, rate: 1.1,  order: 9 },
     "Coxswain":       { pitch: 0.95, rate: 1.05, order: 10 },
-    "Carrier":        { pitch: 1.0,  rate: 1.0,  order: 11 },
+    "Carrier":        { pitch: 1.0,  rate: 1.25, vol: 0.7, order: 11 },   // launch control: quick and quiet
     "Captain":        { pitch: 0.92, rate: 1.0,  order: 12 },
     "Failsafe":       { pitch: 0.85, rate: 1.0,  order: 13 },
     "Gunnery":        { pitch: 0.9,  rate: 1.05, order: 14 },
@@ -133,7 +134,7 @@
     var u = new SpeechSynthesisUtterance(item.words);
     var a = voiceFor(item.speaker);
     if (a.voice) { u.voice = a.voice; u.lang = a.voice.lang; }
-    u.pitch = p.pitch + a.shift; u.rate = p.rate; u.volume = volume;
+    u.pitch = p.pitch + a.shift; u.rate = p.rate; u.volume = volume * (p.vol || 1);
     u.onstart = function () { if (current === u) stats.started++; };
     u.onend = function () { if (current !== u) return; stats.finished++; speaking = false; current = null; next(); };
     u.onerror = function (ev) {
