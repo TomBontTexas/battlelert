@@ -715,7 +715,7 @@
     flankDamage: ["Engineering: we burned out a thruster holding flank! {what}.", "Engineering: that's what flank does. {what}."],
     dodged:      ["Tactical: it missed! Nice flying.", "Tactical: torpedo went wide!", "Tactical: clean miss!"],
     evade:       ["{who}: torpedo away! Break {dir}, now!", "{who}: evasive! Hard {dir}!", "{who}: break {dir}, Helm! Break {dir}!"],
-    vampire:     ["Tactical: vampire, vampire, vampire!"],    // a torpedo in the air and no break ordered: take it
+    vampire:     ["Tactical: vampire, vampire!"],    // a torpedo in the air and no break ordered: take it
     disobey:     ["{who}: Helm, I said hold your course!", "{who}: that was not my order, Helm. It goes in my report.", "{who}: Helm! Steady means steady!"],
     evadeMissed: ["{who}: too slow on that break, Helm!", "{who}: I said break, Helm!"],
     helmReq:     ["Gunner {n}: Helm, bring her {dir} {deg}, {weapon} target {side}!", "Gunner {n}: nothing in my arc. Come {dir} {deg}, Helm!", "Gunner {n}: Helm, {dir} {deg} and I've got the shot!"],
