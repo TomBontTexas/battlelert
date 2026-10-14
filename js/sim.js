@@ -447,7 +447,7 @@
       this.chat("intercepted", null, "good");
       return;
     }
-    // At the helm a torpedo can miss altogether: the pilot dodged it (helm.js).
+    // At the helm a torpedo can miss altogether: the captain ordered a break and the pilot made it (helm.js).
     if (this.helm && this.helm.torpedoArrives(e)) {
       st.salvos++; js.salvos++; js.dodged = (js.dodged || 0) + 1;
       if (e.visible) { st.salvosAnnounced++; st.salvosShielded++; }

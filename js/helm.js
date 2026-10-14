@@ -37,7 +37,8 @@
     this.inTube = false; this.launchAt = -99; this.clearAt = 0;
     this.curOrder = null; this.nextOrderAt = Infinity; this.warnReadyAt = 0;
     this.stats = { orders: 0, ordersMet: 0, stressHits: 0, flankHits: 0, autoT: 0, manualT: 0, overT: 0, hardT: 0, liveT: 0, launches: [],
-      torps: 0, dodged: 0, requests: 0, requestsMet: 0 };
+      torps: 0, dodged: 0, requests: 0, requestsMet: 0, evasive: 0, evasiveMet: 0 };
+    this.evade = null;                    // the captain's order to break (dodge) the torpedo just launched
     this.req = null;                      // a gunner's request to bring the ship round (ring.js makes them)
     this.jumpHdg = null; this.jumpShown = false;
     this.jumps = []; this.cur = null;
@@ -161,7 +162,8 @@
     this.out.port = this.out.stbd = this.speed = g;
     this.rollTurn();
     this.nextOrderAt = enc.burns ? m.cfg.arrivalSeconds + Math.max(this.H.order.minGap, r.range(enc.burns.every) * 0.6) : Infinity;
-    this.cur = { orders: 0, ordersMet: 0, stressHits: 0, launchWait: 0, torps: 0, dodged: 0, requests: 0, requestsMet: 0 };
+    this.cur = { orders: 0, ordersMet: 0, stressHits: 0, launchWait: 0, torps: 0, dodged: 0, requests: 0, requestsMet: 0, evasive: 0, evasiveMet: 0 };
+    this.evade = null; this.holdSaidAt = -99; this.lastBreak = -99;
     this.jumps[m.jumpIndex] = this.cur;
     this.req = null; this.jumpSaid = false; this.conT = 0; this.conTaken = false;
     // Ships with a GravSpace drive jump on a heading Navigation gives on arrival.
@@ -211,31 +213,67 @@
     return Math.abs(norm(e.hdg - this.compass())) <= this.H.order.heading && Math.abs(avg - want) <= Math.max(0.6, want * 0.15);
   };
 
-  /* --------------------------------------------------------------- Dodging
-     Archonian gunners lead a steady course. A torpedo misses if, during its flight, the bow ends
-     up BL.HELM.dodge.turn degrees or more from where a steady turn would have put it, or the
-     engines' thrust changes by dodge.steps engine orders or more (what the engines are actually
-     giving, so a flick of the telegraph inside the lag isn't enough). */
-  // The engine order nearest a thrust in G (its place in BL.HELM.orders).
-  Helm.prototype.stepOf = function (g) {
-    var best = 0, bd = 1e9, self = this;
-    this.H.orders.forEach(function (o, k) { var d = Math.abs(self.gOf(o.id) - g); if (d < bd) { bd = d; best = k; } });
-    return best;
-  };
-  // What the enemy gunner sees as a torpedo launches.
-  Helm.prototype.thrustStep = function () { return this.stepOf((this.out.port + this.out.stbd) / 2); };
-  Helm.prototype.aimSnap = function () { return { hdg: this.compass(), omega: this.omega, step: this.thrustStep(), t: this.m.t }; };
+  /* ------------------------------------------------------- Evasive orders
+     Dodging is the captain's call. When a torpedo launches the captain either orders a break
+     ("Break left, now!") or decides to take it on the shields: always while a course order is
+     pending or under way, or the ship is lined up for the jump; about half the time when the
+     shields can absorb it; and always when the ship is too slow to swing far enough before it
+     lands (big ships). A break carried out in time (the bow BL.HELM.dodge.turn degrees or more
+     off where a steady turn would have put it, when the torpedo arrives) makes it miss, and
+     counts as an order met. Torpedoes launched in the same burst are covered by the same break.
+     Turning on your own dodges nothing. */
+  Helm.prototype.aimSnap = function () { return { hdg: this.compass(), omega: this.omega, t: this.m.t }; };
   Helm.prototype.dodged = function (snap) {
-    var D = this.H.dodge, off = Math.abs(norm(this.compass() - (snap.hdg + snap.omega * (this.m.t - snap.t))));
-    return off >= D.turn || Math.abs(this.thrustStep() - snap.step) >= D.steps;
+    return Math.abs(norm(this.compass() - (snap.hdg + snap.omega * (this.m.t - snap.t)))) >= this.H.dodge.turn;
+  };
+  // Can this ship swing far enough in `t` seconds, from a standing start after the lag?
+  Helm.prototype.canBreak = function (t) {
+    var b = this.C.build * this.turnFactor(), s = Math.max(0, t - this.C.lag - 0.4);
+    return 0.5 * b * s * s >= this.H.dodge.turn * 1.3;
+  };
+  // A torpedo just launched at us from ship s (ring.js calls this).
+  Helm.prototype.torpedoLaunched = function (e, s) {
+    var m = this.m, E = this.H.evade, ev = this.evade, now = m.t;
+    if (ev && now - ev.at < E.burst) { e.evade = ev; return; }          // the same burst: the same break
+    if (ev && now < ev.until) return;                                   // mid-break already: this one lands
+    var sh = m.sys("shield"), o = this.orderView();
+    var busy = this.curOrder || o || (this.jumpNear() && this.onJumpHeading()) || this.locked() || now - this.lastBreak < E.gap;
+    var evade = this.canBreak(e.at - now) && !busy && (sh.mj < e.mj * E.cover || this.rng.chance(E.chance));
+    if (!evade) {
+      if (now - this.holdSaidAt > E.holdSayEvery) { this.holdSaidAt = now; m.chat("evadeHold", { who: this.who }, "info"); }
+      return;
+    }
+    // Against the turn the ship is making (that throws the aim off fastest), else away from the torpedo.
+    var dir = Math.abs(this.omega) > 3 ? (this.omega > 0 ? -1 : 1) : norm(s.bearing) < 0 ? 1 : -1;
+    this.lastBreak = now;
+    this.evade = e.evade = { at: now, until: e.at, dir: dir, snap: this.aimSnap(), judged: false };
+    this.stats.evasive++; if (this.cur) this.cur.evasive++;
+    m.chat("evade", { who: this.who, dir: dir > 0 ? "right" : "left" }, "warn");
+    m.cue("warn");
   };
   // Mission.salvoHits asks this for every torpedo that reaches the ship: true = it missed.
   Helm.prototype.torpedoArrives = function (e) {
-    if (!e.dodge) return false;
+    var ev = e.evade, m = this.m;
+    if (!e.torp) return false;
     this.stats.torps++; if (this.cur) this.cur.torps++;
-    if (!this.dodged(e.dodge)) return false;
+    if (!ev) return false;
+    var miss = this.dodged(ev.snap);
+    if (!miss) return false;
     this.stats.dodged++; if (this.cur) this.cur.dodged++;
     return true;
+  };
+  // A break is judged when its torpedo would land, whether or not the crew shot it down first.
+  Helm.prototype.judgeBreak = function () {
+    var ev = this.evade, m = this.m;
+    if (!ev || ev.judged || m.t < ev.until) return;
+    ev.judged = true;
+    if (this.dodged(ev.snap)) { this.stats.evasiveMet++; if (this.cur) this.cur.evasiveMet++; }
+    else m.chat("evadeMissed", { who: this.who }, "bad");
+  };
+  Helm.prototype.evadeView = function () {
+    var ev = this.evade, m = this.m;
+    if (!ev || m.t > ev.until + 0.5) return null;
+    return { dir: ev.dir, left: Math.max(0, ev.until - m.t), off: Math.abs(norm(this.compass() - (ev.snap.hdg + ev.snap.omega * (m.t - ev.snap.t)))) };
   };
 
   /* -------------------------------------------------------- Gunners' calls
@@ -325,6 +363,7 @@
     if (o) { if (this.onOrder(o.e)) o.held += dt; if (m.t >= o.end) this.finishOrder(); }
     this.runRequest();
     this.runConn(dt);
+    this.judgeBreak();
     if (m.phase === "engage" || m.phase === "countdown") {
       var st = this.stats; st.liveT += dt;
       if (this.auto) st.autoT += dt; else st.manualT += dt;
@@ -407,7 +446,7 @@
      and burned-out thrusters) for the helm. Time on autopilot earns less (BL.HELM.autopilotRep). */
   BL.scoreHelm = function (m, outcome) {
     var r = BL.score(m, outcome), h = m.helm, st = h.stats, tu = m.turret;
-    var asked = st.orders + st.requests, orders = asked ? (st.ordersMet + st.requestsMet) / asked : 1;
+    var asked = st.orders + st.requests + st.evasive, orders = asked ? (st.ordersMet + st.requestsMet + st.evasiveMet) / asked : 1;
     var handling = Math.max(0, 1 - 0.2 * st.stressHits - 0.2 * st.flankHits);
     var live = st.autoT + st.manualT, autoShare = live ? st.autoT / live : 0, f = 1 - autoShare * (1 - BL.HELM.autopilotRep);
     r.station = "pilot";
@@ -419,7 +458,7 @@
     r.crew = tu.bats.map(function (b) { return b.crew; }).filter(Boolean);
     r.helm = {
       orders: st.orders, ordersMet: st.ordersMet, stressHits: st.stressHits, flankHits: st.flankHits,
-      torpsAtUs: st.torps, dodged: st.dodged, requests: st.requests, requestsMet: st.requestsMet,
+      torpsAtUs: st.torps, dodged: st.dodged, requests: st.requests, requestsMet: st.requestsMet, evasive: st.evasive, evasiveMet: st.evasiveMet,
       autoPct: Math.round(autoShare * 100), launches: st.launches.slice(),
       ships: tu.stats.ships, kills: tu.stats.kills, torps: tu.stats.torps, downed: tu.stats.downed, ptFired: tu.stats.ptFired, ptHits: tu.stats.ptHits,
       jumps: h.jumps.map(function (j) { return j ? Object.assign({}, j) : null; })
@@ -428,14 +467,17 @@
   };
 
   /* -------------------------------------------------------------- Test bot
-     Flies the helm for headless tests: launches at once, follows each order on autopilot. */
-  // dodge: jink the speed (cruise <-> full) whenever a torpedo launches.
-  function HelmBot(dodge) { this.dodge = !!dodge; this.seen = 0; this.high = false; }
+     Flies the helm for headless tests: launches at once, follows each order on autopilot, and
+     breaks hard the way the captain orders, then holds the new heading. */
+  function HelmBot() { this.breaking = false; }
   BL.HelmBot = HelmBot;
   HelmBot.prototype.think = function (m) {
     var h = m.helm; if (!h) return;
     if (h.inTube && m.t >= 1) h.launch();
     if (h.locked()) return;
+    var ev = h.evadeView();
+    if (ev && ev.left > 0) { h.setWheel(ev.dir * Math.min(1, h.C.safe / h.topTurn() * 0.98)); this.breaking = true; return; }
+    if (this.breaking) { this.breaking = false; h.setAuto(true, h.compass()); }
     var o = h.orderView(), lead = h.turnTime(norm(o ? o.hdg - h.compass() : 0)) + 1;
     if (o && (o.active || o.in < lead)) {
       if (!h.auto || Math.abs(norm(h.autoHdg - o.hdg)) > 0.5) h.setAuto(true, o.hdg);
@@ -443,21 +485,15 @@
     } else {
       var j = h.jumpView(), goal = h.req ? h.req.hdg : j && j.in < 10 + h.turnTime(180) ? j.hdg : null;
       if (goal !== null && (!h.auto || Math.abs(norm(h.autoHdg - goal)) > 0.5)) h.setAuto(true, goal);
-      var want = "cruise";
-      if (this.dodge) {
-        var n = 0; m.events.forEach(function (e) { if (e.dodge && !e.done) n = Math.max(n, e.id); });
-        if (n > this.seen) { this.seen = n; this.high = !this.high; }
-        want = this.high ? "stop" : "cruise";
-      }
-      if (h.port.ord !== want || h.stbd.ord !== want) h.setOrder("both", want);   // back to cruise between orders
+      if (h.port.ord !== "cruise" || h.stbd.ord !== "cruise") h.setOrder("both", "cruise");   // back to cruise between orders
     }
   };
-  BL.runHelmHeadless = function (seed, classId, tl, idle, dodge) {
+  BL.runHelmHeadless = function (seed, classId, tl, idle) {
     classId = classId || "gunboat";
     var rc = BL.GUNNERY.ring.classes[classId];
     var m = new BL.Mission({ seed: seed, quiet: true, classId: classId, tl: tl || 4, helm: true,
       gunner: { weapons: BL.GUNNERY.loadout[classId], ring: true, arcs: rc.arcs, arcNames: rc.arcNames, helm: true } });
-    var eng = new BL.AIEngineer(0.5, 0.25, m.turret.engineer.skill), bot = new HelmBot(dodge);
+    var eng = new BL.AIEngineer(0.5, 0.25, m.turret.engineer.skill), bot = new HelmBot();
     m.beginJump();
     var guard = 0;
     while (m.phase !== "done" && guard++ < BL.TICK_RATE * 60 * 30) {

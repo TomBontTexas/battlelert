@@ -524,7 +524,7 @@
         torp.cx = R.cx + far * Math.sin(mid * RAD); torp.cy = R.cy - far * Math.cos(mid * RAD);
         count(self, "strikes");
       }
-      if (m.helm && e.type === "salvo") e.dodge = m.helm.aimSnap();
+      if (m.helm && e.type === "salvo") m.helm.torpedoLaunched(e, s);       // the captain: break, or take it
       e.torp = torp; self.torps.push(torp);
       if (self.cur) { self.stats.torps++; self.cur.torps++; } else self.stats.torps++;
       m.cue("torpLaunch");

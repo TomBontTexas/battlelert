@@ -463,6 +463,7 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 .hm-alerts div { padding: 3px 6px; border-radius: 4px; background: var(--panel-2); border: 1px solid var(--line); }
 .hm-alerts b { font-family: var(--mono); font-weight: 600; }
 .hm-alerts .torp { color: var(--bad); border-color: var(--bad); animation: blink .6s steps(2) infinite; }
+.hm-alerts .hold { color: var(--muted); }
 .hm-alerts .req { color: #c49bff; border-color: #8a6bd1; cursor: pointer; }
 .hm-alerts .jump { color: var(--good); border-color: #2f7a52; cursor: pointer; }
 .hm-alerts .jump.off { color: var(--warn); border-color: var(--warn); }

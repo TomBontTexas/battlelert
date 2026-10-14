@@ -601,9 +601,13 @@
     autopilotRep: 0.75,    // autopilot time earns this share of the helm's reputation
     launch: { nagAfter: 8, autoAfter: 20, clear: 2.5 },               // the gunboat in the carrier's tube
     ptBow: 20,             // the gunner launches torpedoes once a target is this close to the bow (deg)
-    // Dodging: a torpedo misses if the bow ends `turn` degrees off a steady turn, or the speed
-    // changes by `steps` engine orders, during its flight.
-    dodge: { turn: 15, steps: 2 },
+    // Dodging (only when the captain orders a break): a torpedo misses if the bow ends `turn`
+    // degrees off a steady turn when it arrives.
+    dodge: { turn: 15 },
+    // The captain's call on each torpedo: evade if the shields hold less than `cover` x its
+    // charge, else with `chance`; one break covers a burst launched within `burst` s; never two
+    // breaks within `gap` s; "take it" is said at most every `holdSayEvery` s.
+    evade: { cover: 1.2, chance: 0.5, burst: 1.2, gap: 6, holdSayEvery: 8 },     // gap: seconds between breaks
     // A gunner's request to bring the ship round: after `idle` s with an empty arc; `seconds` to
     // answer it; `cooldown` before that gun asks again.
     request: { idle: 4, seconds: 10, cooldown: 15 },
@@ -701,7 +705,10 @@
     stressHit:   ["Damage control: structural damage from that turn! Hull down {dmg}.", "Damage control: frames buckling! Hull down {dmg}."],
     flankWarn:   ["Engineering: we can't hold flank much longer!", "Engineering: engines are over their rating, Helm!"],
     flankDamage: ["Engineering: we burned out a thruster holding flank! {what}.", "Engineering: that's what flank does. {what}."],
-    dodged:      ["Tactical: it missed! Nice flying.", "Tactical: torpedo went wide!", "Coxswain: clean miss!"],
+    dodged:      ["Tactical: it missed! Nice flying.", "Tactical: torpedo went wide!", "Tactical: clean miss!"],
+    evade:       ["{who}: torpedo away! Break {dir}, now!", "{who}: evasive! Hard {dir}!", "{who}: break {dir}, Helm! Break {dir}!"],
+    evadeHold:   ["{who}: steady, Helm. Let the shields take it.", "{who}: hold your course. We'll take this one.", "{who}: steady as she goes. Shields will hold."],
+    evadeMissed: ["{who}: too slow on that break, Helm!", "{who}: I said break, Helm!"],
     helmReq:     ["Gunner {n}: Helm, bring her {dir} {deg}, {weapon} target {side}!", "Gunner {n}: nothing in my arc. Come {dir} {deg}, Helm!", "Gunner {n}: Helm, {dir} {deg} and I've got the shot!"],
     helmReqMet:  ["Gunner {n}: got it, thanks Helm!", "Gunner {n}: on target!"],
     helmReqMissed: ["Gunner {n}: never mind, Helm. It's gone.", "Gunner {n}: still nothing in my arc."],

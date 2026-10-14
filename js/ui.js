@@ -1125,12 +1125,11 @@
       setCls(ob, "hm-order");
     }
     setHtml(ob, oh);
-    // Alerts: torpedoes to dodge, a gunner's call, the jump heading (tap one to fly it on autopilot)
-    var al = [], D = BL.HELM.dodge, inbound = tu.torps.filter(function (tp) { return tp.ev && tp.ev.dodge && !tp.ev.done; });
-    if (inbound.length) {
-      var soon = Math.min.apply(null, inbound.map(function (tp) { return tp.t1 - sim.t; }));
-      al.push('<div class="torp">⚠ ' + inbound.length + (inbound.length === 1 ? " torpedo" : " torpedoes") + " in " + Math.max(0, soon).toFixed(1) + " s: swing " + D.turn + "° or change engines " + D.steps + " orders</div>");
-    }
+    // Alerts: the captain's break order (or "take it"), a gunner's call, the jump heading (tap
+    // a call or the jump heading to fly it on autopilot)
+    var al = [], D = BL.HELM.dodge, ev = h.evadeView(), inbound = tu.torps.filter(function (tp) { return tp.ev && tp.ev.type === "salvo" && !tp.ev.done && !tp.mine; });
+    if (ev && ev.left > 0) al.push('<div class="torp">⚠ BREAK ' + (ev.dir > 0 ? "RIGHT" : "LEFT") + " NOW: " + ev.left.toFixed(1) + " s · " + Math.round(ev.off) + "° of " + D.turn + "°</div>");
+    else if (inbound.length) al.push('<div class="hold">' + inbound.length + (inbound.length === 1 ? " torpedo" : " torpedoes") + " inbound: hold your course, the shields take " + (inbound.length === 1 ? "it" : "them") + "</div>");
     if (h.req) al.push('<div class="req" data-hdg="' + h.req.hdg + '">Gun ' + h.req.gun + ": come " + (h.req.turn > 0 ? "right" : "left") + " to <b>" + BL.hdgText(h.req.hdg) + "</b> · " + Math.max(0, Math.ceil(h.req.until - sim.t)) + " s</div>");
     var jv = h.jumpView();
     if (jv) al.push('<div class="jump' + (jv.on ? "" : jv.in < 30 ? " off" : "") + '" data-hdg="' + jv.hdg + '">Jump heading <b>' + BL.hdgText(jv.hdg) + "</b> · " + (jv.in > 0 ? "window in " + Math.ceil(jv.in) + " s" : "window open") + (jv.on ? " ✔" : "") + "</div>");
@@ -1184,6 +1183,7 @@
     var g = tu.cur || {}, c = h.cur || {};
     setHtml($("tu-tally"), "<span>Orders met</span><b>" + (c.ordersMet || 0) + " / " + (c.orders || 0) + "</b>" +
       (c.requests ? "<span>Gunners' calls answered</span><b>" + c.requestsMet + " / " + c.requests + "</b>" : "") +
+      "<span>Breaks made</span><b>" + (c.evasiveMet || 0) + " / " + (c.evasive || 0) + "</b>" +
       "<span>Torpedoes dodged</span><b>" + (c.dodged || 0) + " / " + (c.torps || 0) + "</b>" +
       "<span>Ships destroyed</span><b>" + (g.kills || 0) + " / " + (g.ships || 0) + "</b><span>Torpedoes shot down</span><b>" + (g.downed || 0) + " / " + (g.torps || 0) + "</b>" +
       (tu.pt.length ? "<span>Our torpedoes</span><b>" + (g.ptHits || 0) + " hit / " + (g.ptFired || 0) + "</b>" : "") +
@@ -1240,6 +1240,7 @@
     return "<p>Fighting has stopped. " + (sim.hasDrive ? "The ship is in GravSpace." : "The carrier has you on deck and is carrying you through GravSpace.") + "</p><ul class='grav-list'>" +
       "<li>Orders met: " + c.ordersMet + " of " + c.orders + "</li>" +
       (c.requests ? "<li>Gunners' calls answered: " + c.requestsMet + " of " + c.requests + "</li>" : "") +
+      (c.evasive ? "<li>Breaks the " + sim.helm.who.toLowerCase() + " ordered: " + c.evasiveMet + " made of " + c.evasive + "</li>" : "") +
       "<li>Torpedoes dodged: " + (c.dodged || 0) + " of " + (c.torps || 0) + "</li>" +
       (sim.hasDrive ? "" : "<li>Launch: " + (c.launchWait ? c.launchWait + " s after the call" : "right away") + "</li>") +
       (c.stressHits ? "<li>Structural hits from hard turns: " + c.stressHits + "</li>" : "") +
@@ -1265,6 +1266,7 @@
       ["Engineer", esc(r.engineer.name) + ", " + r.engineer.label + " (skill " + Math.round(r.engineer.skill * 100) + ")"],
       ["Gun crew", r.crew.map(function (c) { return esc(c.name) + ", " + c.label + " (" + Math.round(c.skill * 100) + ")"; }).join(" · ")],
       ["Orders met", hm.ordersMet + " / " + hm.orders]].concat(hm.requests ? [["Gunners' calls answered", hm.requestsMet + " / " + hm.requests]] : [], [
+      ["Breaks ordered and made", hm.evasiveMet + " / " + hm.evasive],
       ["Torpedoes dodged", hm.dodged + " / " + hm.torpsAtUs],
       ["Steering", hm.autoPct ? hm.autoPct + "% on autopilot (earns " + Math.round(BL.HELM.autopilotRep * 100) + "% for that time)" : "all by hand"],
       ["Structural hits from hard turns", hm.stressHits],
