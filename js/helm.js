@@ -131,6 +131,11 @@
     this.auto = !!on;
     if (on) this.autoHdg = hdg === undefined ? this.compass() : to360(hdg);
   };
+  // Nudge the autopilot's course `d` degrees (by hand: put her on autopilot that far off the heading she's on).
+  Helm.prototype.nudgeCourse = function (d) {
+    if (this.inTube) return;
+    this.setAuto(true, (this.auto ? this.autoHdg : Math.round(this.compass())) + d);
+  };
   // Warn engineering: the AI engineer sees a full burn coming and gets the power ready.
   Helm.prototype.warn = function () {
     var m = this.m;

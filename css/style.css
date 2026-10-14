@@ -425,8 +425,11 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 /* Wide view: the battle fills the screen; an overlay replaces the side panels. */
 #scr-turret.wide .tu-main { grid-template-columns: minmax(0, 1fr); }
 #scr-turret.helm .tu-main { grid-template-columns: minmax(170px, 230px) minmax(0, 1fr) minmax(190px, 260px) 84px; }
-.hm-strip { position: relative; min-height: 0; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; touch-action: none; cursor: ns-resize; }
+.hm-strip { position: relative; min-height: 0; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; display: flex; flex-direction: column; }
+.hm-strip-box { position: relative; flex: 1; min-height: 0; touch-action: none; cursor: ns-resize; }
 .hm-strip canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.hm-nudge { flex: 0 0 34px; border: 0; border-radius: 0; background: var(--panel-2); color: #4cc3ee; font: 600 13px var(--mono); padding: 0; touch-action: manipulation; }
+.hm-nudge:active { background: #1b3a4a; }
 .hm-strip[hidden] { display: none !important; }
 #scr-turret.wide .tu-side { display: none; }
 .tu-hud { position: absolute; inset: 0; pointer-events: none; font-size: 13px; color: var(--muted); }
@@ -462,7 +465,7 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 .hm-order.ok { border-color: var(--good); }
 .hm-order.ok b { color: var(--good); }
 .hm-order .muted { font-size: 12px; }
-.hm-order .ln { font-family: var(--mono); font-size: 16px; font-weight: 600; line-height: 1.3; }
+.hm-order .ln { font-family: var(--mono); font-size: 16px; font-weight: 600; line-height: 1.3; white-space: nowrap; overflow: hidden; }
 .hm-order .ln .ok { color: var(--good); }
 .hm-order .ln .no { color: var(--bad); }
 .hm-alerts { flex-shrink: 0; display: flex; flex-direction: column; gap: 3px; font-size: 12px; line-height: 1.3; }

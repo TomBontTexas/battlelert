@@ -751,7 +751,7 @@
     if (helm) {
       $("tu-tubes").hidden = true; $("btn-tu-main").hidden = true;
       $("tu-station").textContent = "Helm · " + (job.test ? sim.data.className : BL.shipLabel(job.classId, job.ship) + " (" + sim.data.className + ")") + " · tech level " + sim.data.tl;
-      $("tu-keys").textContent = "← → wheel · 0 midships · ↑ ↓ both engines · Q A port · P L starboard · + − 1 G · T autopilot · E warn engineering · Space launch · Esc pause · Drag the wheel · Tap the telegraph · Tap the compass for autopilot · Right strip: course on autopilot, wheel by hand";
+      $("tu-keys").textContent = "← → wheel · 0 midships · ↑ ↓ both engines · Q A port · P L starboard · + − 1 G · T autopilot · [ ] course 1° · E warn engineering · Space launch · Esc pause · Drag the wheel · Tap the telegraph · Tap the compass for autopilot · Right strip: course on autopilot, wheel by hand";
       buildHelm();
     }
   }
@@ -810,7 +810,7 @@
   // The compass strip at the far right (helm): sized to its box, drawn each frame.
   var stripCtx = null, stripW = 0, stripH = 0;
   function drawStrip() {
-    var box = $("hm-strip"), cv = $("hm-strip-cv"), dpr = window.devicePixelRatio || 1, w = box.clientWidth, h = box.clientHeight;
+    var box = $("hm-strip-box"), cv = $("hm-strip-cv"), dpr = window.devicePixelRatio || 1, w = box.clientWidth, h = box.clientHeight;
     if (!w || !h) return;
     if (w !== stripW || h !== stripH || !stripCtx) {
       stripW = w; stripH = h; cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
@@ -947,6 +947,14 @@
     setText(cb, cs.state === "on" ? "POWER COMING " + Math.ceil(cs.left) + " s" : cs.state === "wait" ? "CALL AGAIN IN " + Math.ceil(cs.left) + " s" : "CALL FOR POWER (C)");
   }
   function setHtml(el, h) { if (el.innerHTML !== h) el.innerHTML = h; }
+  // Each line of a panel (.ln) on one line: shrink its font until it fits the box.
+  function fitLines(box) {
+    Array.prototype.forEach.call(box.querySelectorAll(".ln"), function (el) {
+      el.style.fontSize = "";
+      var size = parseFloat(getComputedStyle(el).fontSize);
+      while (el.scrollWidth > el.clientWidth + 0.5 && size > 9) { size -= 1; el.style.fontSize = size + "px"; }
+    });
+  }
   function rate(h, s) { return s ? Math.round(100 * h / s) + "%" : "–"; }
   function frac(h, s) { return s ? "(" + h + "/" + s + ")" : ""; }
   function turretActive() { return running && sim && sim.turret && !paused && sim.phase !== "done" && $("ov-grav").hidden; }
@@ -1101,6 +1109,9 @@
       stripDrag = null;
     }
     strip.addEventListener("pointerup", stripUp); strip.addEventListener("pointercancel", stripUp);
+    // The nudge buttons at the ends of the strip: the course one degree to starboard (▲) or port (▼).
+    $("hm-nudge-up").addEventListener("click", function () { if (sim && sim.helm && turretActive()) { sim.helm.nudgeCourse(1); click(); } });
+    $("hm-nudge-dn").addEventListener("click", function () { if (sim && sim.helm && turretActive()) { sim.helm.nudgeCourse(-1); click(); } });
     function mouseUp(ev) {
       if (compassDrag && compassDrag.id === ev.pointerId) {
         if (!compassDrag.moved && sim && sim.helm && turretActive()) sim.helm.setAuto(true, compassDrag.tap);
@@ -1185,7 +1196,7 @@
       oh = h.inTube ? "In the carrier's launch tube. Launch when ready (Space)." : "Free helm: no orders. Fight the " + (sim.hasDrive ? "ship." : "boat.");
       setCls(ob, "hm-order");
     }
-    setHtml(ob, oh);
+    if (ob.innerHTML !== oh) { ob.innerHTML = oh; fitLines(ob); }
     // Alerts: the captain's break order (or "Steady"), the jump heading (tap it to fly it on autopilot)
     var al = [], D = BL.HELM.dodge, ev = h.evadeView(), inbound = tu.torps.filter(function (tp) { return tp.ev && tp.ev.type === "salvo" && !tp.ev.done && !tp.mine; });
     if (ev && ev.left > 0) al.push('<div class="torp">⚠ BREAK ' + (ev.dir > 0 ? "RIGHT" : "LEFT") + " NOW: " + ev.left.toFixed(1) + " s · " + Math.round(ev.off) + "° of " + D.turn + "°</div>");
@@ -1254,7 +1265,7 @@
   }
   function fmtG(v) { var r = Math.round(v * 10) / 10; return r % 1 ? r.toFixed(1) : String(r); }
   // Keys at the helm: ← → wheel, 0 midships, ↑ ↓ both engines, Q A port, P L starboard,
-  // + − one G, T autopilot, E warn engineering, Space launch, Esc pause.
+  // + − one G, T autopilot, [ ] course 1° (autopilot), E warn engineering, Space launch, Esc pause.
   function helmKey(ev) {
     if (!$("ov-grav").hidden) { if (ev.key === "Enter") $("btn-grav-go").click(); return; }
     var k = ev.key, kl = k.length === 1 ? k.toLowerCase() : k, h = sim.helm;
@@ -1273,6 +1284,8 @@
     else if (k === "+" || k === "=") h.nudgeG(1);
     else if (k === "-" || k === "_") h.nudgeG(-1);
     else if (kl === "t" && !ev.repeat) h.setAuto(!h.auto);
+    else if (k === "]") h.nudgeCourse(1);
+    else if (k === "[") h.nudgeCourse(-1);
     else if (kl === "e" && !ev.repeat) h.warn();
     else if (k === " ") { if (!ev.repeat) h.launch(); }
     else if (kl === "h") { toggleHints(); }
