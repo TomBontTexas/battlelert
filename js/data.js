@@ -696,25 +696,25 @@
     straggler:   ["Tactical: stragglers from another quadrant. {enemy} inbound!", "Tactical: more contacts, {enemy} breaking off from another fight.", "Tactical: {enemy} joining in from the flank!"],
     ptMiss:      ["Tactical: torpedo missed.", "Coxswain: it slipped the torpedo."],
     // The helm. A key ending in H replaces the plain one (and the gunner's G one) at the helm.
-    launchH:     ["Carrier: Transferring launch control to PT Squadron. Launch when ready."],   // TexasBont's launch line (Oct 13, 2026)
+    launchH:     ["Carrier: Transferring launch control to gunboats. Launch when ready."],   // TexasBont's launch line (Oct 13, 2026)
     arrivalH:    ["Navigation: out of GravSpace. Jump heading {hdg}, Helm.", "Bridge: normal space. Helm, she's yours; jump heading is {hdg}."],
     takeConn:    ["Captain: I have the conn. Coming to {hdg} for the jump.", "Captain: I'll take her, Helm. Jump heading {hdg}."],
     recoveredH:  ["Carrier: gunboat recovered. Nice flying.", "Coxswain: we're on the deck. Good flying, Helm."],
     burnH:       [],                     // the captain's orders replace the bridge's burns at the helm
-    mainReadyH:  ["Engineering: main gun's charged. Helm, put the bow on the big one.", "Gunnery: main gun's up. Bring the bow around and hold it."],
+    mainReadyH:  ["Engineering: main gun's charged."],   // a report only: where the bow goes is the captain's call
     helmNag:     ["Carrier: launch, launch, launch!", "Coxswain: we're holding up the line, Helm. Launch!"],
     helmAuto:    ["Carrier: launching you now."],
     helmLaunched:["Coxswain: we're out! Clear of the tube.", "Carrier: gunboat away. Good hunting.", "Coxswain: off the deck and into it."],
-    helmClear:   ["Coxswain: clear of the carrier. Coming back to standard.", "Coxswain: we're clear. Standard speed."],
+    helmClear:   ["Coxswain: clear of the carrier. All ahead standard.", "Coxswain: we're clear. All ahead standard."],
     helmOrder:   ["{who}: come {dir} to {hdg}, {eng}, in {t} s.", "{who}: helm, {dir} to {hdg}, {eng}. {t} seconds.", "{who}: stand by to come {dir} to {hdg}, {eng}, in {t}."],
     helmMet:     ["{who}: very well.", "{who}: steady as she goes. Well done.", "{who}: nicely done, Helm."],
     helmMissed:  ["{who}: that's not what I ordered, Helm.", "{who}: Helm, mind your orders!", "{who}: we were supposed to be on {hdg}."],
-    stressWarn:  ["Damage control: she's groaning, ease the turn!", "Damage control: hull stress climbing! Ease off!"],
+    stressWarn:  ["Damage control: she's groaning!", "Damage control: hull stress climbing!"],   // reports only: easing off is the captain's order
     stressHit:   ["Damage control: structural damage from that turn! Hull down {dmg}.", "Damage control: frames buckling! Hull down {dmg}."],
-    flankWarn:   ["Engineering: we can't hold flank much longer!", "Engineering: engines are over their rating, Helm!"],
+    flankWarn:   ["Engineering: we can't hold flank much longer!", "Engineering: engines are over their rating, Bridge!"],
     flankDamage: ["Engineering: we burned out a thruster holding flank! {what}.", "Engineering: that's what flank does. {what}."],
     dodged:      ["Tactical: it missed! Nice flying.", "Tactical: torpedo went wide!", "Tactical: clean miss!"],
-    evade:       ["{who}: torpedo away! Break {dir}, now!", "{who}: evasive! Hard {dir}!", "{who}: break {dir}, Helm! Break {dir}!"],
+    evade:       ["{who}: break {dir}, now!", "{who}: evasive! Hard {dir}!", "{who}: break {dir}, Helm! Break {dir}!"],
     vampire:     ["Tactical: vampire, vampire!"],    // a torpedo in the air and no break ordered: take it
     disobey:     ["{who}: Helm, I said hold your course!", "{who}: that was not my order, Helm. It goes in my report.", "{who}: Helm! Steady means steady!"],
     evadeMissed: ["{who}: too slow on that break, Helm!", "{who}: I said break, Helm!"],
