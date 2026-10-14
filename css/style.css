@@ -424,6 +424,10 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 #scr-turret.jolt { animation: jolt .45s linear; }
 /* Wide view: the battle fills the screen; an overlay replaces the side panels. */
 #scr-turret.wide .tu-main { grid-template-columns: minmax(0, 1fr); }
+#scr-turret.helm .tu-main { grid-template-columns: minmax(170px, 230px) minmax(0, 1fr) minmax(190px, 260px) 84px; }
+.hm-strip { position: relative; min-height: 0; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; touch-action: none; cursor: ns-resize; }
+.hm-strip canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.hm-strip[hidden] { display: none !important; }
 #scr-turret.wide .tu-side { display: none; }
 .tu-hud { position: absolute; inset: 0; pointer-events: none; font-size: 13px; color: var(--muted); }
 .tu-hud[hidden] { display: none; }

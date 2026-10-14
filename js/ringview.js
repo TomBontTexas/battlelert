@@ -395,6 +395,55 @@
     c.fillText(BL.hdgText(hdg), W / 2, y0 + h + 17);
     if (helm.auto) { c.fillStyle = "#4cc3ee"; c.textAlign = "left"; c.fillText("AUTO → " + BL.hdgText(helm.autoHdg), W / 2 + 26, y0 + h + 17); }
   }
+  // The compass strip at the far right of the screen: the same compass standing up, headings
+  // rising upward, `span` degrees either side of the heading. It mirrors the tape across the top
+  // (both center on the course being dialed), so the pilot can dial on the strip, clear of the
+  // battle, and watch the tape.
+  var STRIP = null;
+  BL.drawCompassStrip = function (c, W, H, helm) {
+    var dialing = helm.dial !== null && helm.dial !== undefined, ship = helm.compass(), hdg = dialing ? helm.dial : ship;
+    var span = 45, k = H / (2 * span), cy = H / 2, tx = 14;
+    STRIP = { H: H, k: k, hdg: hdg };
+    c.clearRect(0, 0, W, H);
+    c.fillStyle = "rgba(3,6,11,0.9)"; c.fillRect(0, 0, W, H);
+    c.font = "600 12px ui-monospace, Consolas, monospace"; c.textAlign = "right"; c.textBaseline = "middle";
+    var first = Math.ceil((hdg - span) / 5) * 5;
+    for (var d = first; d <= hdg + span; d += 5) {
+      var y = cy - (d - hdg) * k, ten = d % 10 === 0, big = d % 30 === 0;
+      c.strokeStyle = big ? "rgba(214,224,232,0.85)" : ten ? "rgba(214,224,232,0.55)" : "rgba(214,224,232,0.3)";
+      c.lineWidth = 1; c.beginPath(); c.moveTo(0, y); c.lineTo(big ? 16 : ten ? 11 : 6, y); c.stroke();
+      if (ten) { c.fillStyle = big ? "rgba(214,224,232,0.95)" : "rgba(214,224,232,0.6)"; c.fillText(BL.hdgText(d), W - 6, y); }
+    }
+    function mark(hd, col, shape) {
+      var d = ((hd - hdg) % 360 + 540) % 360 - 180, edge = Math.abs(d) > span, y = cy - Math.max(-span, Math.min(span, d)) * k;
+      c.fillStyle = col; c.strokeStyle = col;
+      if (shape === "tri") { c.beginPath(); c.moveTo(tx + 12, y); c.lineTo(tx, y - 8); c.lineTo(tx, y + 8); c.closePath(); if (edge) { c.lineWidth = 2; c.stroke(); } else c.fill(); }
+      else if (shape === "dia") { c.save(); c.translate(tx + 6, y); c.rotate(Math.PI / 4); c.fillRect(-4.5, -4.5, 9, 9); c.restore(); }
+      else if (shape === "jump") { c.lineWidth = 2; c.strokeRect(tx, y - 7, 14, 14); c.font = "700 10px ui-monospace, Consolas, monospace"; c.textAlign = "center"; c.fillText("J", tx + 7, y + 1); c.textAlign = "right"; }
+      else if (shape === "ship") { c.lineWidth = 3; c.beginPath(); c.moveTo(0, y); c.lineTo(W, y); c.stroke(); }
+      else { c.lineWidth = 2; c.beginPath(); c.moveTo(0, y); c.lineTo(tx + 14, y); c.stroke(); }
+    }
+    var o = helm.orderView(), jv = helm.jumpView();
+    if (jv) mark(jv.hdg, "#63d48f", "jump");
+    if (o) mark(o.hdg, helm.onOrder({ hdg: o.hdg, eng: o.eng }) ? "#63d48f" : "#f0b54a", "tri");
+    if (dialing) mark(ship, "#ffffff", "ship");
+    else {
+      if (helm.auto) mark(helm.autoHdg, "#4cc3ee", "dia");
+      if (Math.abs(helm.omega) > 0.5) mark(helm.stopHeading(), "#ffffff", "line");
+    }
+    // The center window: the heading (or the course being set).
+    var col = dialing ? "#4cc3ee" : "#ffffff", bh = 26;
+    c.fillStyle = "rgba(3,6,11,0.95)"; c.fillRect(1, cy - bh / 2, W - 2, bh);
+    c.strokeStyle = col; c.lineWidth = 2; c.strokeRect(1, cy - bh / 2, W - 2, bh);
+    c.fillStyle = col; c.font = "700 15px ui-monospace, Consolas, monospace"; c.textAlign = "center";
+    c.fillText(BL.hdgText(hdg), W / 2, cy + 1);
+  };
+  BL.stripScale = function () { return STRIP ? STRIP.k : 7; };       // pixels per degree on the strip
+  // A tap at height py (CSS pixels) on the strip: the compass heading there.
+  BL.stripAt = function (py) {
+    var T = STRIP; if (!T) return null;
+    return ((T.hdg + (T.H / 2 - py) / T.k) % 360 + 360) % 360;
+  };
   BL.compassScale = function () { return TAPE ? TAPE.k : 4; };      // pixels per degree on the tape
   // A tap at (px, py) in CSS pixels on the canvas: the compass heading there, or null.
   BL.compassAt = function (px, py) {

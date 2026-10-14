@@ -733,13 +733,14 @@
     keysHeld = {}; setFireBtn(false);
     // The helm: its panel and wheel replace the gun panel; the gun buttons go.
     var helm = !!sim.helm;
-    $("tu-gunside").hidden = helm; $("tu-helm").hidden = !helm; $("hm-wheel").hidden = !helm;
+    $("tu-gunside").hidden = helm; $("tu-helm").hidden = !helm; $("hm-wheel").hidden = !helm; $("hm-strip").hidden = !helm;
+    $("scr-turret").classList.toggle("helm", helm);
     $("btn-tu-call").hidden = $("btn-tu-fire").hidden = helm;
     $("hm-launch").hidden = true;
     if (helm) {
       $("tu-tubes").hidden = true; $("btn-tu-main").hidden = true;
       $("tu-station").textContent = "Helm · " + (job.test ? sim.data.className : BL.shipLabel(job.classId, job.ship) + " (" + sim.data.className + ")") + " · tech level " + sim.data.tl;
-      $("tu-keys").textContent = "← → wheel · 0 midships · ↑ ↓ both engines · Q A port · P L starboard · + − 1 G · T autopilot · E warn engineering · Space launch · Esc pause · Drag the wheel · Tap the telegraph · Tap or dial the compass for autopilot";
+      $("tu-keys").textContent = "← → wheel · 0 midships · ↑ ↓ both engines · Q A port · P L starboard · + − 1 G · T autopilot · E warn engineering · Space launch · Esc pause · Drag the wheel · Tap the telegraph · Tap or dial the compass (top, or the strip at the right) for autopilot";
       buildHelm();
     }
   }
@@ -794,6 +795,18 @@
     tuCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
   window.addEventListener("resize", function () { if (inTurret()) { tuSize = 0; sizeTurret(); } });
+
+  // The compass strip at the far right (helm): sized to its box, drawn each frame.
+  var stripCtx = null, stripW = 0, stripH = 0;
+  function drawStrip() {
+    var box = $("hm-strip"), cv = $("hm-strip-cv"), dpr = window.devicePixelRatio || 1, w = box.clientWidth, h = box.clientHeight;
+    if (!w || !h) return;
+    if (w !== stripW || h !== stripH || !stripCtx) {
+      stripW = w; stripH = h; cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+      stripCtx = cv.getContext("2d"); stripCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    BL.drawCompassStrip(stripCtx, w, h, sim.helm);
+  }
 
   var lastJolt = 0;
   function renderTurret(ts) {
@@ -1010,7 +1023,7 @@
         if (turretActive()) {
           var cr = cv.getBoundingClientRect(), hd = BL.compassAt(ev.clientX - cr.left, ev.clientY - cr.top), hm = sim.helm;
           if (hd !== null) {
-            compassDrag = { id: ev.pointerId, x: ev.clientX, tap: Math.round(hd), base: hm.auto ? hm.autoHdg : Math.round(hm.compass()), moved: false };
+            compassDrag = { id: ev.pointerId, x: ev.clientX, tap: Math.round(hd), base: hm.auto ? hm.autoHdg : Math.round(hm.compass()), moved: false, raw: null };
             try { cv.setPointerCapture(ev.pointerId); } catch (e) {}
           }
         }
@@ -1039,8 +1052,7 @@
         var cd = compassDrag, dx = cd ? ev.clientX - cd.x : 0;
         if (!cd || cd.id !== ev.pointerId || !turretActive() || (!cd.moved && Math.abs(dx) < 6)) return;
         cd.moved = true;
-        var set = (Math.round(cd.base - dx / BL.compassScale()) % 360 + 360) % 360;   // tape moves with the finger
-        sim.helm.dial = set; sim.helm.setAuto(true, set);
+        dialTo(cd, cd.base - dx / BL.compassScale());   // tape moves with the finger
         return;
       }
       if (ev.pointerType === "mouse") {
@@ -1049,6 +1061,42 @@
       }
       else moveDrag(ev);
     });
+    // Dial the course to `raw` degrees. A finger resting on the screen wanders a pixel or two:
+    // the course moves only once the finger has moved `DIAL_DEAD` degrees, or it (and the
+    // tape centered on it) flickers back and forth.
+    var DIAL_DEAD = 0.75;
+    function dialTo(cd, raw) {
+      if (cd.raw !== null && Math.abs(raw - cd.raw) < DIAL_DEAD) return;
+      cd.raw = raw;
+      var set = (Math.round(raw) % 360 + 360) % 360;
+      if (sim.helm.dial === set) return;
+      sim.helm.dial = set; sim.helm.setAuto(true, set);
+    }
+    // The compass strip (far right): the same compass standing up. Tap a heading to fly it on
+    // autopilot, or drag up and down like a dial (headings rise upward; the strip moves with the
+    // finger), watching the tape across the top.
+    var strip = $("hm-strip-cv"), stripDrag = null;
+    strip.addEventListener("pointerdown", function (ev) {
+      if (!sim || !sim.helm || !turretActive()) return;
+      var r = strip.getBoundingClientRect(), hd = BL.stripAt(ev.clientY - r.top), hm = sim.helm;
+      if (hd === null) return;
+      stripDrag = { id: ev.pointerId, y: ev.clientY, tap: Math.round(hd), base: hm.auto ? hm.autoHdg : Math.round(hm.compass()), moved: false, raw: null };
+      try { strip.setPointerCapture(ev.pointerId); } catch (e) {}
+      ev.preventDefault();
+    });
+    strip.addEventListener("pointermove", function (ev) {
+      var sd = stripDrag, dy = sd ? ev.clientY - sd.y : 0;
+      if (!sd || sd.id !== ev.pointerId || !sim || !sim.helm || !turretActive() || (!sd.moved && Math.abs(dy) < 6)) return;
+      sd.moved = true;
+      dialTo(sd, sd.base + dy / BL.stripScale());
+    });
+    function stripUp(ev) {
+      if (!stripDrag || stripDrag.id !== ev.pointerId) return;
+      if (!stripDrag.moved && sim && sim.helm && turretActive()) sim.helm.setAuto(true, stripDrag.tap);
+      if (sim && sim.helm) sim.helm.dial = null;
+      stripDrag = null;
+    }
+    strip.addEventListener("pointerup", stripUp); strip.addEventListener("pointercancel", stripUp);
     function mouseUp(ev) {
       if (compassDrag && compassDrag.id === ev.pointerId) {
         if (!compassDrag.moved && sim && sim.helm && turretActive()) sim.helm.setAuto(true, compassDrag.tap);
@@ -1109,6 +1157,7 @@
     });
     sizeTurret();
     BL.drawRing(tuCtx, { w: tuW, h: tuH, wide: false }, sim, tu, ts);
+    drawStrip();
     $("tu-jump").innerHTML = (sim.hasDrive ? "Jump" : "Sortie") + " <b>" + (sim.jumpIndex + 1) + "</b> of " + sim.cfg.jumps + " · <b>" + (enc.name || "") + "</b>";
     setText($("tu-phase"), h.inTube ? "IN THE TUBE: LAUNCH WHEN READY" : sim.phase === "arrival" ? "Engagement in " + Math.ceil(sim.cfg.arrivalSeconds - sim.t) + " s" :
       sim.phase === "countdown" ? "JUMPING IN " + Math.max(1, Math.ceil(sim.jumpAt - sim.t)) : sim.phase === "engage" ? "T+" + mmss(sim.t) : "");

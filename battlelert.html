@@ -6,7 +6,7 @@
 <meta name="copyright" content="© 2011–2026 Tom Bont. All rights reserved.">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Battlelert</title>
-<link rel="stylesheet" href="css/style.css?b=f315da91">
+<link rel="stylesheet" href="css/style.css?b=39e5b65a">
 </head>
 <body>
 
@@ -353,6 +353,8 @@
       <button id="btn-tu-fire" class="tu-fire">FIRE</button>
       <button id="hm-launch" class="tu-fire hm-launch" hidden>LAUNCH <small>(Space)</small></button>
     </aside>
+    <!-- The helm's compass strip: the compass across the top of the view, standing up at the far right -->
+    <div class="hm-strip" id="hm-strip" hidden><canvas id="hm-strip-cv" aria-label="Compass strip: tap a heading, or drag up and down to dial a course"></canvas></div>
   </div>
   <footer class="con-foot"><span class="hint-bar" id="tu-keys">← → slide · Space fire (hold) · 1 2 torpedoes · C call for power · P pause · Mouse: move to aim, hold button to fire · Touch: drag to aim, hold FIRE</span></footer>
   <div class="narrow-note">The turret needs a tablet or desktop screen. Turn the device sideways or use a wider window.</div>
@@ -484,7 +486,7 @@
       <tr><td>Space</td><td>Launch from the carrier's tube</td></tr>
       <tr><td>Esc</td><td>Pause and resume</td></tr>
       <tr><td>Enter</td><td>Continue after the carrier report</td></tr>
-      <tr><td>Mouse / touch</td><td>Drag the wheel; tap an order on the telegraph (the middle column orders both engines); tap the compass to steer there on autopilot, or drag it like a dial until the course you want is under the center pointer; tap the captain's order, a gunner's call or the jump heading to fly it on autopilot</td></tr>
+      <tr><td>Mouse / touch</td><td>Drag the wheel; tap an order on the telegraph (the middle column orders both engines); tap the compass (across the top, or the strip at the far right) to steer there on autopilot, or drag it like a dial (the strip up and down) until the course you want is under the center pointer; tap the captain's order or the jump heading to fly it on autopilot</td></tr>
     </table>
     <div class="menu"><button id="btn-options-close" class="primary">Done</button></div>
   </div>
@@ -536,7 +538,7 @@
       <li><b>Dodging is the captain's call.</b> When torpedoes launch, the captain (the coxswain on a gunboat) orders either "Steady as she goes. The shields can take it." or a break ("Break left, now!", in red on the HELM panel). He orders steady always while a course order is pending or under way, often when the shields can absorb them, and always on ships too big to swing in time. He keeps watching, and if the shields can no longer take the fish he said to take, he orders a break then. The clock starts when you hear the break order, not at launch: its torpedoes take their full flight time after it. Swing the bow 15° or more off your steady turn before they land (the panel counts the degrees and the seconds) and they miss; a break made counts as an order met. Dodging after "Steady" is disobeying an order: the captain calls you on it, it counts as an order not met, and each time costs 5% of the mission's score, and so your reputation. (Turning for the captain's own course order doesn't count, nor does steering in the few seconds after a break, such as straightening out.) A break order cuts in on the voices, so you hear it at once. To keep orders clear, the helm doesn't hear the crew's running commentary (incoming-fire counts, contacts, kills, misses, "well done"): only the captain's orders, gunners' calls, launch control, jump calls, warnings and damage.</li>
       <li><b>Gunners call the captain</b> (ships with guns that don't go all round). A gunner with nothing in their arc tells the captain ("Gunner 1: Captain, nothing in my arc. Target to port."), and he orders the helm round: a course order like any other. When the main gun is charged, the captain orders the bow onto the biggest ship. Gunners hold their calls while an order is pending.</li>
       <li><b>Jump heading</b> (ships with a GravSpace drive). Navigation gives a jump heading on arrival (green on the compass), and as the window nears, the captain orders it as a course order (again if the bow wanders off). The ship jumps once the drive is full and the bow is on it (±10°); if the drive is full and you're still off it 20 s after the window opens, the captain takes the conn.</li>
-      <li><b>Autopilot.</b> T turns it on and holds the heading; tap the compass to fly to that heading, or drag the compass like a dial (it holds still and centers on the course you're setting) until the course you want is under the center pointer; or tap the captain's order to fly there. It flies carefully (never past the safe rate, never with split engines) and earns less reputation than steering by hand.</li>
+      <li><b>Autopilot.</b> T turns it on and holds the heading; tap the compass to fly to that heading, or drag the compass like a dial (it holds still and centers on the course you're setting) until the course you want is under the center pointer; or tap the captain's order to fly there. The same compass stands up as a strip at the far right of the screen, clear of the battle: tap a heading on it, or drag it up and down (headings rise upward) and watch the compass across the top, which follows it. It flies carefully (never past the safe rate, never with split engines) and earns less reputation than steering by hand.</li>
     </ol>
     <p class="muted small-text">Battlelert © 2011–2026 Tom Bont. All rights reserved. Free to play. The code, art and sounds may not be copied, changed or shared without written permission.</p>
     <div class="menu"><button id="btn-how-close" class="primary">Got it</button></div>
@@ -553,11 +555,11 @@
 <script src="js/helm.js?b=ea416ffb"></script>
 <script src="js/art.js?b=3b0d069a"></script>
 <script src="js/turretview.js?b=960c39ae"></script>
-<script src="js/ringview.js?b=6a8e5702"></script>
+<script src="js/ringview.js?b=fd28b46f"></script>
 <script src="js/names.js?b=1469f64a"></script>
 <script src="js/career.js?b=26a32bc8"></script>
 <script src="js/speech.js?b=f9e428ef"></script>
 <script src="js/audio.js?b=273e5325"></script>
-<script src="js/ui.js?b=0291f36d"></script>
+<script src="js/ui.js?b=3c08b1d6"></script>
 </body>
 </html>
