@@ -32,6 +32,7 @@
     this.hist = [];                       // [time, wheel, port G, starboard G]: answered `lag` seconds later
     this.stress = 0; this.flankT = 0;
     this.auto = false; this.autoHdg = 0;
+    this.dial = null;                     // the course being dialed on the compass (the screen sets it while a finger is down)
     this.base = 0;                        // compass heading when the turret's heading was 0
     this.inTube = false; this.launchAt = -99; this.clearAt = 0;
     this.curOrder = null; this.nextOrderAt = Infinity; this.warnReadyAt = 0;

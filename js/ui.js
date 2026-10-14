@@ -738,7 +738,7 @@
     if (helm) {
       $("tu-tubes").hidden = true; $("btn-tu-main").hidden = true;
       $("tu-station").textContent = "Helm · " + (job.test ? sim.data.className : BL.shipLabel(job.classId, job.ship) + " (" + sim.data.className + ")") + " · tech level " + sim.data.tl;
-      $("tu-keys").textContent = "← → wheel · 0 midships · ↑ ↓ both engines · Q A port · P L starboard · + − 1 G · T autopilot · E warn engineering · Space launch · Esc pause · Drag the wheel, tap the telegraph, tap or drag the compass to set the autopilot";
+      $("tu-keys").textContent = "← → wheel · 0 midships · ↑ ↓ both engines · Q A port · P L starboard · + − 1 G · T autopilot · E warn engineering · Space launch · Esc pause · Drag the wheel · Tap the telegraph · Tap or dial the compass for autopilot";
       buildHelm();
     }
   }
@@ -1002,12 +1002,16 @@
       return -1;
     }
     cv.addEventListener("pointerdown", function (ev) {
-      // At the helm: touch the compass to steer there on autopilot, and drag along it to move
-      // that heading (the blue mark follows the finger, on past the tape's ends).
+      // At the helm: tap the compass to steer to the heading tapped, on autopilot; or drag it
+      // like a dial: the tape centers on the course being set while the finger is down, and
+      // sliding it brings the course you want under the center pointer.
       if (sim && sim.helm) {
         if (turretActive()) {
-          var cr = cv.getBoundingClientRect(), hd = BL.compassAt(ev.clientX - cr.left, ev.clientY - cr.top);
-          if (hd !== null) { hd = Math.round(hd); sim.helm.setAuto(true, hd); compassDrag = { id: ev.pointerId, x: ev.clientX, hdg: hd }; try { cv.setPointerCapture(ev.pointerId); } catch (e) {} }
+          var cr = cv.getBoundingClientRect(), hd = BL.compassAt(ev.clientX - cr.left, ev.clientY - cr.top), hm = sim.helm;
+          if (hd !== null) {
+            compassDrag = { id: ev.pointerId, x: ev.clientX, tap: Math.round(hd), base: hm.auto ? hm.autoHdg : Math.round(hm.compass()), moved: false };
+            try { cv.setPointerCapture(ev.pointerId); } catch (e) {}
+          }
         }
         ev.preventDefault(); return;
       }
@@ -1031,8 +1035,11 @@
     });
     cv.addEventListener("pointermove", function (ev) {
       if (sim && sim.helm) {
-        var cd = compassDrag;
-        if (cd && cd.id === ev.pointerId && turretActive()) sim.helm.setAuto(true, Math.round(cd.hdg + (ev.clientX - cd.x) / BL.compassScale()));
+        var cd = compassDrag, dx = cd ? ev.clientX - cd.x : 0;
+        if (!cd || cd.id !== ev.pointerId || !turretActive() || (!cd.moved && Math.abs(dx) < 6)) return;
+        cd.moved = true;
+        var set = (Math.round(cd.base - dx / BL.compassScale()) % 360 + 360) % 360;   // tape moves with the finger
+        sim.helm.dial = set; sim.helm.setAuto(true, set);
         return;
       }
       if (ev.pointerType === "mouse") {
@@ -1042,7 +1049,11 @@
       else moveDrag(ev);
     });
     function mouseUp(ev) {
-      if (compassDrag && compassDrag.id === ev.pointerId) compassDrag = null;
+      if (compassDrag && compassDrag.id === ev.pointerId) {
+        if (!compassDrag.moved && sim && sim.helm && turretActive()) sim.helm.setAuto(true, compassDrag.tap);
+        if (sim && sim.helm) sim.helm.dial = null;
+        compassDrag = null;
+      }
       if (ev.pointerType === "mouse") { if (sim && sim.turret && !keysHeld.fire) { sim.turret.trigger(false); setFireBtn(false); } } else endDrag(ev);
     }
     cv.addEventListener("pointerup", mouseUp); cv.addEventListener("pointercancel", mouseUp);

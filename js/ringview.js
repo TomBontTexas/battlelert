@@ -338,10 +338,13 @@
     tick(0, "rgba(255,255,255,0.55)", 0.07, 3);
   }
   // The compass tape across the top of the view: 60 degrees either side of the heading, with the
-  // same marks as the ring. Taps on it steer there on autopilot (BL.compassAt).
+  // same marks as the ring. Taps on it steer there on autopilot (BL.compassAt). While a course is
+  // being dialed (helm.dial) the tape centers on that course instead, like a dial, and the ship's
+  // own heading is the white mark sliding toward it.
   var TAPE = null;
   function drawCompass(c, W, H, helm, t) {
-    var w = Math.min(W - 24, 560), h = 30, x0 = (W - w) / 2, y0 = 6, span = 60, k = w / (2 * span), hdg = helm.compass();
+    var dialing = helm.dial !== null && helm.dial !== undefined, ship = helm.compass();
+    var w = Math.min(W - 24, 560), h = 30, x0 = (W - w) / 2, y0 = 6, span = 60, k = w / (2 * span), hdg = dialing ? helm.dial : ship;
     TAPE = { x0: x0, y0: y0, w: w, h: h, k: k, hdg: hdg, W: W };
     c.save();
     c.fillStyle = "rgba(3,6,11,0.72)"; c.strokeStyle = "rgba(214,224,232,0.25)"; c.lineWidth = 1;
@@ -360,15 +363,25 @@
       c.fillStyle = col; c.strokeStyle = col;
       if (shape === "tri") { c.beginPath(); c.moveTo(x, y0 + h - 2); c.lineTo(x - 7, y0 + h - 13); c.lineTo(x + 7, y0 + h - 13); c.closePath(); if (edge) { c.lineWidth = 2; c.stroke(); } else c.fill(); }
       else if (shape === "dia") { c.save(); c.translate(x, y0 + h - 8); c.rotate(Math.PI / 4); c.fillRect(-4, -4, 8, 8); c.restore(); }
+      else if (shape === "ship") { c.lineWidth = 3; c.beginPath(); c.moveTo(x, y0 + 2); c.lineTo(x, y0 + h); c.stroke(); }
       else { c.lineWidth = 2; c.beginPath(); c.moveTo(x, y0 + 14); c.lineTo(x, y0 + h); c.stroke(); }
     }
     var o = helm.orderView();
     if (o) mark(o.hdg, helm.onOrder({ hdg: o.hdg, eng: o.eng }) ? "#63d48f" : "#f0b54a", "tri");
-    if (helm.auto) mark(helm.autoHdg, "#4cc3ee", "dia");
-    if (Math.abs(helm.omega) > 0.5) mark(helm.stopHeading(), "#ffffff", "line");
+    if (dialing) mark(ship, "#ffffff", "ship");
+    else {
+      if (helm.auto) mark(helm.autoHdg, "#4cc3ee", "dia");
+      if (Math.abs(helm.omega) > 0.5) mark(helm.stopHeading(), "#ffffff", "line");
+    }
     c.restore();
-    c.fillStyle = "#ffffff"; c.beginPath(); c.moveTo(W / 2, y0 + h + 7); c.lineTo(W / 2 - 6, y0 + h + 15); c.lineTo(W / 2 + 6, y0 + h + 15); c.closePath(); c.fill();
-    c.font = "700 13px ui-monospace, Consolas, monospace"; c.textAlign = "center"; c.textBaseline = "top"; c.fillStyle = "#ffffff";
+    var col = dialing ? "#4cc3ee" : "#ffffff";
+    c.fillStyle = col; c.beginPath(); c.moveTo(W / 2, y0 + h + 7); c.lineTo(W / 2 - 6, y0 + h + 15); c.lineTo(W / 2 + 6, y0 + h + 15); c.closePath(); c.fill();
+    c.font = "700 13px ui-monospace, Consolas, monospace"; c.textAlign = "center"; c.textBaseline = "top";
+    if (dialing) {
+      c.fillText("SET " + BL.hdgText(hdg), W / 2, y0 + h + 17);
+      c.fillStyle = "#ffffff"; c.textAlign = "left"; c.fillText("ship " + BL.hdgText(ship), W / 2 + 46, y0 + h + 17);
+      return;
+    }
     c.fillText(BL.hdgText(hdg), W / 2, y0 + h + 17);
     if (helm.auto) { c.fillStyle = "#4cc3ee"; c.textAlign = "left"; c.fillText("AUTO → " + BL.hdgText(helm.autoHdg), W / 2 + 26, y0 + h + 17); }
   }
