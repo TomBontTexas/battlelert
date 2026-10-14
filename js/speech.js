@@ -157,6 +157,8 @@
       if (!synth) return;
       if (!voices.length) loadVoices();
       if (speaking || synth.speaking || synth.pending) return;
+      // A real line wakes Safari where the silent primer may not, so say a waiting line now.
+      if (queue.length) { unlocked = true; primedAt = Date.now(); next(); return; }
       if (unlocked && Date.now() - primedAt < 3000) return;
       unlocked = true; primedAt = Date.now();
       if (synth.paused) synth.resume();

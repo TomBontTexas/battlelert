@@ -176,6 +176,7 @@
     lastLogKey = ""; lastDamageLen = -1; lastSpoken = 0; selected = 0; acc = 0;
     sim.beginJump();
     running = true;
+    speakNew();     // say the first line inside this tap: iPad Safari only wakes its voices for a real line spoken from a tap
   }
 
   function pause() {
@@ -1376,7 +1377,7 @@
     return (look.ship && !brief ? "Expect " + (look.only ? "the " + look.ship : BL.plural(look.ship)) + ": " + look.what + ". " : "") +
       (good.length ? "Your " + good.join(" and ") + " does extra damage to them." : gun + (bats.length === 1 ? " gets" : " get") + " no bonus against them.");
   }
-  $("btn-grav-go").onclick = function () { click(); overlay("ov-grav", false); sim.beginJump(); };
+  $("btn-grav-go").onclick = function () { click(); overlay("ov-grav", false); BL.speech.unlock(); sim.beginJump(); speakNew(); };
 
   /* ---------------------------------------------------------- Debriefing */
   function showDebrief() {
