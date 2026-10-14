@@ -86,7 +86,7 @@
     if (this.inTube) return;
     v = clamp(v, -1, 1);
     // The pilot steered (see disobeying); steering through a break the captain ordered doesn't count.
-    if (Math.abs(v - this.wheel) > 0.01 && !(this.evade && this.m.t <= this.evade.until)) this.steerAt = this.m.t;
+    if (Math.abs(v - this.wheel) > 0.01 && !this.inBreak()) this.steerAt = this.m.t;
     this.wheel = v; this.auto = false;
   };
   Helm.prototype.nudgeWheel = function (d) { this.setWheel(Math.round((this.wheel + d) * 100) / 100); };
@@ -127,7 +127,7 @@
   Helm.prototype.setAuto = function (on, hdg) {
     if (this.inTube) return;
     if (this.auto !== !!on) this.m.cue("toggle");      // (no click for every step of a drag on the compass)
-    if (on && hdg !== undefined && Math.abs(norm(hdg - this.compass())) > 2) this.steerAt = this.m.t;   // a new heading is steering
+    if (on && hdg !== undefined && Math.abs(norm(hdg - this.compass())) > 2 && !this.inBreak()) this.steerAt = this.m.t;   // a new heading is steering
     this.auto = !!on;
     if (on) this.autoHdg = hdg === undefined ? this.compass() : to360(hdg);
   };
@@ -233,6 +233,8 @@
      BL.HELM.evade.disobeyCost of the mission's score. It's disobeying only if the pilot steered
      after the call (moved the wheel, or set the autopilot to a new heading); finishing a turn
      already under way, or turning for the captain's own course order, is fine. */
+  // Steering during an ordered break, or just after it (a late break, straightening out), isn't steering against the captain.
+  Helm.prototype.inBreak = function () { return !!this.evade && this.m.t <= this.evade.until + this.H.evade.settle; };
   Helm.prototype.aimSnap = function () { return { hdg: this.compass(), omega: this.omega, t: this.m.t }; };
   Helm.prototype.dodged = function (snap) {
     return Math.abs(norm(this.compass() - (snap.hdg + snap.omega * (this.m.t - snap.t)))) >= this.H.dodge.turn;
@@ -263,7 +265,7 @@
     this.lastBreak = now;
     this.evade = e.evade = { at: now, until: e.at, dir: dir, snap: this.aimSnap(), judged: false };
     this.stats.evasive++; if (this.cur) this.cur.evasive++;
-    m.chat("evade", { who: this.who, dir: dir > 0 ? "right" : "left" }, "warn");
+    m.chat("evade", { who: this.who, dir: dir > 0 ? "right" : "left" }, "warn", true);   // spoken at once, cutting in
     m.cue("warn");
   };
   // Mission.salvoHits asks this for every torpedo that reaches the ship: true = it missed.

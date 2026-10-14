@@ -137,9 +137,10 @@
     if (!item) return;
     var p = PROFILE[item.speaker] || PROFILE.Crew;
     var u = new SpeechSynthesisUtterance(item.words);
+    var rate = item.now ? Math.max(p.rate, 1.2) : p.rate;
     var a = voiceFor(item.speaker);
     if (a.voice) { u.voice = a.voice; u.lang = a.voice.lang; }
-    u.pitch = p.pitch + a.shift; u.rate = p.rate; u.volume = volume;
+    u.pitch = p.pitch + a.shift; u.rate = rate; u.volume = volume;
     u.onstart = function () { if (current === u) stats.started++; };
     u.onend = function () { if (current !== u) return; stats.finished++; speaking = false; current = null; next(); };
     u.onerror = function (ev) {
@@ -182,12 +183,21 @@
       if (stats.rescued) t += ", " + stats.rescued + " restarted";
       return t + ". " + voices.length + " voices.";
     },
-    say: function (text, kind) {
+    // now: cut in at once (a break order), dropping whatever is being said or waiting.
+    say: function (text, kind, now) {
       if (!synth || !enabled || volume <= 0.01) return;
       var item = split(text);
       item.at = Date.now();
-      item.urgent = kind === "warn" || kind === "bad";
-      if (item.urgent) {
+      item.urgent = now || kind === "warn" || kind === "bad";
+      item.now = !!now;
+      if (now) {
+        queue = [item];
+        if (speaking || synth.speaking || synth.pending) {
+          current = null; speaking = false; synth.cancel();
+          setTimeout(next, 120);   // Safari drops a line spoken straight after cancel()
+          return;
+        }
+      } else if (item.urgent) {
         // Warnings go first; routine lines waiting behind them are dropped.
         queue = queue.filter(function (q) { return q.urgent; });
         queue.push(item);

@@ -680,7 +680,7 @@
     sim.log.forEach(function (l) {
       if (l.seq <= lastSpoken) return;
       lastSpoken = l.seq;
-      if (live) BL.speech.say(l.text, l.kind);
+      if (live) BL.speech.say(l.text, l.kind, l.now);
     });
   }
 

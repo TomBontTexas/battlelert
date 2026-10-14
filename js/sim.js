@@ -175,17 +175,18 @@
   };
 
   /* ------------------------------------------------------------ Messaging */
-  Mission.prototype.say = function (text, kind) {
+  // now: a line that can't wait (a break order); the voice cuts in with it.
+  Mission.prototype.say = function (text, kind, now) {
     if (this.quiet) return;
     this.logSeq = (this.logSeq || 0) + 1;
-    this.log.push({ seq: this.logSeq, t: this.totalT, jump: this.jumpIndex + 1, text: text, kind: kind || "info" });
+    this.log.push({ seq: this.logSeq, t: this.totalT, jump: this.jumpIndex + 1, text: text, kind: kind || "info", now: !!now });
     if (this.log.length > 80) this.log.shift();
   };
-  Mission.prototype.chat = function (key, vars, kind) {
+  Mission.prototype.chat = function (key, vars, kind, now) {
     if (this.quiet) return;
     // At the helm a key ending in H wins, at the gun one ending in G.
     var lines = (this.helm && BL.CHATTER[key + "H"]) || (this.turret && BL.CHATTER[key + "G"]) || BL.CHATTER[key]; if (!lines || !lines.length) return;
-    this.say(fill(this.rng.pick(lines), vars), kind);
+    this.say(fill(this.rng.pick(lines), vars), kind, now);
     this.cue("chatter");
   };
   Mission.prototype.cue = function (name) { if (!this.quiet) this.fx.push(name); };
