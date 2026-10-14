@@ -513,6 +513,7 @@
     this.torps.forEach(function (tp) {
       var e = tp.ev;
       if (e.done) {
+        if (e.outcome === "dodged") { self.effects.push({ type: "dodge", x: tp.x1, y: tp.y1, dx: tp.x1 - tp.x0, dy: tp.y1 - tp.y0, at: m.totalT }); return; }
         if (!e.downed) {
           self.effects.push({ type: e.outcome === "hull" ? "hullHit" : "shieldHit", x: tp.x1, y: tp.y1, at: m.totalT, mj: e.mj });
           if (e.outcome === "hull") bump(self, "hullTorps");

@@ -167,7 +167,8 @@
     }
   }
 
-  // Jobs below your current class: always available, never serious offers.
+  // Requalifying: jobs below your current class, always available. You've already qualified on
+  // them, so they're practice or requalification, and earn half that class's reputation.
   function lowerJobs(c, station) {
     var q = qualified(c, station), out = [];
     var rng = BL.rng(c.offerSeed + 7);
@@ -177,8 +178,9 @@
     }
     return out;
   }
+  var REQUAL_REP = 0.5;
   function repFor(job, scorePct) {
-    return Math.round(BL.classByN(job.n).baseRep * (scorePct / 100) * BL.TECH.repMult(job.tl));
+    return Math.round(BL.classByN(job.n).baseRep * (scorePct / 100) * BL.TECH.repMult(job.tl) * (job.serious === false ? REQUAL_REP : 1));
   }
 
   /* ------------------------------------------------------- Mission result
@@ -286,7 +288,7 @@
     fileName: fileName, exportText: exportText, importText: importText,
     qualified: qualified, rank: rank, ranks: ranks, targetClass: targetClass,
     signoffsTotal: signoffsTotal, signoffsHeld: signoffsHeld, signoffOptions: signoffOptions, spendSignoff: spendSignoff,
-    offers: offers, generateOffers: generateOffers, lowerJobs: lowerJobs, repFor: repFor,
+    offers: offers, generateOffers: generateOffers, lowerJobs: lowerJobs, repFor: repFor, REQUAL_REP: REQUAL_REP,
     applyResult: applyResult, profile: profile, serviceRecord: serviceRecord
   };
 })(typeof window !== "undefined" ? window : globalThis);

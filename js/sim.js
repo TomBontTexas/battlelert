@@ -223,7 +223,7 @@
     this.cue("arrive");
     if (this.turret) this.turret.reset();
     if (this.helm) this.helm.reset();
-    this.chat(this.hasDrive ? "arrival" : "launch", null, "info");
+    this.chat(this.hasDrive ? "arrival" : "launch", { hdg: this.helm && this.helm.jumpHdg !== null ? BL.hdgText(this.helm.jumpHdg) : "" }, "info");
     this.chat(enc.chat || "briefing", { enemies: BL.plural(enc.enemy), what: enc.what }, "info");
   };
 
@@ -408,7 +408,10 @@
     else if (e.type === "request") { this.chat("request", { n: e.gun }, "warn"); this.cue("request"); }
     else if (e.type === "launch") { this.chat("launchCall", { t: lead }, "warn"); this.cue("request"); }
     else if (e.type === "recover") { this.chat("recoverCall", { t: lead }, "warn"); this.cue("request"); }
-    else if (e.type === "jump") { this.chat(this.hasDrive ? "jumpNotice" : "recoveryNotice", { t: lead }, "info"); }
+    else if (e.type === "jump") {
+      if (this.helm) this.helm.jumpShown = true;
+      this.chat(this.hasDrive ? "jumpNotice" : "recoveryNotice", { t: lead, hdg: this.helm && this.helm.jumpHdg !== null ? BL.hdgText(this.helm.jumpHdg) : "" }, "info");
+    }
   };
 
   Mission.prototype.fire = function (e) {
@@ -442,6 +445,15 @@
       js.shielded++;
       this.cue("kill");
       this.chat("intercepted", null, "good");
+      return;
+    }
+    // At the helm a torpedo can miss altogether: the pilot dodged it (helm.js).
+    if (this.helm && this.helm.torpedoArrives(e)) {
+      st.salvos++; js.salvos++; js.dodged = (js.dodged || 0) + 1;
+      if (e.visible) { st.salvosAnnounced++; st.salvosShielded++; }
+      js.shielded++; e.outcome = "dodged";
+      this.cue("torpDown");
+      if (this.rng.chance(0.4)) this.chat("dodged", null, "good");
       return;
     }
     var absorbed = Math.min(sh.mj, e.mj), overflow = e.mj - absorbed;
@@ -885,6 +897,11 @@
         if (t >= this.windowAt() && !this.holdSaid) { this.holdSaid = true; this.chat("holdForSquadron", null, "warn"); }
         full = false;
       }
+    }
+    // At the helm the bow must be on the jump heading too.
+    if (full && this.helm && !this.helm.onJumpHeading()) {
+      if (t >= this.windowAt() && !this.helm.jumpSaid) { this.helm.jumpSaid = true; this.chat("jumpHeading", { hdg: BL.hdgText(this.helm.jumpHdg) }, "warn"); this.cue("warn"); }
+      full = false;
     }
     if (full && this.driveFullAt === null) this.driveFullAt = t;
     if (this.phase === "engage" && full && t >= this.windowAt()) {

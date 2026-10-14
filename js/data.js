@@ -591,7 +591,8 @@
       { id: "flank",      name: "Flank",            short: "FLANK",    f: 1.1 }
     ],
     split: 0.625,          // split engines add this share of top turn per unit of (port - starboard) / (2 x full)
-    engineTau: 0.5,        // engines spool toward their order (s)
+    engineTau: 0.5,        // engines spool toward their order (s), plus engineLagTau x the class's lag
+    engineLagTau: 1.5,
     speedTau: 2,           // the ship eases to the speed its engines order (s)
     stress: { fill: 0.6, drain: 1 / 6, hullShare: 0.05, thrusterChance: 0.3, warnAt: 0.6, after: 0.25 },
     flank: { warnAt: 15, safe: 20, damagePerSec: 0.05 },
@@ -600,6 +601,12 @@
     autopilotRep: 0.75,    // autopilot time earns this share of the helm's reputation
     launch: { nagAfter: 8, autoAfter: 20, clear: 2.5 },               // the gunboat in the carrier's tube
     ptBow: 20,             // the gunner launches torpedoes once a target is this close to the bow (deg)
+    // Dodging: a torpedo misses if the bow ends `turn` degrees off a steady turn, or the speed
+    // changes by `steps` engine orders, during its flight.
+    dodge: { turn: 15, steps: 2 },
+    // A gunner's request to bring the ship round: after `idle` s with an empty arc; `seconds` to
+    // answer it; `cooldown` before that gun asks again.
+    request: { idle: 4, seconds: 10, cooldown: 15 },
     warnCooldown: 6        // seconds between warnings to engineering
   };
 
@@ -678,7 +685,8 @@
     ptMiss:      ["Tactical: torpedo missed.", "Coxswain: it slipped the torpedo."],
     // The helm. A key ending in H replaces the plain one (and the gunner's G one) at the helm.
     launchH:     ["Carrier: Transferring launch control to PT Squadron. Launch when ready."],   // TexasBont's launch line (Oct 13, 2026)
-    arrivalH:    ["Bridge: dropping out of GravSpace. Helm, she's yours.", "Bridge: normal space. Helm, stand by for orders."],
+    arrivalH:    ["Navigation: out of GravSpace. Jump heading {hdg}, Helm.", "Bridge: normal space. Helm, she's yours; jump heading is {hdg}."],
+    takeConn:    ["Captain: I have the conn. Coming to {hdg} for the jump.", "Captain: I'll take her, Helm. Jump heading {hdg}."],
     recoveredH:  ["Carrier: gunboat recovered. Nice flying.", "Coxswain: we're on the deck. Good flying, Helm."],
     burnH:       [],                     // the captain's orders replace the bridge's burns at the helm
     mainReadyH:  ["Engineering: main gun's charged. Helm, put the bow on the big one.", "Gunnery: main gun's up. Bring the bow around and hold it."],
@@ -693,6 +701,12 @@
     stressHit:   ["Damage control: structural damage from that turn! Hull down {dmg}.", "Damage control: frames buckling! Hull down {dmg}."],
     flankWarn:   ["Engineering: we can't hold flank much longer!", "Engineering: engines are over their rating, Helm!"],
     flankDamage: ["Engineering: we burned out a thruster holding flank! {what}.", "Engineering: that's what flank does. {what}."],
+    dodged:      ["Tactical: it missed! Nice flying.", "Tactical: torpedo went wide!", "Coxswain: clean miss!"],
+    helmReq:     ["Gunner {n}: Helm, bring her {dir} {deg}, {weapon} target {side}!", "Gunner {n}: nothing in my arc. Come {dir} {deg}, Helm!", "Gunner {n}: Helm, {dir} {deg} and I've got the shot!"],
+    helmReqMet:  ["Gunner {n}: got it, thanks Helm!", "Gunner {n}: on target!"],
+    helmReqMissed: ["Gunner {n}: never mind, Helm. It's gone.", "Gunner {n}: still nothing in my arc."],
+    jumpNoticeH: ["Navigation: jump window in {t} s. Jump heading {hdg}.", "Bridge: window in {t} seconds. Helm, come to {hdg} for the jump."],
+    jumpHeading: ["Navigation: drive's full. Come to {hdg} for the jump, Helm!", "Bridge: we're off the jump heading. Bring her to {hdg}!"],
     warnEng:     ["Engineering: standing by for your burn.", "Engineering: understood, power's ready for the engines.", "Engineering: copy, Helm. Engines get first call."]
   };
 

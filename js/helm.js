@@ -36,7 +36,10 @@
     this.base = 0;                        // compass heading when the turret's heading was 0
     this.inTube = false; this.launchAt = -99; this.clearAt = 0;
     this.curOrder = null; this.nextOrderAt = Infinity; this.warnReadyAt = 0;
-    this.stats = { orders: 0, ordersMet: 0, stressHits: 0, flankHits: 0, autoT: 0, manualT: 0, overT: 0, hardT: 0, liveT: 0, launches: [] };
+    this.stats = { orders: 0, ordersMet: 0, stressHits: 0, flankHits: 0, autoT: 0, manualT: 0, overT: 0, hardT: 0, liveT: 0, launches: [],
+      torps: 0, dodged: 0, requests: 0, requestsMet: 0 };
+    this.req = null;                      // a gunner's request to bring the ship round (ring.js makes them)
+    this.jumpHdg = null; this.jumpShown = false;
     this.jumps = []; this.cur = null;
   }
   BL.Helm = Helm;
@@ -158,16 +161,21 @@
     this.out.port = this.out.stbd = this.speed = g;
     this.rollTurn();
     this.nextOrderAt = enc.burns ? m.cfg.arrivalSeconds + Math.max(this.H.order.minGap, r.range(enc.burns.every) * 0.6) : Infinity;
-    this.cur = { orders: 0, ordersMet: 0, stressHits: 0, launchWait: 0 };
+    this.cur = { orders: 0, ordersMet: 0, stressHits: 0, launchWait: 0, torps: 0, dodged: 0, requests: 0, requestsMet: 0 };
     this.jumps[m.jumpIndex] = this.cur;
+    this.req = null; this.jumpSaid = false; this.conT = 0; this.conTaken = false;
+    // Ships with a GravSpace drive jump on a heading Navigation gives on arrival.
+    this.jumpHdg = m.hasDrive ? 5 * Math.floor(r.next() * 72) : null;
+    this.jumpShown = this.jumpHdg !== null;
   };
 
   // The captain's orders, on the bridge's burn schedule (Mission.schedule calls this at the helm).
   Helm.prototype.schedule = function (t) {
     var m = this.m, enc = m.encounter(), b = enc.burns, H = this.H, r = this.rng;
     if (!b) return;
+    if (this.jumpNear()) return;                          // time to make the jump heading
     // Bigger ships get more warning: time to swing at a safe rate, plus the lag.
-    var C = this.C, turn = this.nextTurn, lead = b.warning + Math.max(0, Math.abs(turn) / (C.safe * 0.8) + C.lag - 2);
+    var C = this.C, turn = this.nextTurn, lead = b.warning + Math.max(0, this.turnTime(turn) - 2);
     if (t < this.nextOrderAt - lead) return;
     var at = Math.max(this.nextOrderAt, t + lead), dur = Math.round(r.range(b.duration)) + 2;
     // The engine order nearest the burn the bridge would have called.
@@ -178,6 +186,8 @@
     this.nextOrderAt = at + dur + Math.max(H.order.minGap, r.range(b.every));
     this.rollTurn();
   };
+  // About how long a careful turn of `deg` takes: swing at the safe rate, build up and ease off, lag.
+  Helm.prototype.turnTime = function (deg) { var C = this.C; return Math.abs(deg) / (0.7 * C.safe) + C.safe / C.build + C.lag + 1; };
   // The next order's turn: bigger ships get smaller ones.
   Helm.prototype.rollTurn = function () {
     var H = this.H, r = this.rng, big = Math.min(H.order.turn[1], this.C.safe * 5), small = Math.min(H.order.turn[0], big / 2);
@@ -199,6 +209,78 @@
   Helm.prototype.onOrder = function (e) {
     var want = this.gOf(e.eng), avg = (this.port.g + this.stbd.g) / 2;
     return Math.abs(norm(e.hdg - this.compass())) <= this.H.order.heading && Math.abs(avg - want) <= Math.max(0.6, want * 0.15);
+  };
+
+  /* --------------------------------------------------------------- Dodging
+     Archonian gunners lead a steady course. A torpedo misses if, during its flight, the bow ends
+     up BL.HELM.dodge.turn degrees or more from where a steady turn would have put it, or the
+     engines' thrust changes by dodge.steps engine orders or more (what the engines are actually
+     giving, so a flick of the telegraph inside the lag isn't enough). */
+  // The engine order nearest a thrust in G (its place in BL.HELM.orders).
+  Helm.prototype.stepOf = function (g) {
+    var best = 0, bd = 1e9, self = this;
+    this.H.orders.forEach(function (o, k) { var d = Math.abs(self.gOf(o.id) - g); if (d < bd) { bd = d; best = k; } });
+    return best;
+  };
+  // What the enemy gunner sees as a torpedo launches.
+  Helm.prototype.thrustStep = function () { return this.stepOf((this.out.port + this.out.stbd) / 2); };
+  Helm.prototype.aimSnap = function () { return { hdg: this.compass(), omega: this.omega, step: this.thrustStep(), t: this.m.t }; };
+  Helm.prototype.dodged = function (snap) {
+    var D = this.H.dodge, off = Math.abs(norm(this.compass() - (snap.hdg + snap.omega * (this.m.t - snap.t))));
+    return off >= D.turn || Math.abs(this.thrustStep() - snap.step) >= D.steps;
+  };
+  // Mission.salvoHits asks this for every torpedo that reaches the ship: true = it missed.
+  Helm.prototype.torpedoArrives = function (e) {
+    if (!e.dodge) return false;
+    this.stats.torps++; if (this.cur) this.cur.torps++;
+    if (!this.dodged(e.dodge)) return false;
+    this.stats.dodged++; if (this.cur) this.cur.dodged++;
+    return true;
+  };
+
+  /* -------------------------------------------------------- Gunners' calls
+     A gunner whose arc is empty while a ship their weapon is best against sits outside it asks
+     the helm to bring the ship round (ring.js makes the request). It's met when that ship is in
+     the gun's arc, or the bow is on the heading asked for, within the time given. */
+  Helm.prototype.request = function (b, turn, ship) {
+    var m = this.m, R = this.H.request, rel = norm(ship.bearing);
+    // (time enough to swing at a safe rate, plus the lag)
+    this.req = { gun: b.gunNo, bat: b, ship: ship, turn: turn, hdg: Math.round(to360(this.compass() + turn)), until: m.t + R.seconds + Math.abs(turn) / (this.C.safe * 0.8) + this.C.lag };
+    this.stats.requests++; if (this.cur) this.cur.requests++;
+    m.chat("helmReq", { n: b.gunNo, dir: turn > 0 ? "right" : "left", deg: Math.abs(turn), weapon: b.w.short.toLowerCase(),
+      side: Math.abs(rel) > 150 ? "astern" : Math.abs(rel) < 30 ? "ahead" : rel < 0 ? "to port" : "to starboard" }, "warn");
+    m.cue("request");
+  };
+  Helm.prototype.runRequest = function () {
+    var q = this.req, m = this.m, tu = m.turret;
+    if (!q) return;
+    var s = q.ship, gone = s.dead || s.state === "leave" || tu.ships.indexOf(s) < 0;
+    var met = !gone && (tu.relFor(q.bat, s.bearing) !== null || Math.abs(norm(q.hdg - this.compass())) <= this.H.order.heading);
+    if (!met && !gone && m.t < q.until) return;
+    this.req = null; q.bat.reqReady = m.totalT + this.H.request.cooldown;
+    if (gone) return;
+    if (met) { this.stats.requestsMet++; if (this.cur) this.cur.requestsMet++; if (this.rng.chance(0.6)) m.chat("helmReqMet", { n: q.gun }, "good"); }
+    else m.chat("helmReqMissed", { n: q.gun }, "bad");
+  };
+
+  /* ---------------------------------------------------------- Jump heading */
+  Helm.prototype.onJumpHeading = function () { return this.jumpHdg === null || Math.abs(norm(this.jumpHdg - this.compass())) <= this.H.order.heading; };
+  // Drive full, window open, bow still off the jump heading for 20 s: the captain takes the
+  // conn and has the autopilot bring her round (the jump is late).
+  Helm.prototype.runConn = function (dt) {
+    var m = this.m, d = m.sys("drive");
+    if (this.jumpHdg === null || this.conTaken || !d || m.t < m.windowAt() || d.mj < d.maxMJ - 0.5 || this.onJumpHeading()) { this.conT = 0; return; }
+    this.conT += dt;
+    if (this.conT < 20) return;
+    this.conTaken = true;
+    this.setAuto(true, this.jumpHdg);
+    m.chat("takeConn", { hdg: BL.hdgText(this.jumpHdg) }, "bad");
+  };
+  // Close enough to the jump window that the ship should be lining up for it (no new orders or calls).
+  Helm.prototype.jumpNear = function () { var m = this.m; return this.jumpHdg !== null && m.t > m.windowAt() - 15 - this.turnTime(180); };
+  Helm.prototype.jumpView = function () {
+    var m = this.m;
+    return this.jumpHdg === null || !this.jumpShown ? null : { hdg: this.jumpHdg, in: m.windowAt() - m.t, on: this.onJumpHeading() };
   };
 
   /* ---------------------------------------------------------------- Tick */
@@ -223,7 +305,7 @@
     if (this.auto) this.autopilot();
     this.hist.push([m.totalT, this.wheel, this.port.g, this.stbd.g]);
     var lag = this.lagged();
-    var k = 1 - Math.exp(-dt / H.engineTau);
+    var k = 1 - Math.exp(-dt / (H.engineTau + H.engineLagTau * C.lag));     // big ships' engines spool slower too
     this.out.port += (lag[2] - this.out.port) * k;
     this.out.stbd += (lag[3] - this.out.stbd) * k;
     this.speed += ((this.out.port + this.out.stbd) / 2 - this.speed) * (1 - Math.exp(-dt / H.speedTau));
@@ -241,6 +323,8 @@
     // The captain's order under way.
     var o = this.curOrder;
     if (o) { if (this.onOrder(o.e)) o.held += dt; if (m.t >= o.end) this.finishOrder(); }
+    this.runRequest();
+    this.runConn(dt);
     if (m.phase === "engage" || m.phase === "countdown") {
       var st = this.stats; st.liveT += dt;
       if (this.auto) st.autoT += dt; else st.manualT += dt;
@@ -323,7 +407,7 @@
      and burned-out thrusters) for the helm. Time on autopilot earns less (BL.HELM.autopilotRep). */
   BL.scoreHelm = function (m, outcome) {
     var r = BL.score(m, outcome), h = m.helm, st = h.stats, tu = m.turret;
-    var orders = st.orders ? st.ordersMet / st.orders : 1;
+    var asked = st.orders + st.requests, orders = asked ? (st.ordersMet + st.requestsMet) / asked : 1;
     var handling = Math.max(0, 1 - 0.2 * st.stressHits - 0.2 * st.flankHits);
     var live = st.autoT + st.manualT, autoShare = live ? st.autoT / live : 0, f = 1 - autoShare * (1 - BL.HELM.autopilotRep);
     r.station = "pilot";
@@ -335,6 +419,7 @@
     r.crew = tu.bats.map(function (b) { return b.crew; }).filter(Boolean);
     r.helm = {
       orders: st.orders, ordersMet: st.ordersMet, stressHits: st.stressHits, flankHits: st.flankHits,
+      torpsAtUs: st.torps, dodged: st.dodged, requests: st.requests, requestsMet: st.requestsMet,
       autoPct: Math.round(autoShare * 100), launches: st.launches.slice(),
       ships: tu.stats.ships, kills: tu.stats.kills, torps: tu.stats.torps, downed: tu.stats.downed, ptFired: tu.stats.ptFired, ptHits: tu.stats.ptHits,
       jumps: h.jumps.map(function (j) { return j ? Object.assign({}, j) : null; })
@@ -344,24 +429,35 @@
 
   /* -------------------------------------------------------------- Test bot
      Flies the helm for headless tests: launches at once, follows each order on autopilot. */
-  function HelmBot() {}
+  // dodge: jink the speed (cruise <-> full) whenever a torpedo launches.
+  function HelmBot(dodge) { this.dodge = !!dodge; this.seen = 0; this.high = false; }
   BL.HelmBot = HelmBot;
   HelmBot.prototype.think = function (m) {
     var h = m.helm; if (!h) return;
     if (h.inTube && m.t >= 1) h.launch();
     if (h.locked()) return;
-    var o = h.orderView(), lead = Math.abs(norm(o ? o.hdg - h.compass() : 0)) / (h.C.safe * 0.8) + h.C.lag + 1;
+    var o = h.orderView(), lead = h.turnTime(norm(o ? o.hdg - h.compass() : 0)) + 1;
     if (o && (o.active || o.in < lead)) {
       if (!h.auto || Math.abs(norm(h.autoHdg - o.hdg)) > 0.5) h.setAuto(true, o.hdg);
       if (h.port.ord !== o.eng || h.stbd.ord !== o.eng) h.setOrder("both", o.eng);
-    } else if (h.port.ord !== "cruise" || h.stbd.ord !== "cruise") h.setOrder("both", "cruise");   // back to cruise between orders
+    } else {
+      var j = h.jumpView(), goal = h.req ? h.req.hdg : j && j.in < 10 + h.turnTime(180) ? j.hdg : null;
+      if (goal !== null && (!h.auto || Math.abs(norm(h.autoHdg - goal)) > 0.5)) h.setAuto(true, goal);
+      var want = "cruise";
+      if (this.dodge) {
+        var n = 0; m.events.forEach(function (e) { if (e.dodge && !e.done) n = Math.max(n, e.id); });
+        if (n > this.seen) { this.seen = n; this.high = !this.high; }
+        want = this.high ? "stop" : "cruise";
+      }
+      if (h.port.ord !== want || h.stbd.ord !== want) h.setOrder("both", want);   // back to cruise between orders
+    }
   };
-  BL.runHelmHeadless = function (seed, classId, tl, idle) {
+  BL.runHelmHeadless = function (seed, classId, tl, idle, dodge) {
     classId = classId || "gunboat";
     var rc = BL.GUNNERY.ring.classes[classId];
     var m = new BL.Mission({ seed: seed, quiet: true, classId: classId, tl: tl || 4, helm: true,
       gunner: { weapons: BL.GUNNERY.loadout[classId], ring: true, arcs: rc.arcs, arcNames: rc.arcNames, helm: true } });
-    var eng = new BL.AIEngineer(0.5, 0.25, m.turret.engineer.skill), bot = new HelmBot();
+    var eng = new BL.AIEngineer(0.5, 0.25, m.turret.engineer.skill), bot = new HelmBot(dodge);
     m.beginJump();
     var guard = 0;
     while (m.phase !== "done" && guard++ < BL.TICK_RATE * 60 * 30) {

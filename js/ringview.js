@@ -213,6 +213,10 @@
         var dg = c.createRadialGradient(f.x, f.y, 0, f.x, f.y, 0.03 + a * 0.12);
         dg.addColorStop(0, "rgba(120,255,235," + (0.9 * (1 - a / 0.9)).toFixed(2) + ")"); dg.addColorStop(1, "rgba(40,200,180,0)");
         c.fillStyle = dg; c.beginPath(); c.arc(f.x, f.y, 0.03 + a * 0.12, 0, Math.PI * 2); c.fill();
+      } else if (f.type === "dodge" && a < 0.8) {          // a dodged torpedo flies on past, harmless
+        var dl = Math.hypot(f.dx, f.dy) || 1, ux = f.dx / dl, uy = f.dy / dl, px = f.x + ux * a * 0.35, py = f.y + uy * a * 0.35;
+        c.strokeStyle = "rgba(150,255,190," + (1 - a / 0.8).toFixed(2) + ")"; c.lineWidth = 3 / S;
+        c.beginPath(); c.moveTo(px - ux * 0.04, py - uy * 0.04); c.lineTo(px, py); c.stroke(); c.lineWidth = 1.5 / S;
       } else if (f.type === "fizzle" && a < 0.25) {
         c.fillStyle = "rgba(240,181,74," + (0.6 - a * 2.4) + ")"; c.fillRect(f.x - 0.004, f.y - 0.004, 0.008, 0.008);
       }
@@ -333,6 +337,9 @@
       c.fillStyle = col; c.save(); c.translate(p.x, p.y); c.rotate(ro * Math.PI / 180);
       c.beginPath(); c.moveTo(0, 0.012); c.lineTo(-0.012, -0.01); c.lineTo(0.012, -0.01); c.closePath(); c.fill(); c.restore();
     }
+    if (helm.req) { var pr = ringAt(tu, rel(helm, helm.req.hdg), 0.05); c.fillStyle = "rgba(196,155,255,0.95)"; c.beginPath(); c.arc(pr.x, pr.y, 0.009, 0, Math.PI * 2); c.fill(); }
+    var jv = helm.jumpView();
+    if (jv) { var pj = ringAt(tu, rel(helm, jv.hdg), 0.05); c.strokeStyle = jv.on ? "rgba(99,212,143,0.95)" : "rgba(99,212,143,0.7)"; c.lineWidth = 2.5 / S; c.strokeRect(pj.x - 0.009, pj.y - 0.009, 0.018, 0.018); c.lineWidth = 1.5 / S; }
     if (helm.auto) { var pa = ringAt(tu, rel(helm, helm.autoHdg), 0.05); c.fillStyle = "rgba(76,195,238,0.95)"; c.save(); c.translate(pa.x, pa.y); c.rotate(Math.PI / 4); c.fillRect(-0.008, -0.008, 0.016, 0.016); c.restore(); }
     if (Math.abs(helm.omega) > 0.5) tick(rel(helm, helm.stopHeading()), "rgba(255,255,255,0.9)", 0.05, 2.5);
     tick(0, "rgba(255,255,255,0.55)", 0.07, 3);
@@ -363,10 +370,15 @@
       c.fillStyle = col; c.strokeStyle = col;
       if (shape === "tri") { c.beginPath(); c.moveTo(x, y0 + h - 2); c.lineTo(x - 7, y0 + h - 13); c.lineTo(x + 7, y0 + h - 13); c.closePath(); if (edge) { c.lineWidth = 2; c.stroke(); } else c.fill(); }
       else if (shape === "dia") { c.save(); c.translate(x, y0 + h - 8); c.rotate(Math.PI / 4); c.fillRect(-4, -4, 8, 8); c.restore(); }
+      else if (shape === "req") { c.beginPath(); c.arc(x, y0 + h - 8, 5, 0, Math.PI * 2); c.fill(); }
+      else if (shape === "jump") { c.lineWidth = 2; c.strokeRect(x - 6, y0 + h - 14, 12, 12); c.font = "700 9px ui-monospace, Consolas, monospace"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText("J", x, y0 + h - 8); }
       else if (shape === "ship") { c.lineWidth = 3; c.beginPath(); c.moveTo(x, y0 + 2); c.lineTo(x, y0 + h); c.stroke(); }
       else { c.lineWidth = 2; c.beginPath(); c.moveTo(x, y0 + 14); c.lineTo(x, y0 + h); c.stroke(); }
     }
     var o = helm.orderView();
+    var jv2 = helm.jumpView();
+    if (jv2) mark(jv2.hdg, "#63d48f", "jump");
+    if (helm.req) mark(helm.req.hdg, "#c49bff", "req");
     if (o) mark(o.hdg, helm.onOrder({ hdg: o.hdg, eng: o.eng }) ? "#63d48f" : "#f0b54a", "tri");
     if (dialing) mark(ship, "#ffffff", "ship");
     else {

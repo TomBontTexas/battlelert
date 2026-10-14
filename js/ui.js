@@ -1125,6 +1125,16 @@
       setCls(ob, "hm-order");
     }
     setHtml(ob, oh);
+    // Alerts: torpedoes to dodge, a gunner's call, the jump heading (tap one to fly it on autopilot)
+    var al = [], D = BL.HELM.dodge, inbound = tu.torps.filter(function (tp) { return tp.ev && tp.ev.dodge && !tp.ev.done; });
+    if (inbound.length) {
+      var soon = Math.min.apply(null, inbound.map(function (tp) { return tp.t1 - sim.t; }));
+      al.push('<div class="torp">⚠ ' + inbound.length + (inbound.length === 1 ? " torpedo" : " torpedoes") + " in " + Math.max(0, soon).toFixed(1) + " s: swing " + D.turn + "° or change engines " + D.steps + " orders</div>");
+    }
+    if (h.req) al.push('<div class="req" data-hdg="' + h.req.hdg + '">Gun ' + h.req.gun + ": come " + (h.req.turn > 0 ? "right" : "left") + " to <b>" + BL.hdgText(h.req.hdg) + "</b> · " + Math.max(0, Math.ceil(h.req.until - sim.t)) + " s</div>");
+    var jv = h.jumpView();
+    if (jv) al.push('<div class="jump' + (jv.on ? "" : jv.in < 30 ? " off" : "") + '" data-hdg="' + jv.hdg + '">Jump heading <b>' + BL.hdgText(jv.hdg) + "</b> · " + (jv.in > 0 ? "window in " + Math.ceil(jv.in) + " s" : "window open") + (jv.on ? " ✔" : "") + "</div>");
+    setHtml($("hm-alerts"), al.join(""));
     // Telegraph and thrust
     Array.prototype.forEach.call($("hm-tele").querySelectorAll("button"), function (b) {
       var id = b.dataset.ord, side = b.dataset.side;
@@ -1173,6 +1183,8 @@
     }
     var g = tu.cur || {}, c = h.cur || {};
     setHtml($("tu-tally"), "<span>Orders met</span><b>" + (c.ordersMet || 0) + " / " + (c.orders || 0) + "</b>" +
+      (c.requests ? "<span>Gunners' calls answered</span><b>" + c.requestsMet + " / " + c.requests + "</b>" : "") +
+      "<span>Torpedoes dodged</span><b>" + (c.dodged || 0) + " / " + (c.torps || 0) + "</b>" +
       "<span>Ships destroyed</span><b>" + (g.kills || 0) + " / " + (g.ships || 0) + "</b><span>Torpedoes shot down</span><b>" + (g.downed || 0) + " / " + (g.torps || 0) + "</b>" +
       (tu.pt.length ? "<span>Our torpedoes</span><b>" + (g.ptHits || 0) + " hit / " + (g.ptFired || 0) + "</b>" : "") +
       (c.stressHits ? '<span class="bad">Structural hits</span><b>' + c.stressHits + "</b>" : "") + (ship.crippled ? '<span class="bad">✖ Crew crippled</span><b></b>' : ""));
@@ -1221,11 +1233,14 @@
     $("hm-warn").addEventListener("click", function () { if (turretActive()) sim.helm.warn(); this.blur(); });
     $("hm-launch").addEventListener("click", function () { if (turretActive()) sim.helm.launch(); this.blur(); });
     $("hm-order").addEventListener("click", function () { var o = turretActive() && sim.helm.orderView(); if (o) sim.helm.setAuto(true, o.hdg); });
+    $("hm-alerts").addEventListener("click", function (ev) { var d = ev.target.closest("[data-hdg]"); if (d && turretActive()) sim.helm.setAuto(true, +d.dataset.hdg); });
   })();
   function gravHelm(js, dmg, next) {
     var c = sim.helm.jumps[sim.jumpIndex - 1] || {}, g = sim.turret.jumps[sim.jumpIndex - 1] || {};
     return "<p>Fighting has stopped. " + (sim.hasDrive ? "The ship is in GravSpace." : "The carrier has you on deck and is carrying you through GravSpace.") + "</p><ul class='grav-list'>" +
       "<li>Orders met: " + c.ordersMet + " of " + c.orders + "</li>" +
+      (c.requests ? "<li>Gunners' calls answered: " + c.requestsMet + " of " + c.requests + "</li>" : "") +
+      "<li>Torpedoes dodged: " + (c.dodged || 0) + " of " + (c.torps || 0) + "</li>" +
       (sim.hasDrive ? "" : "<li>Launch: " + (c.launchWait ? c.launchWait + " s after the call" : "right away") + "</li>") +
       (c.stressHits ? "<li>Structural hits from hard turns: " + c.stressHits + "</li>" : "") +
       "<li>Enemy ships destroyed by your crew: " + g.kills + " of " + g.ships + "</li>" +
@@ -1240,16 +1255,17 @@
   }
   function debriefHelm(r) {
     var hm = r.helm, d = r.detail;
-    $("db-jumps").innerHTML = "<tr><th>" + (r.hasDrive ? "Jump" : "Sortie") + "</th><th>Encounter</th><th>Orders met</th><th>Structural hits</th>" + (r.hasDrive ? "" : "<th>Launch wait</th>") + "<th>Shielded</th><th>Hull lost</th><th>Seconds</th></tr>" +
+    $("db-jumps").innerHTML = "<tr><th>" + (r.hasDrive ? "Jump" : "Sortie") + "</th><th>Encounter</th><th>Orders met</th><th>Dodged</th><th>Structural hits</th>" + (r.hasDrive ? "<th>On time</th>" : "<th>Launch wait</th>") + "<th>Shielded</th><th>Hull lost</th><th>Seconds</th></tr>" +
       r.jumps.map(function (j, i) {
         var t = hm.jumps[i] || {};
-        return "<tr><td>" + (i + 1) + "</td><td>" + BL.ENCOUNTERS[j.encounter].name + "</td><td>" + t.ordersMet + " / " + t.orders + "</td><td>" + t.stressHits + "</td>" +
-          (r.hasDrive ? "" : "<td>" + (t.launchWait || 0) + " s</td>") + "<td>" + j.shielded + " / " + j.salvos + "</td><td>" + j.hullLost + "</td><td>" + j.seconds + "</td></tr>";
+        return "<tr><td>" + (i + 1) + "</td><td>" + BL.ENCOUNTERS[j.encounter].name + "</td><td>" + t.ordersMet + " / " + t.orders + "</td><td>" + (t.dodged || 0) + " / " + (t.torps || 0) + "</td><td>" + t.stressHits + "</td>" +
+          (r.hasDrive ? "<td>" + (j.onTime ? "yes" : "no") + "</td>" : "<td>" + (t.launchWait || 0) + " s</td>") + "<td>" + j.shielded + " / " + j.salvos + "</td><td>" + j.hullLost + "</td><td>" + j.seconds + "</td></tr>";
       }).join("");
     var rows = [
       ["Engineer", esc(r.engineer.name) + ", " + r.engineer.label + " (skill " + Math.round(r.engineer.skill * 100) + ")"],
       ["Gun crew", r.crew.map(function (c) { return esc(c.name) + ", " + c.label + " (" + Math.round(c.skill * 100) + ")"; }).join(" · ")],
-      ["Orders met", hm.ordersMet + " / " + hm.orders],
+      ["Orders met", hm.ordersMet + " / " + hm.orders]].concat(hm.requests ? [["Gunners' calls answered", hm.requestsMet + " / " + hm.requests]] : [], [
+      ["Torpedoes dodged", hm.dodged + " / " + hm.torpsAtUs],
       ["Steering", hm.autoPct ? hm.autoPct + "% on autopilot (earns " + Math.round(BL.HELM.autopilotRep * 100) + "% for that time)" : "all by hand"],
       ["Structural hits from hard turns", hm.stressHits],
       ["Thrusters burned out at flank", hm.flankHits],
@@ -1258,7 +1274,7 @@
       ["Hull lost", d.hullLost],
       ["Failsafe trips (the engineer's reactor)", d.trips],
       ["Damage reports", r.damage.length]
-    ];
+    ]);
     if (r.classId === "gunboat") rows.push(["Our torpedoes", hm.ptFired ? hm.ptHits + " hits of " + hm.ptFired + " launched" : "none launched"]);
     $("db-detail").innerHTML = rows.map(function (x) { return "<div><span>" + x[0] + ":</span> " + x[1] + "</div>"; }).join("");
     $("db-career").hidden = !report;
@@ -1410,7 +1426,8 @@
     var st = career.stations[job.station], rows = [];
     if (r.outcome === "success") {
       rows.push('<p class="big-line">Reputation earned: <b>+' + report.rep + "</b> (" + BL.career.STATION_NAME[job.station].toLowerCase() + " path, now " + st.rep + ")</p>");
-      rows.push('<p class="muted">' + BL.classByN(job.n).baseRep + " base for a " + r.className.toLowerCase() + " × score " + r.score + "% × " + BL.TECH.repMult(job.tl).toFixed(1) + " for tech level " + job.tl + "</p>");
+      rows.push('<p class="muted">' + BL.classByN(job.n).baseRep + " base for a " + r.className.toLowerCase() + " × score " + r.score + "% × " + BL.TECH.repMult(job.tl).toFixed(1) + " for tech level " + job.tl +
+        (job.serious === false ? " × " + BL.career.REQUAL_REP + " requalifying" : "") + "</p>");
     } else rows.push('<p class="big-line">No reputation and no promotion for a failed mission.</p>');
     if (report.promoted) rows.push('<p class="big-line promo">Qualified: ' + BL.career.rank(career, job.station) + " (" + r.className + ")</p>");
     if (report.failuresAtPost === 1) rows.push('<p class="big-line">Failure 1 of 2 at this post. A second failure here sends you back a class.</p>');
@@ -1652,7 +1669,7 @@
 
   function offerHtml(j, i) {
     var cls = BL.classByN(j.n), q = BL.career.qualified(career, j.station), up = j.n > q, rankName = BL.career.STATION_NAME[j.station];
-    var tag = up ? '<span class="tag up">' + (q ? "STEP UP" : "FIRST QUALIFICATION") + "</span>" : !j.serious ? '<span class="tag low">LOWER CLASS</span>' : "";
+    var tag = up ? '<span class="tag up">' + (q ? "STEP UP" : "FIRST QUALIFICATION") + "</span>" : !j.serious ? '<span class="tag low">REQUALIFYING</span>' : "";
     // Ship and hull number with the tech level; reputation; then who you'd serve with and the guns.
     // Crew: everyone at the other stations the job names (j.engineer, j.gunner, j.pilot, each
     // { name, who, label, skill }). Gunner jobs name the engineer today; engineer jobs will add
@@ -1670,7 +1687,7 @@
     function sec(title, rows) { return rows.length ? '<div class="offer-sec"><div class="offer-sec-h">' + title + "</div>" + rows.map(function (x) { return "<div>" + x + "</div>"; }).join("") + "</div>" : ""; }
     return '<div class="offer' + (up ? " stepup" : "") + '"><h3>' + esc(BL.shipLabel(j.classId, j.ship)) + " (TL" + j.tl + ")" + tag + "</h3>" +
       '<button class="primary" data-i="' + i + '">Accept</button>' +
-      '<div class="meta">Reputation ×' + BL.TECH.repMult(j.tl).toFixed(1) + ", max " + BL.career.repFor(j, 100) +
+      '<div class="meta">Reputation ×' + (BL.TECH.repMult(j.tl) * (j.serious === false ? BL.career.REQUAL_REP : 1)).toFixed(j.serious === false ? 2 : 1) + (j.serious === false ? " (half: requalifying)" : "") + ", max " + BL.career.repFor(j, 100) +
       (up ? " · success qualifies you as " + rankName + "-" + j.n : "") + "</div>" +
       sec("Crew", crew) + sec("Armament", arms) + "</div>";
   }
@@ -1678,7 +1695,7 @@
   function showOffers(mode, station) {
     offersMode = mode; offersStation = station = station || offersStation;
     var q = BL.career.qualified(career, station), who = BL.career.STATION_NAME[station];
-    $("btn-offers-lower").textContent = mode === "lower" ? who + " job offers" : "Lower-class jobs";
+    $("btn-offers-lower").textContent = mode === "lower" ? who + " job offers" : "Requalifying jobs";
     if (mode === "offers") {
       shownJobs = BL.career.offers(career, station);
       $("offers-title").textContent = who + " jobs";
@@ -1688,8 +1705,8 @@
         (q && BL.career.built(station, q + 1) ? " There's always a tech-level-1 posting for your class and for the class above it." : " There's always a tech-level-1 posting.");
     } else {
       shownJobs = BL.career.lowerJobs(career, station);
-      $("offers-title").textContent = who + ": lower-class jobs";
-      $("offers-lede").textContent = shownJobs.length ? "Jobs below your current class. You're welcome aboard, but they aren't serious offers: they earn that class's lower reputation." :
+      $("offers-title").textContent = who + ": requalifying";
+      $("offers-lede").textContent = shownJobs.length ? "Classes you've already qualified on: requalify or get some practice. You're welcome aboard, but they earn half that class's reputation, and failures here don't count against you." :
         "Nothing below your current class yet. Qualify on a bigger ship and the smaller ones show up here.";
     }
     $("offers-list").innerHTML = shownJobs.map(offerHtml).join("");

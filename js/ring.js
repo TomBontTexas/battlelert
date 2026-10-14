@@ -167,7 +167,7 @@
     });
     this.bats.forEach(function (b, i) { if (i !== self.sel || self.crewAll) self.aiBattery(b); });
     this.steer(dt);
-    if (this.crewAll) this.crewWeapons();
+    if (this.crewAll) { this.crewWeapons(); this.crewCalls(); }
     // Turn each gun toward its aim along its arc, never faster than its drive.
     var held = this.bat();
     if (held.seek) this.trackSeek(held);
@@ -240,6 +240,7 @@
     this.torps.forEach(function (tp) {
       rot(tp, "x0", "y0"); rot(tp, "x", "y");
       if (tp.strike) return;                   // it homes on the drive, which turns with the ship
+      if (self.m.helm) { rot(tp, "x1", "y1"); return; }     // at the helm it flies at the point it was aimed at
       tp.hitB -= deg; var p = self.rim(tp.hitB); tp.x1 = p.x; tp.y1 = p.y;
     });
     this.bolts.forEach(function (b) { rot(b, "x", "y"); var vx = b.vx; b.vx = vx * ca - b.vy * sa; b.vy = vx * sa + b.vy * ca; });
@@ -254,6 +255,34 @@
     var best = 0; this.bats.forEach(function (b) { if (b.crew) best = Math.max(best, b.crew.skill); });
     var C = this.G.crew, k = clamp((best - C.skill[0]) / (C.skill[1] - C.skill[0]), 0, 1);
     return 1 - 0.7 * k;                        // 1 s for a raw crew, 0.3 s for a sharp one
+  };
+  /* A gunner whose arc has been empty a while, with a ship their weapon is best against outside
+     it, asks the helm to bring the ship round (helm.js keeps the request). The turn asked for
+     puts that ship halfway inside the arc. All-round guns never need to ask. */
+  RingTurret.prototype.crewCalls = function () {
+    var m = this.m, h = m.helm, now = m.totalT, self = this, Q = BL.HELM.request, R = this.R;
+    // (gunners hold their calls while the captain's order is pending or under way, and once
+    // the ship is lining up for the jump)
+    if (!h || h.req || m.phase !== "engage" || now < (this.reqNext || 0) || h.orderView() || h.jumpNear()) return;
+    this.reqNext = now + 0.5;
+    function alive(s) { return !s.dead && s.state !== "leave" && s.state !== "enter"; }
+    this.bats.forEach(function (b) {
+      if (h.req || self.full(b)) return;
+      if (self.ships.some(function (s) { return alive(s) && self.inReachOf(b, s.x, s.y) !== null; })) { b.idleSince = 0; return; }
+      if (!b.idleSince) b.idleSince = now;
+      if (now - b.idleSince < Q.idle || now < (b.reqReady || 0)) return;
+      var reach = self.reach(b) + Math.max(R.rx, R.ry), best = null, bd = 1e9;
+      self.ships.forEach(function (s) {
+        if (!alive(s) || b.w.best.indexOf(s.type) < 0 || s.r > reach) return;
+        var d = Math.abs(norm(s.bearing - b.arcC));
+        if (d < bd) { bd = d; best = s; }
+      });
+      if (!best) return;
+      var rel = norm(best.bearing - b.arcC), turn = Math.round((rel - (rel > 0 ? 1 : -1) * b.arcH * 0.5) / 5) * 5;
+      if (Math.abs(turn) < 10) return;
+      b.idleSince = 0;
+      h.request(b, turn, best);
+    });
   };
   RingTurret.prototype.crewWeapons = function () {
     var m = this.m, now = m.totalT;
@@ -495,6 +524,7 @@
         torp.cx = R.cx + far * Math.sin(mid * RAD); torp.cy = R.cy - far * Math.cos(mid * RAD);
         count(self, "strikes");
       }
+      if (m.helm && e.type === "salvo") e.dodge = m.helm.aimSnap();
       e.torp = torp; self.torps.push(torp);
       if (self.cur) { self.stats.torps++; self.cur.torps++; } else self.stats.torps++;
       m.cue("torpLaunch");
