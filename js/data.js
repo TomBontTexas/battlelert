@@ -560,6 +560,49 @@
     }
   };
 
+  /* --------------------------------------------------------------- Helm
+     The pilot station (helm.js). Per class: top = fastest turn with the wheel hard over (deg/s),
+     safe = above this the hull takes stress, build = how fast the turn grows toward what the
+     wheel asks and dies away when it's centered (deg/s^2), lag = seconds before the rudder and
+     the engines answer. Proposed numbers, for the joint tuning pass. */
+  BL.HELM = {
+    classes: {
+      gunboat:         { top: 90, safe: 90,  build: 240, lag: 0.1 },
+      picket:          { top: 50, safe: 40,  build: 80,  lag: 0.2 },
+      destroyerEscort: { top: 36, safe: 28,  build: 40,  lag: 0.3 },
+      destroyer:       { top: 26, safe: 20,  build: 20,  lag: 0.45 },
+      lightCruiser:    { top: 18, safe: 13,  build: 9,   lag: 0.6 },
+      cruiser:         { top: 15, safe: 11,  build: 6,   lag: 0.7 },
+      heavyCruiser:    { top: 12, safe: 9,   build: 4,   lag: 0.85 },
+      battleship:      { top: 10, safe: 7,   build: 2.5, lag: 1.0 },
+      dreadnought:     { top: 8,  safe: 5.5, build: 1.6, lag: 1.2 }
+    },
+    // Engine orders, each a share of the class's top G (full). Each engine takes its own order;
+    // a G order ("all ahead 2 G") sets an exact thrust in whole G.
+    orders: [
+      { id: "fullAstern", name: "Full astern",      short: "FULL AST", f: -0.5 },
+      { id: "halfAstern", name: "Half astern",      short: "HALF AST", f: -0.25 },
+      { id: "slowAstern", name: "Dead slow astern", short: "SLOW AST", f: -0.1 },
+      { id: "stop",       name: "Stop",             short: "STOP",     f: 0 },
+      { id: "deadSlow",   name: "Dead slow",        short: "DEAD SLOW", f: 0.1 },
+      { id: "cruise",     name: "Cruise",           short: "CRUISE",   f: 0.25 },
+      { id: "standard",   name: "Standard",         short: "STANDARD", f: 0.5 },
+      { id: "full",       name: "Full",             short: "FULL",     f: 1 },
+      { id: "flank",      name: "Flank",            short: "FLANK",    f: 1.1 }
+    ],
+    split: 0.625,          // split engines add this share of top turn per unit of (port - starboard) / (2 x full)
+    engineTau: 0.5,        // engines spool toward their order (s)
+    speedTau: 2,           // the ship eases to the speed its engines order (s)
+    stress: { fill: 0.6, drain: 1 / 6, hullShare: 0.05, thrusterChance: 0.3, warnAt: 0.6, after: 0.25 },
+    flank: { warnAt: 15, safe: 20, damagePerSec: 0.05 },
+    turnLoss: 0.15,        // a thruster hit costs this share of the top turn rate (up to 60%)
+    order: { heading: 10, held: 0.7, minGap: 12, turn: [30, 100] },   // captain's orders: tolerance, share held, spacing
+    autopilotRep: 0.75,    // autopilot time earns this share of the helm's reputation
+    launch: { nagAfter: 8, autoAfter: 20, clear: 2.5 },               // the gunboat in the carrier's tube
+    ptBow: 20,             // the gunner launches torpedoes once a target is this close to the bow (deg)
+    warnCooldown: 6        // seconds between warnings to engineering
+  };
+
   /* ------------------------------------------------------------ Chatter
      Several lines per event; {placeholders} are filled in by the simulation. */
   BL.CHATTER = {
@@ -632,7 +675,25 @@
     ptDowned:    ["Tactical: their point defense got our torpedo.", "Tactical: torpedo intercepted."],
     chargeStopped: ["Tactical: got it before it could fire!", "Tactical: that one won't be shooting at us.", "Tactical: nice, it never got that torpedo off."],
     straggler:   ["Tactical: stragglers from another quadrant. {enemy} inbound!", "Tactical: more contacts, {enemy} breaking off from another fight.", "Tactical: {enemy} joining in from the flank!"],
-    ptMiss:      ["Tactical: torpedo missed.", "Coxswain: it slipped the torpedo."]
+    ptMiss:      ["Tactical: torpedo missed.", "Coxswain: it slipped the torpedo."],
+    // The helm. A key ending in H replaces the plain one (and the gunner's G one) at the helm.
+    launchH:     ["Carrier: gunboat in the tube. Launch when ready.", "Carrier: you're in the tube, Helm. Launch when ready.", "Coxswain: launch control is ours. Launch when ready."],
+    arrivalH:    ["Bridge: dropping out of GravSpace. Helm, she's yours.", "Bridge: normal space. Helm, stand by for orders."],
+    recoveredH:  ["Carrier: gunboat recovered. Nice flying.", "Coxswain: we're on the deck. Good flying, Helm."],
+    burnH:       [],                     // the captain's orders replace the bridge's burns at the helm
+    mainReadyH:  ["Engineering: main gun's charged. Helm, put the bow on the big one.", "Gunnery: main gun's up. Bring the bow around and hold it."],
+    helmNag:     ["Carrier: launch, launch, launch!", "Coxswain: we're holding up the line, Helm. Launch!"],
+    helmAuto:    ["Carrier: launching you now."],
+    helmLaunched:["Coxswain: we're out! Clear of the tube.", "Carrier: gunboat away. Good hunting.", "Coxswain: off the deck and into it."],
+    helmClear:   ["Coxswain: clear of the carrier. Coming back to standard.", "Coxswain: we're clear. Standard speed."],
+    helmOrder:   ["{who}: come {dir} to {hdg}, {eng}, in {t} s.", "{who}: helm, {dir} to {hdg}, {eng}. {t} seconds.", "{who}: stand by to come {dir} to {hdg}, {eng}, in {t}."],
+    helmMet:     ["{who}: very well.", "{who}: steady as she goes. Well done.", "{who}: nicely done, Helm."],
+    helmMissed:  ["{who}: that's not what I ordered, Helm.", "{who}: Helm, mind your orders!", "{who}: we were supposed to be on {hdg}."],
+    stressWarn:  ["Damage control: she's groaning, ease the turn!", "Damage control: hull stress climbing! Ease off!"],
+    stressHit:   ["Damage control: structural damage from that turn! Hull down {dmg}.", "Damage control: frames buckling! Hull down {dmg}."],
+    flankWarn:   ["Engineering: we can't hold flank much longer!", "Engineering: engines are over their rating, Helm!"],
+    flankDamage: ["Engineering: we burned out a thruster holding flank! {what}.", "Engineering: that's what flank does. {what}."],
+    warnEng:     ["Engineering: standing by for your burn.", "Engineering: understood, power's ready for the engines.", "Engineering: copy, Helm. Engines get first call."]
   };
 
   /* ------------------------------------------------------ Sound recipes

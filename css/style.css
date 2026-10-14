@@ -449,6 +449,50 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 .hud-tubes button { padding: 6px 2px; font-size: 12px; }
 .hud-fire { padding: 16px 6px !important; font-size: 18px !important; font-weight: 800; letter-spacing: .1em; color: #fff; background: rgba(255,107,90,.55) !important; border-color: var(--bad); }
 .hud-fire.on { background: rgba(255,107,90,.9) !important; }
+/* The helm (pilot station): its panel replaces the gun panel; the wheel sits over the view. */
+.tu-side[hidden], .hm-wheel[hidden], .hm-launch[hidden], .tu-tubes[hidden] { display: none !important; }
+.hm-side { gap: 6px; overflow-y: auto; }
+.hm-order { background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; font-size: 13px; line-height: 1.35; cursor: pointer; min-height: 3.2em; }
+.hm-order b { color: var(--warn); font-family: var(--mono); font-weight: 600; }
+.hm-order.active { border-color: var(--warn); }
+.hm-order.ok { border-color: var(--good); }
+.hm-order.ok b { color: var(--good); }
+.hm-order .muted { font-size: 12px; }
+.hm-tele-txt { font: 600 13px var(--mono); color: var(--warn); margin-top: -3px; }
+.hm-tele { display: grid; grid-template-columns: 1fr 1.5fr 1fr; gap: 2px; font-size: 11px; }
+.hm-tele .h { font: 700 10px var(--font); letter-spacing: .1em; color: var(--muted); text-align: center; }
+.hm-tele button { padding: 3px 2px; font-size: 11px; font-weight: 600; touch-action: manipulation; color: var(--muted); }
+.hm-tele button.mid { color: var(--text); }
+.hm-tele button.astern { color: #9fb0c0; }
+.hm-tele button.on { border-color: var(--warn); color: var(--warn); background: #3a2b14; }
+.hm-tele button.both { border-color: var(--warn); color: var(--warn); }
+.hm-g { display: grid; grid-template-columns: auto 1fr auto; gap: 4px; align-items: center; }
+.hm-g button { padding: 3px 8px; font-size: 12px; touch-action: manipulation; }
+.hm-g span { text-align: center; font: 12px var(--mono); color: var(--muted); }
+.hm-turnbar { position: relative; height: 14px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 3px; overflow: hidden; }
+.hm-turnbar i { position: absolute; top: 0; bottom: 0; }
+.hm-turnbar .safe { border-left: 2px solid var(--warn); border-right: 2px solid var(--warn); background: rgba(240,181,74,.06); }
+.hm-turnbar .want { background: rgba(76,195,238,.3); }
+.hm-turnbar .now { background: var(--charge); }
+.hm-turnbar .now.over { background: var(--bad); }
+.stress-fill { background: var(--warn); }
+.stress-fill.high { background: var(--bad); animation: blink .4s steps(2) infinite; }
+.hm-btns { display: grid; grid-template-columns: 1fr; gap: 6px; margin-top: 2px; }
+.hm-btns button { padding: 8px 4px; font-size: 13px; touch-action: manipulation; }
+.hm-btns button small { color: var(--muted); font-weight: 400; }
+.hm-btns button.on { border-color: var(--good); color: var(--good); }
+.hm-btns button:disabled { opacity: .5; }
+.hm-wheel { position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%); width: 150px; display: flex; flex-direction: column; align-items: center; gap: 2px; touch-action: none; cursor: ew-resize; }
+.hm-wheel svg { width: 118px; height: 118px; display: block; }
+.hm-wheel .w-rim { fill: none; stroke: #b98a4a; stroke-width: 7; }
+.hm-wheel .w-hub { fill: #6e5230; stroke: #d7a965; stroke-width: 2; }
+.hm-wheel .w-spokes line { stroke: #b98a4a; stroke-width: 5; stroke-linecap: round; }
+.hm-wheel .w-top { fill: var(--warn); }
+.hm-wheel.drag .w-rim { stroke: #e0b56f; }
+.hm-wheel-txt { font: 600 12px var(--mono); color: var(--text); background: rgba(3,6,11,.7); border-radius: 4px; padding: 1px 6px; white-space: nowrap; }
+.hm-wheel button { padding: 2px 8px; font-size: 11px; background: rgba(24,34,45,.85); cursor: pointer; }
+.hm-launch { border-color: var(--warn); background: #4a3412; color: #ffd27a; }
+.hm-launch.ready { animation: blink 1s steps(2) infinite; }
 @media (prefers-reduced-motion: reduce) { #scr-turret.jolt { animation: none; } }
 
 @keyframes blink { 50% { opacity: .35; } }

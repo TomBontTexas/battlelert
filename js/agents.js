@@ -38,7 +38,7 @@
 
     // Expected engine draw over the next couple of seconds; it comes evenly off every reactor.
     var g = ship.gTarget;
-    fc.forEach(function (e) { if (e.type === "burn" && e.in < 1.5 && e.in + e.dur > 0) g = Math.max(g, e.g); });
+    fc.forEach(function (e) { if ((e.type === "burn" || e.type === "order") && e.in < 1.5 && e.in + e.dur > 0) g = Math.max(g, e.g); });
     // Budget per reactor: each has its own heat and failsafe.
     var left = R.map(function (rx) {
       var target = (0.9 + 0.2 * self.temper) * rx.max;

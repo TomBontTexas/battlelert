@@ -25,7 +25,9 @@
       b.rel = b.aimRel = a[2] === undefined ? 0 : norm(a[2] - a[0]);
       self.placeBattery(b);
     });
-    var crew = BL.pickGunCrew(m.seed, m.data.classId);
+    // At the helm (opts.helm) the player holds no gun: a crewman works every one of them.
+    this.crewAll = !!opts.helm;
+    var crew = BL.pickGunCrew(m.seed, m.data.classId, this.crewAll);
     this.bats.forEach(function (b, i) { b.crew = crew[i] || null; });
     this.pilot = cls.pilot || null;            // main gun ships: the AI pilot turns the bow onto the big target
     this.heading = 0;                          // degrees the ship has turned (the starfield turns with it)
@@ -42,7 +44,7 @@
     BL.Turret.prototype.reset.call(this);
     this.cur.mines = 0; this.cur.minesDowned = 0; this.cur.mainShots = 0; this.cur.mainHits = 0;
     this.cur.strikes = 0; this.cur.strikesCiws = 0; this.cur.strikesShot = 0; this.cur.strikesHit = 0;
-    this.nextMineAt = this.m.cfg.arrivalSeconds + 2; this.pilotTarget = null; this.mainFx = null;
+    this.nextMineAt = this.m.cfg.arrivalSeconds + 2; this.pilotTarget = null; this.mainFx = null; this.ptSeen = 0; this.mainSeen = 0;
     this.wing = []; this.lastSquadron = this.m.squadron;
   };
   RingTurret.prototype.clear = function () {
@@ -86,7 +88,7 @@
   RingTurret.prototype.interval = function (b) {
     b = this.bat(b);
     var base = BL.Turret.prototype.interval.call(this, b), C = this.G.crew, cw = b.crew;
-    if (!cw || b === this.bat()) return base;
+    if (!cw || (b === this.bat() && !this.crewAll)) return base;
     var k = clamp((cw.skill - C.skill[0]) / (C.skill[1] - C.skill[0]), 0, 1);
     return base * (C.pace[0] + (C.pace[1] - C.pace[0]) * k);
   };
@@ -122,8 +124,9 @@
     var rel = norm(this.bearingOf(s.x, s.y) - b.arcC);
     b.aimRel = this.full(b) ? b.rel + norm(rel - b.rel) : clamp(rel, -b.arcH, b.arcH);
   };
-  // Your gun holds fire while it swings to a clicked target.
+  // Your gun holds fire while it swings to a clicked target. At the helm the crew fires them all.
   RingTurret.prototype.fire = function (dt) {
+    if (this.crewAll) { var self = this; this.bats.forEach(function (x) { self.fireBattery(x, dt, false); }); return; }
     var b = this.bat(), f = b.firing;
     if (b.seek) b.firing = false;
     BL.Turret.prototype.fire.call(this, dt);
@@ -162,8 +165,9 @@
     this.ships.forEach(function (s) {
       if (s.state !== "leave" && !s.dead && !m.waves.some(function (w) { return w.id === s.wave; })) s.state = "leave";
     });
-    this.bats.forEach(function (b, i) { if (i !== self.sel) self.aiBattery(b); });
+    this.bats.forEach(function (b, i) { if (i !== self.sel || self.crewAll) self.aiBattery(b); });
     this.steer(dt);
+    if (this.crewAll) this.crewWeapons();
     // Turn each gun toward its aim along its arc, never faster than its drive.
     var held = this.bat();
     if (held.seek) this.trackSeek(held);
@@ -205,6 +209,12 @@
      so turning swings everything outside it the other way around the center. */
   RingTurret.prototype.steer = function (dt) {
     var P = this.pilot;
+    // At the helm the player flies the ship (helm.js); the big target still slides off the bow.
+    if (this.m.helm) {
+      if (this.live()) this.m.helm.step(dt);
+      if (P) { var pt = this.pilotTarget; if (!pt || pt.dead || pt.state === "leave" || this.ships.indexOf(pt) < 0) this.pilotTarget = this.bigTarget(); }
+      return;
+    }
     if (!P || !this.live()) return;
     var tg = this.pilotTarget;
     if (!tg || tg.dead || tg.state === "leave" || this.ships.indexOf(tg) < 0) tg = this.pilotTarget = this.bigTarget();
@@ -235,6 +245,32 @@
     this.bolts.forEach(function (b) { rot(b, "x", "y"); var vx = b.vx; b.vx = vx * ca - b.vy * sa; b.vy = vx * sa + b.vy * ca; });
     this.ptTorps.forEach(function (tp) { rot(tp, "x", "y"); tp.a += a; });
     this.wing.forEach(function (g) { rot(g, "x", "y"); g.a += a; });
+  };
+
+  /* At the helm the gunners fire everything: the gunboat's torpedoes once a frigate or siege
+     battery is within BL.HELM.ptBow degrees of the bow, and the main gun once a ship is on its
+     line, each after a moment to react (a sharper crew reacts sooner). */
+  RingTurret.prototype.crewReact = function () {
+    var best = 0; this.bats.forEach(function (b) { if (b.crew) best = Math.max(best, b.crew.skill); });
+    var C = this.G.crew, k = clamp((best - C.skill[0]) / (C.skill[1] - C.skill[0]), 0, 1);
+    return 1 - 0.7 * k;                        // 1 s for a raw crew, 0.3 s for a sharp one
+  };
+  RingTurret.prototype.crewWeapons = function () {
+    var m = this.m, now = m.totalT;
+    if (!this.live() || m.phase === "arrival") return;
+    var tube = this.pt.indexOf(true), bow = BL.HELM.ptBow;
+    if (tube >= 0 && !this.ptTorps.length) {
+      var tg = this.ships.some(function (s) { return s.lockable && !s.dead && s.state === "hold" && Math.abs(norm(s.bearing)) <= bow; });
+      if (!tg) this.ptSeen = 0;
+      else if (!this.ptSeen) this.ptSeen = now + this.crewReact();
+      else if (now >= this.ptSeen) { this.ptSeen = 0; this.launchPT(tube); }
+    }
+    var ms = this.mainState();
+    if (ms) {
+      if (!ms.ready || !this.mainLine()) this.mainSeen = 0;
+      else if (!this.mainSeen) this.mainSeen = now + this.crewReact();
+      else if (now >= this.mainSeen) { this.mainSeen = 0; this.fireMain(); }
+    }
   };
 
   /* ------------------------------------------------------------ Squadron

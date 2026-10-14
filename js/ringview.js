@@ -66,13 +66,16 @@
     lastNow = now; lastHead = head;
     if (Math.abs(dh) > 30) dh = 0;                // a new mission starts the heading over
     var ra = -dh * Math.PI / 180, ca = Math.cos(ra), sa = Math.sin(ra);
-    var D = Math.hypot(W, H), drift = 0.04 * Math.min(W, H) / D * dt;
+    // At the helm the stars stream with the ship's speed (standard = the usual rate; astern, they
+    // stream the other way); in the carrier's tube they stand still.
+    var helm = m.helm, spd = !helm ? 1 : helm.inTube ? 0 : helm.speed / Math.max(1, helm.gOf("standard"));
+    var D = Math.hypot(W, H), drift = 0.04 * Math.min(W, H) / D * dt * spd;
     stars.forEach(function (st) {
       if (dh) { var dx = st.x, dy = st.y; st.x = dx * ca - dy * sa; st.y = dx * sa + dy * ca; }
       if (live) { if (vp.wide) st.x -= drift * st.z; else st.y += drift * st.z; }
       st.x = wrap(st.x); st.y = wrap(st.y);
       c.fillStyle = "rgba(200,220,255," + (0.25 + st.z * 0.6).toFixed(2) + ")";
-      var streak = live ? st.z * 2 : 0;
+      var streak = live ? st.z * 2 * Math.min(4, Math.abs(spd)) : 0;
       c.fillRect(W / 2 + st.x * D, H / 2 + st.y * D, st.z * 1.8 + (vp.wide ? streak : 0), st.z * 1.8 + (vp.wide ? 0 : streak));
     });
     // Into battle units: the square's center at the view's center, a quarter turn in wide view.
@@ -83,7 +86,8 @@
     var sel = tu.bat();
 
     // The gun you hold: its track lit on the rim (only where it can go; all the way round for an
-    // all-round gun), and how far its bolts reach.
+    // all-round gun), and how far its bolts reach. At the helm you hold no gun.
+    if (!helm) {
     c.strokeStyle = "rgba(76,195,238,0.35)"; c.lineWidth = 6 / S;
     c.beginPath();
     var tl = Math.min(180, sel.arcH);
@@ -99,6 +103,8 @@
       if (a2 === lo) c.moveTo(px, py); else c.lineTo(px, py);
     }
     c.stroke(); c.setLineDash([]);
+    }
+    if (helm) drawTube(c, S, tu, helm, m);
 
     // Enemy ships, noses toward us.
     tu.ships.forEach(function (s) {
@@ -228,7 +234,7 @@
 
     // Guns on the rim, barrels pointing out; yours bright.
     tu.bats.forEach(function (bt, i) {
-      var own = i === tu.sel, bg = tu.gun(bt), ready = bg && bg.mj >= bt.w.shotMJ, sp2 = sprite(TURRET_ART[bt.weaponId]);
+      var own = !helm && i === tu.sel, bg = tu.gun(bt), ready = bg && bg.mj >= bt.w.shotMJ, sp2 = sprite(TURRET_ART[bt.weaponId]);
       c.save(); c.translate(bt.x, bt.y); c.rotate(Math.atan2(bt.nx, -bt.ny));
       if (sp2) {
         var ww = R.gunSize, wh = ww * sp2.aspect, baseFrac = (60 - sp2.vb[1]) / sp2.vb[3];
@@ -262,6 +268,7 @@
       }
     }
 
+    if (helm) { drawHelm(c, S, tu, helm, t); c.restore(); drawCompass(c, W, H, helm, t); return; }
     // Your gun's line of fire, out to its reach.
     var ready2 = tu.gun().mj >= sel.w.shotMJ, ex = sel.x + sel.nx * reach, ey = sel.y + sel.ny * reach;
     c.strokeStyle = ready2 ? "rgba(123,224,166,0.8)" : "rgba(255,107,90,0.7)";
@@ -274,6 +281,100 @@
       for (var q = 0; q < 4; q++) { c.beginPath(); c.arc(sk.x, sk.y, sr, q * Math.PI / 2 + 0.25, q * Math.PI / 2 + Math.PI / 2 - 0.25); c.stroke(); }
     }
     c.restore();
+  };
+
+  /* ------------------------------------------------------------- The helm */
+  // A bearing (relative to the bow) on a ring just outside the shield.
+  function ringAt(tu, rel, out) {
+    var R = tu.R, r = R.ry + (out || 0.05), a = rel * Math.PI / 180;
+    return { x: R.cx + r * Math.sin(a), y: R.cy - r * Math.cos(a) };
+  }
+  function rel(helm, hdg) { var d = ((hdg - helm.compass()) % 360 + 540) % 360 - 180; return d; }
+  // The carrier's launch tube around the gunboat: rails with a chase of lights while it waits,
+  // sliding away astern as the catapult throws the boat out.
+  function drawTube(c, S, tu, helm, m) {
+    var since = m.totalT - helm.launchAt;
+    if (!helm.inTube && since > 2) return;
+    var R = tu.R, off = helm.inTube ? 0 : 0.6 * since * since, xw = R.rx + 0.03, t = m.totalT;
+    var al = helm.inTube ? 1 : Math.max(0, 1 - since / 2);
+    c.save(); c.globalAlpha = al;
+    c.fillStyle = "rgba(40,50,62,0.9)";
+    [-1, 1].forEach(function (k) { c.fillRect(R.cx + k * xw - 0.008, R.cy - 0.45 + off, 0.016, 1.2); });
+    for (var y = -0.44; y < 0.75; y += 0.05) {
+      var lit = helm.inTube ? Math.floor(t * 8 - y * 20) % 6 === 0 : false;
+      c.fillStyle = lit ? "#ffd27a" : "rgba(255,210,122,0.25)";
+      [-1, 1].forEach(function (k) { c.beginPath(); c.arc(R.cx + k * xw, R.cy + y + off, 0.004, 0, Math.PI * 2); c.fill(); });
+    }
+    c.restore();
+  }
+  // Bearings around the ship: the bow, the captain's ordered heading (amber), the autopilot's
+  // heading (blue), where the bow will stop if the wheel is centered now (white), and the turn
+  // the rudder is asking for (faint arc) against the turn the ship is making (bright arc).
+  function drawHelm(c, S, tu, helm, t) {
+    var R = tu.R, o = helm.orderView(), r0 = R.ry + 0.05;
+    c.lineWidth = 1.5 / S;
+    c.strokeStyle = "rgba(214,224,232,0.12)"; c.beginPath(); c.arc(R.cx, R.cy, r0, 0, Math.PI * 2); c.stroke();
+    function tick(relDeg, col, len, w) {
+      var a = ringAt(tu, relDeg, 0.05 - len / 2), b = ringAt(tu, relDeg, 0.05 + len / 2);
+      c.strokeStyle = col; c.lineWidth = w / S; c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.stroke();
+    }
+    function arc(deg, col, w) {
+      if (Math.abs(deg) < 0.3) return;
+      var a0 = -Math.PI / 2, a1 = a0 + Math.max(-350, Math.min(350, deg)) * Math.PI / 180;
+      c.strokeStyle = col; c.lineWidth = w / S; c.beginPath(); c.arc(R.cx, R.cy, r0, Math.min(a0, a1), Math.max(a0, a1)); c.stroke();
+    }
+    arc(helm.want, "rgba(76,195,238,0.3)", 7);
+    arc(helm.omega, Math.abs(helm.omega) > helm.C.safe ? "rgba(255,107,90,0.9)" : "rgba(76,195,238,0.85)", 4);
+    if (o) {
+      var ro = rel(helm, o.hdg), p = ringAt(tu, ro, 0.09), ok = helm.onOrder({ hdg: o.hdg, eng: o.eng });
+      var col = ok ? "rgba(99,212,143,0.95)" : o.active ? "rgba(240,181,74," + (0.6 + 0.4 * Math.sin(t * 8)).toFixed(2) + ")" : "rgba(240,181,74,0.85)";
+      c.strokeStyle = col; c.setLineDash([0.008, 0.01]); c.lineWidth = 1.5 / S;
+      var q = ringAt(tu, ro, -0.02); c.beginPath(); c.moveTo(q.x, q.y); c.lineTo(p.x, p.y); c.stroke(); c.setLineDash([]);
+      c.fillStyle = col; c.save(); c.translate(p.x, p.y); c.rotate(ro * Math.PI / 180);
+      c.beginPath(); c.moveTo(0, 0.012); c.lineTo(-0.012, -0.01); c.lineTo(0.012, -0.01); c.closePath(); c.fill(); c.restore();
+    }
+    if (helm.auto) { var pa = ringAt(tu, rel(helm, helm.autoHdg), 0.05); c.fillStyle = "rgba(76,195,238,0.95)"; c.save(); c.translate(pa.x, pa.y); c.rotate(Math.PI / 4); c.fillRect(-0.008, -0.008, 0.016, 0.016); c.restore(); }
+    if (Math.abs(helm.omega) > 0.5) tick(rel(helm, helm.stopHeading()), "rgba(255,255,255,0.9)", 0.05, 2.5);
+    tick(0, "rgba(255,255,255,0.55)", 0.07, 3);
+  }
+  // The compass tape across the top of the view: 60 degrees either side of the heading, with the
+  // same marks as the ring. Taps on it steer there on autopilot (BL.compassAt).
+  var TAPE = null;
+  function drawCompass(c, W, H, helm, t) {
+    var w = Math.min(W - 24, 560), h = 30, x0 = (W - w) / 2, y0 = 6, span = 60, k = w / (2 * span), hdg = helm.compass();
+    TAPE = { x0: x0, y0: y0, w: w, h: h, k: k, hdg: hdg, W: W };
+    c.save();
+    c.fillStyle = "rgba(3,6,11,0.72)"; c.strokeStyle = "rgba(214,224,232,0.25)"; c.lineWidth = 1;
+    c.fillRect(x0, y0, w, h); c.strokeRect(x0 + 0.5, y0 + 0.5, w - 1, h - 1);
+    c.beginPath(); c.rect(x0, y0, w, h); c.clip();
+    c.font = "600 11px ui-monospace, Consolas, monospace"; c.textAlign = "center"; c.textBaseline = "top";
+    var first = Math.ceil((hdg - span) / 5) * 5;
+    for (var d = first; d <= hdg + span; d += 5) {
+      var x = x0 + w / 2 + (d - hdg) * k, big = d % 30 === 0;
+      c.strokeStyle = big ? "rgba(214,224,232,0.8)" : "rgba(214,224,232,0.35)";
+      c.beginPath(); c.moveTo(x, y0 + h); c.lineTo(x, y0 + h - (big ? 11 : 6)); c.stroke();
+      if (big) { c.fillStyle = "rgba(214,224,232,0.9)"; c.fillText(BL.hdgText(d), x, y0 + 3); }
+    }
+    function mark(hd, col, shape) {
+      var d = ((hd - hdg) % 360 + 540) % 360 - 180, x = x0 + w / 2 + Math.max(-span, Math.min(span, d)) * k, edge = Math.abs(d) > span;
+      c.fillStyle = col; c.strokeStyle = col;
+      if (shape === "tri") { c.beginPath(); c.moveTo(x, y0 + h - 2); c.lineTo(x - 7, y0 + h - 13); c.lineTo(x + 7, y0 + h - 13); c.closePath(); if (edge) { c.lineWidth = 2; c.stroke(); } else c.fill(); }
+      else if (shape === "dia") { c.save(); c.translate(x, y0 + h - 8); c.rotate(Math.PI / 4); c.fillRect(-4, -4, 8, 8); c.restore(); }
+      else { c.lineWidth = 2; c.beginPath(); c.moveTo(x, y0 + 14); c.lineTo(x, y0 + h); c.stroke(); }
+    }
+    var o = helm.orderView();
+    if (o) mark(o.hdg, helm.onOrder({ hdg: o.hdg, eng: o.eng }) ? "#63d48f" : "#f0b54a", "tri");
+    if (helm.auto) mark(helm.autoHdg, "#4cc3ee", "dia");
+    if (Math.abs(helm.omega) > 0.5) mark(helm.stopHeading(), "#ffffff", "line");
+    c.restore();
+    c.fillStyle = "#ffffff"; c.beginPath(); c.moveTo(W / 2, y0 + h + 7); c.lineTo(W / 2 - 6, y0 + h + 15); c.lineTo(W / 2 + 6, y0 + h + 15); c.closePath(); c.fill();
+    c.font = "700 13px ui-monospace, Consolas, monospace"; c.textAlign = "center"; c.textBaseline = "top"; c.fillStyle = "#ffffff";
+    c.fillText(BL.hdgText(hdg), W / 2, y0 + h + 17);
+  }
+  // A tap at (px, py) in CSS pixels on the canvas: the compass heading there, or null.
+  BL.compassAt = function (px, py) {
+    var T = TAPE; if (!T || py < T.y0 - 4 || py > T.y0 + T.h + 6 || px < T.x0 || px > T.x0 + T.w) return null;
+    return ((T.hdg + (px - T.x0 - T.w / 2) / T.k) % 360 + 360) % 360;
   };
 
   // A drive strike: a teal missile on a curve around the shield to the stern, its path dotted
@@ -340,7 +441,7 @@
     var rimA = (0.4 + 0.5 * frac) * flick + (age < 0.5 ? (1 - age / 0.5) * 0.8 : 0);
     c.strokeStyle = ageH < 0.5 ? "rgba(255,110,90," + Math.min(1, rimA).toFixed(3) + ")" : "rgba(130,225,255," + Math.min(1, rimA).toFixed(3) + ")";
     // The shield's bright edge shows only along the arc of the gun you hold.
-    var sel = tu.bat(), tl = Math.min(180, sel.arcH);
+    var sel = tu.bat(), tl = m.helm ? 180 : Math.min(180, sel.arcH);
     c.lineWidth = (2.5 + (age < 0.5 ? 3 * (1 - age / 0.5) : 0)) / S;
     if (tl >= 180) { oval(); c.stroke(); }
     else {

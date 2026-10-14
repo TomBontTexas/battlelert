@@ -56,6 +56,8 @@
     this.hasDrive = !!this.sys("drive");
     // Gunner station: the player aims one gun (opts.gunner = { weapon, gun }); see gunnery.js.
     this.turret = !opts.gunner ? null : opts.gunner.ring ? new BL.RingTurret(this, opts.gunner) : new BL.Turret(this, opts.gunner);
+    // Pilot station: the player at the helm (opts.helm), the gun crew on every gun; see helm.js.
+    this.helm = opts.helm && this.turret && this.turret.ring ? new BL.Helm(this) : null;
     this.stats = {
       heatSum: 0, heatTime: 0,
       deliveredMJ: 0, wastedMJ: 0, trips: 0, looks: 0,
@@ -100,8 +102,9 @@
       reactorBase: d.reactorMW, reactorMax: d.reactorMW,
       load: 0, loadPct: 0, heat: 0,
       g: d.cruiseG, gTarget: d.cruiseG, engineMW: d.cruiseG * d.engineMWperG, maxG: d.maxG,
+      turnLoss: 0,                      // share of the top turn rate lost to thruster damage (the helm feels it)
       crippled: false, lifeLowSaid: false,
-      fresh: { hull: 0, g: 0 },          // damage taken since the last GravSpace repair
+      fresh: { hull: 0, g: 0, turn: 0 }, // damage taken since the last GravSpace repair
       systems: d.systems.map(function (s) {
         return {
           id: s.id, name: s.name, short: s.short, kind: s.kind, gunner: s.gunner || 0,
@@ -180,7 +183,8 @@
   };
   Mission.prototype.chat = function (key, vars, kind) {
     if (this.quiet) return;
-    var lines = (this.turret && BL.CHATTER[key + "G"]) || BL.CHATTER[key]; if (!lines || !lines.length) return;
+    // At the helm a key ending in H wins, at the gun one ending in G.
+    var lines = (this.helm && BL.CHATTER[key + "H"]) || (this.turret && BL.CHATTER[key + "G"]) || BL.CHATTER[key]; if (!lines || !lines.length) return;
     this.say(fill(this.rng.pick(lines), vars), kind);
     this.cue("chatter");
   };
@@ -218,6 +222,7 @@
     this.events.push({ id: this.nextId++, type: "jump", at: this.windowAt(), announceAt: this.windowAt() - this.cfg.jumpWindowNotice, announced: false, visible: true });
     this.cue("arrive");
     if (this.turret) this.turret.reset();
+    if (this.helm) this.helm.reset();
     this.chat(this.hasDrive ? "arrival" : "launch", null, "info");
     this.chat(enc.chat || "briefing", { enemies: BL.plural(enc.enemy), what: enc.what }, "info");
   };
@@ -256,7 +261,7 @@
   Mission.prototype.finish = function (outcome) {
     this.phase = "done";
     this.closeOverloadRun();
-    this.result = this.turret ? BL.scoreGunner(this, outcome) : BL.score(this, outcome);
+    this.result = this.helm ? BL.scoreHelm(this, outcome) : this.turret ? BL.scoreGunner(this, outcome) : BL.score(this, outcome);
     this.cue(outcome === "success" ? "win" : "lose");
   };
 
@@ -277,7 +282,9 @@
       this.nextStragglerAt = t + r.range(enc.stragglers.every);
     }
     var b = enc.burns;
-    if (t >= this.nextBurnAt - b.warning) {
+    // At the helm the captain gives course and engine orders instead of the bridge's burns.
+    if (this.helm) this.helm.schedule(t);
+    else if (t >= this.nextBurnAt - b.warning) {
       var at = this.nextBurnAt, dur = Math.round(r.range(b.duration)), g = Math.min(this.ship.maxG, Math.round(r.int(b.g) * this.data.gScale));
       this.events.push({ id: this.nextId++, type: "burn", at: at, dur: dur, g: g, announceAt: t, announced: false, visible: true });
       this.nextBurnAt = at + dur + r.range(b.every);
@@ -342,7 +349,8 @@
     if (this.phase !== "arrival" && this.phase !== "engage" && this.phase !== "countdown") return;
     var dt = this.dt;
     this.t += dt; this.totalT += dt;
-    if (this.phase === "arrival" && this.t >= this.cfg.arrivalSeconds) this.phase = "engage";
+    // (a gunboat at the helm waits in the carrier's tube until the pilot launches it)
+    if (this.phase === "arrival" && this.t >= this.cfg.arrivalSeconds && !(this.helm && this.helm.inTube)) this.phase = "engage";
     if (this.phase !== "arrival") this.schedule();
     if (this.turret) this.turret.step(dt);       // before events: a torpedo shot down never lands
     this.runEvents();
@@ -393,6 +401,10 @@
     }
     else if (e.type === "strike") { this.chat("strike", { t: lead }, "warn"); this.cue("warn"); }
     else if (e.type === "burn") { this.chat("burn", { t: lead, g: e.g, d: e.dur }, "warn"); this.cue("warnBurn"); }
+    else if (e.type === "order") {
+      this.chat("helmOrder", { who: this.helm.who, dir: e.turn > 0 ? "right" : "left", hdg: BL.hdgText(e.hdg), eng: this.helm.orderWords(e), t: lead }, "warn");
+      this.cue("warnBurn");
+    }
     else if (e.type === "request") { this.chat("request", { n: e.gun }, "warn"); this.cue("request"); }
     else if (e.type === "launch") { this.chat("launchCall", { t: lead }, "warn"); this.cue("request"); }
     else if (e.type === "recover") { this.chat("recoverCall", { t: lead }, "warn"); this.cue("request"); }
@@ -402,7 +414,9 @@
   Mission.prototype.fire = function (e) {
     if (e.type === "salvo" || e.type === "mine") this.salvoHits(e);
     else if (e.type === "strike") this.strikeHits(e);
+    else if (e.type === "order") { if (this.helm) this.helm.beginOrder(e); }
     else if (e.type === "burn") {
+      if (this.helm) return;                    // a pilot's warning to engineering: the helm flies the burn itself
       this.endBurn();
       this.ship.gTarget = e.g; this.burnUntil = e.at + e.dur;
       if (this.encounter().mines) this.curBurn = { short: 0, jump: this.jumpIndex + 1 };
@@ -486,8 +500,7 @@
     // GravSpace capacitor would fill sooner and make damage speed up the jump.
     var roll = r.next();
     if (roll < 0.2 && ship.maxG > 1) {
-      ship.maxG -= 1; ship.fresh.g += 1;
-      what = "thrusters damaged, top speed now " + ship.maxG + " G";
+      what = this.damageThrusters();
     } else if (roll < 0.6) {
       var c = r.pick(ship.systems);
       var mw = Math.round(c.maxMW * 0.88 * 2) / 2;
@@ -502,6 +515,14 @@
     }
     this.stats.damageReports.push({ jump: this.jumpIndex + 1, what: what });
     this.chat("damaged", { what: what }, "bad");
+  };
+
+  // Thruster damage: top speed down 1 G, and the ship turns 15% slower (the helm feels that).
+  Mission.prototype.damageThrusters = function () {
+    var ship = this.ship, add = Math.min(BL.HELM.turnLoss, 0.6 - ship.turnLoss);
+    if (ship.maxG > 1) { ship.maxG -= 1; ship.fresh.g += 1; }
+    ship.turnLoss += add; ship.fresh.turn += add;
+    return "thrusters damaged, top speed now " + ship.maxG + " G" + (this.helm ? ", turning " + Math.round(ship.turnLoss * 100) + "% slower" : "");
   };
 
   // Guns sit outside the shields: the hit that damages a gun's charger damages its turret too.
@@ -539,7 +560,8 @@
       });
     });
     if (f.g > 0) { ship.maxG += f.g / 2; done.push("thrusters top speed now " + ship.maxG + " G"); }
-    ship.fresh = { hull: 0, g: 0 };
+    if (f.turn > 0) { ship.turnLoss = Math.max(0, ship.turnLoss - f.turn / 2); if (this.helm) done.push("thrusters turning " + (ship.turnLoss > 0.005 ? Math.round(ship.turnLoss * 100) + "% slower" : "at full rate")); }
+    ship.fresh = { hull: 0, g: 0, turn: 0 };
     this.lastRepairs = done;
     if (done.length) this.say("Damage control: repairs complete. Half the damage is fixed; the rest needs a shipyard.", "good");
     return done;
@@ -623,6 +645,7 @@
   };
 
   Mission.prototype.runPilot = function (dt) {
+    if (this.helm) { this.helm.runEngines(dt); return; }
     var ship = this.ship, perG = this.perG(), enc = this.encounter();
     if (this.burnUntil && this.t >= this.burnUntil) { ship.gTarget = this.data.cruiseG; this.burnUntil = 0; this.endBurn(); }
     if (ship.gWant === undefined) ship.gWant = ship.g;

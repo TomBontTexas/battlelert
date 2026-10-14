@@ -75,12 +75,13 @@
 
   /* The gun crew: a gunner for every gun but Gun 1 (yours to start), picked from the mission
      seed so a job posting names the same people. Names never repeat the engineer's. */
-  BL.pickGunCrew = function (seed, classId) {
+  // all: a gunner on Gun 1 too (the player is at the helm, not a gun).
+  BL.pickGunCrew = function (seed, classId, all) {
     var C = BL.GUNNERY.crew, E = BL.GUNNERY.engineer, n = (BL.GUNNERY.loadout[classId] || []).length, r = BL.rng((seed ^ 0x6a09e667) >>> 0);
-    var used = {}, eng = BL.pickEngineer(seed, classId), out = [null];
+    var used = {}, eng = BL.pickEngineer(seed, classId), out = all ? [] : [null];
     used[eng.who.split(" ")[0]] = used[eng.who.split(" ")[1]] = true;
     function pick(list) { var x, k = 0; do { x = r.pick(list); } while (used[x] && k++ < 40); used[x] = true; return x; }
-    for (var i = 1; i < n; i++) {
+    for (var i = all ? 0 : 1; i < n; i++) {
       var skill = Math.round(r.range(C.skill) * 100) / 100, first = pick(E.first), last = pick(E.last);
       out.push({ name: C.ranks[skill >= 0.7 ? 2 : skill >= 0.5 ? 1 : 0] + " " + first + " " + last, who: first + " " + last, last: last, skill: skill,
         label: skill >= 0.7 ? "sharp" : skill >= 0.5 ? "steady" : skill >= 0.35 ? "green" : "raw" });
@@ -95,7 +96,7 @@
   // CALL FOR POWER: a rapid-fire request to the engineer, like the ones AI gunners make.
   // b = another battery calling (its AI gunner); default the player's.
   Turret.prototype.callPower = function (b) {
-    var player = b === undefined || b === this.bats[this.sel];
+    var player = !this.crewAll && (b === undefined || b === this.bats[this.sel]);
     b = this.bat(b);
     var m = this.m, s = this.gun(b), t = m.t;
     if (!s || s.request || t < b.callReadyAt || !this.live()) return false;
@@ -398,6 +399,7 @@
     e.done = true; e.downed = true;
     this.torps = this.torps.filter(function (x) { return x !== tp; });
     if (b && b.mine) { bump(this, "downed"); bump(this, "torpHits"); }
+    else if (b && this.crewAll) bump(this, "downed");       // at the helm the tally is the crew's
     this.effects.push({ type: "torpBoom", x: tp.x, y: tp.y, at: m.totalT });
     m.cue("torpDown");
     if (this.rng.chance(0.3)) m.chat("torpDown", null, "good");
@@ -422,7 +424,7 @@
     if (wave) wave.hp -= dealt;
     if (s.hp > 0.001) return;
     s.dead = true;
-    if (mine) bump(this, "kills");
+    if (mine || this.crewAll) bump(this, "kills");
     if (s.chargeAt > m.t && this.rng.chance(0.6)) m.chat("chargeStopped", null, "good");
     this.effects.push({ type: "boom", x: s.x, y: s.y, at: m.totalT, size: s.w });
     var rest = wave ? wave.ships.filter(function (x) { return !x.dead; }).length : 0;

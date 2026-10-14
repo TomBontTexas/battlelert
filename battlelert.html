@@ -6,7 +6,7 @@
 <meta name="copyright" content="© 2011–2026 Tom Bont. All rights reserved.">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Battlelert</title>
-<link rel="stylesheet" href="css/style.css?b=b8c68940">
+<link rel="stylesheet" href="css/style.css?b=67f89561">
 </head>
 <body>
 
@@ -15,7 +15,7 @@
   <div class="title-card">
     <div class="logo">BATTLELERT</div>
     <div class="subtitle">Main Engineering</div>
-    <p class="phase-note">The engineer and gunner paths are open on every class, gunboat to dreadnought.</p>
+    <p class="phase-note">The engineer and gunner paths are open on every class, gunboat to dreadnought. The pilot station is being built: try the helm test below.</p>
     <div class="menu">
       <button id="btn-continue" class="big primary" hidden>Continue career</button>
       <button id="btn-enlist" class="big">Enlist (new career)</button>
@@ -36,6 +36,7 @@
         </select>
       </div>
       <div class="seed-row"><button id="btn-ring" class="small">Gunner ring test (Destroyer)</button></div>
+      <div class="seed-row"><button id="btn-helm" class="small">Pilot helm test (Gunboat)</button></div>
       <div class="seed-row">
         <label for="seed-input">seed</label>
         <input id="seed-input" type="number" min="1" max="999999" inputmode="numeric">
@@ -123,6 +124,7 @@
       <li id="brief-guns"></li>
       <li id="brief-crew" hidden></li>
       <li id="brief-orders" hidden></li>
+      <li id="brief-helm" hidden><b>The helm:</b> each sortie starts in the carrier's launch tube; launch when ready (Space). The coxswain gives course and engine orders ahead of time; between orders you're free to fight the boat. Your gunner fires the gun, and both torpedoes once a frigate or siege battery is within 20° of the bow.</li>
       <li id="brief-pt"><b>Two torpedoes</b> (LAUNCH 1 and 2, keys 1 and 2): slow, they home on a frigate or siege battery and hit harder than anything else you carry. Reloaded every sortie.</li>
       <li id="brief-gmain" hidden><b>Main gun:</b> press M when it's charged; it hits the first ship straight off the bow (the gold line). The pilot swings the bow toward the biggest target, which slides away, so time your shot.</li>
       <li id="brief-gwing" hidden><b>Gunboat squadron:</b> launched early in each system, it strafes the enemy and shoots down nearby torpedoes, then comes home before the jump.</li>
@@ -259,7 +261,7 @@
     <span class="hd-ver">v<span class="app-version"></span></span>
   </header>
   <div class="tu-main">
-    <aside class="panel tu-side">
+    <aside class="panel tu-side" id="tu-gunside">
       <div class="panel-title" id="tu-weapon">GUN 1</div>
       <div class="tu-what muted small-text" id="tu-weapon-what"></div>
       <div class="tu-bats" id="tu-bats"></div>
@@ -281,7 +283,35 @@
       <div id="tu-tdmg" class="tu-tdmg"></div>
       <div id="tu-aimpad" class="tu-pad">◀ drag to aim ▶</div>
     </aside>
+    <!-- The helm (pilot station): replaces the gun panel -->
+    <aside class="panel tu-side hm-side" id="tu-helm" hidden>
+      <div class="panel-title">HELM</div>
+      <div class="hm-order" id="hm-order"></div>
+      <div class="row-label"><span>ENGINES</span></div>
+      <div class="hm-tele-txt" id="hm-tele-txt"></div>
+      <div class="hm-tele" id="hm-tele"></div>
+      <div class="hm-g"><button id="hm-gdown">− 1 G</button><span id="hm-gval"></span><button id="hm-gup">+ 1 G</button></div>
+      <div class="row-label"><span>THRUST</span><span id="hm-thrust"></span></div>
+      <div class="hbar"><div id="hm-thrust-fill" class="hbar-fill eng-fill"></div></div>
+      <div class="row-label"><span>REACTOR</span><span id="hm-rx"></span></div>
+      <div class="hbar"><div id="hm-heat" class="hbar-fill heat-fill"></div><i class="hbar-mark" style="left:80%"></i></div>
+      <div class="row-label"><span>TURN</span><span id="hm-turn"></span></div>
+      <div class="hm-turnbar"><i class="safe" id="hm-turn-safe"></i><i class="want" id="hm-turn-want"></i><i class="now" id="hm-turn-now"></i></div>
+      <div class="row-label"><span>HULL STRESS</span><span id="hm-stress-val"></span></div>
+      <div class="hbar"><div id="hm-stress" class="hbar-fill stress-fill"></div></div>
+      <div class="hm-btns"><button id="hm-auto">AUTOPILOT <small>(T)</small></button><button id="hm-warn">WARN ENGINEERING <small>(E)</small></button></div>
+    </aside>
     <div class="tu-field" id="tu-field"><canvas id="tu-canvas"></canvas>
+      <!-- The helm wheel: drag it left or right; it stays where you leave it -->
+      <div class="hm-wheel" id="hm-wheel" hidden>
+        <svg viewBox="-60 -60 120 120" aria-label="Helm wheel"><g id="hm-wheel-g">
+          <circle r="40" class="w-rim"/><circle r="9" class="w-hub"/>
+          <g class="w-spokes"><line x1="0" y1="-52" x2="0" y2="52"/><line x1="-52" y1="0" x2="52" y2="0"/><line x1="-36.8" y1="-36.8" x2="36.8" y2="36.8"/><line x1="-36.8" y1="36.8" x2="36.8" y2="-36.8"/></g>
+          <circle cx="0" cy="-52" r="5" class="w-top"/>
+        </g></svg>
+        <div class="hm-wheel-txt" id="hm-wheel-txt"></div>
+        <button id="hm-mid" class="small">MIDSHIPS (0)</button>
+      </div>
       <!-- Wide view: the side panels give way to this overlay -->
       <div class="tu-hud" id="tu-hud" hidden>
         <div class="hud-top">
@@ -320,6 +350,7 @@
       <button id="btn-tu-main" class="tu-main" hidden>MAIN GUN <small>(M)</small><i class="tu-main-bar"><i id="tu-main-fill"></i></i></button>
       <button id="btn-tu-call" class="tu-call">CALL FOR POWER <small>(C)</small></button>
       <button id="btn-tu-fire" class="tu-fire">FIRE</button>
+      <button id="hm-launch" class="tu-fire hm-launch" hidden>LAUNCH <small>(Space)</small></button>
     </aside>
   </div>
   <footer class="con-foot"><span class="hint-bar" id="tu-keys">← → slide · Space fire (hold) · 1 2 torpedoes · C call for power · P pause · Mouse: move to aim, hold button to fire · Touch: drag to aim, hold FIRE</span></footer>
@@ -439,6 +470,21 @@
       <tr><td>Mouse</td><td>The gun follows the pointer around the ship; click a ship or torpedo to swing to it; hold the button to fire</td></tr>
       <tr><td>Touch</td><td>Touch the view to point the gun, or drag on the aim pad; tap a ship or torpedo to swing to it; hold FIRE</td></tr>
     </table>
+    <h2>At the helm</h2>
+    <table class="keys">
+      <tr><td>← →</td><td>Turn the wheel to port or starboard (it stays where you leave it)</td></tr>
+      <tr><td>0</td><td>Wheel amidships</td></tr>
+      <tr><td>↑ ↓</td><td>Both engines one order up or down (full astern … stop … dead slow, cruise, standard, full, flank)</td></tr>
+      <tr><td>Q / A</td><td>Port engine one order up / down</td></tr>
+      <tr><td>P / L</td><td>Starboard engine one order up / down</td></tr>
+      <tr><td>+ / −</td><td>Both engines one G more or less ("all ahead 3 G")</td></tr>
+      <tr><td>T</td><td>Autopilot on or off (it holds the heading you're on)</td></tr>
+      <tr><td>E</td><td>Warn engineering that a burn is coming</td></tr>
+      <tr><td>Space</td><td>Launch from the carrier's tube</td></tr>
+      <tr><td>Esc</td><td>Pause and resume</td></tr>
+      <tr><td>Enter</td><td>Continue after the carrier report</td></tr>
+      <tr><td>Mouse / touch</td><td>Drag the wheel; tap an order on the telegraph (the middle column orders both engines); tap the compass to steer there on autopilot; tap the captain's order to fly it on autopilot</td></tr>
+    </table>
     <div class="menu"><button id="btn-options-close" class="primary">Done</button></div>
   </div>
 </section>
@@ -447,7 +493,7 @@
 <section id="ov-how" class="overlay" hidden>
   <div class="ov-card wide">
     <h1>How to play</h1>
-    <p>A career aboard the warships carrying humanity's planet buster. Take jobs as engineer or gunner (the pilot station comes later) from the gunboat up to the dreadnought; a successful mission qualifies you on that class, and offers from bigger ships follow your reputation.</p>
+    <p>A career aboard the warships carrying humanity's planet buster. Take jobs as engineer or gunner (the pilot station is being built; try the helm test on the title screen) from the gunboat up to the dreadnought; a successful mission qualifies you on that class, and offers from bigger ships follow your reputation.</p>
     <h2>The engine room</h2>
     <p>The reactor can't feed everything at once, so you decide where the power goes, second by second.</p>
     <ol class="tight">
@@ -478,6 +524,16 @@
       <li><b>Archonian capital ships.</b> One big hull with escorts, holding far out: a frigate (gunboats now and then), a cruiser (heavy cruisers and up) whose torpedoes come in pairs, and a battleship (battleships and dreadnoughts) whose torpedoes come in threes. Lighter ships keep joining the fight while it lasts. The pilot swings the main gun onto them, and rail guns do extra damage. On a dreadnought, the final system is the fortress guarding the Archonian world: it sits dead ahead, never moves and keeps firing until the planet buster is away, unless you destroy it first.</li>
       <li><b>Views and switches.</b> W switches to wide view: the side panels give way to an overlay and the battle fills the screen, bow to the right. Switches on the left panel let you take a gun by clicking it on the view, or turn click-to-aim off.</li>
     </ol>
+    <h2>At the helm (test)</h2>
+    <p>The pilot flies the ship in the same view the gunner uses: your ship stays in the middle, bow up, and turning swings the battle around it. Your gun crew fires the guns and the engineer runs the power.</p>
+    <ol class="tight">
+      <li><b>Launch.</b> A gunboat starts each sortie in the carrier's launch tube. Launch when ready (Space or LAUNCH); the catapult throws you out at flank, and once clear you come back to standard. Waiting costs fight time, and after a while the carrier launches you anyway.</li>
+      <li><b>Steer with the wheel.</b> Drag it, or use ← →. It stays where you leave it, so the ship keeps turning until you center it (0). The ship answers a moment late, and its turn builds and dies away slowly; bigger ships are slower at both. The white tick on the compass and on the ring is where the bow will stop if you center the wheel now.</li>
+      <li><b>Engine orders.</b> Each engine takes its own order on the telegraph: stop, dead slow, cruise, standard, full, flank, or dead slow, half or full astern. + and − give an exact thrust ("all ahead 3 G"). Thrust draws reactor power, so a hard burn leaves less for the shields and guns; warn engineering (E) before one. Flank is over the engines' rating: hold it too long and a thruster can burn out.</li>
+      <li><b>Split engines.</b> Port ahead and starboard astern turns the ship to starboard faster than the wheel alone (and the other way round). Turning faster than the safe rate (the mark on the TURN bar) fills the hull stress bar; a full bar is a structural hit to the hull.</li>
+      <li><b>The captain's orders.</b> The coxswain (the captain on bigger ships) orders a heading and an engine order a few seconds ahead; the amber mark on the compass shows the heading. Be on it, at that order, when the time comes, and hold it. Between orders you're free to fight the ship: point the bow at a frigate and your gunner fires the torpedoes.</li>
+      <li><b>Autopilot.</b> T turns it on and holds the heading; tap the compass or the captain's order to fly there. It flies carefully (never past the safe rate, never with split engines) and earns less reputation than steering by hand.</li>
+    </ol>
     <p class="muted small-text">Battlelert © 2011–2026 Tom Bont. All rights reserved. Free to play. The code, art and sounds may not be copied, changed or shared without written permission.</p>
     <div class="menu"><button id="btn-how-close" class="primary">Got it</button></div>
   </div>
@@ -485,18 +541,19 @@
 
 <script src="version.js?b=15c8f096"></script>
 <script src="update-banner.js?b=ec7860dd"></script>
-<script src="js/data.js?b=b1a0b149"></script>
-<script src="js/sim.js?b=6e743845"></script>
-<script src="js/agents.js?b=781a8ccb"></script>
-<script src="js/gunnery.js?b=a8f26a59"></script>
-<script src="js/ring.js?b=4430a5a0"></script>
+<script src="js/data.js?b=42dd47c8"></script>
+<script src="js/sim.js?b=f89ae7f4"></script>
+<script src="js/agents.js?b=35307cbd"></script>
+<script src="js/gunnery.js?b=852795a2"></script>
+<script src="js/ring.js?b=dd304708"></script>
+<script src="js/helm.js?b=66b3d230"></script>
 <script src="js/art.js?b=3b0d069a"></script>
 <script src="js/turretview.js?b=960c39ae"></script>
-<script src="js/ringview.js?b=717daaaf"></script>
+<script src="js/ringview.js?b=f45ef2ac"></script>
 <script src="js/names.js?b=1469f64a"></script>
 <script src="js/career.js?b=92be4bcb"></script>
 <script src="js/speech.js?b=1b7e5ec7"></script>
 <script src="js/audio.js?b=273e5325"></script>
-<script src="js/ui.js?b=4d146ad4"></script>
+<script src="js/ui.js?b=6bb5bc85"></script>
 </body>
 </html>
