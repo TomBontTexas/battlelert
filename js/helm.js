@@ -115,9 +115,9 @@
   // turn rate, never with split engines.
   Helm.prototype.setAuto = function (on, hdg) {
     if (this.inTube) return;
+    if (this.auto !== !!on) this.m.cue("toggle");      // (no click for every step of a drag on the compass)
     this.auto = !!on;
     if (on) this.autoHdg = hdg === undefined ? this.compass() : to360(hdg);
-    this.m.cue("toggle");
   };
   // Warn engineering: the AI engineer sees a full burn coming and gets the power ready.
   Helm.prototype.warn = function () {
@@ -257,8 +257,11 @@
     var C = this.C, top = this.topTurn(), b = C.build * this.turnFactor() * 0.8;
     var err = norm(this.autoHdg - this.compass()), pred = err - this.omega * C.lag;
     var vmax = Math.min(C.safe * 0.92, top);
-    var want = (pred < 0 ? -1 : 1) * Math.min(vmax, Math.sqrt(2 * b * Math.abs(pred)));
-    if (Math.abs(err) < 0.5 && Math.abs(this.omega) < 1) want = 0;
+    // Far out it brakes on a square-root curve (stop exactly in the distance left); close in
+    // the gain is capped by the lag, or the wheel slams side to side and never settles.
+    var gain = Math.min(2, 1 / (3 * (C.lag + 0.05)));
+    var want = (pred < 0 ? -1 : 1) * Math.min(vmax, Math.sqrt(2 * b * Math.abs(pred)), gain * Math.abs(pred));
+    if (Math.abs(err) < 0.3 && Math.abs(this.omega) < 0.5) want = 0;
     this.wheel = clamp(want / top, -1, 1);
   };
   // Turning past the safe rate fills the stress bar; a full bar is a structural hit.

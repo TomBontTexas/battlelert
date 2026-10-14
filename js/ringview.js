@@ -370,7 +370,9 @@
     c.fillStyle = "#ffffff"; c.beginPath(); c.moveTo(W / 2, y0 + h + 7); c.lineTo(W / 2 - 6, y0 + h + 15); c.lineTo(W / 2 + 6, y0 + h + 15); c.closePath(); c.fill();
     c.font = "700 13px ui-monospace, Consolas, monospace"; c.textAlign = "center"; c.textBaseline = "top"; c.fillStyle = "#ffffff";
     c.fillText(BL.hdgText(hdg), W / 2, y0 + h + 17);
+    if (helm.auto) { c.fillStyle = "#4cc3ee"; c.textAlign = "left"; c.fillText("AUTO → " + BL.hdgText(helm.autoHdg), W / 2 + 26, y0 + h + 17); }
   }
+  BL.compassScale = function () { return TAPE ? TAPE.k : 4; };      // pixels per degree on the tape
   // A tap at (px, py) in CSS pixels on the canvas: the compass heading there, or null.
   BL.compassAt = function (px, py) {
     var T = TAPE; if (!T || py < T.y0 - 4 || py > T.y0 + T.h + 6 || px < T.x0 || px > T.x0 + T.w) return null;

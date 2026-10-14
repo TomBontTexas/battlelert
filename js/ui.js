@@ -738,7 +738,7 @@
     if (helm) {
       $("tu-tubes").hidden = true; $("btn-tu-main").hidden = true;
       $("tu-station").textContent = "Helm · " + (job.test ? sim.data.className : BL.shipLabel(job.classId, job.ship) + " (" + sim.data.className + ")") + " · tech level " + sim.data.tl;
-      $("tu-keys").textContent = "← → wheel · 0 midships · ↑ ↓ both engines · Q A port · P L starboard · + − 1 G · T autopilot · E warn engineering · Space launch · Esc pause · Drag the wheel, tap the telegraph, tap the compass to steer there";
+      $("tu-keys").textContent = "← → wheel · 0 midships · ↑ ↓ both engines · Q A port · P L starboard · + − 1 G · T autopilot · E warn engineering · Space launch · Esc pause · Drag the wheel, tap the telegraph, tap or drag the compass to set the autopilot";
       buildHelm();
     }
   }
@@ -969,7 +969,7 @@
   function pointRing(ev) { var p = ringPoint(ev); sim.turret.pointAt(p.x, p.y); }
   function fieldX(ev) { var r = $("tu-canvas").getBoundingClientRect(); return (ev.clientX - r.left) / r.width; }
   (function wireTurretPointer() {
-    var cv = $("tu-canvas"), drags = {};
+    var cv = $("tu-canvas"), drags = {}, compassDrag = null;
     function startDrag(el, ev) {
       if (!turretActive()) return;
       drags[ev.pointerId] = { x: ev.clientX, aim: sim.turret.x, width: $("tu-canvas").getBoundingClientRect().width };
@@ -1002,8 +1002,13 @@
       return -1;
     }
     cv.addEventListener("pointerdown", function (ev) {
+      // At the helm: touch the compass to steer there on autopilot, and drag along it to move
+      // that heading (the blue mark follows the finger, on past the tape's ends).
       if (sim && sim.helm) {
-        if (turretActive()) { var cr = cv.getBoundingClientRect(), hd = BL.compassAt(ev.clientX - cr.left, ev.clientY - cr.top); if (hd !== null) sim.helm.setAuto(true, Math.round(hd)); }
+        if (turretActive()) {
+          var cr = cv.getBoundingClientRect(), hd = BL.compassAt(ev.clientX - cr.left, ev.clientY - cr.top);
+          if (hd !== null) { hd = Math.round(hd); sim.helm.setAuto(true, hd); compassDrag = { id: ev.pointerId, x: ev.clientX, hdg: hd }; try { cv.setPointerCapture(ev.pointerId); } catch (e) {} }
+        }
         ev.preventDefault(); return;
       }
       if (turretActive() && settings.tapGuns) { var hitBat = turretAt(ev); if (hitBat >= 0) { selectBattery(hitBat); ev.preventDefault(); return; } }
@@ -1025,14 +1030,21 @@
       } else startDrag(cv, ev);
     });
     cv.addEventListener("pointermove", function (ev) {
-      if (sim && sim.helm) return;
+      if (sim && sim.helm) {
+        var cd = compassDrag;
+        if (cd && cd.id === ev.pointerId && turretActive()) sim.helm.setAuto(true, Math.round(cd.hdg + (ev.clientX - cd.x) / BL.compassScale()));
+        return;
+      }
       if (ev.pointerType === "mouse") {
         if (!turretActive()) return;
         if (sim.turret.ring) pointRing(ev); else sim.turret.aimAt(fieldX(ev));
       }
       else moveDrag(ev);
     });
-    function mouseUp(ev) { if (ev.pointerType === "mouse") { if (sim && sim.turret && !keysHeld.fire) { sim.turret.trigger(false); setFireBtn(false); } } else endDrag(ev); }
+    function mouseUp(ev) {
+      if (compassDrag && compassDrag.id === ev.pointerId) compassDrag = null;
+      if (ev.pointerType === "mouse") { if (sim && sim.turret && !keysHeld.fire) { sim.turret.trigger(false); setFireBtn(false); } } else endDrag(ev);
+    }
     cv.addEventListener("pointerup", mouseUp); cv.addEventListener("pointercancel", mouseUp);
     cv.addEventListener("contextmenu", function (ev) { ev.preventDefault(); });
     var pad = $("tu-aimpad");
