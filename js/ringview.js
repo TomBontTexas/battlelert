@@ -337,7 +337,6 @@
       c.fillStyle = col; c.save(); c.translate(p.x, p.y); c.rotate(ro * Math.PI / 180);
       c.beginPath(); c.moveTo(0, 0.012); c.lineTo(-0.012, -0.01); c.lineTo(0.012, -0.01); c.closePath(); c.fill(); c.restore();
     }
-    if (helm.req) { var pr = ringAt(tu, rel(helm, helm.req.hdg), 0.05); c.fillStyle = "rgba(196,155,255,0.95)"; c.beginPath(); c.arc(pr.x, pr.y, 0.009, 0, Math.PI * 2); c.fill(); }
     var jv = helm.jumpView();
     if (jv) { var pj = ringAt(tu, rel(helm, jv.hdg), 0.05); c.strokeStyle = jv.on ? "rgba(99,212,143,0.95)" : "rgba(99,212,143,0.7)"; c.lineWidth = 2.5 / S; c.strokeRect(pj.x - 0.009, pj.y - 0.009, 0.018, 0.018); c.lineWidth = 1.5 / S; }
     if (helm.auto) { var pa = ringAt(tu, rel(helm, helm.autoHdg), 0.05); c.fillStyle = "rgba(76,195,238,0.95)"; c.save(); c.translate(pa.x, pa.y); c.rotate(Math.PI / 4); c.fillRect(-0.008, -0.008, 0.016, 0.016); c.restore(); }
@@ -378,7 +377,6 @@
     var o = helm.orderView();
     var jv2 = helm.jumpView();
     if (jv2) mark(jv2.hdg, "#63d48f", "jump");
-    if (helm.req) mark(helm.req.hdg, "#c49bff", "req");
     if (o) mark(o.hdg, helm.onOrder({ hdg: o.hdg, eng: o.eng }) ? "#63d48f" : "#f0b54a", "tri");
     if (dialing) mark(ship, "#ffffff", "ship");
     else {

@@ -597,29 +597,32 @@
     stress: { fill: 0.6, drain: 1 / 6, hullShare: 0.05, thrusterChance: 0.3, warnAt: 0.6, after: 0.25 },
     flank: { warnAt: 15, safe: 20, damagePerSec: 0.05 },
     turnLoss: 0.15,        // a thruster hit costs this share of the top turn rate (up to 60%)
-    order: { heading: 10, held: 0.7, minGap: 12, turn: [30, 100] },   // captain's orders: tolerance, share held, spacing
+    // captain's orders: tolerance, share held, spacing; one given on the spot (a gunner's call, the
+    // main gun, the jump heading) comes with `warn` s notice plus time to swing, held `callHold` s
+    order: { heading: 10, held: 0.7, minGap: 12, turn: [30, 100], warn: 3, callHold: 6 },
     autopilotRep: 0.75,    // autopilot time earns this share of the helm's reputation
-    launch: { nagAfter: 8, autoAfter: 20, clear: 2.5 },               // the gunboat in the carrier's tube
+    launch: { nagAfter: 8, autoAfter: 20, clear: 2.5, setIn: 5 },     // the gunboat in the carrier's tube; setIn: s to set the coxswain's standard
     ptBow: 20,             // the gunner launches torpedoes once a target is this close to the bow (deg)
     // Dodging (only when the captain orders a break): a torpedo misses if the bow ends `turn`
     // degrees off a steady turn when it arrives.
     dodge: { turn: 15 },
-    // The captain's call on each torpedo: evade if the shields hold less than `cover` x its
-    // charge, else with `chance`; one break covers a burst launched within `burst` s; never two
-    // breaks within `gap` s. A torpedo the captain takes gets a "Vampire" call, at most every `vampireEvery` s.
+    // The captain's call on each burst Tactical reports (torpedoes launched within `burst` s):
+    // break if the shields hold less than `cover` x what's in the air, else with `chance`; never
+    // two breaks within `gap` s. A break is judged from when it's heard: `callTime` s after the
+    // launch when it follows Tactical's report, `orderTime` s for a later break (made only with
+    // `lateMin` s or more left on the fish).
     // disobeyCost: share of the mission's score lost each time the pilot dodges a torpedo the captain said to take;
     // settle: seconds after a break's torpedo lands that steering still counts as the break (a late break, straightening out)
-    evade: { cover: 1.2, chance: 0.5, burst: 1.2, gap: 6, vampireEvery: 8, disobeyCost: 0.05, settle: 2.5 },     // gap: seconds between breaks
-    // A gunner's request to bring the ship round: after `idle` s with an empty arc; `seconds` to
-    // answer it; `cooldown` before that gun asks again.
-    request: { idle: 4, seconds: 10, cooldown: 15 },
+    evade: { cover: 1.2, chance: 0.5, burst: 1.2, gap: 6, callTime: 2.5, orderTime: 1, lateMin: 0.8, disobeyCost: 0.05, settle: 2.5 },     // gap: seconds between breaks
+    // A gunner tells the captain their arc is empty after `idle` s; `cooldown` before that gun calls again.
+    request: { idle: 4, cooldown: 15 },
     warnCooldown: 6,       // seconds between warnings to engineering
     // Chatter not heard at the helm (no voice, no log line): the crew's running commentary. The
     // pilot hears only orders, break and Vampire calls, gunners' turn requests, launch control,
     // jump calls, warnings and damage, so an order is never stuck behind other talk.
     quiet: ["salvo", "waveIn", "withdrew", "straggler", "surprise", "shielded", "dodged", "intercepted", "pdStopped",
             "torpDown", "chargeStopped", "killed", "killedOther", "request", "requestDry",
-            "ptAway", "ptHit", "ptMiss", "ptDowned", "helmMet", "helmReqMet"]
+            "ptAway", "ptHit", "ptMiss", "ptDowned", "helmMet"]
   };
 
   /* ------------------------------------------------------------ Chatter
@@ -663,7 +666,7 @@
     mainShotMiss:["Bridge: main gun missed! Nothing on the bow.", "Tactical: clean miss. That's a minute of charge gone."],
     mineDown:    ["Tactical: mine destroyed.", "Helm: thanks, Gunnery. That one was close.", "Tactical: mine cleared."],
     launchCall:  ["Flight deck: squadron launch in {t} s. Charge the launchers.", "Bridge: launching gunboats in {t} seconds. Launchers must be full.", "Flight deck: gunboats to launch in {t}. Need full launchers."],
-    launched:    ["Bridge: Transferring launch control to PT Squadron. Launch when ready."],
+    launched:    ["Bridge: Transferring launch control to gunboats. Launch when ready."],
     launchMissed:["Flight deck: launchers weren't charged. Launch scrubbed.", "Bridge: no launch, Engineering. The launchers were short."],
     recoverCall: ["Flight deck: recovering the squadron in {t} s. Charge the arresters.", "Bridge: gunboats coming home in {t} seconds. Arresters must be full."],
     recovered2:  ["Flight deck: squadron recovered. All gunboats aboard.", "Flight deck: arresters caught them. Squadron's home."],
@@ -709,20 +712,21 @@
     helmOrder:   ["{who}: come {dir} to {hdg}, {eng}, in {t} s.", "{who}: helm, {dir} to {hdg}, {eng}. {t} seconds.", "{who}: stand by to come {dir} to {hdg}, {eng}, in {t}."],
     helmMet:     ["{who}: very well.", "{who}: steady as she goes. Well done.", "{who}: nicely done, Helm."],
     helmMissed:  ["{who}: that's not what I ordered, Helm.", "{who}: Helm, mind your orders!", "{who}: we were supposed to be on {hdg}."],
+    helmMissedE: ["{who}: that's not what I ordered, Helm.", "{who}: Helm, mind your orders!"],     // an engine order missed
     stressWarn:  ["Damage control: she's groaning!", "Damage control: hull stress climbing!"],   // reports only: easing off is the captain's order
+    easeOff:     ["{who}: ease the turn!", "{who}: ease off!"],
     stressHit:   ["Damage control: structural damage from that turn! Hull down {dmg}.", "Damage control: frames buckling! Hull down {dmg}."],
     flankWarn:   ["Engineering: we can't hold flank much longer!", "Engineering: engines are over their rating, Bridge!"],
     flankDamage: ["Engineering: we burned out a thruster holding flank! {what}.", "Engineering: that's what flank does. {what}."],
     dodged:      ["Tactical: it missed! Nice flying.", "Tactical: torpedo went wide!", "Tactical: clean miss!"],
     evade:       ["{who}: break {dir}, now!", "{who}: evasive! Hard {dir}!", "{who}: break {dir}, Helm! Break {dir}!"],
-    vampire:     ["Tactical: vampire, vampire!"],    // a torpedo in the air and no break ordered: take it
+    vampire:     ["Tactical: vampire, vampire! {n} new fish!"],     // Tactical reports each burst; the captain decides
+    evadeHold:   ["{who}: steady, Helm. Let the shields take it.", "{who}: hold your course. We'll take this one.", "{who}: steady as she goes. Shields will hold."],
     disobey:     ["{who}: Helm, I said hold your course!", "{who}: that was not my order, Helm. It goes in my report.", "{who}: Helm! Steady means steady!"],
     evadeMissed: ["{who}: too slow on that break, Helm!", "{who}: I said break, Helm!"],
-    helmReq:     ["Gunner {n}: Helm, bring her {dir} {deg}, {weapon} target {side}!", "Gunner {n}: nothing in my arc. Come {dir} {deg}, Helm!", "Gunner {n}: Helm, {dir} {deg} and I've got the shot!"],
-    helmReqMet:  ["Gunner {n}: got it, thanks Helm!", "Gunner {n}: on target!"],
-    helmReqMissed: ["Gunner {n}: never mind, Helm. It's gone.", "Gunner {n}: still nothing in my arc."],
-    jumpNoticeH: ["Navigation: jump window in {t} s. Jump heading {hdg}.", "Bridge: window in {t} seconds. Helm, come to {hdg} for the jump."],
-    jumpHeading: ["Navigation: drive's full. Come to {hdg} for the jump, Helm!", "Bridge: we're off the jump heading. Bring her to {hdg}!"],
+    helmReq:     ["Gunner {n}: Captain, nothing in my arc. Target {side}."],     // to the captain, who orders the helm
+    jumpNoticeH: ["Navigation: jump window in {t} s. Jump heading {hdg}."],     // reports; the captain orders the heading
+    jumpHeading: ["Navigation: drive's full. We're off the jump heading."],
     warnEng:     ["Engineering: standing by for your burn.", "Engineering: understood, power's ready for the engines.", "Engineering: copy, Helm. Engines get first call."]
   };
 

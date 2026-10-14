@@ -257,17 +257,18 @@
     return 1 - 0.7 * k;                        // 1 s for a raw crew, 0.3 s for a sharp one
   };
   /* A gunner whose arc has been empty a while, with a ship their weapon is best against outside
-     it, asks the helm to bring the ship round (helm.js keeps the request). The turn asked for
+     it, tells the captain, who orders the helm round (helm.js). The turn asked for
      puts that ship halfway inside the arc. All-round guns never need to ask. */
   RingTurret.prototype.crewCalls = function () {
     var m = this.m, h = m.helm, now = m.totalT, self = this, Q = BL.HELM.request, R = this.R;
     // (gunners hold their calls while the captain's order is pending or under way, and once
     // the ship is lining up for the jump)
-    if (!h || h.req || m.phase !== "engage" || now < (this.reqNext || 0) || h.orderView() || h.jumpNear()) return;
+    if (!h || m.phase !== "engage" || now < (this.reqNext || 0) || h.orderView() || h.jumpNear()) return;
     this.reqNext = now + 0.5;
+    var called = false;
     function alive(s) { return !s.dead && s.state !== "leave" && s.state !== "enter"; }
     this.bats.forEach(function (b) {
-      if (h.req || self.full(b)) return;
+      if (called || self.full(b)) return;
       if (self.ships.some(function (s) { return alive(s) && self.inReachOf(b, s.x, s.y) !== null; })) { b.idleSince = 0; return; }
       if (!b.idleSince) b.idleSince = now;
       if (now - b.idleSince < Q.idle || now < (b.reqReady || 0)) return;
@@ -280,7 +281,7 @@
       if (!best) return;
       var rel = norm(best.bearing - b.arcC), turn = Math.round((rel - (rel > 0 ? 1 : -1) * b.arcH * 0.5) / 5) * 5;
       if (Math.abs(turn) < 10) return;
-      b.idleSince = 0;
+      b.idleSince = 0; called = true;
       h.request(b, turn, best);
     });
   };
@@ -513,6 +514,7 @@
         e.ionized = true; e.at += ion.delay; e.mj = Math.round(e.mj * ion.salvoMult);
         if (t < e.at - G.torpedo.travel) return;
       }
+      if (m.helm && e.type === "salvo") m.helm.torpedoLaunched(e, s);       // Tactical reports it; the captain: break, or take it
       var hitB = s.bearing + (self.rng.next() - 0.5) * 24, hit = self.rim(hitB);
       var nose = { x: s.x - Math.sin(s.rot) * s.h / 2, y: s.y + Math.cos(s.rot) * s.h / 2 };
       var torp = { id: self.nextId++, ev: e, x0: nose.x, y0: nose.y, x1: hit.x, y1: hit.y, hitB: hitB, t0: t, t1: e.at, x: nose.x, y: nose.y, weak: !!e.ionized };
@@ -524,7 +526,6 @@
         torp.cx = R.cx + far * Math.sin(mid * RAD); torp.cy = R.cy - far * Math.cos(mid * RAD);
         count(self, "strikes");
       }
-      if (m.helm && e.type === "salvo") m.helm.torpedoLaunched(e, s);       // the captain: break, or take it
       e.torp = torp; self.torps.push(torp);
       if (self.cur) { self.stats.torps++; self.cur.torps++; } else self.stats.torps++;
       m.cue("torpLaunch");

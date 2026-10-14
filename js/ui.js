@@ -1121,17 +1121,19 @@
         BL.HELM.orders.filter(function (x) { return x.id === o.eng; })[0].name.toLowerCase() + (o.active ? " · hold " + Math.ceil(o.left) + " s" : "") +
         '<div class="muted">' + (ok ? "✔ On the order." : "Tap to fly the heading on autopilot.") + "</div>";
       setCls(ob, "hm-order" + (o.active ? " active" : "") + (ok ? " ok" : ""));
+    } else if (h.engOrder) {
+      oh = "<b>NOW</b> all ahead " + h.preset(h.engOrder.eng).name.toLowerCase() + " · " + Math.max(0, Math.ceil(h.engOrder.until - sim.t)) + " s" +
+        '<div class="muted">Tap to set both engines.</div>';
+      setCls(ob, "hm-order active");
     } else {
       oh = h.inTube ? "In the carrier's launch tube. Launch when ready (Space)." : "Free helm: no orders. Fight the " + (sim.hasDrive ? "ship." : "boat.");
       setCls(ob, "hm-order");
     }
     setHtml(ob, oh);
-    // Alerts: the captain's break order (or "take it"), a gunner's call, the jump heading (tap
-    // a call or the jump heading to fly it on autopilot)
+    // Alerts: the captain's break order (or "take it"), the jump heading (tap it to fly it on autopilot)
     var al = [], D = BL.HELM.dodge, ev = h.evadeView(), inbound = tu.torps.filter(function (tp) { return tp.ev && tp.ev.type === "salvo" && !tp.ev.done && !tp.mine; });
     if (ev && ev.left > 0) al.push('<div class="torp">⚠ BREAK ' + (ev.dir > 0 ? "RIGHT" : "LEFT") + " NOW: " + ev.left.toFixed(1) + " s · " + Math.round(ev.off) + "° of " + D.turn + "°</div>");
     else if (inbound.length) al.push('<div class="hold">' + inbound.length + (inbound.length === 1 ? " torpedo" : " torpedoes") + " inbound. " + h.who + ": hold your course, the shields take " + (inbound.length === 1 ? "it" : "them") + ". (Dodging anyway is disobeying.)</div>");
-    if (h.req) al.push('<div class="req" data-hdg="' + h.req.hdg + '">Gun ' + h.req.gun + ": come " + (h.req.turn > 0 ? "right" : "left") + " to <b>" + BL.hdgText(h.req.hdg) + "</b> · " + Math.max(0, Math.ceil(h.req.until - sim.t)) + " s</div>");
     var jv = h.jumpView();
     if (jv) al.push('<div class="jump' + (jv.on ? "" : jv.in < 30 ? " off" : "") + '" data-hdg="' + jv.hdg + '">Jump heading <b>' + BL.hdgText(jv.hdg) + "</b> · " + (jv.in > 0 ? "window in " + Math.ceil(jv.in) + " s" : "window open") + (jv.on ? " ✔" : "") + "</div>");
     setHtml($("hm-alerts"), al.join(""));
@@ -1234,7 +1236,10 @@
     $("hm-auto").addEventListener("click", function () { if (turretActive()) sim.helm.setAuto(!sim.helm.auto); this.blur(); });
     $("hm-warn").addEventListener("click", function () { if (turretActive()) sim.helm.warn(); this.blur(); });
     $("hm-launch").addEventListener("click", function () { if (turretActive()) sim.helm.launch(); this.blur(); });
-    $("hm-order").addEventListener("click", function () { var o = turretActive() && sim.helm.orderView(); if (o) sim.helm.setAuto(true, o.hdg); });
+    $("hm-order").addEventListener("click", function () {
+      var h = turretActive() && sim.helm, o = h && h.orderView();
+      if (o) h.setAuto(true, o.hdg); else if (h && h.engOrder) h.setOrder("both", h.engOrder.eng);
+    });
     $("hm-alerts").addEventListener("click", function (ev) { var d = ev.target.closest("[data-hdg]"); if (d && turretActive()) sim.helm.setAuto(true, +d.dataset.hdg); });
   })();
   function gravHelm(js, dmg, next) {
