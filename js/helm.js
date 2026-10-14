@@ -170,7 +170,7 @@
     this.rollTurn();
     this.nextOrderAt = enc.burns ? m.cfg.arrivalSeconds + Math.max(this.H.order.minGap, r.range(enc.burns.every) * 0.6) : Infinity;
     this.cur = { orders: 0, ordersMet: 0, stressHits: 0, launchWait: 0, torps: 0, dodged: 0, requests: 0, requestsMet: 0, evasive: 0, evasiveMet: 0, disobeyed: 0 };
-    this.evade = null; this.holdSaidAt = -99; this.lastBreak = -99; this.lastDisobey = -99; this.steerAt = -99;
+    this.evade = null; this.vampireAt = -99; this.lastBreak = -99; this.lastDisobey = -99; this.steerAt = -99;
     this.jumps[m.jumpIndex] = this.cur;
     this.req = null; this.jumpSaid = false; this.conT = 0; this.conTaken = false;
     // Ships with a GravSpace drive jump on a heading Navigation gives on arrival.
@@ -257,7 +257,7 @@
       // The captain's call: take it. (During a course order, swerving already fails the order, so
       // that's not counted again as disobeying.)
       e.hold = !(this.curOrder || o);
-      if (now - this.holdSaidAt > E.holdSayEvery) { this.holdSaidAt = now; m.chat("evadeHold", { who: this.who }, "info"); }
+      if (now - this.vampireAt > E.vampireEvery) { this.vampireAt = now; m.chat("vampire", null, "warn"); m.cue("warn"); }
       return;
     }
     // Against the turn the ship is making (that throws the aim off fastest), else away from the torpedo.

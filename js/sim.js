@@ -183,12 +183,14 @@
     if (this.log.length > 80) this.log.shift();
   };
   Mission.prototype.chat = function (key, vars, kind, now) {
-    if (this.quiet) return;
+    if (this.quiet || this.hushed(key)) return;
     // At the helm a key ending in H wins, at the gun one ending in G.
     var lines = (this.helm && BL.CHATTER[key + "H"]) || (this.turret && BL.CHATTER[key + "G"]) || BL.CHATTER[key]; if (!lines || !lines.length) return;
     this.say(fill(this.rng.pick(lines), vars), kind, now);
     this.cue("chatter");
   };
+  // The helm hears no running commentary (BL.HELM.quiet).
+  Mission.prototype.hushed = function (key) { return !!this.helm && BL.HELM.quiet.indexOf(key) >= 0; };
   Mission.prototype.cue = function (name) { if (!this.quiet) this.fx.push(name); };
 
   /* --------------------------------------------------------------- Phases */
@@ -398,7 +400,7 @@
         if (this.totalT - (this.lastSalvoCall || -99) < 3) return;
         this.lastSalvoCall = this.totalT;
       }
-      this.chat("salvo", { t: lead }, "warn"); this.cue("warn");
+      this.chat("salvo", { t: lead }, "warn"); if (!this.hushed("salvo")) this.cue("warn");
     }
     else if (e.type === "strike") { this.chat("strike", { t: lead }, "warn"); this.cue("warn"); }
     else if (e.type === "burn") { this.chat("burn", { t: lead, g: e.g, d: e.dur }, "warn"); this.cue("warnBurn"); }
