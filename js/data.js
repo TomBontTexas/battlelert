@@ -718,7 +718,7 @@
     flankDamage: ["Engineering: we burned out a thruster holding flank! {what}.", "Engineering: that's what flank does. {what}."],
     dodged:      ["Tactical: it missed! Nice flying.", "Tactical: torpedo went wide!", "Tactical: clean miss!"],
     evade:       ["{who}: break {dir}, now!", "{who}: evasive! Hard {dir}!", "{who}: break {dir}, Helm! Break {dir}!"],
-    evadeHold:   ["{who}: steady as she goes. The shields can take it."],     // TexasBont's wording (Oct 14, 2026)
+    evadeHold:   ["{who}: steady, Helm.", "{who}: maintain heading.", "{who}: steady as she goes. The shields can take it."],     // TexasBont's wording (Oct 14, 2026); said once, it stands
     disobey:     ["{who}: Helm, I said hold your course!", "{who}: that was not my order, Helm. It goes in my report.", "{who}: Helm! Steady means steady!"],
     evadeMissed: ["{who}: too slow on that break, Helm!", "{who}: I said break, Helm!"],
     helmReq:     ["Gunner {n}: Captain, nothing in my arc. Target {side}."],     // to the captain, who orders the helm

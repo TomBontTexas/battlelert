@@ -170,7 +170,7 @@
     this.rollTurn();
     this.nextOrderAt = enc.burns ? m.cfg.arrivalSeconds + Math.max(this.H.order.minGap, r.range(enc.burns.every) * 0.6) : Infinity;
     this.cur = { orders: 0, ordersMet: 0, stressHits: 0, launchWait: 0, torps: 0, dodged: 0, requests: 0, requestsMet: 0, evasive: 0, evasiveMet: 0, disobeyed: 0 };
-    this.evade = null; this.burst = null; this.engOrder = null; this.mainOrdered = false; this.jumpOrderAt = -99; this.lastBreak = -99; this.lastDisobey = -99; this.steerAt = -99;
+    this.evade = null; this.burst = null; this.steady = false; this.engOrder = null; this.mainOrdered = false; this.jumpOrderAt = -99; this.lastBreak = -99; this.lastDisobey = -99; this.steerAt = -99;
     this.jumps[m.jumpIndex] = this.cur;
     this.jumpSaid = false; this.conT = 0; this.conTaken = false;
     // Ships with a GravSpace drive jump on a heading Navigation gives on arrival.
@@ -218,9 +218,10 @@
   Helm.prototype.beginOrder = function (e) {
     if (this.curOrder) this.finishOrder();
     this.curOrder = { e: e, held: 0, end: e.at + e.dur };
+    this.steady = false;
   };
   Helm.prototype.finishOrder = function () {
-    var o = this.curOrder, m = this.m; this.curOrder = null;
+    var o = this.curOrder, m = this.m; this.curOrder = null; this.steady = false;
     var met = o.held >= o.e.dur * this.H.order.held;
     this.stats.orders++; if (this.cur) this.cur.orders++;
     if (met) { this.stats.ordersMet++; if (this.cur) this.cur.ordersMet++; }
@@ -235,7 +236,8 @@
   /* ------------------------------------------------------- Evasive orders
      On every burst of torpedoes launched at us (launched within BL.HELM.evade.burst s) the
      captain gives one of two orders: "Steady as she goes. The shields can take it." or a break
-     ("Break left, now!"). He orders steady while a course order is pending or under way (swerving
+     ("Break left, now!"). Steady is said once and stands until his next order changes things (a
+     break, a course order); he doesn't repeat it for every burst. He orders steady while a course order is pending or under way (swerving
      fails the order anyway), while the ship is lined up for the jump, and on ships too slow to
      swing far enough (big ships); otherwise he breaks when the shields can't take what's in the
      air, and about half the time when they can. He keeps watching: if the shields can no longer
@@ -285,9 +287,12 @@
     var free = !this.busy() && now - this.lastBreak >= E.gap && this.canBreak(travel);
     var mj = e.mj; this.fishInAir().concat(this.burstToCome()).forEach(function (f) { if (f !== e) mj += f.mj; });
     if (free && (m.sys("shield").mj < mj * E.cover || this.rng.chance(E.chance))) { this.orderBreak([e], s); return; }
-    // Steady. (During a course order, swerving already fails the order, so it isn't counted again as disobeying.)
-    e.hold = bu.hold = !(this.curOrder || this.orderView());
-    m.chat("evadeHold", { who: this.who }, "info");
+    // Take it. During a course order the order stands (swerving already fails it, so it isn't
+    // counted again as disobeying). Otherwise "Steady": said once, and it stands until his next
+    // order (a break, a course order) changes things.
+    if (this.curOrder || this.orderView()) return;
+    e.hold = bu.hold = true;
+    if (!this.steady) { this.steady = true; m.chat("evadeHold", { who: this.who }, "info"); }
   };
   // The break covers torpedo f: it lands no sooner than the break allows.
   Helm.prototype.cover = function (f, ev) { f.evade = ev; f.hold = false; this.landBy(f, ev.until); };
@@ -296,7 +301,7 @@
     var m = this.m, E = this.H.evade, now = m.t, self = this;
     // Against the turn the ship is making (that throws the aim off fastest), else away from the torpedo.
     var dir = Math.abs(this.omega) > 3 ? (this.omega > 0 ? -1 : 1) : s && norm(s.bearing) < 0 ? 1 : -1;
-    this.lastBreak = now;
+    this.lastBreak = now; this.steady = false;
     var ev = this.evade = { at: now, until: now + E.orderTime + BL.GUNNERY.torpedo.travel, dir: dir, snap: this.aimSnap(), judged: false };
     if (this.burst && now - this.burst.at < E.burst) this.burst.evade = ev;
     fish.forEach(function (f) { self.cover(f, ev); });
@@ -419,7 +424,7 @@
     if (this.inTube) { this.tube(); return; }
     if (this.clearAt && m.totalT >= this.clearAt) {
       this.clearAt = 0;
-      this.engOrder = { eng: "standard", until: m.t + H.launch.setIn };
+      this.engOrder = { eng: "standard", until: m.t + H.launch.setIn }; this.steady = false;
       m.chat("helmClear", null, "warn");
     }
     // Presets follow the class's top G (thruster damage lowers it).
