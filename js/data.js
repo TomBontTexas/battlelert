@@ -606,14 +606,15 @@
     // Dodging (only when the captain orders a break): a torpedo misses if the bow ends `turn`
     // degrees off a steady turn when it arrives.
     dodge: { turn: 15 },
-    // The captain's call on each burst Tactical reports (torpedoes launched within `burst` s):
-    // break if the shields hold less than `cover` x what's in the air, else with `chance`; never
-    // two breaks within `gap` s. A break is judged from when it's heard: `callTime` s after the
-    // launch when it follows Tactical's report, `orderTime` s for a later break (made only with
-    // `lateMin` s or more left on the fish).
+    // Each burst Tactical reports (torpedoes launched within `burst` s) is heard `vampTime` s after
+    // launch, and its fish land no sooner than the flight time after that. When the shields hold
+    // `cover` x what's in the air the captain says "Steady" with `chance`, else it's the pilot's
+    // call; when they don't and the pilot isn't `reactDeg` off course `react` s after the report,
+    // the captain orders the break (heard `orderTime` s later; only with `lateMin` s or more left
+    // on the fish); never two breaks within `gap` s.
     // disobeyCost: share of the mission's score lost each time the pilot dodges a torpedo the captain said to take;
     // settle: seconds after a break's torpedo lands that steering still counts as the break (a late break, straightening out)
-    evade: { cover: 1.2, chance: 0.5, burst: 1.2, gap: 6, callTime: 2.5, orderTime: 1, lateMin: 0.8, disobeyCost: 0.05, settle: 2.5 },     // gap: seconds between breaks
+    evade: { cover: 1.2, chance: 0.5, burst: 1.2, gap: 6, vampTime: 1.5, react: 1.2, reactDeg: 5, orderTime: 1, lateMin: 0.8, disobeyCost: 0.05, settle: 2.5 },     // gap: seconds between breaks
     // A gunner tells the captain their arc is empty after `idle` s; `cooldown` before that gun calls again.
     request: { idle: 4, cooldown: 15 },
     warnCooldown: 6,       // seconds between warnings to engineering
@@ -622,7 +623,7 @@
     // jump calls, warnings and damage, so an order is never stuck behind other talk.
     quiet: ["salvo", "waveIn", "withdrew", "straggler", "surprise", "shielded", "dodged", "intercepted", "pdStopped",
             "torpDown", "chargeStopped", "killed", "killedOther", "request", "requestDry",
-            "ptAway", "ptHit", "ptMiss", "ptDowned", "helmMet"]
+            "ptAway", "ptHit", "ptMiss", "ptDowned", "helmMet", "shipKill", "mineDown", "mainShotHit", "mainShotKill", "mainShotMiss", "mainFired", "mainKill"]
   };
 
   /* ------------------------------------------------------------ Chatter

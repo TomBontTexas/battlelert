@@ -1130,10 +1130,14 @@
       setCls(ob, "hm-order");
     }
     setHtml(ob, oh);
-    // Alerts: the captain's break order (or "take it"), the jump heading (tap it to fly it on autopilot)
+    // Alerts: the captain's break order (or "Steady", or the pilot's call), the jump heading (tap it to fly it on autopilot)
     var al = [], D = BL.HELM.dodge, ev = h.evadeView(), inbound = tu.torps.filter(function (tp) { return tp.ev && tp.ev.type === "salvo" && !tp.ev.done && !tp.mine; });
     if (ev && ev.left > 0) al.push('<div class="torp">⚠ BREAK ' + (ev.dir > 0 ? "RIGHT" : "LEFT") + " NOW: " + ev.left.toFixed(1) + " s · " + Math.round(ev.off) + "° of " + D.turn + "°</div>");
-    else if (inbound.length) al.push('<div class="hold">' + inbound.length + (inbound.length === 1 ? " torpedo" : " torpedoes") + " inbound. " + h.who + ": hold your course, the shields take " + (inbound.length === 1 ? "it" : "them") + ". (Dodging anyway is disobeying.)</div>");
+    else if (inbound.length) {
+      var steady = inbound.some(function (tp) { return tp.ev.hold; });
+      al.push('<div class="hold">' + inbound.length + (inbound.length === 1 ? " torpedo" : " torpedoes") + " inbound. " +
+        (steady ? h.who + ": steady, the shields take " + (inbound.length === 1 ? "it" : "them") + ". (Dodging anyway is disobeying.)" : "Your call: break if you wish.") + "</div>");
+    }
     var jv = h.jumpView();
     if (jv) al.push('<div class="jump' + (jv.on ? "" : jv.in < 30 ? " off" : "") + '" data-hdg="' + jv.hdg + '">Jump heading <b>' + BL.hdgText(jv.hdg) + "</b> · " + (jv.in > 0 ? "window in " + Math.ceil(jv.in) + " s" : "window open") + (jv.on ? " ✔" : "") + "</div>");
     setHtml($("hm-alerts"), al.join(""));

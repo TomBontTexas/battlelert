@@ -234,29 +234,31 @@
   };
 
   /* ------------------------------------------------------- Evasive orders
-     Tactical reports every burst of torpedoes launched at us ("Vampire, vampire! Two new fish!"),
-     and the captain decides: break ("Break left, now!") or take them on the shields ("Steady,
-     Helm."). He takes them while a course order is pending or under way, the ship is lined up for
-     the jump, or the ship is too slow to swing far enough (big ships); otherwise he breaks when
-     the shields can't take what's in the air, and about half the time when they can. He keeps
-     watching: if the shields can no longer take the fish still in the air (they drained, or more
-     came), he orders a break then. The clock starts when the order is heard: the fish it covers
-     land no sooner than `travel` seconds after that (BL.HELM.evade.callTime allows for Tactical's
-     report and the order being spoken), though turning as soon as it's given counts too. A break carried out in time (the bow
-     BL.HELM.dodge.turn degrees or more off where a steady turn would have put it) makes them
-     miss, and counts as an order met.
-     The pilot can still dodge on their own (the same 15 degrees), but dodging a torpedo the
-     captain said to take is disobeying an order: it counts as an order not met and costs
-     BL.HELM.evade.disobeyCost of the mission's score. It's disobeying only if the pilot steered
-     after the call (moved the wheel, or set the autopilot to a new heading); finishing a turn
-     already under way, or turning for the captain's own course order, is fine. */
+     Tactical reports every burst of torpedoes launched at us ("Vampire, vampire! Two new fish!"):
+     a missile in the air, time to act. The clock starts when the report is heard: the fish land
+     no sooner than the torpedo's flight time after that (BL.HELM.evade.vampTime allows for it
+     being spoken). Then:
+     - When the shields can take what's in the air, the captain sometimes orders "Steady, Helm":
+       the pilot holds course, and dodging those fish anyway is disobeying.
+     - Otherwise he says nothing, and it's the pilot's call: break or not.
+     - If the shields can't take the fish in the air and the pilot isn't turning away `react` s
+       after the report (or the shields drain, or more fish come), the captain orders the break
+       himself ("Break left, now!"), cutting in; the fish it covers land no sooner than the flight
+       time after his order is heard.
+     He says nothing while a course order is pending or under way (swerving fails the order
+     anyway), while the ship is lined up for the jump, and on ships too slow to swing far enough
+     (big ships). A break carried out in time (the bow BL.HELM.dodge.turn degrees or more off where
+     a steady turn would have put it) makes the fish miss; an ordered break made counts as an
+     order met. Disobeying costs BL.HELM.evade.disobeyCost of the mission's score; it's
+     disobeying only if the pilot steered after "Steady" (moved the wheel, or set the autopilot to
+     a new heading). */
   var COUNT = ["One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve"];
   // Steering during an ordered break, or just after it (a late break, straightening out), isn't steering against the captain.
   Helm.prototype.inBreak = function () { return !!this.evade && this.m.t <= this.evade.until + this.H.evade.settle; };
   Helm.prototype.aimSnap = function () { return { hdg: this.compass(), omega: this.omega, t: this.m.t }; };
-  Helm.prototype.dodged = function (snap) {
-    return Math.abs(norm(this.compass() - (snap.hdg + snap.omega * (this.m.t - snap.t)))) >= this.H.dodge.turn;
-  };
+  // How far the bow is off where a steady turn from snapshot `snap` would have put it.
+  Helm.prototype.offSnap = function (snap) { return Math.abs(norm(this.compass() - (snap.hdg + snap.omega * (this.m.t - snap.t)))); };
+  Helm.prototype.dodged = function (snap) { return this.offSnap(snap) >= this.H.dodge.turn; };
   // Can this ship swing far enough in `t` seconds, from a standing start after the lag?
   Helm.prototype.canBreak = function (t) {
     var b = this.C.build * this.turnFactor(), s = Math.max(0, t - this.C.lag - 0.4);
@@ -272,57 +274,57 @@
     var m = this.m, la = BL.GUNNERY.torpedo.travel, w = this.H.evade.burst;
     return m.events.filter(function (f) { return f.type === "salvo" && !f.torp && !f.done && f.at - la <= m.t + w; });
   };
+  // Torpedo f lands no sooner than `t`.
+  Helm.prototype.landBy = function (f, t) { if (f.at < t) f.at = t; if (f.torp) f.torp.t1 = f.at; };
   // A torpedo just launched at us from ship s (ring.js calls this before drawing it).
   Helm.prototype.torpedoLaunched = function (e, s) {
-    var m = this.m, E = this.H.evade, now = m.t, bu = this.burst;
+    var m = this.m, E = this.H.evade, now = m.t, bu = this.burst, travel = BL.GUNNERY.torpedo.travel;
     e.snap = this.aimSnap();                                            // what the enemy aimed for
-    if (bu && now - bu.at < E.burst) {                                  // the same burst: the same call
+    if (bu && now - bu.at < E.burst) {                                  // the same burst: the same report and call
+      this.landBy(e, bu.until);
       if (bu.evade && !bu.evade.judged) this.cover(e, bu.evade); else e.hold = bu.hold;
       return;
     }
     var n = 1 + this.burstToCome().length;
-    bu = this.burst = { at: now, hold: false, evade: null };
+    bu = this.burst = { at: now, heard: now + E.vampTime, until: now + E.vampTime + travel, hold: false, evade: null };
+    this.landBy(e, bu.until);
     m.chat("vampire", { n: COUNT[n - 1] || n }, "warn", true); m.cue("warn");      // Tactical reports, cutting in
     var ev = this.evade;
-    if (ev && now < ev.until) return;                                   // mid-break: the pilot's busy; no call
-    // The captain's call. (During a course order, swerving already fails the order, so it isn't
-    // counted again as disobeying.)
-    var free = !this.busy() && now - this.lastBreak >= E.gap && this.canBreak(BL.GUNNERY.torpedo.travel);
+    if (ev && now < ev.until) return;                                   // mid-break: the pilot's busy
+    // The captain's call: "Steady" only when the shields can take what's in the air, and not always.
+    if (this.busy() || !this.canBreak(travel)) return;
     var mj = e.mj; this.fishInAir().concat(this.burstToCome()).forEach(function (f) { if (f !== e) mj += f.mj; });
-    if (free && (m.sys("shield").mj < mj * E.cover || this.rng.chance(E.chance))) { this.orderBreak([e], s, true); return; }
-    e.hold = bu.hold = !(this.curOrder || this.orderView());
+    if (m.sys("shield").mj < mj * E.cover || !this.rng.chance(E.chance)) return;     // the pilot's call
+    e.hold = bu.hold = true;
     m.chat("evadeHold", { who: this.who }, "info");
   };
   // The break covers torpedo f: it lands no sooner than the break allows.
-  Helm.prototype.cover = function (f, ev) {
-    f.evade = ev; f.hold = false;
-    if (f.at < ev.until) f.at = ev.until;
-    if (f.torp) f.torp.t1 = f.at;
-  };
-  // The captain orders a break covering `fish`; afterVampire: it follows Tactical's report.
-  Helm.prototype.orderBreak = function (fish, s, afterVampire) {
+  Helm.prototype.cover = function (f, ev) { f.evade = ev; f.hold = false; this.landBy(f, ev.until); };
+  // The captain orders a break covering `fish`, cutting in.
+  Helm.prototype.orderBreak = function (fish, s) {
     var m = this.m, E = this.H.evade, now = m.t, self = this;
     // Against the turn the ship is making (that throws the aim off fastest), else away from the torpedo.
     var dir = Math.abs(this.omega) > 3 ? (this.omega > 0 ? -1 : 1) : s && norm(s.bearing) < 0 ? 1 : -1;
-    var heard = now + (afterVampire ? E.callTime : E.orderTime);
     this.lastBreak = now;
-    var ev = this.evade = { at: now, until: heard + BL.GUNNERY.torpedo.travel, dir: dir, snap: this.aimSnap(), judged: false };
+    var ev = this.evade = { at: now, until: now + E.orderTime + BL.GUNNERY.torpedo.travel, dir: dir, snap: this.aimSnap(), judged: false };
     if (this.burst && now - this.burst.at < E.burst) this.burst.evade = ev;
     fish.forEach(function (f) { self.cover(f, ev); });
     this.stats.evasive++; if (this.cur) this.cur.evasive++;
-    // After Tactical's report it waits its turn; on its own it cuts in.
-    m.chat("evade", { who: this.who, dir: dir > 0 ? "right" : "left" }, "warn", !afterVampire);
+    m.chat("evade", { who: this.who, dir: dir > 0 ? "right" : "left" }, "warn", true);
     m.cue("warn");
   };
-  // The captain keeps watching the fish he said to take: once the shields can't take them, break.
+  // The captain watches the fish in the air: if the shields can't take them and the pilot isn't
+  // turning away, he orders the break.
   Helm.prototype.recheck = function () {
-    var m = this.m, E = this.H.evade, ev = this.evade;
-    if ((ev && m.t <= ev.until) || m.t - this.lastBreak < E.gap || this.busy() || !this.canBreak(BL.GUNNERY.torpedo.travel)) return;
-    var fish = this.fishInAir().filter(function (f) { return f.hold && f.at - m.t >= E.lateMin; });
+    var m = this.m, E = this.H.evade, ev = this.evade, bu = this.burst, self = this;
+    if ((ev && m.t <= ev.until) || m.t - this.lastBreak < E.gap || (bu && m.t < bu.heard + E.react)) return;
+    if (this.busy() || !this.canBreak(BL.GUNNERY.torpedo.travel)) return;
+    var fish = this.fishInAir().filter(function (f) { return f.at - m.t >= E.lateMin; });
     if (!fish.length) return;
     var mj = 0; fish.forEach(function (f) { mj += f.mj; });
     if (m.sys("shield").mj >= mj * E.cover) return;
-    this.orderBreak(fish, m.turret.shipOf(fish[0]), false);
+    if (!fish.some(function (f) { return f.hold; }) && fish.some(function (f) { return f.snap && self.offSnap(f.snap) >= E.reactDeg; })) return;   // already turning away
+    this.orderBreak(fish, m.turret.shipOf(fish[0]));
   };
   // Mission.salvoHits asks this for every torpedo that reaches the ship: true = it missed.
   Helm.prototype.torpedoArrives = function (e) {
@@ -331,8 +333,8 @@
     this.stats.torps++; if (this.cur) this.cur.torps++;
     if (!this.dodged(ev ? ev.snap : e.snap || this.aimSnap())) return false;
     this.stats.dodged++; if (this.cur) this.cur.dodged++;
-    // Dodged against the captain's call (one count per burst; turning for the captain's own course
-    // order, announced or under way, is fine, and so is the captain's own turn for the jump).
+    // Dodged after the captain said "Steady" (one count per burst; turning for the captain's own
+    // course order, announced or under way, is fine, and so is the captain's own turn for the jump).
     if (!ev && e.hold && e.snap && this.steerAt >= e.snap.t && !this.orderView() && !this.conTaken && m.t - this.lastDisobey > this.H.evade.burst + 0.5) {
       this.lastDisobey = m.t;
       this.stats.disobeyed++; if (this.cur) this.cur.disobeyed++;
@@ -351,7 +353,7 @@
   Helm.prototype.evadeView = function () {
     var ev = this.evade, m = this.m;
     if (!ev || m.t > ev.until + 0.5) return null;
-    return { dir: ev.dir, left: Math.max(0, ev.until - m.t), off: Math.abs(norm(this.compass() - (ev.snap.hdg + ev.snap.omega * (m.t - ev.snap.t)))) };
+    return { dir: ev.dir, left: Math.max(0, ev.until - m.t), off: this.offSnap(ev.snap) };
   };
 
   /* -------------------------------------------------------- Gunners' calls
