@@ -1169,10 +1169,13 @@
     var o = h.orderView(), ob = $("hm-order"), oh;
     if (o) {
       var ok = h.onOrder({ hdg: o.hdg, eng: o.eng });
-      // Three short lines, readable at a glance: when, heading, engines (tap to fly it on autopilot).
-      oh = '<div class="ln">' + (o.active ? "NOW · hold " + Math.ceil(o.left) + "s" : "In " + Math.ceil(o.in) + "s") + (ok ? " ✔" : "") + "</div>" +
-        '<div class="ln"><b>' + (o.turn > 0 ? "Right " : "Left ") + BL.hdgText(o.hdg) + "</b></div>" +
-        '<div class="ln">All ahead ' + h.preset(o.eng).name + "</div>";
+      // Three short lines, readable at a glance: when, heading, engines, each part ticked once
+      // it's right (crossed while the order is under way and it isn't). Tap to fly it on autopilot.
+      var oe = { hdg: o.hdg, eng: o.eng };
+      function tick(on) { return on ? ' <span class="ok">✔</span>' : o.active ? ' <span class="no">✗</span>' : ""; }
+      oh = '<div class="ln">' + (o.active ? "NOW · hold " + Math.ceil(o.left) + "s" : "In " + Math.ceil(o.in) + "s") + "</div>" +
+        '<div class="ln"><b>' + (o.turn > 0 ? "Right " : "Left ") + BL.hdgText(o.hdg) + "</b>" + tick(h.onHeading(oe)) + "</div>" +
+        '<div class="ln">All ahead ' + h.preset(o.eng).name + tick(h.onEngines(oe)) + "</div>";
       setCls(ob, "hm-order" + (o.active ? " active" : "") + (ok ? " ok" : ""));
     } else if (h.engOrder) {
       oh = '<div class="ln">NOW · ' + Math.max(0, Math.ceil(h.engOrder.until - sim.t)) + "s</div>" +

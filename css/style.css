@@ -463,6 +463,8 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 .hm-order.ok b { color: var(--good); }
 .hm-order .muted { font-size: 12px; }
 .hm-order .ln { font-family: var(--mono); font-size: 16px; font-weight: 600; line-height: 1.3; }
+.hm-order .ln .ok { color: var(--good); }
+.hm-order .ln .no { color: var(--bad); }
 .hm-alerts { flex-shrink: 0; display: flex; flex-direction: column; gap: 3px; font-size: 12px; line-height: 1.3; }
 .hm-alerts:empty { display: none; }
 .hm-alerts div { padding: 3px 6px; border-radius: 4px; background: var(--panel-2); border: 1px solid var(--line); }

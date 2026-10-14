@@ -597,9 +597,10 @@
     stress: { fill: 0.6, drain: 1 / 6, hullShare: 0.05, thrusterChance: 0.3, warnAt: 0.6, after: 0.25 },
     flank: { warnAt: 15, safe: 20, damagePerSec: 0.05 },
     turnLoss: 0.15,        // a thruster hit costs this share of the top turn rate (up to 60%)
-    // captain's orders: tolerance, share held, spacing; one given on the spot (a gunner's call, the
-    // main gun, the jump heading) comes with `warn` s notice plus time to swing, held `callHold` s
-    order: { heading: 10, held: 0.7, minGap: 12, turn: [30, 100], warn: 3, callHold: 6 },
+    // captain's orders: tolerance, share held, spacing; the first `grace` s after an order starts
+    // don't count (judged on `held` of the rest); one given on the spot (a gunner's call, the main
+    // gun, the jump heading) comes with `warn` s notice (time to hear it) plus time to swing, held `callHold` s
+    order: { heading: 10, held: 0.7, minGap: 12, turn: [30, 100], warn: 6, grace: 2, callHold: 6 },
     autopilotRep: 0.75,    // autopilot time earns this share of the helm's reputation
     launch: { nagAfter: 8, autoAfter: 20, clear: 2.5, setIn: 5 },     // the gunboat in the carrier's tube; setIn: s to set the coxswain's standard
     ptBow: 20,             // the gunner launches torpedoes once a target is this close to the bow (deg)
@@ -714,6 +715,8 @@
     helmMet:     ["{who}: very well.", "{who}: steady as she goes. Well done.", "{who}: nicely done, Helm."],
     helmMissed:  ["{who}: that's not what I ordered, Helm.", "{who}: Helm, mind your orders!", "{who}: we were supposed to be on {hdg}."],
     helmMissedE: ["{who}: that's not what I ordered, Helm.", "{who}: Helm, mind your orders!"],     // an engine order missed
+    helmMissedHdg: ["{who}: we were supposed to be on {hdg}."],         // a course order: the heading was the problem
+    helmMissedEng: ["{who}: we were supposed to be at {eng}."],         // a course order: the engines were the problem
     stressWarn:  ["Damage control: she's groaning!", "Damage control: hull stress climbing!"],   // reports only: easing off is the captain's order
     easeOff:     ["{who}: ease the turn!", "{who}: ease off!"],
     stressHit:   ["Damage control: structural damage from that turn! Hull down {dmg}.", "Damage control: frames buckling! Hull down {dmg}."],

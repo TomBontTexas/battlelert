@@ -6,7 +6,7 @@
 <meta name="copyright" content="© 2011–2026 Tom Bont. All rights reserved.">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Battlelert</title>
-<link rel="stylesheet" href="css/style.css?b=39e5b65a">
+<link rel="stylesheet" href="css/style.css?b=5a89de98">
 </head>
 <body>
 
@@ -538,7 +538,7 @@
       <li><b>Steer with the wheel.</b> Drag it, or use ← →. It stays where you leave it, so the ship keeps turning until you center it (0). The ship answers a moment late, and its turn builds and dies away slowly; bigger ships are slower at both. The white tick on the compass and on the ring is where the bow will stop if you center the wheel now.</li>
       <li><b>Engine orders.</b> Each engine takes its own order on the telegraph: stop, dead slow, cruise, standard, full, flank, or dead slow, half or full astern. + and − give an exact thrust ("all ahead 3 G"). Thrust draws reactor power, so a hard burn leaves less for the shields and guns; warn engineering (E) before one. Flank is over the engines' rating: hold it too long and a thruster can burn out.</li>
       <li><b>Split engines.</b> Port ahead and starboard astern turns the ship to starboard faster than the wheel alone (and the other way round). Turning faster than the safe rate (the mark on the TURN bar) fills the hull stress bar; a full bar is a structural hit to the hull. Damage control reports the stress and the captain orders you to ease off, unless he ordered the hard turn himself (a break).</li>
-      <li><b>The captain's orders.</b> Only the captain (the coxswain on a gunboat) gives the helm orders; the crew report to the captain. He orders a heading and an engine order a few seconds ahead. The order panel shows it at a glance (when, heading, engines: "In 5s / Left 255 / All ahead Standard"; tap it to fly the heading on autopilot), and the amber mark on the compass shows the heading. Be on it, at that order, when the time comes, and hold it. Between orders you're free to fight the ship: point the bow at a frigate and your gunner fires the torpedoes.</li>
+      <li><b>The captain's orders.</b> Only the captain (the coxswain on a gunboat) gives the helm orders; the crew report to the captain. He orders a heading and an engine order a few seconds ahead. The order panel shows it at a glance (when, heading, engines: "In 5s / Left 255 / All ahead Standard"; tap it to fly the heading on autopilot), and the amber mark on the compass shows the heading. Be on it, at that order, when the time comes, and hold it: you have 2 s of grace after NOW, then must be on both the heading (±10°) and the engine order for 70% of the rest. The panel ticks each part (✔ right, ✗ wrong while the order is under way), and if you miss, the captain says which part. Orders he gives on the spot (a gunner's call, the main gun, the jump heading) come with at least 6 s notice. Between orders you're free to fight the ship: point the bow at a frigate and your gunner fires the torpedoes.</li>
       <li><b>Dodging is the captain's call.</b> When torpedoes launch, the captain (the coxswain on a gunboat) orders either steady ("Steady, Helm.", "Maintain heading.") or a break ("Break left, now!", in red on the HELM panel). Steady is said once and stands until his next order changes things (a break, a course order); he doesn't repeat it for every torpedo. He takes torpedoes always while a course order is pending or under way (the order stands), often when the shields can absorb them, and always on ships too big to swing in time. He keeps watching, and if the shields can no longer take the fish he said to take, he orders a break then. The clock starts when you hear the break order, not at launch: its torpedoes take their full flight time after it. Swing the bow 15° or more off your steady turn before they land (the panel counts the degrees and the seconds) and they miss; a break made counts as an order met. Dodging after "Steady" is disobeying an order: the captain calls you on it, it counts as an order not met, and each time costs 5% of the mission's score, and so your reputation. (Turning for the captain's own course order doesn't count, nor does steering in the few seconds after a break, such as straightening out.) A break order cuts in on the voices, so you hear it at once. To keep orders clear, the helm doesn't hear the crew's running commentary (incoming-fire counts, contacts, kills, misses, "well done"): only the captain's orders, gunners' calls, launch control, jump calls, warnings and damage.</li>
       <li><b>Gunners call the captain</b> (ships with guns that don't go all round). A gunner with nothing in their arc tells the captain ("Gunner 1: Captain, nothing in my arc. Target to port."), and he orders the helm round: a course order like any other. When the main gun is charged, the captain orders the bow onto the biggest ship. Gunners hold their calls while an order is pending.</li>
       <li><b>Jump heading</b> (ships with a GravSpace drive). Navigation gives a jump heading on arrival (green on the compass), and as the window nears, the captain orders it as a course order (again if the bow wanders off). The ship jumps once the drive is full and the bow is on it (±10°); if the drive is full and you're still off it 20 s after the window opens, the captain takes the conn.</li>
@@ -551,12 +551,12 @@
 
 <script src="version.js?b=361bc4e7"></script>
 <script src="update-banner.js?b=ec7860dd"></script>
-<script src="js/data.js?b=5e8d0d4b"></script>
+<script src="js/data.js?b=73c8b8c2"></script>
 <script src="js/sim.js?b=ad9cc346"></script>
 <script src="js/agents.js?b=35307cbd"></script>
 <script src="js/gunnery.js?b=6f7c1736"></script>
 <script src="js/ring.js?b=aa78249a"></script>
-<script src="js/helm.js?b=a9d6cbbf"></script>
+<script src="js/helm.js?b=45dff043"></script>
 <script src="js/art.js?b=3b0d069a"></script>
 <script src="js/turretview.js?b=960c39ae"></script>
 <script src="js/ringview.js?b=fe9f02cc"></script>
@@ -564,6 +564,6 @@
 <script src="js/career.js?b=26a32bc8"></script>
 <script src="js/speech.js?b=f9e428ef"></script>
 <script src="js/audio.js?b=273e5325"></script>
-<script src="js/ui.js?b=33d34e76"></script>
+<script src="js/ui.js?b=e0e6c8d3"></script>
 </body>
 </html>

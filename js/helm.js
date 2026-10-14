@@ -217,21 +217,26 @@
   Helm.prototype.busy = function () { return !!(this.curOrder || this.orderView() || this.engOrder || (this.jumpNear() && this.onJumpHeading()) || this.locked()); };
   Helm.prototype.beginOrder = function (e) {
     if (this.curOrder) this.finishOrder();
-    this.curOrder = { e: e, held: 0, end: e.at + e.dur };
+    // held: time on the whole order; hdgT, engT: on each part (to say which was missed). The first
+    // `grace` s after the order starts don't count against the pilot.
+    this.curOrder = { e: e, held: 0, hdgT: 0, engT: 0, end: e.at + e.dur };
     this.steady = false;
   };
   Helm.prototype.finishOrder = function () {
-    var o = this.curOrder, m = this.m; this.curOrder = null; this.steady = false;
-    var met = o.held >= o.e.dur * this.H.order.held;
+    var o = this.curOrder, m = this.m, A = this.H.order; this.curOrder = null; this.steady = false;
+    var judged = Math.max(1, o.e.dur - A.grace), met = o.held >= judged * A.held;
     this.stats.orders++; if (this.cur) this.cur.orders++;
     if (met) { this.stats.ordersMet++; if (this.cur) this.cur.ordersMet++; }
-    m.chat(met ? "helmMet" : "helmMissed", { who: this.who, hdg: BL.hdgText(o.e.hdg) }, met ? "good" : "bad");
+    var key = met ? "helmMet" : o.hdgT >= judged * A.held ? "helmMissedEng" : o.engT >= judged * A.held ? "helmMissedHdg" : "helmMissed";
+    m.chat(key, { who: this.who, hdg: BL.hdgText(o.e.hdg), eng: this.orderWords(o.e) }, met ? "good" : "bad");
   };
-  // On the ordered heading, and both engines ordered near what the captain asked for.
-  Helm.prototype.onOrder = function (e) {
+  // On the ordered heading; both engines ordered near what the captain asked for; both.
+  Helm.prototype.onHeading = function (e) { return Math.abs(norm(e.hdg - this.compass())) <= this.H.order.heading; };
+  Helm.prototype.onEngines = function (e) {
     var want = this.gOf(e.eng), avg = (this.port.g + this.stbd.g) / 2;
-    return Math.abs(norm(e.hdg - this.compass())) <= this.H.order.heading && Math.abs(avg - want) <= Math.max(0.6, want * 0.15);
+    return Math.abs(avg - want) <= Math.max(0.6, want * 0.15);
   };
+  Helm.prototype.onOrder = function (e) { return this.onHeading(e) && this.onEngines(e); };
 
   /* ------------------------------------------------------- Evasive orders
      On every burst of torpedoes launched at us (launched within BL.HELM.evade.burst s) the
@@ -450,7 +455,13 @@
     this.runFlank(dt);
     // The captain's order under way.
     var o = this.curOrder;
-    if (o) { if (this.onOrder(o.e)) o.held += dt; if (m.t >= o.end) this.finishOrder(); }
+    if (o) {
+      if (m.t >= o.e.at + H.order.grace) {
+        var oh = this.onHeading(o.e), oe = this.onEngines(o.e);
+        if (oh) o.hdgT += dt; if (oe) o.engT += dt; if (oh && oe) o.held += dt;
+      }
+      if (m.t >= o.end) this.finishOrder();
+    }
     this.runEngOrder();
     this.runMainGun();
     this.runJumpOrder();
