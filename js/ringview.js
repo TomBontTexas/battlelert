@@ -387,7 +387,8 @@
   // The strip at the far right of the screen (clear of the battle); the tape across the top always
   // shows the ship's heading.
   // - On autopilot it's the heading set point: a compass standing up, headings rising upward,
-  //   `span` degrees either side of the course set, with the ship's heading as the white line
+  //   the whole 360 degrees bottom to top (180 either side of the course set, so one sweep of the
+  //   thumb reaches any heading), with the ship's heading as the white line
   //   moving toward it. Drag it to set the course; the autopilot speeds up and slows the turn.
   // - By hand it's a wheel that slides up and down: no numbers; the farther from the middle, the
   //   harder the rudder (down for starboard, up for port; it stays where it's left).
@@ -410,15 +411,15 @@
       c.fillText("WHEEL", W / 2, cy - R - 18);
       return;
     }
-    var span = 45, k = H / (2 * span), ship = helm.compass(), hdg = helm.autoHdg;
+    var span = 180, k = H / (2 * span), ship = helm.compass(), hdg = helm.autoHdg;
     STRIP = { H: H, k: k, hdg: hdg };
     c.font = "600 12px ui-monospace, Consolas, monospace"; c.textAlign = "right"; c.textBaseline = "middle";
-    var first = Math.ceil((hdg - span) / 5) * 5;
-    for (var d = first; d <= hdg + span; d += 5) {
-      var yd = cy - (d - hdg) * k, ten = d % 10 === 0, big = d % 30 === 0;
-      c.strokeStyle = big ? "rgba(214,224,232,0.85)" : ten ? "rgba(214,224,232,0.55)" : "rgba(214,224,232,0.3)";
-      c.lineWidth = 1; c.beginPath(); c.moveTo(0, yd); c.lineTo(big ? 16 : ten ? 11 : 6, yd); c.stroke();
-      if (ten) { c.fillStyle = big ? "rgba(214,224,232,0.95)" : "rgba(214,224,232,0.6)"; c.fillText(BL.hdgText(d), W - 6, yd); }
+    var first = Math.ceil((hdg - span) / 10) * 10;
+    for (var d = first; d <= hdg + span; d += 10) {
+      var yd = cy - (d - hdg) * k, big = d % 30 === 0, card = d % 90 === 0;
+      c.strokeStyle = big ? "rgba(214,224,232,0.85)" : "rgba(214,224,232,0.35)";
+      c.lineWidth = 1; c.beginPath(); c.moveTo(0, yd); c.lineTo(card ? 20 : big ? 14 : 7, yd); c.stroke();
+      if (big) { c.fillStyle = card ? "rgba(214,224,232,1)" : "rgba(214,224,232,0.7)"; c.fillText(BL.hdgText(d), W - 6, yd); }
     }
     function mark(hd, col, shape) {
       var dd = ((hd - hdg) % 360 + 540) % 360 - 180, edge = Math.abs(dd) > span, ym = cy - Math.max(-span, Math.min(span, dd)) * k;

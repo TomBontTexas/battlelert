@@ -1069,12 +1069,12 @@
       }
       else moveDrag(ev);
     });
-    // The strip at the far right. On autopilot it's the heading set point: drag it (headings rise
-    // upward; it moves with the finger) and the autopilot turns her onto the course; or tap a
+    // The strip at the far right. On autopilot it's the heading set point, the whole 360 degrees
+    // from bottom to top: drag it (headings rise upward; it moves with the finger) and the autopilot turns her onto the course; or tap a
     // heading. A finger resting on the screen wanders a pixel or two, so the course moves only
     // once the finger has moved `SET_DEAD` degrees. By hand it's a wheel sliding up and down:
     // the farther from where the finger came down, the more rudder (down for starboard).
-    var SET_DEAD = 0.75, strip = $("hm-strip-cv"), stripDrag = null;
+    var SET_DEAD = 1, strip = $("hm-strip-cv"), stripDrag = null;
     strip.addEventListener("pointerdown", function (ev) {
       if (!sim || !sim.helm || !turretActive()) return;
       var r = strip.getBoundingClientRect(), hm = sim.helm, hd = BL.stripAt(ev.clientY - r.top);
