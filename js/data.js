@@ -606,20 +606,17 @@
     // Dodging (only when the captain orders a break): a torpedo misses if the bow ends `turn`
     // degrees off a steady turn when it arrives.
     dodge: { turn: 15 },
-    // Each burst Tactical reports (torpedoes launched within `burst` s) is heard `vampTime` s after
-    // launch, and its fish land no sooner than the flight time after that. When the shields hold
-    // `cover` x what's in the air the captain says "Steady" with `chance`, else it's the pilot's
-    // call; when they don't and the pilot isn't `reactDeg` off course `react` s after the report,
-    // the captain orders the break (heard `orderTime` s later; only with `lateMin` s or more left
-    // on the fish); never two breaks within `gap` s.
-    // disobeyCost: share of the mission's score lost each time the pilot dodges a torpedo the captain said to take;
-    // settle: seconds after a break's torpedo lands that steering still counts as the break (a late break, straightening out)
-    evade: { cover: 1.2, chance: 0.5, burst: 1.2, gap: 6, vampTime: 1.5, react: 1.2, reactDeg: 5, orderTime: 1, lateMin: 0.8, disobeyCost: 0.05, settle: 2.5 },     // gap: seconds between breaks
+    // The captain's order on each burst (torpedoes launched within `burst` s): break if the
+    // shields hold less than `cover` x what's in the air, else with `chance`, else steady; a later
+    // break once the shields can't take the fish he said to take (only with `lateMin` s or more
+    // left on them); never two breaks within `gap` s. A break covers its fish for the flight time
+    // after it's heard (`orderTime` s to speak it).
+    evade: { cover: 1.2, chance: 0.5, burst: 1.2, gap: 6, orderTime: 1, lateMin: 0.8, disobeyCost: 0.05, settle: 2.5 },     // gap: seconds between breaks
     // A gunner tells the captain their arc is empty after `idle` s; `cooldown` before that gun calls again.
     request: { idle: 4, cooldown: 15 },
     warnCooldown: 6,       // seconds between warnings to engineering
     // Chatter not heard at the helm (no voice, no log line): the crew's running commentary. The
-    // pilot hears only orders, break and Vampire calls, gunners' turn requests, launch control,
+    // pilot hears only orders, break and steady orders, gunners' turn requests, launch control,
     // jump calls, warnings and damage, so an order is never stuck behind other talk.
     quiet: ["salvo", "waveIn", "withdrew", "straggler", "surprise", "shielded", "dodged", "intercepted", "pdStopped",
             "torpDown", "chargeStopped", "killed", "killedOther", "request", "requestDry",
@@ -721,8 +718,7 @@
     flankDamage: ["Engineering: we burned out a thruster holding flank! {what}.", "Engineering: that's what flank does. {what}."],
     dodged:      ["Tactical: it missed! Nice flying.", "Tactical: torpedo went wide!", "Tactical: clean miss!"],
     evade:       ["{who}: break {dir}, now!", "{who}: evasive! Hard {dir}!", "{who}: break {dir}, Helm! Break {dir}!"],
-    vampire:     ["Tactical: vampire, vampire! {n} new fish!"],     // Tactical reports each burst; the captain decides
-    evadeHold:   ["{who}: steady, Helm. Let the shields take it.", "{who}: hold your course. We'll take this one.", "{who}: steady as she goes. Shields will hold."],
+    evadeHold:   ["{who}: steady as she goes. The shields can take it."],     // TexasBont's wording (Oct 14, 2026)
     disobey:     ["{who}: Helm, I said hold your course!", "{who}: that was not my order, Helm. It goes in my report.", "{who}: Helm! Steady means steady!"],
     evadeMissed: ["{who}: too slow on that break, Helm!", "{who}: I said break, Helm!"],
     helmReq:     ["Gunner {n}: Captain, nothing in my arc. Target {side}."],     // to the captain, who orders the helm

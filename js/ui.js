@@ -1117,26 +1117,26 @@
     var o = h.orderView(), ob = $("hm-order"), oh;
     if (o) {
       var ok = h.onOrder({ hdg: o.hdg, eng: o.eng });
-      oh = (o.active ? "<b>NOW</b> " : "<b>In " + Math.ceil(o.in) + " s</b> ") + "come " + (o.turn > 0 ? "right" : "left") + " to <b>" + BL.hdgText(o.hdg) + "</b>, all ahead " +
-        BL.HELM.orders.filter(function (x) { return x.id === o.eng; })[0].name.toLowerCase() + (o.active ? " · hold " + Math.ceil(o.left) + " s" : "") +
-        '<div class="muted">' + (ok ? "✔ On the order." : "Tap to fly the heading on autopilot.") + "</div>";
+      // Three short lines, readable at a glance: when, heading, engines (tap to fly it on autopilot).
+      oh = '<div class="ln">' + (o.active ? "NOW · hold " + Math.ceil(o.left) + "s" : "In " + Math.ceil(o.in) + "s") + (ok ? " ✔" : "") + "</div>" +
+        '<div class="ln"><b>' + (o.turn > 0 ? "Right " : "Left ") + BL.hdgText(o.hdg) + "</b></div>" +
+        '<div class="ln">All ahead ' + h.preset(o.eng).name + "</div>";
       setCls(ob, "hm-order" + (o.active ? " active" : "") + (ok ? " ok" : ""));
     } else if (h.engOrder) {
-      oh = "<b>NOW</b> all ahead " + h.preset(h.engOrder.eng).name.toLowerCase() + " · " + Math.max(0, Math.ceil(h.engOrder.until - sim.t)) + " s" +
-        '<div class="muted">Tap to set both engines.</div>';
+      oh = '<div class="ln">NOW · ' + Math.max(0, Math.ceil(h.engOrder.until - sim.t)) + "s</div>" +
+        '<div class="ln"><b>All ahead ' + h.preset(h.engOrder.eng).name + "</b></div>";
       setCls(ob, "hm-order active");
     } else {
       oh = h.inTube ? "In the carrier's launch tube. Launch when ready (Space)." : "Free helm: no orders. Fight the " + (sim.hasDrive ? "ship." : "boat.");
       setCls(ob, "hm-order");
     }
     setHtml(ob, oh);
-    // Alerts: the captain's break order (or "Steady", or the pilot's call), the jump heading (tap it to fly it on autopilot)
+    // Alerts: the captain's break order (or "Steady"), the jump heading (tap it to fly it on autopilot)
     var al = [], D = BL.HELM.dodge, ev = h.evadeView(), inbound = tu.torps.filter(function (tp) { return tp.ev && tp.ev.type === "salvo" && !tp.ev.done && !tp.mine; });
     if (ev && ev.left > 0) al.push('<div class="torp">⚠ BREAK ' + (ev.dir > 0 ? "RIGHT" : "LEFT") + " NOW: " + ev.left.toFixed(1) + " s · " + Math.round(ev.off) + "° of " + D.turn + "°</div>");
     else if (inbound.length) {
-      var steady = inbound.some(function (tp) { return tp.ev.hold; });
-      al.push('<div class="hold">' + inbound.length + (inbound.length === 1 ? " torpedo" : " torpedoes") + " inbound. " +
-        (steady ? h.who + ": steady, the shields take " + (inbound.length === 1 ? "it" : "them") + ". (Dodging anyway is disobeying.)" : "Your call: break if you wish.") + "</div>");
+      al.push('<div class="hold">' + inbound.length + (inbound.length === 1 ? " torpedo" : " torpedoes") + " inbound. " + h.who + ": steady as she goes, the shields can take " +
+        (inbound.length === 1 ? "it" : "them") + ". (Dodging anyway is disobeying.)</div>");
     }
     var jv = h.jumpView();
     if (jv) al.push('<div class="jump' + (jv.on ? "" : jv.in < 30 ? " off" : "") + '" data-hdg="' + jv.hdg + '">Jump heading <b>' + BL.hdgText(jv.hdg) + "</b> · " + (jv.in > 0 ? "window in " + Math.ceil(jv.in) + " s" : "window open") + (jv.on ? " ✔" : "") + "</div>");
