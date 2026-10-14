@@ -677,7 +677,7 @@
     straggler:   ["Tactical: stragglers from another quadrant. {enemy} inbound!", "Tactical: more contacts, {enemy} breaking off from another fight.", "Tactical: {enemy} joining in from the flank!"],
     ptMiss:      ["Tactical: torpedo missed.", "Coxswain: it slipped the torpedo."],
     // The helm. A key ending in H replaces the plain one (and the gunner's G one) at the helm.
-    launchH:     ["Carrier: gunboat in the tube. Launch when ready.", "Carrier: you're in the tube, Helm. Launch when ready.", "Coxswain: launch control is ours. Launch when ready."],
+    launchH:     ["Carrier: Transferring launch control to PT Squadron. Launch when ready."],   // TexasBont's launch line (Oct 13, 2026)
     arrivalH:    ["Bridge: dropping out of GravSpace. Helm, she's yours.", "Bridge: normal space. Helm, stand by for orders."],
     recoveredH:  ["Carrier: gunboat recovered. Nice flying.", "Coxswain: we're on the deck. Good flying, Helm."],
     burnH:       [],                     // the captain's orders replace the bridge's burns at the helm
