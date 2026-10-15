@@ -471,7 +471,8 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 /* Fixed slots (torpedoes; the jump heading on ships with a drive): they never appear or vanish,
    so the telegraph below never moves under a finger. */
 .hm-alerts { flex-shrink: 0; display: flex; flex-direction: column; gap: 3px; font-size: 12px; line-height: 1.3; }
-.hm-alerts div { height: 32px; box-sizing: border-box; overflow: hidden; padding: 2px 6px; line-height: 1.25; border-radius: 4px; background: var(--panel-2); border: 1px solid var(--line); }
+.hm-alerts div { height: 32px; box-sizing: border-box; overflow: hidden; display: flex; flex-direction: column; justify-content: center; padding: 2px 6px; line-height: 1.25; border-radius: 4px; background: var(--panel-2); border: 1px solid var(--line); }
+.hm-alerts div span { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hm-alerts div.empty { visibility: hidden; }
 .hm-alerts b { font-family: var(--mono); font-weight: 600; }
 .hm-alerts .torp { color: var(--bad); border-color: var(--bad); animation: blink .6s steps(2) infinite; }

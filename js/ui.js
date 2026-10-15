@@ -1213,14 +1213,15 @@
     // Alerts: the captain's break order (or "Steady"), the jump heading (tap it to fly it on autopilot)
     var al = [], D = BL.HELM.dodge, ev = h.evadeView(), inbound = tu.torps.filter(function (tp) { return tp.ev && tp.ev.type === "salvo" && !tp.ev.done && !tp.mine; });
     // Slot 1: torpedoes. Slot 2 (ships with a drive): the jump heading. Empty slots keep their space.
+    // Each slot: one or two short lines (<span>), centered top to bottom.
     var slot1 = '<div class="empty"></div>';
-    if (ev && ev.left > 0) slot1 = ('<div class="torp">⚠ BREAK ' + (ev.dir > 0 ? "RIGHT" : "LEFT") + " NOW: " + ev.left.toFixed(1) + " s · " + Math.round(ev.off) + "° of " + D.turn + "°</div>");
-    else if (inbound.length) {
-      if (!h.steady) slot1 = ('<div class="hold">' + inbound.length + (inbound.length === 1 ? " torpedo" : " torpedoes") + " inbound." + (h.orderView() ? " Hold the ordered course." : "") + "</div>");
-    }
+    if (ev && ev.left > 0) slot1 = '<div class="torp"><span>⚠ BREAK ' + (ev.dir > 0 ? "RIGHT" : "LEFT") + " NOW: " + ev.left.toFixed(1) + " s</span><span>" + Math.round(ev.off) + "° of " + D.turn + "°</span></div>";
+    else if (inbound.length && !h.steady)
+      slot1 = '<div class="hold"><span>' + inbound.length + (inbound.length === 1 ? " torpedo" : " torpedoes") + " inbound.</span>" + (h.orderView() ? "<span>Hold the ordered course.</span>" : "") + "</div>";
     al.push(slot1);
     var jv = h.jumpView();
-    if (h.jumpHdg !== null) al.push(!jv ? '<div class="empty"></div>' : '<div class="jump' + (jv.on ? "" : jv.in < 30 ? " off" : "") + '" data-hdg="' + jv.hdg + '">Jump heading <b>' + BL.hdgText(jv.hdg) + "</b> · " + (jv.in > 0 ? "window in " + Math.ceil(jv.in) + " s" : "window open") + (jv.on ? " ✔" : "") + "</div>");
+    if (h.jumpHdg !== null) al.push(!jv ? '<div class="empty"></div>' : '<div class="jump' + (jv.on ? "" : jv.in < 30 ? " off" : "") + '" data-hdg="' + jv.hdg + '"><span>Jump heading <b>' + BL.hdgText(jv.hdg) + "</b>" + (jv.on ? " ✔" : "") + "</span><span>" +
+      (jv.in > 0 ? "Window in " + Math.ceil(jv.in) + " s" : "Window open") + "</span></div>");
     setHtml($("hm-alerts"), al.join(""));
     // Telegraph and thrust
     Array.prototype.forEach.call($("hm-tele").querySelectorAll("button"), function (b) {
