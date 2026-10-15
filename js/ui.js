@@ -800,6 +800,8 @@
     var box = $("tu-field"), cv = $("tu-canvas"), dpr = window.devicePixelRatio || 1;
     var side = Math.floor(Math.max(120, Math.min(box.clientWidth, box.clientHeight)));
     var w = wideOn() ? Math.floor(Math.max(120, box.clientWidth)) : side, h = wideOn() ? side : side;
+    // At the helm the view fills its whole column, top to bottom (the battle stays centered).
+    if (sim && sim.helm) { w = Math.floor(Math.max(120, box.clientWidth - 2)); h = Math.floor(Math.max(120, box.clientHeight - 2)); }
     if (side === tuSize && w === tuW && h === tuH && tuCtx) return;
     tuSize = side; tuW = w; tuH = h;
     cv.style.width = w + "px"; cv.style.height = h + "px";

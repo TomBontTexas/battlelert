@@ -444,7 +444,7 @@
     this.mineDue = (this.mineDue || 0) + Math.abs(v) / H.flow * dt / r.range(H.every);   // one per `every` s at standard
     if (this.mineDue < 1) return;
     this.mineDue -= 1;
-    var x = R.cx + (r.next() * 2 - 1) * H.spread * R.rx, y = v >= 0 ? -0.06 : 1.06;
+    var x = R.cx + (r.next() * 2 - 1) * H.spread * R.rx, y = v >= 0 ? -0.3 : 1.3;      // (out of sight on a tall view)
     var e = { id: m.nextId++, type: "mine", at: Infinity, mj: Math.round(r.range(mj) * m.data.threat.dmg), announced: true, visible: true };
     m.events.push(e);
     var tp = { id: this.nextId++, ev: e, mine: true, field: true, crewHit: H.crewHit && H.crewHit * Math.min(1, 3 / this.bats.length), x0: x, y0: y, x1: x, y1: y, hitB: 0, t0: m.t, t1: m.t + 99, x: x, y: y, spin: r.next() * 6 };
@@ -466,7 +466,7 @@
       tp.y += v * dt;
       var dx = (tp.x - R.cx) / R.rx, dy = (tp.y - R.cy) / R.ry;
       if (dx * dx + dy * dy <= 1) { e.at = m.t; tp.x1 = tp.x; tp.y1 = tp.y; tp.t1 = m.t; self.torps.push(tp); return; }
-      if (tp.y > 1.12 || tp.y < -0.12 || tp.x < -0.12 || tp.x > 1.12) { e.done = true; e.passed = true; return; }
+      if (tp.y > 1.35 || tp.y < -0.35 || tp.x < -0.35 || tp.x > 1.35) { e.done = true; e.passed = true; return; }
       // Where and when it would touch the shield if the ship holds this course (for the warning ring
       // and the gunners); one that will pass by: when it's abeam (the gunners still shoot it, no ring).
       tp.pass = false;
