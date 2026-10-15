@@ -1689,6 +1689,14 @@
       ["efficiency", "Accuracy", "wild", "sharp"],
       ["demands", "Threats stopped", "few", "all"],
       ["condition", "Ship condition", "wrecked", "untouched"]
+    ],
+    pilot: [
+      ["aggression", "Aggression", "gentle", "hard turns, flank"],
+      ["winloss", "Win/loss", "losses", "wins"],
+      ["efficiency", "Following orders", "freelancer", "by the book"],
+      ["demands", "Dodging", "late", "sharp"],
+      ["guns", "Guns on target", "rarely", "always"],
+      ["condition", "Ship condition", "wrecked", "untouched"]
     ]
   };
   function profileHtml(p, before, station) {
@@ -1773,10 +1781,12 @@
       (last.outcome === "success" ? "success, +" + last.rep + " reputation" : last.outcome) + "." : "No missions yet. Your first job offers are waiting.";
     $("btn-hub-eng").textContent = "Engineer jobs (" + BL.career.offers(career, "engineer").length + ")";
     $("btn-hub-gun").textContent = "Gunner jobs (" + BL.career.offers(career, "gunner").length + ")";
+    $("btn-hub-pilot").textContent = "Pilot jobs (" + BL.career.offers(career, "pilot").length + ")";
     show("scr-hub");
   }
   $("btn-hub-eng").onclick = function () { click(); showOffers("offers", "engineer"); };
   $("btn-hub-gun").onclick = function () { click(); showOffers("offers", "gunner"); };
+  $("btn-hub-pilot").onclick = function () { click(); showOffers("offers", "pilot"); };
   $("btn-offers-lower").onclick = function () { click(); showOffers(offersMode === "lower" ? "offers" : "lower", offersStation); };
   $("btn-hub-record").onclick = function () { click(); showRecord(); };
   $("btn-hub-options").onclick = function () { click(); openOptions(); };
@@ -1802,7 +1812,7 @@
       (opts.length ? '<div class="menu">' + opts.map(function (o) {
         return '<button class="primary" data-st="' + o.station + '" data-n="' + o.n + '">Sign off as ' + BL.career.STATION_NAME[o.station] + "-" + o.n + " (" + BL.classByN(o.n).name.toLowerCase() + ")</button>";
       }).join("") + "</div>" :
-      '<p class="muted">' + (held ? "Nothing to spend one on right now: the next class at your other stations is either higher than N − 2 or not built yet (the pilot station isn't built yet)." : "Unused sign-offs stay available.") + "</p>");
+      '<p class="muted">' + (held ? "Nothing to spend one on right now: the next class at your other stations is either higher than N − 2 or not built yet." : "Unused sign-offs stay available.") + "</p>");
   }
   $("signoffs-body").addEventListener("click", function (ev) {
     var b = ev.target.closest("button[data-st]"); if (!b) return;
@@ -1821,11 +1831,13 @@
       var p = j[st];
       return BL.career.STATION_NAME[st] + "-" + j.n + " " + esc(p.who || p.name.split(" ").slice(-2).join(" ")) + ", " + p.label + " (skill " + Math.round(p.skill * 100) + ")";
     });
-    // A gunner job also names the gun crew (the same people the mission will roll).
-    if (j.station === "gunner" && BL.pickGunCrew) BL.pickGunCrew(j.seed, j.classId).forEach(function (c, k) {
+    // A gunner or pilot job also names the gun crew (the same people the mission will roll; at
+    // the helm, every gun is crewed).
+    var pilot = j.station === "pilot";
+    if ((j.station === "gunner" || pilot) && BL.pickGunCrew) BL.pickGunCrew(j.seed, j.classId, pilot).forEach(function (c, k) {
       if (c) crew.push("Gun " + (k + 1) + " " + esc(c.name) + ", " + c.label + " (skill " + Math.round(c.skill * 100) + ")");
     });
-    var arms = j.station === "gunner" ? (j.weapons || ["pulse"]).map(function (id, k) { return "Gun " + (k + 1) + " " + BL.WEAPONS[id].name.toLowerCase(); })
+    var arms = j.station === "gunner" || pilot ? (j.weapons || BL.GUNNERY.loadout[j.classId] || ["pulse"]).map(function (id, k) { return "Gun " + (k + 1) + " " + BL.WEAPONS[id].name.toLowerCase(); })
       .concat(BL.classById(j.classId).mainGun ? ["Main gun"] : [], j.classId === "gunboat" ? ["Two torpedoes"] : []) : [];
     function sec(title, rows) { return rows.length ? '<div class="offer-sec"><div class="offer-sec-h">' + title + "</div>" + rows.map(function (x) { return "<div>" + x + "</div>"; }).join("") + "</div>" : ""; }
     return '<div class="offer' + (up ? " stepup" : "") + '"><h3>' + esc(BL.shipLabel(j.classId, j.ship)) + " (TL" + j.tl + ")" + tag + "</h3>" +
@@ -1844,6 +1856,8 @@
       $("offers-title").textContent = who + " jobs";
       $("offers-lede").textContent = (station === "gunner"
         ? "Postings for gunners at your level. Each lists the ship's guns and names the engineer who'll run your power and the gun crew."
+        : station === "pilot"
+        ? "Postings for pilots at your level. Each names the engineer who'll run the power and the gun crew who'll work the guns while you fly. Bigger ships turn slower and answer the helm later."
         : "Postings for engineers at your level. Lower tech levels are harder (smaller reactor and capacitors, weaker guns) and earn more reputation.") +
         (q && BL.career.built(station, q + 1) ? " There's always a tech-level-1 posting for your class and for the class above it." : " There's always a tech-level-1 posting.");
     } else {

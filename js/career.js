@@ -9,15 +9,18 @@
   var KEY = BL.APP_TAG + "_career";
   var STATIONS = ["engineer", "gunner", "pilot"];
   var STATION_NAME = { engineer: "Engineer", gunner: "Gunner", pilot: "Pilot" };
-  var PLAYABLE = { engineer: true, gunner: true }; // stations built so far
+  var PLAYABLE = { engineer: true, gunner: true, pilot: true }; // stations built so far
   var GUNNER_CLASSES = 9;                          // the gunner station is built up to this class
-  // Is this class built for this station? (The engine room runs on every built class.)
+  // Is this class built for this station? (The engine room runs on every built class; the helm
+  // flies every class in BL.HELM.classes.)
   function built(station, n) {
     var cls = BL.classByN(n);
     if (!cls || !PLAYABLE[station]) return false;
+    if (station === "pilot") return !!(BL.HELM && BL.HELM.classes[cls.id]);
     return station === "gunner" ? n <= GUNNER_CLASSES : !!cls.built;
   }
-  function blankProfile() { return { missions: 0, wins: 0, losses: 0, aggression: 0, efficiency: 0, demands: 0, condition: 0 }; }
+  // guns: the pilot's "guns on target" slot (unused at the other stations).
+  function blankProfile() { return { missions: 0, wins: 0, losses: 0, aggression: 0, efficiency: 0, demands: 0, condition: 0, guns: 0 }; }
 
   var NAMES_VERSION = 2;                           // 2 = the historical ship roster (names.js)
 
@@ -118,7 +121,8 @@
      Generic postings for now: a ship class, a tech level and a ship name; one list per station.
      Always a tech-level-1 offer for the class you're on and, once you're qualified, one
      for the class above; more offers from the class above come as reputation grows.
-     A gunner job names the engineer you'd serve with (the same one the mission will roll).
+     A gunner job names the engineer you'd serve with (the same one the mission will roll); a
+     pilot job the engineer and the gun crew.
      Crew hooks: a job names each crewmate it knows as job.engineer, job.gunner or job.pilot
      ({ name, who, label, skill }); the listing shows whichever are there. To come: engineer
      jobs name the gunner and pilot, gunner jobs the pilot, pilot jobs the engineer and gunner,
@@ -129,6 +133,7 @@
       ship: BL.shipName(rng, cls.id, tl), seed: 1 + Math.floor(rng.next() * 999999), serious: serious !== false };
     job.hull = BL.hullNumber(cls.id, job.ship);
     if (station === "gunner") { job.weapons = (BL.GUNNERY.loadout[cls.id] || ["pulse"]).slice(); if (BL.pickEngineer) job.engineer = BL.pickEngineer(job.seed, cls.id); }
+    if (station === "pilot") { job.helm = true; if (BL.pickEngineer) job.engineer = BL.pickEngineer(job.seed, cls.id); }
     return job;
   }
   function offers(c, station) { return c.offersBy[station] || []; }
@@ -214,13 +219,22 @@
     while (c.signoffsUsed.length > signoffsTotal(c)) c.signoffsUsed.pop();
     // Reputation profile, one per station: running averages over every mission at that station.
     // At the gun, accuracy fills the efficiency slot and threats stopped the demands-met slot.
+    // At the helm: orders followed (efficiency slot), dodging (the breaks the captain ordered and
+    // you made; demands slot) and guns on target (the share of enemy ships the gun crew destroyed).
     var p = c.profiles[job.station] = c.profiles[job.station] || blankProfile(), n = p.missions;
     report.profileBefore = profile(c, job.station);
     function avg(old, v) { return (old * n + v) / (n + 1); }
-    var gun = job.station === "gunner";
+    var gun = job.station === "gunner", hm = job.station === "pilot" && r.helm;
     p.aggression = avg(p.aggression, r.aggression || 0);
-    p.efficiency = avg(p.efficiency, gun ? (r.gunner ? r.gunner.accuracyPct : 0) / 100 : r.detail.efficiencyPct / 100);
-    p.demands = avg(p.demands, (gun ? r.parts.threats : r.parts.demands) / 25);
+    if (hm) {
+      var asked = hm.orders + hm.requests + hm.evasive + hm.disobeyed;
+      p.efficiency = avg(p.efficiency, asked ? (hm.ordersMet + hm.requestsMet + hm.evasiveMet) / asked : 1);
+      p.demands = avg(p.demands, hm.evasive ? hm.evasiveMet / hm.evasive : 1);
+      p.guns = avg(p.guns || 0, hm.ships ? hm.kills / hm.ships : 0);
+    } else {
+      p.efficiency = avg(p.efficiency, gun ? (r.gunner ? r.gunner.accuracyPct : 0) / 100 : r.detail.efficiencyPct / 100);
+      p.demands = avg(p.demands, (gun ? r.parts.threats : r.parts.demands) / 25);
+    }
     p.condition = avg(p.condition, r.parts.condition / 25);
     p.missions = n + 1;
     if (success) p.wins++; else p.losses++;
@@ -278,7 +292,8 @@
       winloss: flown ? p.wins / flown : 0,
       efficiency: p.efficiency,
       demands: p.demands,
-      condition: p.condition
+      condition: p.condition,
+      guns: p.guns || 0
     };
   }
 
