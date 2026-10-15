@@ -432,6 +432,19 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 .hm-nudge:active { background: #1b3a4a; }
 .hm-strip[hidden] { display: none !important; }
 #tu-mainrow[hidden] { display: none; }
+/* The helm's reactors, side by side: each bar's top half is its load, the bottom half its heat
+   (the mark is the heat alarm). */
+.hm-rx { display: flex; gap: 6px; }
+.hm-rx .rx { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; font: 600 10px var(--mono); color: var(--muted); }
+.hm-rx .rxbar { position: relative; width: 100%; height: 20px; box-sizing: border-box; background: var(--panel-2); border: 1px solid var(--line); border-radius: 3px; overflow: hidden; }
+.hm-rx .rxbar i { position: absolute; left: 0; height: 50%; width: 0; }
+.hm-rx .rxbar .ld { top: 0; background: #5fa3e0; }
+.hm-rx .rxbar .ld.over { background: var(--bad); }
+.hm-rx .rxbar .ht { bottom: 0; background: var(--heat); }
+.hm-rx .rxbar .ht.hot { background: var(--bad); animation: blink .4s steps(2) infinite; }
+.hm-rx .rxbar .mk { bottom: 0; left: 80%; width: 2px; background: rgba(255,255,255,0.6); }
+.hm-rx .rxbar .mid { top: 50%; height: 1px; width: 100%; background: rgba(255,255,255,0.15); }
+.hm-rx-key { font-size: 10px; color: var(--muted); }
 .hbar-fill.main-fill { background: #ffd666; }
 #scr-turret.wide .tu-side { display: none; }
 .tu-hud { position: absolute; inset: 0; pointer-events: none; font-size: 13px; color: var(--muted); }

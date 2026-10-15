@@ -1158,7 +1158,12 @@
      panel (orders, engine telegraph, thrust, reactor, turn, hull stress, autopilot, warn
      engineering), the wheel over the view, and LAUNCH while a gunboat waits in the tube. */
   function buildHelm() {
-    var rows = BL.HELM.orders.slice().reverse(), h = sim.helm;
+    var rows = BL.HELM.orders.slice().reverse(), h = sim.helm, R = sim.ship.reactors;
+    // One bar per reactor, side by side: RX1, RX2, RX3.
+    $("hm-rx-title").textContent = R.length > 1 ? "REACTORS" : "REACTOR";
+    $("hm-rxs").innerHTML = R.map(function (rx, i) {
+      return '<div class="rx"><div class="rxbar"><i class="ld"></i><i class="ht"></i><i class="mid"></i><i class="mk"></i></div><span>RX' + (i + 1) + "</span></div>";
+    }).join("");
     $("hm-tele").innerHTML = '<span class="h">PORT</span><span class="h">BOTH</span><span class="h">STBD</span>' + rows.map(function (o) {
       var cls = o.f < 0 ? " astern" : "";
       return '<button class="side' + cls + '" data-side="port" data-ord="' + o.id + '" title="Port engine: ' + o.name.toLowerCase() + '">' + h.gOf(o.id) + '</button>' +
@@ -1235,8 +1240,13 @@
     setText($("hm-gval"), "ordered " + fmtG(h.port.g) + " / " + fmtG(h.stbd.g) + " G");
     setText($("hm-thrust"), fmtG(ship.g) + " G · " + Math.round(ship.engineMW) + " MW" + (ship.starved ? " · STARVED" : ""));
     $("hm-thrust-fill").style.width = pct(ship.g / (h.full() * 1.1));
-    setText($("hm-rx"), "load " + Math.round(ship.loadPct) + "% · heat " + Math.round(ship.heat));
-    $("hm-heat").style.width = pct(ship.heat / 100);
+    var rxEls = $("hm-rxs").children;
+    ship.reactors.forEach(function (rx, i) {
+      var el = rxEls[i]; if (!el) return;
+      var ld = el.querySelector(".ld"), ht = el.querySelector(".ht");
+      ld.style.width = pct(Math.min(1, rx.loadPct / 100)); ld.classList.toggle("over", rx.loadPct > 100);
+      ht.style.width = pct(Math.min(1, rx.heat / 100)); ht.classList.toggle("hot", rx.heat >= BL.PHYSICS.alarmHeat);
+    });
     // Turn: the safe band, what the rudder asks for, what the ship is doing
     var top = Math.max(1, h.topTurn() * 1.6), half = function (v) { var w = Math.min(50, Math.abs(v) / top * 50); return v >= 0 ? [50, w] : [50 - w, w]; };
     var sf = Math.min(50, h.C.safe / top * 50), wq = half(h.want), nq = half(h.omega);
