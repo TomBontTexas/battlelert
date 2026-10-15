@@ -1199,7 +1199,7 @@
       // heading to hold, the torpedoes he's taking), or FREE HELM only when you truly are free.
       var vd = h.verdict && sim.t < h.verdict.until ? h.verdict : null, sv = h.steadyView();
       oh = vd ? '<div class="ln">' + vd.text + (vd.met ? ' <span class="ok">✔</span>' : ' <span class="no">✗</span>') + "</div>" : "";
-      if (h.inTube) oh += "In the carrier's launch tube. Launch when ready (Space).";
+      if (h.inTube) oh += '<div class="ln">IN THE TUBE</div><div class="ln">Launch when ready</div>';
       else if (sv) {
         var onS = Math.abs(((h.compass() - sv.hdg) % 360 + 540) % 360 - 180) <= BL.HELM.order.heading;
         oh += '<div class="ln">STEADY</div><div class="ln"><b>Hold ' + BL.hdgText(sv.hdg) + "</b>" + (onS ? ' <span class="ok">✔</span>' : ' <span class="no">✗</span>') + "</div>" +
@@ -1210,12 +1210,15 @@
     if (ob.innerHTML !== oh) { ob.innerHTML = oh; fitLines(ob); }
     // Alerts: the captain's break order (or "Steady"), the jump heading (tap it to fly it on autopilot)
     var al = [], D = BL.HELM.dodge, ev = h.evadeView(), inbound = tu.torps.filter(function (tp) { return tp.ev && tp.ev.type === "salvo" && !tp.ev.done && !tp.mine; });
-    if (ev && ev.left > 0) al.push('<div class="torp">⚠ BREAK ' + (ev.dir > 0 ? "RIGHT" : "LEFT") + " NOW: " + ev.left.toFixed(1) + " s · " + Math.round(ev.off) + "° of " + D.turn + "°</div>");
+    // Slot 1: torpedoes. Slot 2 (ships with a drive): the jump heading. Empty slots keep their space.
+    var slot1 = '<div class="empty"></div>';
+    if (ev && ev.left > 0) slot1 = ('<div class="torp">⚠ BREAK ' + (ev.dir > 0 ? "RIGHT" : "LEFT") + " NOW: " + ev.left.toFixed(1) + " s · " + Math.round(ev.off) + "° of " + D.turn + "°</div>");
     else if (inbound.length) {
-      if (!h.steady) al.push('<div class="hold">' + inbound.length + (inbound.length === 1 ? " torpedo" : " torpedoes") + " inbound." + (h.orderView() ? " Hold the ordered course." : "") + "</div>");
+      if (!h.steady) slot1 = ('<div class="hold">' + inbound.length + (inbound.length === 1 ? " torpedo" : " torpedoes") + " inbound." + (h.orderView() ? " Hold the ordered course." : "") + "</div>");
     }
+    al.push(slot1);
     var jv = h.jumpView();
-    if (jv) al.push('<div class="jump' + (jv.on ? "" : jv.in < 30 ? " off" : "") + '" data-hdg="' + jv.hdg + '">Jump heading <b>' + BL.hdgText(jv.hdg) + "</b> · " + (jv.in > 0 ? "window in " + Math.ceil(jv.in) + " s" : "window open") + (jv.on ? " ✔" : "") + "</div>");
+    if (h.jumpHdg !== null) al.push(!jv ? '<div class="empty"></div>' : '<div class="jump' + (jv.on ? "" : jv.in < 30 ? " off" : "") + '" data-hdg="' + jv.hdg + '">Jump heading <b>' + BL.hdgText(jv.hdg) + "</b> · " + (jv.in > 0 ? "window in " + Math.ceil(jv.in) + " s" : "window open") + (jv.on ? " ✔" : "") + "</div>");
     setHtml($("hm-alerts"), al.join(""));
     // Telegraph and thrust
     Array.prototype.forEach.call($("hm-tele").querySelectorAll("button"), function (b) {
