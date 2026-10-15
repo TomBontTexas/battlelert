@@ -152,7 +152,8 @@
       var en = sim.turret.engineer;
       $("brief-pt").hidden = !sim.data.torpedoes || !!sim.helm;
       $("brief-gmain").hidden = !sim.turret.firesMain || !!sim.helm;
-      $("brief-gmines").hidden = sim.route.indexOf("minefield") < 0;
+      $("brief-gmines").hidden = sim.route.indexOf("minefield") < 0 || !!sim.helm;
+      $("brief-hmines").hidden = sim.route.indexOf("minefield") < 0 || !sim.helm;
       $("brief-gwing").hidden = !sim.sys("hangar");
       $("brief-gciws").hidden = !sim.sys("pd");
       var bats = sim.turret.bats;

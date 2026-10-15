@@ -409,10 +409,16 @@
   /* --------------------------------------------------------------- Mines
      In a minefield, mines drift in from ahead and the flanks toward the shield. They fly like
      torpedoes (same list, so guns, clicks and AI gunners treat them alike); one that reaches the
-     shield hits like a torpedo. */
+     shield hits like a torpedo.
+     At the helm the mines sit still and the ship moves through them: they stream down the view
+     from ahead (up from astern when going astern), as fast as the ship moves and as often (none
+     while she's stopped), and turning swings the whole field around her. One that touches the
+     shield hits; the rest pass by. The pilot steers between them; the guns still shoot them. */
   RingTurret.prototype.dropMines = function () {
     var m = this.m, enc = m.encounter(), M = enc && enc.mines && enc.mines.gunner, R = this.R, r = this.rng;
-    if (!M || (m.phase !== "engage" && m.phase !== "countdown") || m.t < this.nextMineAt) return;
+    if (!M || (m.phase !== "engage" && m.phase !== "countdown")) return;
+    if (m.helm) { this.dropFieldMine(enc.mines.helm, M); return; }
+    if (m.t < this.nextMineAt) return;
     this.nextMineAt = m.t + r.range(M.every) / (m.ship.starved ? M.starvedMult : 1);
     var b0 = this.pickBearing(), hitB = b0 + (r.next() - 0.5) * 20, p = this.rim(hitB);
     var x0 = R.cx + R.enter * Math.sin(b0 * RAD), y0 = R.cy - R.enter * Math.cos(b0 * RAD);
@@ -422,6 +428,49 @@
     var tp = { id: this.nextId++, ev: e, mine: true, x0: x0, y0: y0, x1: p.x, y1: p.y, hitB: hitB, t0: m.t, t1: e.at, x: x0, y: y0, spin: r.next() * 6 };
     e.torp = tp; this.torps.push(tp);
     count(this, "mines");
+  };
+  // The helm: how fast the field streams past (fields/s, + down the view), from the ship's speed.
+  RingTurret.prototype.fieldFlow = function (H) {
+    var h = this.m.helm, f = h.speed / Math.max(1, h.gOf("standard"));
+    return h.inTube ? 0 : H.flow * Math.max(-H.maxFlow, Math.min(H.maxFlow, f));
+  };
+  // The helm: mines come up ahead (astern when going astern) as the ship covers ground.
+  RingTurret.prototype.dropFieldMine = function (H, M) {
+    var m = this.m, r = this.rng, R = this.R, v = this.fieldFlow(H), dt = 1 / BL.TICK_RATE;
+    this.mineDue = (this.mineDue || 0) + Math.abs(v) / H.flow * dt / r.range(H.every);   // one per `every` s at standard
+    if (this.mineDue < 1) return;
+    this.mineDue -= 1;
+    var x = R.cx + (r.next() * 2 - 1) * H.spread * R.rx, y = v >= 0 ? -0.06 : 1.06;
+    var e = { id: m.nextId++, type: "mine", at: Infinity, mj: Math.round(r.range(M.mj) * m.data.threat.dmg), announced: true, visible: true };
+    m.events.push(e);
+    var tp = { id: this.nextId++, ev: e, mine: true, field: true, x0: x, y0: y, x1: x, y1: y, hitB: 0, t0: m.t, t1: m.t + 99, x: x, y: y, spin: r.next() * 6 };
+    e.torp = tp; this.torps.push(tp);
+    count(this, "mines");
+  };
+  // The helm: move the field's mines with the ship; one touching the shield hits, one past the view is gone.
+  RingTurret.prototype.moveFieldMines = function (list) {
+    var m = this.m, R = this.R, self = this, enc = m.encounter(), H = enc && enc.mines && enc.mines.helm;
+    var v = H ? this.fieldFlow(H) : 0, dt = 1 / BL.TICK_RATE;
+    list.forEach(function (tp) {
+      var e = tp.ev;
+      if (e.done) {
+        if (!e.downed && !e.passed) self.effects.push({ type: e.outcome === "hull" ? "hullHit" : "shieldHit", x: tp.x1, y: tp.y1, at: m.totalT, mj: e.mj });
+        return;
+      }
+      if (m.events.indexOf(e) < 0) return;
+      if (e.at <= m.t) { self.torps.push(tp); return; }               // touched: the simulation fires it
+      tp.y += v * dt;
+      var dx = (tp.x - R.cx) / R.rx, dy = (tp.y - R.cy) / R.ry;
+      if (dx * dx + dy * dy <= 1) { e.at = m.t; tp.x1 = tp.x; tp.y1 = tp.y; tp.t1 = m.t; self.torps.push(tp); return; }
+      if (tp.y > 1.12 || tp.y < -0.12 || tp.x < -0.12 || tp.x > 1.12) { e.done = true; e.passed = true; return; }
+      // Where and when it would touch the shield if the ship holds this course (for the warning ring and the gunners).
+      if (Math.abs(dx) < 1 && v) {
+        var edge = R.ry * Math.sqrt(1 - dx * dx), yh = v > 0 ? R.cy - edge : R.cy + edge;
+        if ((yh - tp.y) * v > 0) { tp.x1 = tp.x; tp.y1 = yh; tp.t1 = m.t + (yh - tp.y) / v; self.torps.push(tp); return; }
+      }
+      tp.x1 = tp.x; tp.y1 = tp.y; tp.t1 = m.t + 99;
+      self.torps.push(tp);
+    });
   };
   RingTurret.prototype.downMine = function (tp, b) {
     if (!tp.mine) return BL.Turret.prototype.downTorpedo.call(this, tp, b);
@@ -585,9 +634,10 @@
   };
   // Drive strikes fly their curve; one that lands blows up on the drive. The rest land as usual.
   RingTurret.prototype.landTorpedoes = function () {
-    var m = this.m, self = this, strikes = [];
-    this.torps = this.torps.filter(function (tp) { if (tp.strike) strikes.push(tp); return !tp.strike; });
+    var m = this.m, self = this, strikes = [], field = [];
+    this.torps = this.torps.filter(function (tp) { if (tp.strike) strikes.push(tp); if (tp.field) field.push(tp); return !tp.strike && !tp.field; });
     BL.Turret.prototype.landTorpedoes.call(this);
+    this.moveFieldMines(field);
     strikes.forEach(function (tp) {
       var e = tp.ev;
       if (e.done) {

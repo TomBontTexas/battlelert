@@ -332,7 +332,7 @@
   // Mission.salvoHits asks this for every torpedo that reaches the ship: true = it missed.
   Helm.prototype.torpedoArrives = function (e) {
     var ev = e.evade, m = this.m;
-    if (!e.torp) return false;
+    if (!e.torp || e.type === "mine") return false;                      // a mine is steered round, not dodged
     this.stats.torps++; if (this.cur) this.cur.torps++;
     if (!this.dodged(ev ? ev.snap : e.snap || this.aimSnap())) return false;
     this.stats.dodged++; if (this.cur) this.cur.dodged++;

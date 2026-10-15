@@ -393,7 +393,13 @@
                // At the gunner station the mines are seen: one drifts in every `every` s (twice as
                // often while the engines are starved), `drift` fields/s; one that reaches the shield
                // hits like a torpedo of mj x the class's threat dmg. No random strikes there.
-               gunner: { every: [1.8, 2.8], drift: [0.06, 0.09], mj: [45, 70], starvedMult: 2 } },
+               gunner: { every: [1.8, 2.8], drift: [0.06, 0.09], mj: [45, 70], starvedMult: 2 },
+               // At the helm the mines sit still and the ship moves through them: at standard they
+               // stream past at `flow` fields/s, one every `every` s, scattered `spread` x the
+               // shield's half-width either side of the ship's track (so every class meets about the
+               // same share); faster and more often at higher thrust, up to `maxFlow` x standard;
+               // none while stopped.
+               helm: { every: [3.2, 4.6], flow: 0.12, spread: 2.6, maxFlow: 1 } },
       windowScale: 0.7,                // the captain wants out: the jump window comes sooner
       surpriseChance: 0
     }
