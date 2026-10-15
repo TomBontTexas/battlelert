@@ -510,7 +510,18 @@
     return "M" + (100 + 80 * Math.cos(a0)).toFixed(2) + " " + (105 - 80 * Math.sin(a0)).toFixed(2) +
       " A80 80 0 0 1 " + (100 + 80 * Math.cos(a1)).toFixed(2) + " " + (105 - 80 * Math.sin(a1)).toFixed(2);
   }
-  function setText(el, txt) { if (el.textContent !== txt) el.textContent = txt; }
+  function setText(el, txt) {
+    if (el.textContent === txt) return;
+    el.textContent = txt;
+    if (el.parentNode && el.parentNode.classList && el.parentNode.classList.contains("row-label")) fitRow(el);
+  }
+  // A row label's value never wraps: if it doesn't fit beside the label, its font shrinks.
+  function fitRow(el) {
+    var row = el.parentNode; el.style.fontSize = "";
+    if (!row.offsetParent) return;
+    var size = parseFloat(getComputedStyle(el).fontSize);
+    while (row.scrollWidth > row.clientWidth + 0.5 && size > 8) { size -= 0.5; el.style.fontSize = size + "px"; }
+  }
   function setCls(el, cls) { if (el.className !== cls) el.className = cls; }
   function mmss(t) { var s = Math.floor(t); return Math.floor(s / 60) + ":" + ("0" + (s % 60)).slice(-2); }
 
@@ -914,7 +925,7 @@
     var wi = sim.windowIn();
     var drive = sim.sys("drive");
     if (drive) {
-      setText($("tu-rec-val"), (wi > 0 ? "window in " + Math.ceil(wi) + " s · " : "window open · ") + "drive " + Math.floor(drive.mj / drive.maxMJ * 100) + "%");
+      setText($("tu-rec-val"), (wi > 0 ? "in " + Math.ceil(wi) + " s · " : "open · ") + Math.floor(drive.mj / drive.maxMJ * 100) + "%");
       $("tu-rec").style.width = pct(drive.mj / drive.maxMJ);
     } else {
       setText($("tu-rec-val"), Math.max(0, Math.ceil(wi)) + " s");
@@ -1274,7 +1285,7 @@
     setText($("tu-shield-val"), Math.round(sh.mj) + " / " + sh.maxMJ + " MJ");
     $("tu-shield").style.width = pct(sh.mj / sh.maxMJ);
     var wi = sim.windowIn(), drive = sim.sys("drive");
-    if (drive) { setText($("tu-rec-val"), (wi > 0 ? "window in " + Math.ceil(wi) + " s · " : "window open · ") + "drive " + Math.floor(drive.mj / drive.maxMJ * 100) + "%"); $("tu-rec").style.width = pct(drive.mj / drive.maxMJ); }
+    if (drive) { setText($("tu-rec-val"), (wi > 0 ? "in " + Math.ceil(wi) + " s · " : "open · ") + Math.floor(drive.mj / drive.maxMJ * 100) + "%"); $("tu-rec").style.width = pct(drive.mj / drive.maxMJ); }
     else { setText($("tu-rec-val"), Math.max(0, Math.ceil(wi)) + " s"); $("tu-rec").style.width = pct(sim.t / sim.windowAt()); }
     var ms = tu.mainState();
     if (ms) {
