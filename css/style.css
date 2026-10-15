@@ -431,6 +431,8 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 .hm-nudge { flex: 0 0 34px; border: 0; border-radius: 0; background: var(--panel-2); color: #4cc3ee; font: 600 13px var(--mono); padding: 0; touch-action: manipulation; }
 .hm-nudge:active { background: #1b3a4a; }
 .hm-strip[hidden] { display: none !important; }
+#tu-mainrow[hidden] { display: none; }
+.hbar-fill.main-fill { background: #ffd666; }
 #scr-turret.wide .tu-side { display: none; }
 .tu-hud { position: absolute; inset: 0; pointer-events: none; font-size: 13px; color: var(--muted); }
 .tu-hud[hidden] { display: none; }

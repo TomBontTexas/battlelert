@@ -746,6 +746,8 @@
     keysHeld = {}; setFireBtn(false);
     // The helm: its panel and wheel replace the gun panel; the gun buttons go.
     var helm = !!sim.helm;
+    // The helm's ship panel: the main gun's charge (the gunner sees it on the MAIN GUN button).
+    $("tu-mainrow").hidden = !(helm && sim.turret.firesMain);
     $("tu-gunside").hidden = helm; $("tu-helm").hidden = !helm; $("hm-wheel").hidden = !helm; $("hm-strip").hidden = !helm;
     $("scr-turret").classList.toggle("helm", helm);
     $("btn-tu-call").hidden = $("btn-tu-fire").hidden = helm;
@@ -1264,6 +1266,11 @@
     var wi = sim.windowIn(), drive = sim.sys("drive");
     if (drive) { setText($("tu-rec-val"), (wi > 0 ? "window in " + Math.ceil(wi) + " s · " : "window open · ") + "drive " + Math.floor(drive.mj / drive.maxMJ * 100) + "%"); $("tu-rec").style.width = pct(drive.mj / drive.maxMJ); }
     else { setText($("tu-rec-val"), Math.max(0, Math.ceil(wi)) + " s"); $("tu-rec").style.width = pct(sim.t / sim.windowAt()); }
+    var ms = tu.mainState();
+    if (ms) {
+      setText($("tu-main-val"), ms.tripped ? "tripped" : ms.ready ? "READY · " + Math.round(ms.mj) + " MJ" : Math.round(ms.mj) + " / " + Math.round(ms.max) + " MJ");
+      $("tu-main-bar").style.width = pct(ms.mj / ms.max);
+    }
     var dl = sim.stats.damageReports;
     if (dl.length !== lastTuDamage) {
       lastTuDamage = dl.length;
