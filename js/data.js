@@ -627,7 +627,7 @@
     // captain's orders: tolerance, share held, spacing; the first `grace` s after an order starts
     // don't count (judged on `held` of the rest); one given on the spot (a gunner's call, the main
     // gun, the jump heading) comes with `warn` s notice (time to hear it) plus time to swing, held `callHold` s
-    order: { heading: 10, held: 0.7, minGap: 12, turn: [30, 100], warn: 6, grace: 2, callHold: 6 },
+    order: { heading: 10, held: 0.7, minGap: 12, turn: [30, 100], warn: 6, grace: 2, callHold: 6, verdict: 3 },   // verdict: s the result shows on the panel
     autopilotRep: 0.75,    // autopilot time earns this share of the helm's reputation
     launch: { nagAfter: 8, autoAfter: 20, clear: 2.5, setIn: 5 },     // the gunboat in the carrier's tube; setIn: s to set the coxswain's standard
     ptBow: 20,             // the gunner launches torpedoes once a target is this close to the bow (deg)
@@ -639,7 +639,7 @@
     // break once the shields can't take the fish he said to take (only with `lateMin` s or more
     // left on them); never two breaks within `gap` s. A break covers its fish for the flight time
     // after it's heard (`orderTime` s to speak it).
-    evade: { cover: 1.2, chance: 0.5, burst: 1.2, gap: 6, orderTime: 1, lateMin: 0.8, disobeyCost: 0.05, settle: 2.5 },     // gap: seconds between breaks
+    evade: { cover: 1.2, chance: 0.5, burst: 1.2, gap: 6, orderTime: 1, lateMin: 0.8, steadyLapse: 6, disobeyCost: 0.05, settle: 2.5 },     // gap: seconds between breaks
     // A gunner tells the captain their arc is empty after `idle` s; `cooldown` before that gun calls again.
     request: { idle: 4, cooldown: 15 },
     warnCooldown: 6,       // seconds between warnings to engineering

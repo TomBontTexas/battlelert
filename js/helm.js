@@ -175,7 +175,7 @@
     this.rollTurn();
     this.nextOrderAt = enc.burns ? m.cfg.arrivalSeconds + Math.max(this.H.order.minGap, r.range(enc.burns.every) * 0.6) : Infinity;
     this.cur = { orders: 0, ordersMet: 0, stressHits: 0, launchWait: 0, torps: 0, dodged: 0, requests: 0, requestsMet: 0, evasive: 0, evasiveMet: 0, disobeyed: 0 };
-    this.evade = null; this.burst = null; this.steady = false; this.engOrder = null; this.mainOrdered = false; this.jumpOrderAt = -99; this.lastBreak = -99; this.lastDisobey = -99; this.steerAt = -99;
+    this.evade = null; this.burst = null; this.steady = false; this.steadyHdg = null; this.steadyLast = -99; this.verdict = null; this.engOrder = null; this.mainOrdered = false; this.jumpOrderAt = -99; this.lastBreak = -99; this.lastDisobey = -99; this.steerAt = -99;
     this.jumps[m.jumpIndex] = this.cur;
     this.jumpSaid = false; this.conT = 0; this.conTaken = false;
     // Ships with a GravSpace drive jump on a heading Navigation gives on arrival.
@@ -234,6 +234,23 @@
     if (met) { this.stats.ordersMet++; if (this.cur) this.cur.ordersMet++; }
     var key = met ? "helmMet" : o.hdgT >= judged * A.held ? "helmMissedEng" : o.engT >= judged * A.held ? "helmMissedHdg" : "helmMissed";
     m.chat(key, { who: this.who, hdg: BL.hdgText(o.e.hdg), eng: this.orderWords(o.e) }, met ? "good" : "bad");
+    this.setVerdict(met, key === "helmMissedEng" ? "engines" : key === "helmMissedHdg" ? "heading" : "");
+  };
+  // How the order just finished went, shown on the order panel for a few seconds.
+  Helm.prototype.setVerdict = function (met, part) {
+    this.verdict = { met: met, text: met ? "Order met" : part ? "Missed: " + part : "Order missed", until: this.m.t + this.H.order.verdict };
+  };
+  // Steady lapses once the torpedoes he said to take are gone and none have come for a while.
+  Helm.prototype.runSteady = function () {
+    var m = this.m;
+    if (!this.steady || m.t - this.steadyLast < this.H.evade.steadyLapse) return;
+    if (this.fishInAir().some(function (f) { return f.hold; })) return;
+    this.steady = false;
+  };
+  // Steady in force: the heading to hold and how many of the torpedoes he said to take are inbound; else null.
+  Helm.prototype.steadyView = function () {
+    if (!this.steady) return null;
+    return { hdg: this.steadyHdg, fish: this.fishInAir().filter(function (f) { return f.hold; }).length };
   };
   // On the ordered heading; both engines ordered near what the captain asked for; both.
   Helm.prototype.onHeading = function (e) { return Math.abs(norm(e.hdg - this.compass())) <= this.H.order.heading; };
@@ -247,7 +264,8 @@
      On every burst of torpedoes launched at us (launched within BL.HELM.evade.burst s) the
      captain gives one of two orders: "Steady as she goes. The shields can take it." or a break
      ("Break left, now!"). Steady is said once and stands until his next order changes things (a
-     break, a course order); he doesn't repeat it for every burst. He orders steady while a course order is pending or under way (swerving
+     break, a course order), or until the torpedoes he said to take are gone and none have come for
+     BL.HELM.evade.steadyLapse s; he doesn't repeat it for every burst. He orders steady while a course order is pending or under way (swerving
      fails the order anyway), while the ship is lined up for the jump, and on ships too slow to
      swing far enough (big ships); otherwise he breaks when the shields can't take what's in the
      air, and about half the time when they can. He keeps watching: if the shields can no longer
@@ -302,7 +320,8 @@
     // order (a break, a course order) changes things.
     if (this.curOrder || this.orderView()) return;
     e.hold = bu.hold = true;
-    if (!this.steady) { this.steady = true; m.chat("evadeHold", { who: this.who }, "info"); }
+    this.steadyLast = now;
+    if (!this.steady) { this.steady = true; this.steadyHdg = Math.round(this.compass()) % 360; m.chat("evadeHold", { who: this.who }, "info"); }
   };
   // The break covers torpedo f: it lands no sooner than the break allows.
   Helm.prototype.cover = function (f, ev) { f.evade = ev; f.hold = false; this.landBy(f, ev.until); };
@@ -391,6 +410,7 @@
     this.stats.orders++; if (this.cur) this.cur.orders++;
     if (met) { this.stats.ordersMet++; if (this.cur) this.cur.ordersMet++; }
     else m.chat("helmMissedE", { who: this.who }, "bad");
+    this.setVerdict(met, "engines");
   };
 
   /* ---------------------------------------------------------- Jump heading */
@@ -473,6 +493,7 @@
     this.runConn(dt);
     this.judgeBreak();
     this.recheck();
+    this.runSteady();
     if (m.phase === "engage" || m.phase === "countdown") {
       var st = this.stats; st.liveT += dt;
       if (this.auto) st.autoT += dt; else st.manualT += dt;
