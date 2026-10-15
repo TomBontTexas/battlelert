@@ -379,7 +379,7 @@
   };
 
   /* -------------------------------------------------------- Gunners' calls
-     A gunner whose arc is empty while a ship their weapon is best against sits outside it tells
+     A gunner whose arc is empty while a ship his weapon is best against sits outside it tells
      the captain (ring.js makes the call), and the captain orders the helm round: a course order
      like any other. He lets it go while he's breaking. */
   Helm.prototype.request = function (b, turn, ship) {
