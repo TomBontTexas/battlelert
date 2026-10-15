@@ -420,7 +420,7 @@
                // turner time to steer clear. Small and hard for the gun crew: a crew bolt that
                // reaches one destroys it only with `crewHit` x 3 / the number of guns (so a big
                // battery doesn't do the steering), else a near miss.
-               helm: { every: [3.2, 4.6], flow: 0.12, spread: 2.6, maxFlow: 1, mj: 3, lagSlow: 2, crewHit: 0.12 } },
+               helm: { every: [3.2, 4.6], flow: 0.12, spread: 2.6, maxFlow: 1, mj: 3.5, lagSlow: 2, crewHit: 0.12 } },
       windowScale: 0.7,                // the captain wants out: the jump window comes sooner
       surpriseChance: 0
     }
