@@ -24,6 +24,7 @@
 
   var NAMES_VERSION = 2;                           // 2 = the historical ship roster (names.js)
   var TL_VERSION = 2;                              // 2 = tech levels 4 to 7 and INS ship names
+  var STORY_VERSION = 1;                           // 1 = story missions as job offers (story.js)
 
   function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
   function today() { var d = new Date(); return d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2) + "-" + ("0" + d.getDate()).slice(-2); }
@@ -37,7 +38,8 @@
       stations: {}, signoffsUsed: [],
       profiles: {},                     // one reputation profile per station
       history: [], offersBy: {}, stepUps: {}, offerSeed: BL.randomSeed(),
-      ships: {}, namesVersion: NAMES_VERSION, tlVersion: TL_VERSION
+      ships: {}, namesVersion: NAMES_VERSION, tlVersion: TL_VERSION,
+      storyDone: {}, storyVersion: STORY_VERSION      // story missions completed: id -> date
     };
     STATIONS.forEach(function (s) { c.stations[s] = { qualified: 0, rep: 0, failures: {}, realUntil: 0 }; c.profiles[s] = blankProfile(); c.stepUps[s] = 0; });
     STATIONS.forEach(function (s) { if (PLAYABLE[s]) generateOffers(c, s); });
@@ -55,7 +57,7 @@
   function normalize(c) {
     if (!c || c.kind !== "career") throw new Error("This file isn't a Battlelert career.");
     var oldNames = c.namesVersion !== NAMES_VERSION;   // checked before the defaults below fill it in
-    var oldTL = c.tlVersion !== TL_VERSION;
+    var oldTL = c.tlVersion !== TL_VERSION, oldStory = c.storyVersion !== STORY_VERSION;
     // Careers from before the gunner station: one engineer offer list and one profile.
     if (!c.offersBy) c.offersBy = { engineer: Array.isArray(c.offers) ? c.offers : [] };
     if (!c.profiles) c.profiles = { engineer: c.profile || blankProfile() };
@@ -88,6 +90,8 @@
       c.offersBy = {};
     }
     c.tlVersion = TL_VERSION;
+    if (!c.storyDone || typeof c.storyDone !== "object") c.storyDone = {};
+    if (oldStory) { c.offersBy = {}; c.storyVersion = STORY_VERSION; }   // offers become story missions
     // Careers from before the ship roster: start the service records from the mission history,
     // and replace offers that still carry the old generic names.
     if (oldNames) {
@@ -141,20 +145,54 @@
      ({ name, who, label, skill }); the listing shows whichever are there. To come: engineer
      jobs name the gunner and pilot, gunner jobs the pilot, pilot jobs the engineer and gunner,
      each picked from the job seed so the mission gets the same people. */
-  function makeJob(rng, station, n, tl, serious) {
+  function makeJob(rng, station, n, tl, serious, story) {
     var cls = BL.classByN(n);
     var job = { id: "j" + Math.floor(rng.next() * 1e9).toString(36), station: station, classId: cls.id, n: n, tl: tl,
       ship: BL.shipName(rng, cls.id, tl), seed: 1 + Math.floor(rng.next() * 999999), serious: serious !== false };
     job.hull = BL.hullNumber(cls.id, job.ship);
     if (station === "gunner") { job.weapons = (BL.GUNNERY.loadout[cls.id] || ["pulse"]).slice(); if (BL.pickEngineer) job.engineer = BL.pickEngineer(job.seed, cls.id); }
     if (station === "pilot") { job.helm = true; if (BL.pickEngineer) job.engineer = BL.pickEngineer(job.seed, cls.id); }
+    if (story) { job.story = story.id; job.title = story.title; job.chapter = story.chapter; }
     return job;
+  }
+
+  /* Story missions (story.js): each station's storyline has three missions per class, in any
+     order. Offers are the ones not yet completed, on the class you're on and the class above;
+     a failed one stays on offer. Winning any dreadnought mission completes the storyline. When
+     a class you still need has none left (after being sent back), plain jobs fill in. */
+  function hasStory(station) { return !!(BL.STORY && BL.STORY[station]); }
+  function storyComplete(c, station) {
+    return hasStory(station) && BL.STORY[station].some(function (m) { return m.n === 9 && c.storyDone[m.id]; });
+  }
+  function storyLeft(c, station, n) {
+    if (!hasStory(station) || (n === 9 && storyComplete(c, station))) return [];
+    return BL.STORY[station].filter(function (m) { return m.n === n && !c.storyDone[m.id]; });
+  }
+  function storyOffers(c, station, rng) {
+    var q = qualified(c, station), out = [];
+    var classes = q >= 1 ? [q, q + 1] : [1];
+    classes.forEach(function (n) {
+      if (!BL.classByN(n) || !built(station, n)) return;
+      var left = storyLeft(c, station, n);
+      left.forEach(function (m, i) { out.push(makeJob(rng, station, n, i === 0 ? lowTL(n) : anyTL(rng, n), true, m)); });
+      if (!left.length && n > q && !storyComplete(c, station)) {
+        out.push(makeJob(rng, station, n, lowTL(n)));
+        out.push(makeJob(rng, station, n, anyTL(rng, n)));
+      }
+    });
+    return out;
   }
   function offers(c, station) { return c.offersBy[station] || []; }
   function generateOffers(c, station) {
     station = station || "engineer";
     var rng = BL.rng(c.offerSeed = (c.offerSeed * 48271 + 11) % 2147483647 || 1);
     var q = qualified(c, station), offers = [];
+    if (hasStory(station)) {
+      offers = storyOffers(c, station, rng);
+      offers.sort(function (a, b) { return b.n - a.n || (a.story || "").localeCompare(b.story || "") || a.tl - b.tl; });
+      c.offersBy[station] = offers;
+      return offers;
+    }
     var current = Math.max(1, q);
     if (!built(station, current)) current = Math.min(current, station === "gunner" ? GUNNER_CLASSES : current);
     if (!built(station, current)) current = 1;
@@ -181,7 +219,7 @@
   // Careers saved before the step-up rule may lack the guaranteed lowest-tech offer.
   function ensureStepUp(c, station) {
     var q = qualified(c, station), next = BL.classByN(q + 1), list = offers(c, station);
-    if (q < 1 || !next || !built(station, next.n)) return;
+    if (q < 1 || !next || !built(station, next.n) || hasStory(station)) return;
     var has = list.some(function (o) { return o.n === next.n && o.tl === lowTL(next.n); });
     if (!has) {
       list.push(makeJob(BL.rng(c.offerSeed + 3), station, next.n, lowTL(next.n)));
@@ -190,12 +228,14 @@
   }
 
   // Requalifying: jobs below your current class, always available. You've already qualified on
-  // them, so they're practice or requalification, and earn half that class's reputation.
+  // them, so they're practice or requalification, and earn half that class's reputation. With a
+  // storyline, they're the story missions you skipped on those classes.
   function lowerJobs(c, station) {
     var q = qualified(c, station), out = [];
     var rng = BL.rng(c.offerSeed + 7);
     for (var n = 1; n < q; n++) {
       if (!built(station, n)) continue;
+      if (hasStory(station)) { storyLeft(c, station, n).forEach(function (m) { out.push(makeJob(rng, station, n, anyTL(rng, n), false, m)); }); continue; }
       BL.TECH.levels(BL.classByN(n).id).forEach(function (tl) { out.push(makeJob(rng, station, n, tl, false)); });
     }
     return out;
@@ -215,6 +255,7 @@
       profileBefore: profile(c) };
     var success = r.outcome === "success";
     if (success) {
+      if (job.story) { c.storyDone[job.story] = today(); report.storyDone = job.story; }
       report.rep = repFor(job, r.score);
       st.rep += report.rep;
       st.failures[post] = 0;
@@ -257,7 +298,7 @@
     if (success) p.wins++; else p.losses++;
     report.profileAfter = profile(c, job.station);
     var entry = { date: today(), station: job.station, classId: job.classId, n: job.n, tl: job.tl, ship: job.ship, hull: BL.hullNumber(job.classId, job.ship),
-      seed: job.seed, outcome: r.outcome, score: r.score, rep: report.rep, serious: job.serious };
+      seed: job.seed, outcome: r.outcome, score: r.score, rep: report.rep, serious: job.serious, story: job.story, title: job.title };
     c.history.unshift(entry);
     if (c.history.length > 200) c.history.length = 200;
     logService(c, entry, r);
@@ -321,6 +362,7 @@
     qualified: qualified, rank: rank, ranks: ranks, targetClass: targetClass,
     signoffsTotal: signoffsTotal, signoffsHeld: signoffsHeld, signoffOptions: signoffOptions, spendSignoff: spendSignoff,
     offers: offers, generateOffers: generateOffers, lowerJobs: lowerJobs, repFor: repFor, REQUAL_REP: REQUAL_REP,
-    applyResult: applyResult, profile: profile, serviceRecord: serviceRecord
+    applyResult: applyResult, profile: profile, serviceRecord: serviceRecord,
+    storyComplete: storyComplete, storyLeft: storyLeft
   };
 })(typeof window !== "undefined" ? window : globalThis);

@@ -45,6 +45,10 @@
 
     this.route = this.planRoute(!!opts.gunner);
     if (opts.sweep && this.route.length > 1) this.route[1] = "sweep";        // the gunboat tests: sortie 2 sweeps a mine lane
+    // A story mission (story.js) flies the systems its story names. The mine lane needs the gun
+    // view, so in the engine room it's a minefield. reports: a line to play in each system.
+    if (opts.route) this.route = opts.route.map(function (id) { return id === "sweep" && !opts.gunner ? "minefield" : id; });
+    this.reports = opts.reports || [];
     this.jumpIndex = 0;
     this.phase = "briefing";                // briefing | arrival | engage | countdown | gravspace | done
     this.t = 0;                             // seconds since arrival in the current system
@@ -229,6 +233,7 @@
     if (this.helm) this.helm.reset();
     this.chat(this.hasDrive ? "arrival" : "launch", { hdg: this.helm && this.helm.jumpHdg !== null ? BL.hdgText(this.helm.jumpHdg) : "" }, "info");
     this.chat(enc.chat || "briefing", { enemies: BL.plural(enc.enemy), what: enc.what }, "info");
+    this.reportAt = this.reports[this.jumpIndex] ? this.cfg.arrivalSeconds + 4 : Infinity;   // the story's report for this system
   };
 
   // Called by the display after the warp space report (or by the harness).
@@ -312,13 +317,17 @@
   Mission.prototype.spawnWave = function (enc, typeId, line) {
     var r = this.rng, w = enc.wave, t = this.t;
     var th = this.data.threat, hp = Math.round(w.hp * th.hp);
+    // In the engine room nobody shoots torpedoes down, so Azurian capital ships come as smaller
+    // versions there: their torpedoes (and their escorts') hit at enc.engineRoom of full (not on
+    // a gunboat). An interim until the ratings and scenario tuning (tuning steps 4 and 8).
+    var small = !this.turret && enc.engineRoom && this.data.n > 1 ? enc.engineRoom : 1;
     var wave = { id: this.nextId++, type: typeId || this.route[this.jumpIndex], name: enc.enemy, hp: hp, hpMax: hp, spawn: t, lastAt: 0, dead: false };
     var n = r.int(w.salvos), at = t + r.range(w.approach);
     for (var i = 0; i < n; i++) {
       if (i > 0) at += r.range(w.salvoGap);
       var surprise = r.chance(enc.surpriseChance);
       // Drive hunters fire drive strikes (mj = CIWS charge needed to stop one).
-      this.events.push({ id: this.nextId++, type: w.strikes ? "strike" : "salvo", wave: wave.id, at: at, mj: Math.round(r.range(w.salvoMJ) * th.dmg),
+      this.events.push({ id: this.nextId++, type: w.strikes ? "strike" : "salvo", wave: wave.id, at: at, mj: Math.round(r.range(w.salvoMJ) * th.dmg * small),
         announceAt: Math.max(t, at - enc.salvoWarning), announced: false, visible: !surprise });
       // A frigate fires in pairs, a battleship or fortress in threes: equal salvos 0.6 s apart.
       var e1 = this.events[this.events.length - 1];
@@ -332,7 +341,7 @@
         var ns = r.int(ef.salvos), ea = t + r.range(w.approach) + r.range(ef.start);
         for (var z = 0; z < ns; z++) {
           if (z > 0) ea += r.range(ef.gap);
-          this.events.push({ id: this.nextId++, type: "salvo", wave: wave.id, at: ea, mj: Math.round(r.range(ef.salvoMJ) * th.dmg), escort: q,
+          this.events.push({ id: this.nextId++, type: "salvo", wave: wave.id, at: ea, mj: Math.round(r.range(ef.salvoMJ) * th.dmg * small), escort: q,
             announceAt: Math.max(t, ea - enc.salvoWarning), announced: false, visible: true });
           wave.lastAt = Math.max(wave.lastAt, ea);
         }
@@ -366,6 +375,7 @@
     this.runLifeSupport(dt);
     this.runWaves();
     this.runJump();
+    if (this.t >= this.reportAt) { this.reportAt = Infinity; this.say(this.reports[this.jumpIndex], "info"); this.cue("chatter"); }
     if (this.ship.hull <= 0 && this.phase !== "done") {
       this.ship.hull = 0;
       this.say("Damage control: hull failure! We're breaking up!", "bad");

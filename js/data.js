@@ -324,6 +324,7 @@
       salvoWarning: 6,
       firstWave: [3, 5],
       waveEvery: [70, 80],
+      engineRoom: 0.35,   // torpedo strength in the engine room (see Mission.spawnWave)
       wave: { hp: 360, salvos: [8, 10], approach: [6, 8], salvoGap: [6, 8], salvoMJ: [70, 100], requests: 3, pairs: true,
               // each escort fires its own light torpedoes, like an interceptor flight's
               escortFire: { count: 2, salvos: [3, 4], start: [2, 4], gap: [4, 6], salvoMJ: [45, 70] } },
@@ -343,6 +344,7 @@
       salvoWarning: 6,
       firstWave: [3, 5],
       waveEvery: [80, 90],
+      engineRoom: 0.35,   // torpedo strength in the engine room (see Mission.spawnWave)
       wave: { hp: 560, salvos: [10, 12], approach: [6, 8], salvoGap: [5, 7], salvoMJ: [80, 110], requests: 3, pairs: true,
               escortFire: { count: 3, salvos: [3, 4], start: [2, 4], gap: [4, 6], salvoMJ: [45, 70] } },
       stragglers: { first: [14, 18], every: [20, 28], types: ["interceptors", "interceptors", "raiders", "raiders"] },
@@ -361,6 +363,7 @@
       salvoWarning: 6,
       firstWave: [3, 5],
       waveEvery: [100, 115],
+      engineRoom: 0.35,   // torpedo strength in the engine room (see Mission.spawnWave)
       wave: { hp: 760, salvos: [10, 12], approach: [6, 8], salvoGap: [6, 8], salvoMJ: [60, 85], requests: 3, volley: 3,
               escortFire: { count: 3, salvos: [2, 3], start: [3, 5], gap: [6, 8], salvoMJ: [90, 130] } },
       stragglers: { first: [16, 20], every: [22, 30], types: ["interceptors", "interceptors", "raiders", "hunters"] },

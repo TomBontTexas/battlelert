@@ -105,11 +105,15 @@
     var rc = BL.GUNNERY.ring.classes[j.classId];
     // Every class with a ring layout fights in the ring view (the turret test: its one gun is the one picked).
     if (guns && rc) { guns.ring = true; guns.arcs = rc.arcs; guns.arcNames = rc.arcNames; if (!guns.weapons) guns.weapons = [guns.weapon]; delete guns.weapon; }
-    sim = new BL.Mission({ seed: j.seed, classId: j.classId, tl: j.tl, gunner: guns, helm: !!j.helm, sweep: j.test && j.classId === "gunboat" && !!guns });
+    var story = j.story && BL.storyMission(j.story);
+    sim = new BL.Mission({ seed: j.seed, classId: j.classId, tl: j.tl, gunner: guns, helm: !!j.helm, sweep: j.test && j.classId === "gunboat" && !!guns,
+      route: story ? story.systems : null, reports: story ? story.reports.map(storyText) : null });
     if (j.test) $("seed-input").value = j.seed;
     var d = sim.data, cls = BL.classById(j.classId);
     $("brief-seed").textContent = "· seed " + j.seed;
-    $("brief-lede").textContent = sim.hasDrive
+    $("brief-story").hidden = !story;
+    if (story) $("brief-story").innerHTML = "<b>" + esc(story.title) + "</b> · " + BL.classByN(j.n).name + " chapter: " + esc(story.chapter) + " · story mission " + story.k + " of 3";
+    $("brief-lede").textContent = story ? storyText(story.briefing) : sim.hasDrive
       ? "Escort the planet buster's route through " + sim.cfg.jumps + " Azurian-held systems. In each one the warp drive starts empty: keep the ship alive, charge the drive, and the captain jumps once the jump window opens."
       : "Gunboats have no warp drive. In each of the carrier's " + sim.cfg.jumps + " systems it launches you into the fight and recovers you when the sortie timer runs out, then carries you through warp space to the next one. Keep the gunboat alive through every sortie.";
     $("brief-route").innerHTML = sim.route.map(function (id, i) {
@@ -1515,6 +1519,11 @@
     BL.speech.unlock(); sim.beginJump(); speakNew();
   };
 
+  // A story line with the hero's name and the ship's filled in.
+  function storyText(t) {
+    return String(t || "").replace(/\{hero\}/g, career ? career.name : "Recruit").replace(/\{ship\}/g, job ? BL.shipLabel(job.classId, job.ship) : "the ship");
+  }
+
   /* ---------------------------------------------------------- Debriefing */
   function showDebrief() {
     var r = sim.result, d = r.detail;
@@ -1566,7 +1575,9 @@
   }
 
   function renderCareerReport(r) {
-    var st = career.stations[job.station], rows = [];
+    var st = career.stations[job.station], rows = [], story = job.story && BL.storyMission(job.story);
+    if (story) rows.push('<p class="story-line"><b>' + esc(story.title) + ".</b> " + esc(storyText(r.outcome === "success" ? story.after : story.lost)) + "</p>");
+    if (story && r.outcome === "success" && story.n === 9) rows.push('<p class="big-line promo">' + BL.career.STATION_NAME[job.station] + " storyline complete.</p>");
     if (r.outcome === "success") {
       rows.push('<p class="big-line">Reputation earned: <b>+' + report.rep + "</b> (" + BL.career.STATION_NAME[job.station].toLowerCase() + " path, now " + st.rep + ")</p>");
       rows.push('<p class="muted">' + BL.classByN(job.n).baseRep + " base for a " + r.className.toLowerCase() + " × score " + r.score + "% × " + +BL.TECH.repMult(job.tl).toFixed(2) + " for tech level " + job.tl +
@@ -1842,6 +1853,7 @@
     function sec(title, rows) { return rows.length ? '<div class="offer-sec"><div class="offer-sec-h">' + title + "</div>" + rows.map(function (x) { return "<div>" + x + "</div>"; }).join("") + "</div>" : ""; }
     return '<div class="offer' + (up ? " stepup" : "") + '"><h3>' + esc(BL.shipLabel(j.classId, j.ship)) + " (TL" + j.tl + ")" + tag + "</h3>" +
       '<button class="primary" data-i="' + i + '">Accept</button>' +
+      (j.story ? '<div class="offer-story"><b>' + esc(j.title) + "</b> · " + cls.name + " chapter: " + esc(j.chapter) + "</div>" : "") +
       '<div class="meta">Reputation ×' + +(BL.TECH.repMult(j.tl) * (j.serious === false ? BL.career.REQUAL_REP : 1)).toFixed(3) + (j.serious === false ? " (half: requalifying)" : "") + ", max " + BL.career.repFor(j, 100) +
       (up ? " · success qualifies you as " + rankName + "-" + j.n : "") + "</div>" +
       sec("Crew", crew) + sec("Armament", arms) + "</div>";
@@ -1859,12 +1871,14 @@
         : station === "pilot"
         ? "Postings for pilots at your level. Each names the engineer who'll run the power and the gun crew who'll work the guns while you fly. Bigger ships turn slower and answer the helm later."
         : "Postings for engineers at your level. Lower tech levels are harder (smaller reactor and capacitors, weaker guns) and earn more reputation.") +
-        (q && BL.career.built(station, q + 1) ? " There's always a lowest-tech posting for your class and for the class above it." : " There's always a lowest-tech posting.");
+        (BL.STORY && BL.STORY[station]
+          ? (BL.career.storyComplete(career, station) ? " Your " + who.toLowerCase() + " storyline is complete." : " Each is a story mission, offered until you complete it, on your class and the class above.")
+          : q && BL.career.built(station, q + 1) ? " There's always a lowest-tech posting for your class and for the class above it." : " There's always a lowest-tech posting.");
     } else {
       shownJobs = BL.career.lowerJobs(career, station);
       $("offers-title").textContent = who + ": requalifying";
-      $("offers-lede").textContent = shownJobs.length ? "Classes you've already qualified on: requalify or get some practice. You're welcome aboard, but they earn half that class's reputation, and failures here don't count against you." :
-        "Nothing below your current class yet. Qualify on a bigger ship and the smaller ones show up here.";
+      $("offers-lede").textContent = shownJobs.length ? "Story missions you skipped on classes you've already qualified on. You're welcome aboard, but they earn half that class's reputation, and failures here don't count against you." :
+        "Nothing below your current class: no skipped story missions there.";
     }
     $("offers-list").innerHTML = shownJobs.map(offerHtml).join("");
     show("scr-offers");
@@ -1885,7 +1899,7 @@
     $("rec-grid").innerHTML = gridHtml(c);
     $("rec-history").innerHTML = "<tr><th>Date</th><th>Station</th><th>Ship</th><th>Class</th><th>Tech</th><th>Outcome</th><th>Score</th><th>Reputation</th></tr>" +
       (c.history.length ? c.history.map(function (h) {
-        return "<tr><td>" + h.date + "</td><td>" + BL.career.STATION_NAME[h.station || "engineer"] + "</td><td>" + esc(h.ship) + "</td><td>" + BL.classById(h.classId).name + "</td><td>" + h.tl + "</td><td>" + h.outcome +
+        return "<tr><td>" + h.date + "</td><td>" + BL.career.STATION_NAME[h.station || "engineer"] + "</td><td>" + esc(h.ship) + (h.title ? "<br><i>" + esc(h.title) + "</i>" : "") + "</td><td>" + BL.classById(h.classId).name + "</td><td>" + h.tl + "</td><td>" + h.outcome +
           "</td><td>" + h.score + "</td><td>" + (h.rep ? "+" + h.rep : "0") + "</td></tr>";
       }).join("") : '<tr><td colspan="8" class="muted">No missions yet.</td></tr>');
     show("scr-record");

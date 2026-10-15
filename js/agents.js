@@ -146,8 +146,8 @@
   };
 
   // Plays a whole mission with no screen. Returns the score object.
-  BL.runHeadless = function (seed, engineer, classId, tl) {
-    var m = new BL.Mission({ seed: seed, quiet: true, classId: classId, tl: tl });
+  BL.runHeadless = function (seed, engineer, classId, tl, extra) {
+    var m = new BL.Mission(Object.assign({ seed: seed, quiet: true, classId: classId, tl: tl }, extra));
     m.beginJump();
     var guard = 0;
     while (m.phase !== "done" && guard++ < BL.TICK_RATE * 60 * 30) {

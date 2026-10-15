@@ -623,11 +623,11 @@
       if (!h.engOrder && (h.port.ord !== "cruise" || h.stbd.ord !== "cruise")) h.setOrder("both", "cruise");   // back to cruise between orders
     }
   };
-  BL.runHelmHeadless = function (seed, classId, tl, idle) {
+  BL.runHelmHeadless = function (seed, classId, tl, idle, extra) {
     classId = classId || "gunboat";
     var rc = BL.GUNNERY.ring.classes[classId];
-    var m = new BL.Mission({ seed: seed, quiet: true, classId: classId, tl: tl, helm: true,
-      gunner: { weapons: BL.GUNNERY.loadout[classId], ring: true, arcs: rc.arcs, arcNames: rc.arcNames, helm: true } });
+    var m = new BL.Mission(Object.assign({ seed: seed, quiet: true, classId: classId, tl: tl, helm: true,
+      gunner: { weapons: BL.GUNNERY.loadout[classId], ring: true, arcs: rc.arcs, arcNames: rc.arcNames, helm: true } }, extra));
     var eng = new BL.AIEngineer(0.5, 0.25, m.turret.engineer.skill), bot = new HelmBot();
     m.beginJump();
     var guard = 0;

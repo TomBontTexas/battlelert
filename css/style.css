@@ -66,6 +66,9 @@ h2 { font-size: 17px; margin: 18px 0 6px; color: var(--charge); }
 .copyright { margin-top: 6px; color: var(--muted); font-size: 12px; }
 .sheet { max-width: 860px; margin: 0 auto; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 22px 26px 26px; }
 .lede { font-size: 16px; }
+.brief-story { margin: 4px 0 6px; color: var(--charge); }
+.offer-story { margin: 2px 0 4px; }
+.story-line { font-size: 15px; }
 .tight li { margin: 4px 0; }
 .actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; margin-top: 22px; }
 .route-list { padding-left: 22px; }
