@@ -202,6 +202,14 @@
     repMult: function (tl) { return 1 + 0.25 * (7 - Math.max(4, Math.min(7, tl))); }   // TL4 x1.75 ... TL7 x1.0
   };
 
+  // The gun crew shooting torpedoes down. At the gun and the helm the crew's guns shoot at the
+  // torpedoes on screen (ring.js); in the engine room there's no screen, so each torpedo is shot
+  // down with this chance x the share of the ship's guns charged for a shot, and it costs that gun
+  // a shot. The shares are what the crew managed at the helm on every story mission (Oct 15, 2026),
+  // so every station fights the same enemy with the same torpedoes.
+  BL.CREW_DOWN = { gunboat: 0.38, picket: 0.33, destroyerEscort: 0.49, destroyer: 0.57, lightCruiser: 0.64,
+    cruiser: 0.52, heavyCruiser: 0.55, battleship: 0.64, dreadnought: 0.61 };
+
   // A ship of class `classId` at tech level `tl`, ready for BL.Mission.
   BL.shipFor = function (classId, tl) {
     var c = BL.classById(classId); tl = BL.TECH.clamp(c.id, tl); var f = BL.TECH.factor(tl, c.id);
@@ -324,7 +332,6 @@
       salvoWarning: 6,
       firstWave: [3, 5],
       waveEvery: [70, 80],
-      engineRoom: 0.35,   // torpedo strength in the engine room (see Mission.spawnWave)
       wave: { hp: 360, salvos: [8, 10], approach: [6, 8], salvoGap: [6, 8], salvoMJ: [70, 100], requests: 3, pairs: true,
               // each escort fires its own light torpedoes, like an interceptor flight's
               escortFire: { count: 2, salvos: [3, 4], start: [2, 4], gap: [4, 6], salvoMJ: [45, 70] } },
@@ -344,7 +351,6 @@
       salvoWarning: 6,
       firstWave: [3, 5],
       waveEvery: [80, 90],
-      engineRoom: 0.35,   // torpedo strength in the engine room (see Mission.spawnWave)
       wave: { hp: 560, salvos: [10, 12], approach: [6, 8], salvoGap: [5, 7], salvoMJ: [80, 110], requests: 3, pairs: true,
               escortFire: { count: 3, salvos: [3, 4], start: [2, 4], gap: [4, 6], salvoMJ: [45, 70] } },
       stragglers: { first: [14, 18], every: [20, 28], types: ["interceptors", "interceptors", "raiders", "raiders"] },
@@ -363,7 +369,6 @@
       salvoWarning: 6,
       firstWave: [3, 5],
       waveEvery: [100, 115],
-      engineRoom: 0.35,   // torpedo strength in the engine room (see Mission.spawnWave)
       wave: { hp: 760, salvos: [10, 12], approach: [6, 8], salvoGap: [6, 8], salvoMJ: [60, 85], requests: 3, volley: 3,
               escortFire: { count: 3, salvos: [2, 3], start: [3, 5], gap: [6, 8], salvoMJ: [90, 130] } },
       stragglers: { first: [16, 20], every: [22, 30], types: ["interceptors", "interceptors", "raiders", "hunters"] },

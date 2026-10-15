@@ -1554,6 +1554,7 @@
       ["Announced salvos shielded", d.salvosShielded + " / " + d.salvosAnnounced],
       ["Surprise salvos", d.surprises],
       ["Gun requests filled", d.requestsFilled + " / " + d.requests],
+      ["Torpedoes the gun crew shot down", d.crewDowned || 0],
       ["Jumps on time", d.jumpsOnTime + " / " + r.jumpsDone],
       ["Failsafe trips", d.trips],
       ["Enemies destroyed", d.kills],

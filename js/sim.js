@@ -72,7 +72,7 @@
       mainShots: 0, mainDamage: 0, bleedMJ: 0,
       squadronsLost: 0,
       burns: [],                            // minefield burns: { met }
-      mineStrikes: 0, intercepts: 0,
+      mineStrikes: 0, intercepts: 0, crewDowned: 0,
       strikes: 0, strikesAnnounced: 0, strikesStopped: 0, driveDrainedMJ: 0,
       overloadRun: 0, overloadRunStart: 0,
       longestOverload: { dur: 0, jump: 0, t: 0 },
@@ -317,17 +317,13 @@
   Mission.prototype.spawnWave = function (enc, typeId, line) {
     var r = this.rng, w = enc.wave, t = this.t;
     var th = this.data.threat, hp = Math.round(w.hp * th.hp);
-    // In the engine room nobody shoots torpedoes down, so Azurian capital ships come as smaller
-    // versions there: their torpedoes (and their escorts') hit at enc.engineRoom of full (not on
-    // a gunboat). An interim until the ratings and scenario tuning (tuning steps 4 and 8).
-    var small = !this.turret && enc.engineRoom && this.data.n > 1 ? enc.engineRoom : 1;
     var wave = { id: this.nextId++, type: typeId || this.route[this.jumpIndex], name: enc.enemy, hp: hp, hpMax: hp, spawn: t, lastAt: 0, dead: false };
     var n = r.int(w.salvos), at = t + r.range(w.approach);
     for (var i = 0; i < n; i++) {
       if (i > 0) at += r.range(w.salvoGap);
       var surprise = r.chance(enc.surpriseChance);
       // Drive hunters fire drive strikes (mj = CIWS charge needed to stop one).
-      this.events.push({ id: this.nextId++, type: w.strikes ? "strike" : "salvo", wave: wave.id, at: at, mj: Math.round(r.range(w.salvoMJ) * th.dmg * small),
+      this.events.push({ id: this.nextId++, type: w.strikes ? "strike" : "salvo", wave: wave.id, at: at, mj: Math.round(r.range(w.salvoMJ) * th.dmg),
         announceAt: Math.max(t, at - enc.salvoWarning), announced: false, visible: !surprise });
       // A frigate fires in pairs, a battleship or fortress in threes: equal salvos 0.6 s apart.
       var e1 = this.events[this.events.length - 1];
@@ -341,7 +337,7 @@
         var ns = r.int(ef.salvos), ea = t + r.range(w.approach) + r.range(ef.start);
         for (var z = 0; z < ns; z++) {
           if (z > 0) ea += r.range(ef.gap);
-          this.events.push({ id: this.nextId++, type: "salvo", wave: wave.id, at: ea, mj: Math.round(r.range(ef.salvoMJ) * th.dmg * small), escort: q,
+          this.events.push({ id: this.nextId++, type: "salvo", wave: wave.id, at: ea, mj: Math.round(r.range(ef.salvoMJ) * th.dmg), escort: q,
             announceAt: Math.max(t, ea - enc.salvoWarning), announced: false, visible: true });
           wave.lastAt = Math.max(wave.lastAt, ea);
         }
@@ -460,6 +456,20 @@
       this.cue("kill");
       this.chat("intercepted", null, "good");
       return;
+    }
+    // In the engine room the gun crew shoots some down (BL.CREW_DOWN), each with a gun's charged shot.
+    if (!this.turret && e.type === "salvo") {
+      var g = this.data.gun, guns = this.ship.systems.filter(function (x) { return x.kind === "gun"; });
+      var ready = guns.filter(function (x) { return x.mj >= g.shotMJ && !x.tripped; });
+      if (ready.length && this.rng.chance((BL.CREW_DOWN[this.data.classId] || 0) * ready.length / guns.length)) {
+        this.rng.pick(ready).mj -= g.shotMJ;
+        st.salvos++; js.salvos++; st.crewDowned++;
+        if (e.visible) { st.salvosAnnounced++; st.salvosShielded++; }
+        js.shielded++; e.outcome = "downed";
+        this.cue("torpDown");
+        if (this.rng.chance(0.3)) this.chat("torpDown", null, "good");
+        return;
+      }
     }
     // At the helm a torpedo can miss altogether: the captain ordered a break and the pilot made it (helm.js).
     if (this.helm && this.helm.torpedoArrives(e)) {
@@ -994,7 +1004,7 @@
         recoverCalls: st.calls.filter(function (c) { return c.type === "recover"; }).length,
         recoverFilled: st.calls.filter(function (c) { return c.type === "recover" && c.filled; }).length,
         squadronsLost: st.squadronsLost,
-        intercepts: st.intercepts, mineStrikes: st.mineStrikes,
+        intercepts: st.intercepts, crewDowned: st.crewDowned, mineStrikes: st.mineStrikes,
         burns: st.burns.length, burnsMet: burnsMet,
         strikes: st.strikesAnnounced, strikesStopped: st.strikesStopped, driveDrainedMJ: Math.round(st.driveDrainedMJ),
         trips: st.trips, kills: st.kills, hullLost: st.hullLost, crippledTime: Math.round(st.crippledTime),
