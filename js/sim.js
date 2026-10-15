@@ -44,6 +44,7 @@
     this.quiet = !!opts.quiet;              // harness: skip chatter text and sound cues
 
     this.route = this.planRoute(!!opts.gunner);
+    if (opts.sweep && this.route.length > 1) this.route[1] = "sweep";        // the gunboat tests: sortie 2 sweeps a mine lane
     this.jumpIndex = 0;
     this.phase = "briefing";                // briefing | arrival | engage | countdown | gravspace | done
     this.t = 0;                             // seconds since arrival in the current system
@@ -274,7 +275,7 @@
     // Once the jump window has been open a while, the enemy breaks off (drive hunters at once),
     // so a drive that can't keep up never stalls the mission forever.
     var cutoff = this.windowAt() + (enc.breakOff === undefined ? this.cfg.breakOff : enc.breakOff);
-    if (!enc.mines && t >= this.nextWaveAt && t < cutoff) {
+    if (!enc.mines && !enc.sweep && t >= this.nextWaveAt && t < cutoff) {
       this.spawnWave(enc);
       this.nextWaveAt = t + r.range(enc.waveEvery);
     }

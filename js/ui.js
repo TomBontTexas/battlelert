@@ -105,7 +105,7 @@
     var rc = BL.GUNNERY.ring.classes[j.classId];
     // Every class with a ring layout fights in the ring view (the turret test: its one gun is the one picked).
     if (guns && rc) { guns.ring = true; guns.arcs = rc.arcs; guns.arcNames = rc.arcNames; if (!guns.weapons) guns.weapons = [guns.weapon]; delete guns.weapon; }
-    sim = new BL.Mission({ seed: j.seed, classId: j.classId, tl: j.tl, gunner: guns, helm: !!j.helm });
+    sim = new BL.Mission({ seed: j.seed, classId: j.classId, tl: j.tl, gunner: guns, helm: !!j.helm, sweep: j.test && j.classId === "gunboat" && !!guns });
     if (j.test) $("seed-input").value = j.seed;
     var d = sim.data, cls = BL.classById(j.classId);
     $("brief-seed").textContent = "· seed " + j.seed;
@@ -148,6 +148,7 @@
     $("brief-station").textContent = sim.helm ? "Your station: the helm (the " + sim.helm.who.toLowerCase() + " gives the orders; the engineer runs the power)" :
       gunner ? "Your station: Gun 1 (the engineer runs the power)" : "Your station: Main Engineering";
     $("brief-helm").hidden = !sim.helm;
+    $("brief-sweep").hidden = sim.route.indexOf("sweep") < 0;
     if (gunner) {
       var en = sim.turret.engineer;
       $("brief-pt").hidden = !sim.data.torpedoes || !!sim.helm;
@@ -1317,7 +1318,8 @@
   })();
   function gravHelm(js, dmg, next, n) {
     var c = sim.helm.jumps[n - 1] || {}, g = sim.turret.jumps[n - 1] || {};
-    return "<p>Fighting has stopped." + (next ? (sim.hasDrive ? " The ship is in GravSpace." : " The carrier has you on deck and is carrying you through GravSpace.") : "") + "</p><ul class='grav-list'>" +
+    return "<p>Fighting has stopped." + (next ? (sim.hasDrive ? " The ship is in GravSpace." : " The carrier has you on deck and is carrying you through GravSpace.") : "") + "</p><ul class='grav-list'>" + laneLine(g, n) +
+      (g.mines && sim.route[n - 1] !== "sweep" ? "<li>Mines shot down: " + g.minesDowned + " of " + g.mines + "</li>" : "") +
       "<li>Orders met: " + c.ordersMet + " of " + c.orders + "</li>" +
       (c.requests ? "<li>Gunners' calls answered: " + c.requestsMet + " of " + c.requests + "</li>" : "") +
       (c.evasive ? "<li>Breaks the " + sim.helm.who.toLowerCase() + " ordered: " + c.evasiveMet + " made of " + c.evasive + "</li>" : "") +
@@ -1413,9 +1415,16 @@
       "<p class='muted'>Take a breath; the clock is stopped. You can adjust the priority order once you're back on the console.</p>");
     overlay("ov-grav", true);
   }
+  // A mine lane: the share of its mines destroyed, and what that means for the fleet behind.
+  function laneLine(g, n) {
+    if (sim.route[n - 1] !== "sweep" || !g.mines) return "";
+    var pct = Math.round(100 * g.minesDowned / g.mines);
+    return "<li><b>Lane cleared: " + pct + "%</b> (" + g.minesDowned + " of " + g.mines + " mines). " +
+      (pct >= 80 ? "The fleet gets through clean." : pct >= 50 ? "The fleet gets through with some damage." : "The fleet takes a beating in the lane.") + "</li>";
+  }
   function gravGunner(js, dmg, next, n) {
     var g = sim.turret.jumps[n - 1] || {};
-    return "<p>Fighting has stopped." + (next ? (sim.hasDrive ? " The ship is in GravSpace." : " The carrier has you on deck and is carrying you through GravSpace.") : "") + "</p><ul class='grav-list'>" +
+    return "<p>Fighting has stopped." + (next ? (sim.hasDrive ? " The ship is in GravSpace." : " The carrier has you on deck and is carrying you through GravSpace.") : "") + "</p><ul class='grav-list'>" + laneLine(g, n) +
       "<li>Enemy ships destroyed: " + g.kills + " of " + g.ships + "</li>" +
       "<li>Torpedoes shot down: " + g.downed + " of " + g.torps + "</li>" +
       (g.mines ? "<li>Mines shot down: " + g.minesDowned + " of " + g.mines + "</li>" : "") +

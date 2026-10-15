@@ -380,6 +380,22 @@
       burns: { every: [26, 36], g: [3, 4], duration: [3, 4], warning: 5 },
       surpriseChance: 0.05
     },
+    // Gunboats only, the helm and turret tests for now: sweep a lane through a minefield so the
+    // fleet behind can get through. No enemy ships. The mines sit still and stream past as the boat
+    // moves (at the gun the coxswain holds her at standard): `flow` fields/s at standard, one every
+    // `every` s, scattered `spread` x the shield's half-width either side of her track; one that
+    // touches the shield hits for mj x the class's threat dmg. Scored by the share of the lane's
+    // mines destroyed.
+    sweep: {
+      name: "Mine lane",
+      enemy: "mines",
+      what: "Clear the lane so the fleet behind can get through: shoot as many mines as you can, and don't hit any",
+      tests: "Clearing mines",
+      firstWave: [0, 0], waveEvery: [999, 999],
+      burns: { every: [999, 999], g: [1, 1], duration: [1, 1], warning: 5 },   // none: no burns, no course orders
+      sweep: { every: [1.3, 2.0], flow: 0.1, spread: 5, maxFlow: 1.5, mj: [30, 45] },
+      surpriseChance: 0
+    },
     // No enemy fire. The pilot weaves through the field with long burns, and the engines get
     // only what the capacitors leave of the reactor. Short of power = drifting = mine strikes.
     minefield: {
@@ -394,12 +410,17 @@
                // often while the engines are starved), `drift` fields/s; one that reaches the shield
                // hits like a torpedo of mj x the class's threat dmg. No random strikes there.
                gunner: { every: [1.8, 2.8], drift: [0.06, 0.09], mj: [45, 70], starvedMult: 2 },
-               // At the helm the mines sit still and the ship moves through them: at standard they
-               // stream past at `flow` fields/s, one every `every` s, scattered `spread` x the
-               // shield's half-width either side of the ship's track (so every class meets about the
-               // same share); faster and more often at higher thrust, up to `maxFlow` x standard;
-               // none while stopped.
-               helm: { every: [3.2, 4.6], flow: 0.12, spread: 2.6, maxFlow: 1 } },
+               // At the helm the mines sit still and the ship moves through them: a steering test
+               // (the captain gives no course orders here). At standard they stream past at `flow`
+               // fields/s, one every `every` s, scattered `spread` x the shield's half-width either
+               // side of the ship's track (so every class meets about the same share), each mj x the
+               // gunner station's; faster and more often at higher thrust, up to `maxFlow` x
+               // standard; none while stopped. Big ships move slower: the flow (and so how often
+               // mines come) is divided by 1 + `lagSlow` x the class's helm lag, giving a slow
+               // turner time to steer clear. Small and hard for the gun crew: a crew bolt that
+               // reaches one destroys it only with `crewHit` x 3 / the number of guns (so a big
+               // battery doesn't do the steering), else a near miss.
+               helm: { every: [3.2, 4.6], flow: 0.12, spread: 2.6, maxFlow: 1, mj: 3, lagSlow: 2, crewHit: 0.12 } },
       windowScale: 0.7,                // the captain wants out: the jump window comes sooner
       surpriseChance: 0
     }

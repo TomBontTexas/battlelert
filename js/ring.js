@@ -416,8 +416,10 @@
      shield hits; the rest pass by. The pilot steers between them; the guns still shoot them. */
   RingTurret.prototype.dropMines = function () {
     var m = this.m, enc = m.encounter(), M = enc && enc.mines && enc.mines.gunner, R = this.R, r = this.rng;
-    if (!M || (m.phase !== "engage" && m.phase !== "countdown")) return;
-    if (m.helm) { this.dropFieldMine(enc.mines.helm, M); return; }
+    if (m.phase !== "engage" && m.phase !== "countdown") return;
+    if (enc && enc.sweep) { this.dropFieldMine(enc.sweep, enc.sweep.mj); return; }      // the mine lane, either station
+    if (!M) return;
+    if (m.helm) { this.dropFieldMine(enc.mines.helm, M.mj.map(function (x) { return x * enc.mines.helm.mj; })); return; }
     if (m.t < this.nextMineAt) return;
     this.nextMineAt = m.t + r.range(M.every) / (m.ship.starved ? M.starvedMult : 1);
     var b0 = this.pickBearing(), hitB = b0 + (r.next() - 0.5) * 20, p = this.rim(hitB);
@@ -429,27 +431,29 @@
     e.torp = tp; this.torps.push(tp);
     count(this, "mines");
   };
-  // The helm: how fast the field streams past (fields/s, + down the view), from the ship's speed.
+  // How fast a field of still mines streams past (fields/s, + down the view), from the ship's
+  // speed at the helm; at the gun the coxswain holds her at standard.
   RingTurret.prototype.fieldFlow = function (H) {
-    var h = this.m.helm, f = h.speed / Math.max(1, h.gOf("standard"));
-    return h.inTube ? 0 : H.flow * Math.max(-H.maxFlow, Math.min(H.maxFlow, f));
+    var h = this.m.helm; if (!h) return H.flow;
+    var f = h.speed / Math.max(1, h.gOf("standard")), slow = H.lagSlow ? 1 + H.lagSlow * h.C.lag : 1;
+    return h.inTube ? 0 : H.flow / slow * Math.max(-H.maxFlow, Math.min(H.maxFlow, f));
   };
-  // The helm: mines come up ahead (astern when going astern) as the ship covers ground.
-  RingTurret.prototype.dropFieldMine = function (H, M) {
+  // Mines come up ahead (astern when going astern) as the ship covers ground. mj: their charge range.
+  RingTurret.prototype.dropFieldMine = function (H, mj) {
     var m = this.m, r = this.rng, R = this.R, v = this.fieldFlow(H), dt = 1 / BL.TICK_RATE;
     this.mineDue = (this.mineDue || 0) + Math.abs(v) / H.flow * dt / r.range(H.every);   // one per `every` s at standard
     if (this.mineDue < 1) return;
     this.mineDue -= 1;
     var x = R.cx + (r.next() * 2 - 1) * H.spread * R.rx, y = v >= 0 ? -0.06 : 1.06;
-    var e = { id: m.nextId++, type: "mine", at: Infinity, mj: Math.round(r.range(M.mj) * m.data.threat.dmg), announced: true, visible: true };
+    var e = { id: m.nextId++, type: "mine", at: Infinity, mj: Math.round(r.range(mj) * m.data.threat.dmg), announced: true, visible: true };
     m.events.push(e);
-    var tp = { id: this.nextId++, ev: e, mine: true, field: true, x0: x, y0: y, x1: x, y1: y, hitB: 0, t0: m.t, t1: m.t + 99, x: x, y: y, spin: r.next() * 6 };
+    var tp = { id: this.nextId++, ev: e, mine: true, field: true, crewHit: H.crewHit && H.crewHit * Math.min(1, 3 / this.bats.length), x0: x, y0: y, x1: x, y1: y, hitB: 0, t0: m.t, t1: m.t + 99, x: x, y: y, spin: r.next() * 6 };
     e.torp = tp; this.torps.push(tp);
     count(this, "mines");
   };
   // The helm: move the field's mines with the ship; one touching the shield hits, one past the view is gone.
   RingTurret.prototype.moveFieldMines = function (list) {
-    var m = this.m, R = this.R, self = this, enc = m.encounter(), H = enc && enc.mines && enc.mines.helm;
+    var m = this.m, R = this.R, self = this, enc = m.encounter(), H = enc && (enc.sweep || (enc.mines && enc.mines.helm));
     var v = H ? this.fieldFlow(H) : 0, dt = 1 / BL.TICK_RATE;
     list.forEach(function (tp) {
       var e = tp.ev;
@@ -463,12 +467,15 @@
       var dx = (tp.x - R.cx) / R.rx, dy = (tp.y - R.cy) / R.ry;
       if (dx * dx + dy * dy <= 1) { e.at = m.t; tp.x1 = tp.x; tp.y1 = tp.y; tp.t1 = m.t; self.torps.push(tp); return; }
       if (tp.y > 1.12 || tp.y < -0.12 || tp.x < -0.12 || tp.x > 1.12) { e.done = true; e.passed = true; return; }
-      // Where and when it would touch the shield if the ship holds this course (for the warning ring and the gunners).
+      // Where and when it would touch the shield if the ship holds this course (for the warning ring
+      // and the gunners); one that will pass by: when it's abeam (the gunners still shoot it, no ring).
+      tp.pass = false;
       if (Math.abs(dx) < 1 && v) {
         var edge = R.ry * Math.sqrt(1 - dx * dx), yh = v > 0 ? R.cy - edge : R.cy + edge;
         if ((yh - tp.y) * v > 0) { tp.x1 = tp.x; tp.y1 = yh; tp.t1 = m.t + (yh - tp.y) / v; self.torps.push(tp); return; }
       }
-      tp.x1 = tp.x; tp.y1 = tp.y; tp.t1 = m.t + 99;
+      tp.pass = true; tp.x1 = tp.x; tp.y1 = tp.y;
+      tp.t1 = v && (R.cy - tp.y) * v > 0 ? m.t + (R.cy - tp.y) / v : m.t + 99;
       self.torps.push(tp);
     });
   };
@@ -701,7 +708,8 @@
         var d = b.dist + step * bestT;
         b.power = d <= reach ? 1 : lg.at + (lg.end - lg.at) * Math.min(1, (d - reach) / lg.extra);
         b.x = x0 + (x1 - x0) * bestT; b.y = y0 + (y1 - y0) * bestT;
-        if (best.torp && b.power < 1 && !this.rng.chance(b.power)) {
+        // (a helm minefield's mines are small: the crew's bolts mostly near-miss them)
+        if (best.torp && ((b.power < 1 && !this.rng.chance(b.power)) || (best.torp.crewHit !== undefined && !b.mine && !this.rng.chance(best.torp.crewHit)))) {
           this.effects.push({ type: "spark", x: b.x, y: b.y, at: this.m.totalT, weapon: bat.weaponId });
           continue;
         }

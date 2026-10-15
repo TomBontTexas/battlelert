@@ -186,7 +186,7 @@
   // The captain's orders, on the bridge's burn schedule (Mission.schedule calls this at the helm).
   Helm.prototype.schedule = function (t) {
     var m = this.m, enc = m.encounter(), b = enc.burns, H = this.H, r = this.rng;
-    if (!b) return;
+    if (!b || enc.mines) return;                          // (in a minefield the pilot steers through it: no course orders)
     if (this.jumpNear()) return;                          // time to make the jump heading
     // Bigger ships get more warning: time to swing at a safe rate, plus the lag.
     var C = this.C, turn = this.nextTurn, lead = b.warning + Math.max(0, this.turnTime(turn) - 2);

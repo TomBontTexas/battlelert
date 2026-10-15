@@ -486,7 +486,7 @@
     c.fillStyle = Math.floor(t * 3 + tp.spin) % 2 ? "rgba(255,80,60,0.95)" : "rgba(255,80,60,0.25)";
     c.beginPath(); c.arc(tp.x, tp.y, 0.004, 0, Math.PI * 2); c.fill();
     c.lineWidth = 1.5 / S;
-    if (tp.t1 - m.t < 1.2) { c.strokeStyle = Math.floor(t * 8) % 2 ? "rgba(255,90,70,0.9)" : "rgba(255,90,70,0.3)"; c.beginPath(); c.arc(tp.x1, tp.y1, 0.02, 0, Math.PI * 2); c.stroke(); }
+    if (!tp.pass && tp.t1 - m.t < 1.2) { c.strokeStyle = Math.floor(t * 8) % 2 ? "rgba(255,90,70,0.9)" : "rgba(255,90,70,0.3)"; c.beginPath(); c.arc(tp.x1, tp.y1, 0.02, 0, Math.PI * 2); c.stroke(); }
   }
 
   // The oval shield: brighter with more charge, flickering when low; flares, ripples and wobbles
