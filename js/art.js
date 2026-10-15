@@ -1,7 +1,7 @@
 /* Battlelert © 2011–2026 Tom Bont. All rights reserved. See LICENSE. */
 /* Battlelert ship art, approved by TexasBont Oct 12, 2026. Every ship is an SVG drawn around (0, 0) in a 200 x 200
-   box. Archonian ships point their noses down (toward you); human ships point up.
-   Light comes from the upper left. Archonian engines burn violet; human engines blue-white. */
+   box. Azurian ships point their noses down (toward you); human ships point up.
+   Light comes from the upper left. Azurian engines burn violet; human engines blue-white. */
 (function (root) {
   "use strict";
   var BL = root.BL = root.BL || {};
@@ -113,7 +113,7 @@
     return svg("-70 -78 140 160", defs(p, A, ARCH.glow) + both(side) + body);
   };
 
-  /* T1 Archonian torpedo: a finned slug with a hot nose, heading down. */
+  /* T1 Azurian torpedo: a finned slug with a hot nose, heading down. */
   ART.torpedo = function () {
     var p = "t" + (n++);
     return svg("-30 -70 60 110", '<defs>' +
@@ -193,7 +193,7 @@
     out.push('<path d="M0 ' + (-h) + ' L' + (b * 0.55) + ' ' + (-h + bow * 0.55) + ' L' + b + ' ' + (-h + bow) + ' L' + b + ' ' + (h - 16) + ' L' + (b - 7) + ' ' + h + ' L0 ' + h + ' Z" fill="#000" opacity=".15"/>');
     for (var y = -h + bow; y < h - 10; y += 24) out.push('<path d="M' + (-b + 2) + ' ' + y + ' L' + (b - 2) + ' ' + y + '" stroke="#3a454f" stroke-width="1" opacity=".7"/>');
     out.push('<path d="M0 ' + (-h + 6) + ' L0 ' + (h - 4) + '" stroke="#3a454f" stroke-width=".8" opacity=".5"/>');
-    // GravSpace drive ring near the stern
+    // warp drive ring near the stern
     out.push('<circle cx="0" cy="' + (h - 22) + '" r="' + Math.min(14, b * 0.55) + '" fill="none" stroke="#6aa8ff" stroke-width="3" opacity=".85"/>');
     // hangar bays aft, both sides
     if (c.hangar) [-1, 1].forEach(function (sd) {
@@ -247,7 +247,7 @@
     return svg((-b - padX) + " " + (-h - padTop) + " " + (B + padX * 2) + " " + (L + padTop + padBottom), d + out.join(""));
   };
 
-  /* A1-A5 Archonian capital ships. Same violet hull as the small types, with a pale lilac
+  /* A1-A5 Azurian capital ships. Same violet hull as the small types, with a pale lilac
      command trim and a glowing core; told apart by outline and size. Noses down. */
   var CAPITAL = ["#f4ecff", "#b79cff", "#4b2e85"];
   function dome(p, x, y, r) {

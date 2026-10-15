@@ -142,9 +142,9 @@
     <ul class="tight" id="brief-eng">
       <li id="brief-main" hidden><b>Main gun:</b> fires by itself whenever it's full and a target is up. Keep feeding it.</li>
       <li id="brief-hangar" hidden><b>Launchers and arresters:</b> full launchers at the launch call early in each system, full arresters at the recovery call before the jump. No jump without the gunboats unless the hull is at 20% or less.</li>
-      <li id="brief-pd" hidden><b>CIWS</b> (close-in weapon system) is the only thing that stops a drive hunter's strike on the GravSpace drive.</li>
+      <li id="brief-pd" hidden><b>CIWS</b> (close-in weapon system) is the only thing that stops a drive hunter's strike on the warp drive.</li>
       <li id="brief-rx" hidden><b>Several reactors:</b> each capacitor is wired to one (the letter on its column). Tap the letter or press R to move it; it draws nothing for 2 s while it switches.</li>
-      <li id="brief-buster" hidden><b>Planet buster:</b> must be full, as well as the drive, before the final jump. It can't charge in GravSpace.</li>
+      <li id="brief-buster" hidden><b>Planet buster:</b> must be full, as well as the drive, before the final jump. It can't charge in warp space.</li>
       <li id="brief-mines" hidden><b>Minefield:</b> the engines get only what the capacitors leave. Ease off charging during each weave, or the ship drifts into mines.</li>
       <li class="muted">Controls and rules: How to play. Keys: Options.</li>
     </ul>
@@ -209,7 +209,7 @@
         <div class="row-label"><span>ENGINES</span><span id="eng-val"></span></div>
         <div class="hbar"><div id="eng-fill" class="hbar-fill eng-fill"></div></div>
       </div>
-      <div class="auxbank" id="auxbank" data-hint="Aux bank: a reserve you switch onto capacitors with their AUX buttons (key A). It charges them without loading the reactor. Refills only in GravSpace.">
+      <div class="auxbank" id="auxbank" data-hint="Aux bank: a reserve you switch onto capacitors with their AUX buttons (key A). It charges them without loading the reactor. Refills only in warp space.">
         <div class="row-label"><span>AUX BANK</span><span id="aux-val"></span></div>
         <div class="hbar"><div id="aux-fill" class="hbar-fill aux-fill"></div></div>
         <div id="aux-out" class="muted small-text"></div>
@@ -229,16 +229,16 @@
         <div class="hbar tall"><div id="hull-fill" class="hbar-fill hull-fill"></div></div>
       </div>
       <div id="crew-status" class="crew-status" data-hint="Crew. If life support runs dry, the crew is crippled: gunners fire slower and miss more."></div>
-      <div class="jump-box" data-hint="Jump progress. The captain jumps when the window is open and the GravSpace drive is full.">
+      <div class="jump-box" data-hint="Jump progress. The captain jumps when the window is open and the warp drive is full.">
         <div class="row-label"><span id="jump-label">JUMP</span><span id="jump-drive"></span></div>
         <div class="hbar tall"><div id="jump-fill" class="hbar-fill drive-fill"></div></div>
         <div id="jump-status" class="jump-status"></div>
       </div>
-      <div class="route-box" data-hint="Mission route: three systems, then the Archonian world.">
+      <div class="route-box" data-hint="Mission route: three systems, then the Azurian world.">
         <div class="row-label"><span>ROUTE</span></div>
         <ol id="route" class="route"></ol>
       </div>
-      <div class="damage-box" data-hint="Damage report. Damage slows chargers, lowers reactor output and weakens the thrusters. In GravSpace, damage control repairs half of it.">
+      <div class="damage-box" data-hint="Damage report. Damage slows chargers, lowers reactor output and weakens the thrusters. In warp space, damage control repairs half of it.">
         <div class="row-label"><span>DAMAGE</span></div>
         <ul id="damage-list" class="damage-list"><li class="muted">None</li></ul>
       </div>
@@ -399,12 +399,12 @@
   </div>
 </section>
 
-<!-- ========================================================= GravSpace -->
+<!-- ========================================================= warp space -->
 <section id="ov-grav" class="overlay" hidden>
   <div class="ov-card wide">
-    <h1 id="grav-title">In GravSpace</h1>
+    <h1 id="grav-title">In warp space</h1>
     <div id="grav-body"></div>
-    <div class="menu"><button id="btn-grav-go" class="big primary">Drop out of GravSpace</button></div>
+    <div class="menu"><button id="btn-grav-go" class="big primary">Drop out of warp space</button></div>
   </div>
 </section>
 
@@ -520,10 +520,10 @@
       <li><b>Shift charge to meet the next demand.</b> Drag a capacitor's charge-rate slider, or select it with 1–9 and use ↑↓. The controller ramps toward your setting over a second or two, so start early.</li>
       <li><b>Keep heat under the line.</b> Load over 100% heats the reactor. At full heat the failsafe trips capacitors off the reactor for 10 s, lowest priority first. Set the priority order so the right things trip.</li>
       <li><b>Spend aux power to bridge a gap.</b> The aux bank charges a capacitor without loading the reactor. It only refills between jumps.</li>
-      <li><b>Charge the GravSpace drive.</b> When the jump window opens and the drive is full, the captain jumps. Three jumps and the planet buster is delivered.</li>
+      <li><b>Charge the warp drive.</b> When the jump window opens and the drive is full, the captain jumps. Three jumps and the planet buster is delivered.</li>
       <li><b>Every capacitor bleeds.</b> The fuller it is the more it loses, so holding everything full keeps costing reactor power. Charge what the forecast says is coming.</li>
       <li><b>Bigger ships add more.</b> Light cruisers and up have a main gun that fires by itself whenever its capacitor is full and a target is up. Cruisers and up carry gunboats: charge the launchers for the launch near the start of each system, then the arresters to recover them near the end. No jump until they're aboard, unless the hull is at 20% or less.</li>
-      <li><b>The biggest ships.</b> Heavy cruisers and up have a CIWS (close-in weapon system), the only thing that stops drive hunters' strikes on the GravSpace drive. Battleships have two reactors and dreadnoughts three: move capacitors between them to balance the load. The dreadnought also carries the planet buster, which must be full before the final jump.</li>
+      <li><b>The biggest ships.</b> Heavy cruisers and up have a CIWS (close-in weapon system), the only thing that stops drive hunters' strikes on the warp drive. Battleships have two reactors and dreadnoughts three: move capacitors between them to balance the load. The dreadnought also carries the planet buster, which must be full before the final jump.</li>
       <li><b>Minefields.</b> No enemy fire, but the engines get only what the capacitors leave of the reactor. Ease off charging during each weave, or the ship drifts into mines.</li>
     </ol>
     <p>Shields stop salvos; whatever gets through damages the hull, and damage slows chargers, lowers reactor output and weakens the thrusters. Fed guns kill enemies faster, and a dead enemy fires no more salvos. Keep life support topped up, or the crew falters.</p>
@@ -539,8 +539,8 @@
       <li><b>Several guns.</b> You aim one; your gun crew works the others. They're people, not machines: each gunner has a skill (on the gun cards), reacts slower than you, aims rougher and now and then goes after the wrong target, so they need you. A fresh crew comes with every mission. Take a gun with its number key or its card; you trade places with its gunner. The letter on each card is its gunner's standing order: P point defense (torpedoes first), L stop launches (ships charging to fire first), H hunt (the ships its weapon is best against), F free fire. Take a gun and press O, or tap its letter, to change it; a green letter is the suggestion for this fight.</li>
       <li><b>Damage.</b> Guns sit outside the shields. A torpedo that gets through can damage a gun's charger and turret: it turns slower, fires slower or loses range. Damage control repairs half of it between systems.</li>
       <li><b>Bigger ships add more.</b> Gunboats carry two homing torpedoes (1 and 2), reloaded every sortie. Light cruisers and up have a main gun off the bow: press M when it's charged and the whole charge goes into the first ship on that line; the pilot swings the bow toward the biggest target, which tries to slide away. Cruisers launch a gunboat squadron that strafes the enemy and shoots down nearby torpedoes. In minefields, shoot the mines before they reach the shield.</li>
-      <li><b>Drive hunters.</b> From the heavy cruiser up, drive hunters fire teal missiles that swing around the shield into the stern, at the GravSpace drive. The CIWS mounts there fire on them by themselves while the CIWS has charge; one that gets through drains the drive. Shoot them down on the way in. The ion gun is best against the hunters.</li>
-      <li><b>Archonian capital ships.</b> One big hull with escorts, holding far out: a frigate (gunboats now and then), a cruiser (heavy cruisers and up) whose torpedoes come in pairs, and a battleship (battleships and dreadnoughts) whose torpedoes come in threes. Lighter ships keep joining the fight while it lasts. The pilot swings the main gun onto them, and rail guns do extra damage. On a dreadnought, the final system is the fortress guarding the Archonian world: it sits dead ahead, never moves and keeps firing until the planet buster is away, unless you destroy it first.</li>
+      <li><b>Drive hunters.</b> From the heavy cruiser up, drive hunters fire teal missiles that swing around the shield into the stern, at the warp drive. The CIWS mounts there fire on them by themselves while the CIWS has charge; one that gets through drains the drive. Shoot them down on the way in. The ion gun is best against the hunters.</li>
+      <li><b>Azurian capital ships.</b> One big hull with escorts, holding far out: a frigate (gunboats now and then), a cruiser (heavy cruisers and up) whose torpedoes come in pairs, and a battleship (battleships and dreadnoughts) whose torpedoes come in threes. Lighter ships keep joining the fight while it lasts. The pilot swings the main gun onto them, and rail guns do extra damage. On a dreadnought, the final system is the fortress guarding the Azurian world: it sits dead ahead, never moves and keeps firing until the planet buster is away, unless you destroy it first.</li>
       <li><b>Views and switches.</b> W switches to wide view: the side panels give way to an overlay and the battle fills the screen, bow to the right. Switches on the left panel let you take a gun by clicking it on the view, or turn click-to-aim off.</li>
     </ol>
     <h2>At the helm</h2>
@@ -555,7 +555,7 @@
       <li><b>Mine lane</b> (gunboat tests, sortie 2). Sweep a lane through a minefield so the fleet behind can get through: no enemy ships, just mines streaming past as you go. Your gunner shoots them; fly so they can (slower gives the gun more time per mine) and don't run into any. The report shows the share of the lane cleared. At the gun, the coxswain holds the boat at standard and you shoot.</li>
       <li><b>Dodging is the captain's call.</b> When torpedoes launch, the captain (the coxswain on a gunboat) orders either steady ("Steady, Helm.", "Maintain heading.") or a break ("Break left, now!", in red on the HELM panel). Steady is said once and stands until his next order changes things (a break, a course order), or until the torpedoes he's taking are gone and none have come for a few seconds; he doesn't repeat it for every torpedo. The order panel says which: STEADY with the heading to hold (and the torpedoes inbound) while it stands, FREE HELM only when you truly are free, and for a few seconds after an order ends, how it went ("Order met ✔", "Missed: heading ✗"). He takes torpedoes always while a course order is pending or under way (the order stands), often when the shields can absorb them, and always on ships too big to swing in time. He keeps watching, and if the shields can no longer take the fish he said to take, he orders a break then. The clock starts when you hear the break order, not at launch: its torpedoes take their full flight time after it. Swing the bow 15° or more off your steady turn before they land (the panel counts the degrees and the seconds) and they miss; a break made counts as an order met. Dodging after "Steady" is disobeying an order: the captain calls you on it, it counts as an order not met, and each time costs 5% of the mission's score, and so your reputation. (Turning for the captain's own course order doesn't count, nor does steering in the few seconds after a break, such as straightening out.) A break order cuts in on the voices, so you hear it at once. To keep orders clear, the helm doesn't hear the crew's running commentary (incoming-fire counts, contacts, kills, misses, "well done"): only the captain's orders, gunners' calls, launch control, jump calls, warnings and damage.</li>
       <li><b>Gunners call the captain</b> (ships with guns that don't go all round). A gunner with nothing in their arc tells the captain ("Gunner 1: Captain, nothing in my arc. Target to port."), and he orders the helm round: a course order like any other. When the main gun is charged, the captain orders the bow onto the biggest ship. Gunners hold their calls while an order is pending.</li>
-      <li><b>Jump heading</b> (ships with a GravSpace drive). Navigation gives a jump heading on arrival (green on the compass), and as the window nears, the captain orders it as a course order (again if the bow wanders off). The ship jumps once the drive is full and the bow is on it (±10°); if the drive is full and you're still off it 20 s after the window opens, the captain takes the conn.</li>
+      <li><b>Jump heading</b> (ships with a warp drive). Navigation gives a jump heading on arrival (green on the compass), and as the window nears, the captain orders it as a course order (again if the bow wanders off). The ship jumps once the drive is full and the bow is on it (±10°); if the drive is full and you're still off it 20 s after the window opens, the captain takes the conn.</li>
       <li><b>Autopilot.</b> T turns it on and holds the heading; tap the compass across the top to fly to that heading, or tap the captain's order to fly there. On autopilot the strip at the far right of the screen (clear of the battle) is the course set: drag it up and down (headings rise upward, blue box in the middle; the strip's whole height is 360°, so one sweep of the thumb reaches any heading) or tap a heading on it, and the autopilot speeds up and slows the turn to bring her onto it. For the last degree or two, the thin ▲ +1° and ▼ −1° buttons at the ends of the strip (or ] and [) nudge the course one degree; by hand they put her on autopilot one degree off the heading she's on. The compass across the top always shows the ship's actual heading. By hand (autopilot off) the strip is a wheel that slides up and down instead, with no numbers: the farther you slide it from the middle, the harder she turns (down for starboard, up for port), and it stays where you leave it; bringing her onto the heading is up to you. It flies carefully (never past the safe rate, never with split engines) and earns less reputation than steering by hand.</li>
     </ol>
     <p class="muted small-text">Battlelert © 2011–2026 Tom Bont. All rights reserved. Free to play. The code, art and sounds may not be copied, changed or shared without written permission.</p>
@@ -565,19 +565,19 @@
 
 <script src="version.js?b=f0b6833c"></script>
 <script src="update-banner.js?b=ec7860dd"></script>
-<script src="js/data.js?b=32f28f95"></script>
-<script src="js/sim.js?b=8f2f71b8"></script>
+<script src="js/data.js?b=4a1f5bbd"></script>
+<script src="js/sim.js?b=7c2fa6e7"></script>
 <script src="js/agents.js?b=35307cbd"></script>
-<script src="js/gunnery.js?b=6f7c1736"></script>
-<script src="js/ring.js?b=078ad2c0"></script>
-<script src="js/helm.js?b=026df6ed"></script>
-<script src="js/art.js?b=3b0d069a"></script>
+<script src="js/gunnery.js?b=69016dd1"></script>
+<script src="js/ring.js?b=1e70d325"></script>
+<script src="js/helm.js?b=d1aeb16d"></script>
+<script src="js/art.js?b=0d222621"></script>
 <script src="js/turretview.js?b=960c39ae"></script>
 <script src="js/ringview.js?b=49722fd7"></script>
-<script src="js/names.js?b=1469f64a"></script>
-<script src="js/career.js?b=6ac5d10d"></script>
+<script src="js/names.js?b=15a6a577"></script>
+<script src="js/career.js?b=477499c5"></script>
 <script src="js/speech.js?b=f9e428ef"></script>
 <script src="js/audio.js?b=273e5325"></script>
-<script src="js/ui.js?b=e3fbcb0a"></script>
+<script src="js/ui.js?b=aaf87904"></script>
 </body>
 </html>

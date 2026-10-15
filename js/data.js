@@ -27,11 +27,11 @@
      reactors (battleship and up): several reactors, each with its own safe output and aux
      bank; each system's `reactor` (0 = A, 1 = B, 2 = C) is where it starts out wired.
      gunnerEncounters: the route's encounters at the gunner station, if they differ (the
-     Archonian capital ships are met only at the gun for now). gunnerFinal: the encounter that
+     Azurian capital ships are met only at the gun for now). gunnerFinal: the encounter that
      always holds the final system at the gun (the dreadnought's homeworld fortress).
      mission: jumps and when each jump window opens (s after arrival). A ship with no
-     GravSpace drive flies one timed sortie per carrier jump: the carrier recovers it when
-     the sortie timer runs out, carries it through GravSpace, and launches it again. */
+     warp drive flies one timed sortie per carrier jump: the carrier recovers it when
+     the sortie timer runs out, carries it through warp space, and launches it again. */
   var GUN = { shotMJ: 15, normalInterval: 2.0, fullInterval: 0.5, hitChance: 0.7, damage: 10 };
   function sys(id, name, short, kind, maxMJ, maxMW, startMJ, startSet, extra) {
     var o = { id: id, name: name, short: short, kind: kind, maxMJ: maxMJ, maxMW: maxMW, startMJ: startMJ, startSet: startSet };
@@ -56,7 +56,7 @@
         sys("life", "Life support", "LIFE", "life", 35, 8, 35, 2, { drainMW: 1.5 }),
         sys("shield", "Shields", "SHLD", "shield", 120, 45, 60, 12),
         sys("gun1", "Gun 1", "GUN1", "gun", 70, 30, 35, 8, { gunner: 1 }),
-        sys("drive", "GravSpace drive", "DRIVE", "drive", 1800, 40, 0, 0)
+        sys("drive", "Warp drive", "DRIVE", "drive", 1800, 40, 0, 0)
       ] },
     { n: 3, id: "destroyerEscort", name: "Destroyer Escort", built: true, baseRep: 325,
       crew: 5, hull: 80, reactorMW: 80, engineMWperG: 4, cruiseG: 2, maxG: 10, gScale: 1.1,
@@ -67,7 +67,7 @@
         sys("shield", "Shields", "SHLD", "shield", 140, 55, 70, 16),
         sys("gun1", "Gun 1", "GUN1", "gun", 85, 35, 42, 9, { gunner: 1 }),
         sys("gun2", "Gun 2", "GUN2", "gun", 85, 35, 42, 9, { gunner: 2 }),
-        sys("drive", "GravSpace drive", "DRIVE", "drive", 2400, 50, 0, 0)
+        sys("drive", "Warp drive", "DRIVE", "drive", 2400, 50, 0, 0)
       ] },
     { n: 4, id: "destroyer", name: "Destroyer", built: true, baseRep: 437,
       crew: 6, hull: 100, reactorMW: 100, engineMWperG: 5, cruiseG: 2, maxG: 9, gScale: 1,
@@ -79,7 +79,7 @@
         sys("gun1", "Gun 1", "GUN1", "gun", 100, 40, 50, 10, { gunner: 1 }),
         sys("gun2", "Gun 2", "GUN2", "gun", 100, 40, 50, 10, { gunner: 2 }),
         sys("gun3", "Gun 3", "GUN3", "gun", 100, 40, 50, 10, { gunner: 3 }),
-        sys("drive", "GravSpace drive", "DRIVE", "drive", 3200, 60, 0, 0)
+        sys("drive", "Warp drive", "DRIVE", "drive", 3200, 60, 0, 0)
       ] },
     { n: 5, id: "lightCruiser", name: "Light Cruiser", built: true, baseRep: 550,
       crew: 7, hull: 120, reactorMW: 125, engineMWperG: 6, cruiseG: 2, maxG: 7, gScale: 0.9,
@@ -94,7 +94,7 @@
         sys("gun3", "Gun 3", "GUN3", "gun", 105, 40, 52, 10, { gunner: 3 }),
         sys("gun4", "Gun 4", "GUN4", "gun", 105, 40, 52, 10, { gunner: 4 }),
         sys("main", "Main gun", "MAIN", "main", 480, 45, 160, 8),
-        sys("drive", "GravSpace drive", "DRIVE", "drive", 4000, 70, 0, 0)
+        sys("drive", "Warp drive", "DRIVE", "drive", 4000, 70, 0, 0)
       ] },
     { n: 6, id: "cruiser", name: "Cruiser", built: true, baseRep: 662,
       crew: 8, hull: 140, reactorMW: 150, engineMWperG: 7, cruiseG: 2, maxG: 6, gScale: 0.85,
@@ -112,7 +112,7 @@
         sys("gun5", "Gun 5", "GUN5", "gun", 110, 40, 55, 10, { gunner: 5 }),
         sys("main", "Main gun", "MAIN", "main", 520, 50, 170, 8),
         sys("hangar", "Launchers", "LNCH", "hangar", 600, 40, 300, 6),
-        sys("drive", "GravSpace drive", "DRIVE", "drive", 4800, 80, 0, 0)
+        sys("drive", "Warp drive", "DRIVE", "drive", 4800, 80, 0, 0)
       ] },
     { n: 7, id: "heavyCruiser", name: "Heavy Cruiser", built: true, baseRep: 775,
       crew: 9, hull: 160, reactorMW: 175, engineMWperG: 8, cruiseG: 2, maxG: 5, gScale: 0.8,
@@ -133,7 +133,7 @@
         sys("main", "Main gun", "MAIN", "main", 560, 55, 180, 8),
         sys("hangar", "Launchers", "LNCH", "hangar", 650, 45, 320, 6),
         sys("pd", "CIWS", "CIWS", "pd", 180, 45, 90, 8),
-        sys("drive", "GravSpace drive", "DRIVE", "drive", 5600, 90, 0, 0)
+        sys("drive", "Warp drive", "DRIVE", "drive", 5600, 90, 0, 0)
       ] },
     { n: 8, id: "battleship", name: "Battleship", built: true, baseRep: 887,
       crew: 10, hull: 180, engineMWperG: 9, cruiseG: 2, maxG: 4, gScale: 0.75,
@@ -156,7 +156,7 @@
         sys("main", "Main gun", "MAIN", "main", 600, 60, 200, 8, { reactor: 1 }),
         sys("hangar", "Launchers", "LNCH", "hangar", 700, 48, 350, 6, { reactor: 1 }),
         sys("pd", "CIWS", "CIWS", "pd", 200, 50, 100, 8, { reactor: 0 }),
-        sys("drive", "GravSpace drive", "DRIVE", "drive", 6400, 100, 0, 0, { reactor: 1 })
+        sys("drive", "Warp drive", "DRIVE", "drive", 6400, 100, 0, 0, { reactor: 1 })
       ] },
     { n: 9, id: "dreadnought", name: "Dreadnaught", built: true, baseRep: 1000,
       crew: 12, hull: 220, engineMWperG: 10, cruiseG: 2, maxG: 3, gScale: 0.7,
@@ -182,28 +182,35 @@
         sys("hangar", "Launchers", "LNCH", "hangar", 750, 50, 370, 6, { reactor: 2 }),
         sys("pd", "CIWS", "CIWS", "pd", 220, 55, 110, 8, { reactor: 0 }),
         sys("buster", "Planet buster", "BUSTER", "buster", 9000, 45, 0, 18, { reactor: 2 }),
-        sys("drive", "GravSpace drive", "DRIVE", "drive", 7200, 110, 0, 0, { reactor: 1 })
+        sys("drive", "Warp drive", "DRIVE", "drive", 7200, 110, 0, 0, { reactor: 1 })
       ] }
   ];
   BL.classById = function (id) { return BL.CLASSES.filter(function (c) { return c.id === id; })[0]; };
   BL.classByN = function (n) { return BL.CLASSES[n - 1]; };
 
   /* Tech level: lower tech = smaller reactor, capacitors and chargers, weaker guns,
-     and more reputation. The class numbers above are tech level 4. */
+     and more reputation. Tech levels run 4 to 7: the gunboat is always tech level 4; every other
+     class (they all carry a warp drive, which needs tech level 5) comes in 5, 6 or 7. The class
+     numbers above are the gunboat's tech level 4 and the others' tech level 6. */
   BL.TECH = {
-    factor: function (tl) { return 0.85 + 0.05 * (tl - 1); },     // TL1 0.85 ... TL6 1.10
-    repMult: function (tl) { return 2.0 - 0.2 * (tl - 1); }       // TL1 x2.0 ... TL6 x1.0
+    // The tech levels a class comes in, and the usual one (tests and headless runs).
+    levels: function (classId) { return classId === "gunboat" ? [4] : [5, 6, 7]; },
+    base: function (classId) { return classId === "gunboat" ? 4 : 6; },
+    clamp: function (classId, tl) { var L = BL.TECH.levels(classId); return Math.max(L[0], Math.min(L[L.length - 1], Math.round(+tl) || BL.TECH.base(classId))); },
+    // Strength against the class numbers: the gunboat's one level is its numbers; TL5 0.9, TL6 1.0, TL7 1.1.
+    factor: function (tl, classId) { return classId === "gunboat" ? 1 : 1 + 0.1 * (BL.TECH.clamp(classId, tl) - 6); },
+    repMult: function (tl) { return 1 + 0.25 * (7 - Math.max(4, Math.min(7, tl))); }   // TL4 x1.75 ... TL7 x1.0
   };
 
   // A ship of class `classId` at tech level `tl`, ready for BL.Mission.
   BL.shipFor = function (classId, tl) {
-    var c = BL.classById(classId), f = BL.TECH.factor(tl || 4);
+    var c = BL.classById(classId); tl = BL.TECH.clamp(c.id, tl); var f = BL.TECH.factor(tl, c.id);
     function r(v) { return Math.round(v); }
     var reactors = (c.reactors || [{ name: "", mw: c.reactorMW, aux: c.aux }]).map(function (x) {
       return { name: x.name, mw: r(x.mw * f), aux: { capacity: r(x.aux.capacity * f), rateMW: r(x.aux.rateMW * f) } };
     });
     return {
-      classId: c.id, className: c.name, n: c.n, tl: tl || 4, reactors: reactors,
+      classId: c.id, className: c.name, n: c.n, tl: tl, reactors: reactors,
       name: c.name, hull: c.hull, crew: c.crew,
       reactorMW: reactors.reduce(function (a, x) { return a + x.mw; }, 0), engineMWperG: c.engineMWperG, cruiseG: c.cruiseG, maxG: c.maxG, gScale: c.gScale,
       aux: reactors[0].aux,
@@ -297,7 +304,7 @@
     hunters: {
       name: "Drive hunters",
       enemy: "Drive hunter",
-      what: "They fire at the GravSpace drive; only the CIWS stops them",
+      what: "They fire at the warp drive; only the CIWS stops them",
       tests: "Priority order, shielding the drive",
       salvoWarning: 6,
       firstWave: [3, 5],
@@ -308,10 +315,10 @@
       surpriseChance: 0.05, driveDrain: 0.15,
       breakOff: 0                      // hunters send no new waves once the jump window is open
     },
-    // An Archonian frigate with two interceptor escorts: one big hull, torpedoes in pairs.
+    // An Azurian frigate with two interceptor escorts: one big hull, torpedoes in pairs.
     frigate: {
       name: "Frigate group",
-      enemy: "Archonian frigate",
+      enemy: "Azurian frigate",
       what: "A frigate and two escorts; torpedoes come in pairs every 6 to 8 s",
       tests: "Shield timing under steady pairs",
       salvoWarning: 6,
@@ -326,11 +333,11 @@
       burns: { every: [24, 34], g: [5, 6], duration: [3, 4], warning: 5 },
       surpriseChance: 0.05
     },
-    // An Archonian cruiser (heavy cruiser, gunner station) with three interceptor escorts: a bigger hull
+    // An Azurian cruiser (heavy cruiser, gunner station) with three interceptor escorts: a bigger hull
     // than the frigate's, heavier torpedoes in pairs, and stragglers joining the fight.
     cruiserA: {
       name: "Cruiser group",
-      enemy: "Archonian cruiser",
+      enemy: "Azurian cruiser",
       what: "A cruiser and three escorts; heavy torpedoes come in pairs every 5 to 7 s",
       tests: "Shield timing under heavy pairs",
       salvoWarning: 6,
@@ -343,12 +350,12 @@
       burns: { every: [24, 34], g: [5, 6], duration: [3, 4], warning: 5 },
       surpriseChance: 0.05
     },
-    // An Archonian battleship (battleship and dreadnought, gunner station) screened by three
+    // An Azurian battleship (battleship and dreadnought, gunner station) screened by three
     // raiders: the biggest hull yet, torpedoes in volleys of three (a broadside), and stragglers,
     // drive hunters among them. volley = torpedoes per salvo call, 0.6 s apart.
     battleshipA: {
       name: "Battleship group",
-      enemy: "Archonian battleship",
+      enemy: "Azurian battleship",
       what: "A battleship and three raiders; its torpedoes come in threes every 6 to 8 s",
       tests: "Shield timing under broadsides",
       salvoWarning: 6,
@@ -361,13 +368,13 @@
       burns: { every: [26, 36], g: [4, 5], duration: [3, 4], warning: 5 },
       surpriseChance: 0.05
     },
-    // The fortress guarding the Archonian homeworld: the final system of every dreadnought
+    // The fortress guarding the Azurian homeworld: the final system of every dreadnought
     // mission at the gun. It never moves and never gives up; its torpedoes (volleys of three)
     // keep coming for the whole fight unless it is destroyed. Four interceptor escorts, stragglers.
     fortress: {
       name: "Homeworld fortress",
-      enemy: "Archonian fortress",
-      what: "The fortress guarding the Archonian world and four escorts; its torpedoes come in threes every 6 to 8 s for the whole fight",
+      enemy: "Azurian fortress",
+      what: "The fortress guarding the Azurian world and four escorts; its torpedoes come in threes every 6 to 8 s for the whole fight",
       tests: "Holding out until the planet buster is away",
       chat: "fortressIn",              // its own arrival call instead of the usual "expect ..."
       salvoWarning: 6,
@@ -566,24 +573,24 @@
                       what: "small, fast and fragile; they weave and dive, and launch torpedoes often" },
       siege:        { ship: "siege battery", ringR: [0.43, 0.47], count: [4, 4], w: 0.09, h: 0.075, band: [0.1, 0.2], sway: 0.04, period: [9, 12], dive: 0, formation: true,
                       what: "a slow line that holds far out and never stops firing" },
-      // Archonian capital ships: one big hull (the wave's toughness minus the escorts' share).
+      // Azurian capital ships: one big hull (the wave's toughness minus the escorts' share).
       frigate:      { ship: "frigate", ringR: [0.42, 0.46], capital: true, count: [1, 1], w: 0.13, h: 0.25, band: [0.15, 0.2], sway: 0.1, period: [10, 12], dive: 0,
                       escorts: { type: "interceptors", count: 2, share: 0.17 },
                       what: "one big hull escorted by two interceptors; it holds far out and fires torpedoes in pairs" },
-      cruiserA:     { ship: "Archonian cruiser", ringR: [0.44, 0.48], capital: true, count: [1, 1], w: 0.2, h: 0.23, band: [0.15, 0.2], sway: 0.08, period: [11, 13], dive: 0,
+      cruiserA:     { ship: "Azurian cruiser", ringR: [0.44, 0.48], capital: true, count: [1, 1], w: 0.2, h: 0.23, band: [0.15, 0.2], sway: 0.08, period: [11, 13], dive: 0,
                       escorts: { type: "interceptors", count: 3, share: 0.2 },
                       what: "one heavy hull escorted by three interceptors; it holds far out and fires heavy torpedoes in pairs" },
-      battleshipA:  { ship: "Archonian battleship", ringR: [0.54, 0.58], capital: true, count: [1, 1], w: 0.24, h: 0.29, band: [0.15, 0.2], sway: 0.06, period: [12, 14], dive: 0,
+      battleshipA:  { ship: "Azurian battleship", ringR: [0.54, 0.58], capital: true, count: [1, 1], w: 0.24, h: 0.29, band: [0.15, 0.2], sway: 0.06, period: [12, 14], dive: 0,
                       escorts: { type: "raiders", count: 3, share: 0.22 },
                       what: "the biggest hull yet, screened by three raiders; it holds far out and fires torpedoes in threes" },
       // still: it never moves (no sway, no sliding away from the bow); bearing: always comes from dead ahead;
       // only: there is just the one.
-      fortress:     { ship: "Archonian fortress", ringR: [0.53, 0.57], capital: true, still: true, bearing: 0, count: [1, 1], w: 0.3, h: 0.3, band: [0.12, 0.16], sway: 0, period: [12, 14], dive: 0,
+      fortress:     { ship: "Azurian fortress", ringR: [0.53, 0.57], capital: true, still: true, bearing: 0, count: [1, 1], w: 0.3, h: 0.3, band: [0.12, 0.16], sway: 0, period: [12, 14], dive: 0,
                       escorts: { type: "interceptors", count: 4, share: 0.12 },
                       only: true,
-                      what: "fixed dead ahead, guarding the Archonian world with four interceptors; it fires torpedoes in threes for the whole fight" },
+                      what: "fixed dead ahead, guarding the Azurian world with four interceptors; it fires torpedoes in threes for the whole fight" },
       hunters:      { ship: "drive hunter", ringR: [0.35, 0.42], count: [3, 3], w: 0.065, h: 0.07, band: [0.18, 0.4], sway: 0.24, period: [3, 4], dive: 0.12,
-                      what: "nimble ships that fire missiles at the GravSpace drive" }
+                      what: "nimble ships that fire missiles at the warp drive" }
     }
   };
 
@@ -656,15 +663,15 @@
 
   /* ------------------------------------------------------------ Chatter
      Several lines per event; {placeholders} are filled in by the simulation. Only the captain
-     gives orders or chases a station; Bridge only announces (jump in 5, out of GravSpace). */
+     gives orders or chases a station; Bridge only announces (jump in 5, out of warp space). */
   BL.CHATTER = {
     launch:      ["Coxswain: launch! We're clear of the carrier.", "Carrier: gunboat away. Good hunting.", "Coxswain: off the deck and into it."],
     recoveryNotice: ["Carrier: recovery in {t} s. Hold on out there.", "Coxswain: carrier picks us up in {t} seconds."],
     recovered:   ["Carrier: gunboat recovered. Well flown.", "Coxswain: we're on the deck. Nice work, Engineering."],
-    arrival:     ["Bridge: dropping out of GravSpace. Drive is empty.", "Captain: we're out of GravSpace. Start charging the drive, Engineering.", "Helm: normal space. Drive reads empty."],
+    arrival:     ["Bridge: dropping out of warp space. Drive is empty.", "Captain: we're out of warp space. Start charging the drive, Engineering.", "Helm: normal space. Drive reads empty."],
     briefing:    ["Tactical: expect {enemies}. {what}.", "Tactical: scopes show {enemies} on approach."],
     fortressIn:  ["Tactical: the homeworld fortress, dead ahead. Hold it off until the buster's away.", "Captain: there's the fortress guarding their world. Guns, keep it off us.",
-                  "Tactical: Archonian fortress dead ahead. It won't move and it won't stop firing."],
+                  "Tactical: Azurian fortress dead ahead. It won't move and it won't stop firing."],
     waveIn:      ["Tactical: {enemy} on scope.", "Tactical: new contacts, {enemy}.", "Tactical: {enemy} closing."],
     salvo:       ["Tactical: enemy salvo in {t} s.", "Tactical: incoming fire, {t} seconds.", "Tactical: they're locking on. Salvo in {t}."],
     burn:        ["Helm: evasive burn in {t} s, {g} G for {d} s.", "Helm: hard burn coming, {g} G in {t} seconds.", "Helm: evading in {t}. {g} G, {d} seconds."],
@@ -715,7 +722,7 @@
     starved:     ["Helm: engines are starved! I can't hold the course!", "Helm: not enough power to the engines, we're drifting into the mines!"],
     auxEmpty:    ["Aux bank is empty."],
     // Gunner station. A key ending in G replaces the plain one while the player is at a gun.
-    arrivalG:    ["Captain: dropping out of GravSpace. Guns, stand by.", "Captain: normal space. Gunnery, weapons free.", "Helm: we're out of GravSpace. Guns up!"],
+    arrivalG:    ["Captain: dropping out of warp space. Guns, stand by.", "Captain: normal space. Gunnery, weapons free.", "Helm: we're out of warp space. Guns up!"],
     recoveredG:  ["Carrier: gunboat recovered. Good shooting.", "Coxswain: we're on the deck. Nice shooting, Guns."],
     burnG:       [],                     // the helm's burns matter to the engineer, not the gunner
     surpriseG:   ["Tactical: torpedo out of nowhere!", "Tactical: didn't see that one launch!"],
@@ -730,7 +737,7 @@
     ptMiss:      ["Tactical: torpedo missed.", "Coxswain: it slipped the torpedo."],
     // The helm. A key ending in H replaces the plain one (and the gunner's G one) at the helm.
     launchH:     ["Carrier: Transferring launch control to gunboats. Launch when ready."],   // TexasBont's launch line (Oct 13, 2026)
-    arrivalH:    ["Navigation: out of GravSpace. Jump heading {hdg}, Helm.", "Captain: normal space. Helm, she's yours; jump heading is {hdg}."],
+    arrivalH:    ["Navigation: out of warp space. Jump heading {hdg}, Helm.", "Captain: normal space. Helm, she's yours; jump heading is {hdg}."],
     takeConn:    ["Captain: I have the conn. Coming to {hdg} for the jump.", "Captain: I'll take her, Helm. Jump heading {hdg}."],
     recoveredH:  ["Carrier: gunboat recovered. Nice flying.", "Coxswain: we're on the deck. Good flying, Helm."],
     burnH:       [],                     // the captain's orders replace the bridge's burns at the helm

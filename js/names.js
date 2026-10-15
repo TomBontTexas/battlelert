@@ -1,13 +1,13 @@
 /* Battlelert © 2011–2026 Tom Bont. All rights reserved. See LICENSE. */
 /* Battlelert ship names. Every named ship is a real warship of the same type from one of the
-   world's navies (the country is noted beside it), six per tech level per class, older ships at
-   the lower tech levels. No name is used by two classes. Gunboats get a fresh PT-1XX hull number
+   world's navies (the country is noted beside it), six per list and six lists per class, older
+   ships first; tech level 5 draws from lists 1-2, 6 from 3-4, 7 from 5-6. No name is used by two classes. Gunboats get a fresh PT-1XX hull number
    for every job. Each ship keeps a service record in the career save (see career.js). */
 (function (root) {
   "use strict";
   var BL = root.BL = root.BL || {};
 
-  // [class id] -> six lists (tech levels 1-6) of six names.
+  // [class id] -> six lists of six names, oldest first (two lists per tech level, 5 to 7).
   BL.SHIP_NAMES = {
     picket: [   // corvettes, guard ships and patrol vessels
       ["Gladiolus", "Sackville", "Aconit", "Gabbiano", "Uragan", "Bathurst"],          // UK, Canada, France, Italy, USSR, Australia
@@ -75,13 +75,13 @@
     ]
   };
 
-  BL.SHIP_PREFIX = "TFS ";
+  BL.SHIP_PREFIX = "INS ";   // Imperial Navy Ship (a gunboat is just its PT number)
 
   // Each named ship's own hull number, fixed by its place in its class's list: the oldest ships
   // carry the lowest numbers (CL-101 ... CL-136). A gunboat's PT-1XX number is its name.
   BL.HULL_CODES = { picket: "DL", destroyerEscort: "DE", destroyer: "DD", lightCruiser: "CL", cruiser: "C", heavyCruiser: "CA", battleship: "BB", dreadnought: "DN" };
   BL.hullNumber = function (classId, ship) {
-    var list = BL.SHIP_NAMES[classId], name = String(ship || "").replace(BL.SHIP_PREFIX, "");
+    var list = BL.SHIP_NAMES[classId], name = String(ship || "").replace(BL.SHIP_PREFIX, "").replace(/^TFS /, "");
     if (!list) return "";
     for (var i = 0; i < list.length; i++) {
       var k = list[i].indexOf(name);
@@ -89,14 +89,15 @@
     }
     return "";
   };
-  // "TFS Bartolomeo Colleoni CL-125"; a gunboat is just "PT-117".
+  // "INS Bartolomeo Colleoni CL-125"; a gunboat is just "PT-117".
   BL.shipLabel = function (classId, ship) { var h = BL.hullNumber(classId, ship); return ship + (h ? " " + h : ""); };
 
-  // A ship for a job: one of the six named ships of that class and tech level, or for a
+  // A ship for a job: one of the twelve named ships of that class and tech level, or for a
   // gunboat a fresh hull number PT-101 ... PT-199.
   BL.shipName = function (rng, classId, tl) {
     if (classId === "gunboat") return "PT-1" + ("0" + rng.int([1, 99])).slice(-2);
     var list = BL.SHIP_NAMES[classId];
-    return BL.SHIP_PREFIX + rng.pick(list[Math.max(1, Math.min(6, tl)) - 1]);
+    var k = 2 * (BL.TECH.clamp(classId, tl) - 5);
+    return BL.SHIP_PREFIX + rng.pick(list[k].concat(list[k + 1]));
   };
 })(typeof window !== "undefined" ? window : globalThis);

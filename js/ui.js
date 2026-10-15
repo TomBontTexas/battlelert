@@ -58,10 +58,10 @@
     var seed = parseInt($("seed-input").value, 10);
     startBriefing(testJob(seed > 0 ? seed : BL.randomSeed()));
   };
-  function testJob(seed) { return { test: true, station: "engineer", classId: "destroyer", n: 4, tl: 4, ship: "Destroyer", seed: seed }; }
+  function testJob(seed) { return { test: true, station: "engineer", classId: "destroyer", n: 4, tl: BL.TECH.base("destroyer"), ship: "Destroyer", seed: seed }; }
   // The gunner turret test: a gunboat, you at Gun 1 with the gun picked on the title screen.
   // The ring test: a destroyer's three guns on the rim of its shield, enemies from every side.
-  function ringJob(seed) { return { test: true, station: "gunner", classId: "destroyer", n: 4, tl: 4, ship: "Destroyer", seed: seed, ring: true }; }
+  function ringJob(seed) { return { test: true, station: "gunner", classId: "destroyer", n: 4, tl: BL.TECH.base("destroyer"), ship: "Destroyer", seed: seed, ring: true }; }
   $("btn-ring").onclick = function () {
     BL.audio.init(); click();
     var seed = parseInt($("seed-input").value, 10);
@@ -77,7 +77,7 @@
   $("ship-pick").onchange = function () { settings.helmPick = this.value; saveSettings(); };
   function helmJob(seed) {
     var id = $("ship-pick").value;
-    return { test: true, station: "pilot", classId: id, n: 1, tl: 4, ship: BL.classById(id).name, seed: seed, helm: true };
+    return { test: true, station: "pilot", classId: id, n: 1, tl: BL.TECH.base(id), ship: BL.classById(id).name, seed: seed, helm: true };
   }
   $("btn-helm").onclick = function () {
     BL.audio.init(); click();
@@ -110,8 +110,8 @@
     var d = sim.data, cls = BL.classById(j.classId);
     $("brief-seed").textContent = "· seed " + j.seed;
     $("brief-lede").textContent = sim.hasDrive
-      ? "Escort the planet buster's route through " + sim.cfg.jumps + " Archonian-held systems. In each one the GravSpace drive starts empty: keep the ship alive, charge the drive, and the captain jumps once the jump window opens."
-      : "Gunboats have no GravSpace drive. In each of the carrier's " + sim.cfg.jumps + " systems it launches you into the fight and recovers you when the sortie timer runs out, then carries you through GravSpace to the next one. Keep the gunboat alive through every sortie.";
+      ? "Escort the planet buster's route through " + sim.cfg.jumps + " Azurian-held systems. In each one the warp drive starts empty: keep the ship alive, charge the drive, and the captain jumps once the jump window opens."
+      : "Gunboats have no warp drive. In each of the carrier's " + sim.cfg.jumps + " systems it launches you into the fight and recovers you when the sortie timer runs out, then carries you through warp space to the next one. Keep the gunboat alive through every sortie.";
     $("brief-route").innerHTML = sim.route.map(function (id, i) {
       var e = BL.ENCOUNTERS[id];
       // At the gun: each enemy described the first time it comes up, then just which gun has the edge.
@@ -120,7 +120,7 @@
           (sim.hasDrive ? " Jump window " + sim.windowFor(i) + " s." : " Recovered after " + sim.windowFor(i) + " s.") + "</li>"; }
       return "<li>" + (sim.hasDrive ? "System " : "Sortie ") + (i + 1) + ": <b>" + e.name + "</b>. " + e.what + ". Tests: " + e.tests.toLowerCase() +
         (sim.hasDrive ? ". Jump window opens " + sim.windowFor(i) + " s after arrival." : ". The carrier recovers you " + sim.windowFor(i) + " s after launch.") + "</li>";
-    }).join("") + (sim.hasDrive ? "<li>The Archonian world: drop the planet buster.</li>" : "");
+    }).join("") + (sim.hasDrive ? "<li>The Azurian world: drop the planet buster.</li>" : "");
     $("brief-ship-title").textContent = "Your ship: " + (j.test ? cls.name : BL.shipLabel(j.classId, j.ship) + ", " + cls.name) + ", tech level " + j.tl;
     var html = [
       d.reactors.length > 1 ? "<div><span>Reactors</span> " + d.reactors.map(function (x) { return x.name + " " + x.mw + " MW"; }).join(", ") + "</div>"
@@ -319,7 +319,7 @@
       if (refs.rxBtn) refs.rxBtn.onclick = function (ev) { ev.stopPropagation(); selected = i; moveRx(id); };
     });
     $("route").innerHTML = sim.route.map(function (r, i) { return '<li data-i="' + i + '">' + (i + 1) + ". " + BL.ENCOUNTERS[r].name + "</li>"; }).join("") +
-      (sim.hasDrive ? '<li data-i="' + sim.route.length + '">Archonian world</li>' : '<li data-i="' + sim.route.length + '">Carrier: final recovery</li>');
+      (sim.hasDrive ? '<li data-i="' + sim.route.length + '">Azurian world</li>' : '<li data-i="' + sim.route.length + '">Carrier: final recovery</li>');
     $("comms-log").innerHTML = "";
     $("damage-list").innerHTML = '<li class="muted">None</li>';
     Object.keys(fcEls).forEach(function (k) { fcEls[k].remove(); }); fcEls = {};
@@ -371,7 +371,7 @@
       s.kind === "life" ? "Drains " + s.drainMW + " MW all the time. Empty = crippled crew." :
       s.kind === "main" ? "Fires by itself the moment it is full and a target is up: the whole charge in one heavy shot. Keep feeding it to keep it firing." :
       s.kind === "pd" ? "CIWS (close-in weapon system): each drive strike it stops costs a chunk of charge. Shields don't stop drive strikes." :
-      s.kind === "buster" ? "The planet buster: charges from the start, keeps its charge, can't charge in GravSpace. Must be full for the final jump." :
+      s.kind === "buster" ? "The planet buster: charges from the start, keeps its charge, can't charge in warp space. Must be full for the final jump." :
       s.kind === "hangar" ? "Launchers while the squadron is aboard: full when the bridge calls the launch, to kick the gunboats out. Arresters while it is out: full when the bridge calls the recovery. No jump until the gunboats are aboard." :
       "Must be full for the captain to jump.";
   }
@@ -1360,7 +1360,7 @@
   })();
   function gravHelm(js, dmg, next, n) {
     var c = sim.helm.jumps[n - 1] || {}, g = sim.turret.jumps[n - 1] || {};
-    return "<p>Fighting has stopped." + (next ? (sim.hasDrive ? " The ship is in GravSpace." : " The carrier has you on deck and is carrying you through GravSpace.") : "") + "</p><ul class='grav-list'>" + laneLine(g, n) +
+    return "<p>Fighting has stopped." + (next ? (sim.hasDrive ? " The ship is in warp space." : " The carrier has you on deck and is carrying you through warp space.") : "") + "</p><ul class='grav-list'>" + laneLine(g, n) +
       (g.mines && sim.route[n - 1] !== "sweep" ? "<li>Mines shot down: " + g.minesDowned + " of " + g.mines + "</li>" : "") +
       "<li>Orders met: " + c.ordersMet + " of " + c.orders + "</li>" +
       (c.requests ? "<li>Gunners' calls answered: " + c.requestsMet + " of " + c.requests + "</li>" : "") +
@@ -1431,7 +1431,7 @@
     return "Nothing stands out. Clean run.";
   }
 
-  /* ----------------------------------------------------------- GravSpace */
+  /* ----------------------------------------------------------- warp space */
   // The report after each jump (sortie); final: after the mission's last one, on the way to the debriefing.
   var gravFinal = false;
   function showGrav(final) {
@@ -1439,11 +1439,11 @@
     var n = sim.stats.jumps.length, js = sim.stats.jumps[n - 1], next = final ? null : sim.encounter();
     var dmg = sim.stats.damageReports.filter(function (d) { return d.jump === n; });
     $("grav-title").textContent = final ? (sim.hasDrive ? "Jump " + n + " of " + sim.cfg.jumps + " complete: planet buster away" : "Sortie " + n + " of " + sim.cfg.jumps + " complete: back aboard the carrier")
-      : sim.hasDrive ? "In GravSpace: jump " + n + " of " + sim.cfg.jumps + " complete" : "Aboard the carrier: sortie " + n + " of " + sim.cfg.jumps + " complete";
-    $("btn-grav-go").textContent = final ? "Mission debriefing" : sim.hasDrive ? "Drop out of GravSpace" : "Launch";
+      : sim.hasDrive ? "In warp space: jump " + n + " of " + sim.cfg.jumps + " complete" : "Aboard the carrier: sortie " + n + " of " + sim.cfg.jumps + " complete";
+    $("btn-grav-go").textContent = final ? "Mission debriefing" : sim.hasDrive ? "Drop out of warp space" : "Launch";
     if (sim.turret) { $("grav-body").innerHTML = sim.helm ? gravHelm(js, dmg, next, n) : gravGunner(js, dmg, next, n); overlay("ov-grav", true); return; }
     $("grav-body").innerHTML =
-      "<p>Fighting has stopped." + (final ? "" : (sim.hasDrive ? "" : " The carrier has you on deck and is carrying you through GravSpace.") + (sim.hasAux() ? " The aux bank is refilled." : "")) + "</p>" +
+      "<p>Fighting has stopped." + (final ? "" : (sim.hasDrive ? "" : " The carrier has you on deck and is carrying you through warp space.") + (sim.hasAux() ? " The aux bank is refilled." : "")) + "</p>" +
       "<ul class='grav-list'>" +
       "<li>Salvos stopped by shields: " + js.shielded + " of " + js.salvos + "</li>" +
       "<li>Hull damage taken: " + js.hullLost + "</li>" +
@@ -1466,7 +1466,7 @@
   }
   function gravGunner(js, dmg, next, n) {
     var g = sim.turret.jumps[n - 1] || {};
-    return "<p>Fighting has stopped." + (next ? (sim.hasDrive ? " The ship is in GravSpace." : " The carrier has you on deck and is carrying you through GravSpace.") : "") + "</p><ul class='grav-list'>" + laneLine(g, n) +
+    return "<p>Fighting has stopped." + (next ? (sim.hasDrive ? " The ship is in warp space." : " The carrier has you on deck and is carrying you through warp space.") : "") + "</p><ul class='grav-list'>" + laneLine(g, n) +
       "<li>Enemy ships destroyed: " + g.kills + " of " + g.ships + "</li>" +
       "<li>Torpedoes shot down: " + g.downed + " of " + g.torps + "</li>" +
       (g.mines ? "<li>Mines shot down: " + g.minesDowned + " of " + g.mines + "</li>" : "") +
@@ -1569,7 +1569,7 @@
     var st = career.stations[job.station], rows = [];
     if (r.outcome === "success") {
       rows.push('<p class="big-line">Reputation earned: <b>+' + report.rep + "</b> (" + BL.career.STATION_NAME[job.station].toLowerCase() + " path, now " + st.rep + ")</p>");
-      rows.push('<p class="muted">' + BL.classByN(job.n).baseRep + " base for a " + r.className.toLowerCase() + " × score " + r.score + "% × " + BL.TECH.repMult(job.tl).toFixed(1) + " for tech level " + job.tl +
+      rows.push('<p class="muted">' + BL.classByN(job.n).baseRep + " base for a " + r.className.toLowerCase() + " × score " + r.score + "% × " + +BL.TECH.repMult(job.tl).toFixed(2) + " for tech level " + job.tl +
         (job.serious === false ? " × " + BL.career.REQUAL_REP + " requalifying" : "") + "</p>");
     } else rows.push('<p class="big-line">No reputation and no promotion for a failed mission.</p>');
     if (report.promoted) rows.push('<p class="big-line promo">Qualified: ' + BL.career.rank(career, job.station) + " (" + r.className + ")</p>");
@@ -1842,7 +1842,7 @@
     function sec(title, rows) { return rows.length ? '<div class="offer-sec"><div class="offer-sec-h">' + title + "</div>" + rows.map(function (x) { return "<div>" + x + "</div>"; }).join("") + "</div>" : ""; }
     return '<div class="offer' + (up ? " stepup" : "") + '"><h3>' + esc(BL.shipLabel(j.classId, j.ship)) + " (TL" + j.tl + ")" + tag + "</h3>" +
       '<button class="primary" data-i="' + i + '">Accept</button>' +
-      '<div class="meta">Reputation ×' + (BL.TECH.repMult(j.tl) * (j.serious === false ? BL.career.REQUAL_REP : 1)).toFixed(j.serious === false ? 2 : 1) + (j.serious === false ? " (half: requalifying)" : "") + ", max " + BL.career.repFor(j, 100) +
+      '<div class="meta">Reputation ×' + +(BL.TECH.repMult(j.tl) * (j.serious === false ? BL.career.REQUAL_REP : 1)).toFixed(3) + (j.serious === false ? " (half: requalifying)" : "") + ", max " + BL.career.repFor(j, 100) +
       (up ? " · success qualifies you as " + rankName + "-" + j.n : "") + "</div>" +
       sec("Crew", crew) + sec("Armament", arms) + "</div>";
   }
@@ -1859,7 +1859,7 @@
         : station === "pilot"
         ? "Postings for pilots at your level. Each names the engineer who'll run the power and the gun crew who'll work the guns while you fly. Bigger ships turn slower and answer the helm later."
         : "Postings for engineers at your level. Lower tech levels are harder (smaller reactor and capacitors, weaker guns) and earn more reputation.") +
-        (q && BL.career.built(station, q + 1) ? " There's always a tech-level-1 posting for your class and for the class above it." : " There's always a tech-level-1 posting.");
+        (q && BL.career.built(station, q + 1) ? " There's always a lowest-tech posting for your class and for the class above it." : " There's always a lowest-tech posting.");
     } else {
       shownJobs = BL.career.lowerJobs(career, station);
       $("offers-title").textContent = who + ": requalifying";

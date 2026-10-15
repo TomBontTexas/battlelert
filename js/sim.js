@@ -37,7 +37,7 @@
     opts = opts || {};
     this.seed = opts.seed || BL.randomSeed();
     this.rng = BL.rng(this.seed);
-    this.data = BL.shipFor(opts.classId || "destroyer", opts.tl || 4);
+    this.data = BL.shipFor(opts.classId || "destroyer", opts.tl);
     this.cfg = Object.assign({}, BL.MISSION, { jumps: this.data.mission.jumps, jumpWindowAt: this.data.mission.windows });
     this.phys = BL.PHYSICS;
     this.dt = 1 / BL.TICK_RATE;
@@ -105,7 +105,7 @@
       g: d.cruiseG, gTarget: d.cruiseG, engineMW: d.cruiseG * d.engineMWperG, maxG: d.maxG,
       turnLoss: 0,                      // share of the top turn rate lost to thruster damage (the helm feels it)
       crippled: false, lifeLowSaid: false,
-      fresh: { hull: 0, g: 0, turn: 0 }, // damage taken since the last GravSpace repair
+      fresh: { hull: 0, g: 0, turn: 0 }, // damage taken since the last warp space repair
       systems: d.systems.map(function (s) {
         return {
           id: s.id, name: s.name, short: s.short, kind: s.kind, gunner: s.gunner || 0,
@@ -218,7 +218,7 @@
     this.hangarMode("launch");
     this.ship.gTarget = this.data.cruiseG;
     var drive = this.sys("drive"); if (drive) drive.mj = 0;
-    // Out of GravSpace, everything is back on its reactor: trips and reactor switches are
+    // Out of warp space, everything is back on its reactor: trips and reactor switches are
     // timed on this system's clock (t restarts at 0), so clear them rather than carry them over.
     this.ship.systems.forEach(function (s) { s.request = null; s.call = null; s.nextShot = 0; s.tripped = false; s.tripUntil = 0; s.switchUntil = 0; });
     this.ship.reactors.forEach(function (rx) { rx.lastTrip = -99; });
@@ -231,7 +231,7 @@
     this.chat(enc.chat || "briefing", { enemies: BL.plural(enc.enemy), what: enc.what }, "info");
   };
 
-  // Called by the display after the GravSpace report (or by the harness).
+  // Called by the display after the warp space report (or by the harness).
   Mission.prototype.beginJump = function () {
     if (this.phase === "briefing" || this.phase === "gravspace") this.arrive();
   };
@@ -247,18 +247,18 @@
     this.endBurn();
     this.ship.systems.forEach(function (s) { s.request = null; s.call = null; });
     if (this.hasDrive) this.sys("drive").mj = 0;
-    this.ship.reactors.forEach(function (rx) { rx.aux.mj = rx.aux.cap; });   // aux refills only in GravSpace
+    this.ship.reactors.forEach(function (rx) { rx.aux.mj = rx.aux.cap; });   // aux refills only in warp space
     this.ship.gTarget = this.data.cruiseG;
     this.closeOverloadRun();
     this.cue("jump");
     if (!this.hasDrive) this.chat("recovered", null, "good");
     if (this.jumpIndex >= this.cfg.jumps - 1) {
-      if (this.hasDrive) this.say("Bridge: Archonian world dead ahead. Planet buster away!", "good");
+      if (this.hasDrive) this.say("Bridge: Azurian world dead ahead. Planet buster away!", "good");
       this.finish("success");
     } else {
       this.phase = "gravspace";
       this.jumpIndex++;
-      this.repairInGravSpace();
+      this.repairInWarp();
     }
   };
 
@@ -482,7 +482,7 @@
   };
 
   // A drive strike: the CIWS stops it if it holds the charge; shields don't help.
-  // One that gets through drains a slice of the GravSpace drive (the hull is untouched).
+  // One that gets through drains a slice of the warp drive (the hull is untouched).
   Mission.prototype.strikeHits = function (e) {
     // (drive strikes are always drive hunters', even when they join another fight as stragglers)
     var pd = this.sys("pd"), drive = this.sys("drive"), st = this.stats, drain = BL.ENCOUNTERS.hunters.driveDrain;
@@ -513,7 +513,7 @@
   Mission.prototype.damageSystem = function () {
     var r = this.rng, ship = this.ship, what;
     // Thrusters 20%, a charger 40%, the reactor 40%. Capacitors never shrink: a smaller
-    // GravSpace capacitor would fill sooner and make damage speed up the jump.
+    // warp space capacitor would fill sooner and make damage speed up the jump.
     var roll = r.next();
     if (roll < 0.2 && ship.maxG > 1) {
       what = this.damageThrusters();
@@ -557,9 +557,9 @@
   // 1 = undamaged. Slide and range scale down; fire rate scales the time between shots up.
   Mission.prototype.turretFactor = function (s, k) { return 1 - ((s && s.tdmg) ? s.tdmg[k] : 0); };
 
-  /* Damage control: automatic, during GravSpace transit, on every class. Each transit
+  /* Damage control: automatic, during warp space transit, on every class. Each transit
      restores half of the damage taken since the last one; the other half is permanent. */
-  Mission.prototype.repairInGravSpace = function () {
+  Mission.prototype.repairInWarp = function () {
     var ship = this.ship, f = ship.fresh, done = [];
     function half(v) { return Math.round(v / 2 * 2) / 2; }
     if (f.hull > 0) { var h = half(f.hull); ship.hull = Math.min(ship.hullMax, ship.hull + h); done.push("hull +" + h + ", now " + Math.round(ship.hull) + " / " + ship.hullMax); }

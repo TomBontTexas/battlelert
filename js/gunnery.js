@@ -621,7 +621,7 @@
     var rc = BL.GUNNERY.ring.classes[classId];
     var gunner = weapon ? { weapon: weapon } : { weapons: BL.GUNNERY.loadout[classId] };
     if (rc && !weapon) { gunner.ring = true; gunner.arcs = rc.arcs; gunner.arcNames = rc.arcNames; }
-    var m = new BL.Mission({ seed: seed, quiet: true, classId: classId, tl: tl || 4, gunner: gunner });
+    var m = new BL.Mission({ seed: seed, quiet: true, classId: classId, tl: tl, gunner: gunner });
     var eng = new BL.AIEngineer(0.5, 0.25, m.turret.engineer.skill), gun = new AIGunner(skill);
     m.beginJump();
     var guard = 0;

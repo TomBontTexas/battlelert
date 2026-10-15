@@ -178,7 +178,7 @@
     this.evade = null; this.burst = null; this.steady = false; this.steadyHdg = null; this.steadyLast = -99; this.verdict = null; this.engOrder = null; this.mainOrdered = false; this.jumpOrderAt = -99; this.lastBreak = -99; this.lastDisobey = -99; this.steerAt = -99;
     this.jumps[m.jumpIndex] = this.cur;
     this.jumpSaid = false; this.conT = 0; this.conTaken = false;
-    // Ships with a GravSpace drive jump on a heading Navigation gives on arrival.
+    // Ships with a warp drive jump on a heading Navigation gives on arrival.
     this.jumpHdg = m.hasDrive ? 5 * Math.floor(r.next() * 72) : null;
     this.jumpShown = this.jumpHdg !== null;
   };
@@ -626,7 +626,7 @@
   BL.runHelmHeadless = function (seed, classId, tl, idle) {
     classId = classId || "gunboat";
     var rc = BL.GUNNERY.ring.classes[classId];
-    var m = new BL.Mission({ seed: seed, quiet: true, classId: classId, tl: tl || 4, helm: true,
+    var m = new BL.Mission({ seed: seed, quiet: true, classId: classId, tl: tl, helm: true,
       gunner: { weapons: BL.GUNNERY.loadout[classId], ring: true, arcs: rc.arcs, arcNames: rc.arcNames, helm: true } });
     var eng = new BL.AIEngineer(0.5, 0.25, m.turret.engineer.skill), bot = new HelmBot();
     m.beginJump();

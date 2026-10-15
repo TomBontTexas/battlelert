@@ -60,7 +60,7 @@
     var nx = s / R.rx, ny = -c / R.ry, l = Math.hypot(nx, ny);
     return { x: R.cx + R.rx * s, y: R.cy - R.ry * c, nx: nx / l, ny: ny / l };
   };
-  // The GravSpace drive, in the stern (drive strikes aim here), and the CIWS mounts on the hull.
+  // The warp drive, in the stern (drive strikes aim here), and the CIWS mounts on the hull.
   // The ship is drawn about 0.37 times as wide as it is long.
   RingTurret.prototype.drivePoint = function () { var R = this.R; return { x: R.cx, y: R.cy + R.shipH * 0.4 }; };
   RingTurret.prototype.ciwsMounts = function () {

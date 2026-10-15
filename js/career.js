@@ -23,6 +23,7 @@
   function blankProfile() { return { missions: 0, wins: 0, losses: 0, aggression: 0, efficiency: 0, demands: 0, condition: 0, guns: 0 }; }
 
   var NAMES_VERSION = 2;                           // 2 = the historical ship roster (names.js)
+  var TL_VERSION = 2;                              // 2 = tech levels 4 to 7 and INS ship names
 
   function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
   function today() { var d = new Date(); return d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2) + "-" + ("0" + d.getDate()).slice(-2); }
@@ -36,7 +37,7 @@
       stations: {}, signoffsUsed: [],
       profiles: {},                     // one reputation profile per station
       history: [], offersBy: {}, stepUps: {}, offerSeed: BL.randomSeed(),
-      ships: {}, namesVersion: NAMES_VERSION
+      ships: {}, namesVersion: NAMES_VERSION, tlVersion: TL_VERSION
     };
     STATIONS.forEach(function (s) { c.stations[s] = { qualified: 0, rep: 0, failures: {}, realUntil: 0 }; c.profiles[s] = blankProfile(); c.stepUps[s] = 0; });
     STATIONS.forEach(function (s) { if (PLAYABLE[s]) generateOffers(c, s); });
@@ -54,6 +55,7 @@
   function normalize(c) {
     if (!c || c.kind !== "career") throw new Error("This file isn't a Battlelert career.");
     var oldNames = c.namesVersion !== NAMES_VERSION;   // checked before the defaults below fill it in
+    var oldTL = c.tlVersion !== TL_VERSION;
     // Careers from before the gunner station: one engineer offer list and one profile.
     if (!c.offersBy) c.offersBy = { engineer: Array.isArray(c.offers) ? c.offers : [] };
     if (!c.profiles) c.profiles = { engineer: c.profile || blankProfile() };
@@ -74,6 +76,18 @@
     if (!Array.isArray(c.signoffsUsed)) c.signoffsUsed = [];
     c.name = cleanName(c.name) || "Recruit";
     if (!c.ships || typeof c.ships !== "object") c.ships = {};
+    // Careers from before tech levels 4 to 7: old levels 1-2 become 5, 3-4 become 6, 5-6 become 7
+    // (a gunboat is always 4), TFS ships become INS, and the offers are drawn again.
+    if (oldTL && !oldNames) {
+      var newTL = function (classId, tl) { return classId === "gunboat" ? 4 : Math.min(7, 5 + Math.floor((Math.max(1, +tl || 1) - 1) / 2)); };
+      var ins = function (name) { return String(name || "").replace(/^TFS /, BL.SHIP_PREFIX); };
+      c.history.forEach(function (h) { h.tl = newTL(h.classId, h.tl); h.ship = ins(h.ship); });
+      var ships = {};
+      Object.keys(c.ships).forEach(function (k) { var r = c.ships[k]; r.tl = newTL(r.classId, r.tl); r.name = ins(r.name); ships[ins(k)] = r; });
+      c.ships = ships;
+      c.offersBy = {};
+    }
+    c.tlVersion = TL_VERSION;
     // Careers from before the ship roster: start the service records from the mission history,
     // and replace offers that still carry the old generic names.
     if (oldNames) {
@@ -119,7 +133,7 @@
 
   /* ------------------------------------------------------------ Offers
      Generic postings for now: a ship class, a tech level and a ship name; one list per station.
-     Always a tech-level-1 offer for the class you're on and, once you're qualified, one
+     Always a lowest-tech offer (tech level 4 on a gunboat, 5 above) for the class you're on and, once you're qualified, one
      for the class above; more offers from the class above come as reputation grows.
      A gunner job names the engineer you'd serve with (the same one the mission will roll); a
      pilot job the engineer and the gun crew.
@@ -144,16 +158,16 @@
     var current = Math.max(1, q);
     if (!built(station, current)) current = Math.min(current, station === "gunner" ? GUNNER_CLASSES : current);
     if (!built(station, current)) current = 1;
-    offers.push(makeJob(rng, station, current, 1));
+    offers.push(makeJob(rng, station, current, lowTL(current)));
     var extra = rng.int([1, 2]);
-    for (var i = 0; i < extra; i++) offers.push(makeJob(rng, station, current, rng.int([2, 6])));
+    for (var i = 0; i < extra; i++) offers.push(makeJob(rng, station, current, anyTL(rng, current)));
     var next = BL.classByN(q + 1);
     if (q >= 1 && next && built(station, next.n)) {
-      offers.push(makeJob(rng, station, next.n, 1));
+      offers.push(makeJob(rng, station, next.n, lowTL(next.n)));
       var rep = c.stations[station].rep;
       var chance = clamp(0.45 + rep / (3 * next.baseRep), 0.45, 0.95);
       if (rng.chance(chance) || c.stepUps[station] >= 2) {
-        offers.push(makeJob(rng, station, next.n, rng.int([2, 6])));
+        offers.push(makeJob(rng, station, next.n, anyTL(rng, next.n)));
         c.stepUps[station] = 0;
       } else c.stepUps[station] = (c.stepUps[station] || 0) + 1;
     }
@@ -161,13 +175,16 @@
     c.offersBy[station] = offers;
     return offers;
   }
-  // Careers saved before the step-up rule may lack the guaranteed tech-level-1 offer.
+  // Tech levels for a class (BL.TECH.levels): the lowest, and any one at random.
+  function lowTL(n) { return BL.TECH.levels(BL.classByN(n).id)[0]; }
+  function anyTL(rng, n) { var L = BL.TECH.levels(BL.classByN(n).id); return L[rng.int([0, L.length - 1])]; }
+  // Careers saved before the step-up rule may lack the guaranteed lowest-tech offer.
   function ensureStepUp(c, station) {
     var q = qualified(c, station), next = BL.classByN(q + 1), list = offers(c, station);
     if (q < 1 || !next || !built(station, next.n)) return;
-    var has = list.some(function (o) { return o.n === next.n && o.tl === 1; });
+    var has = list.some(function (o) { return o.n === next.n && o.tl === lowTL(next.n); });
     if (!has) {
-      list.push(makeJob(BL.rng(c.offerSeed + 3), station, next.n, 1));
+      list.push(makeJob(BL.rng(c.offerSeed + 3), station, next.n, lowTL(next.n)));
       list.sort(function (a, b) { return b.n - a.n || a.tl - b.tl; });
     }
   }
@@ -179,7 +196,7 @@
     var rng = BL.rng(c.offerSeed + 7);
     for (var n = 1; n < q; n++) {
       if (!built(station, n)) continue;
-      for (var tl = 1; tl <= 6; tl++) out.push(makeJob(rng, station, n, tl, false));
+      BL.TECH.levels(BL.classByN(n).id).forEach(function (tl) { out.push(makeJob(rng, station, n, tl, false)); });
     }
     return out;
   }
