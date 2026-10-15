@@ -289,9 +289,17 @@
 
   /* ------------------------------------------------------------- The helm */
   // A bearing (relative to the bow) on a ring just outside the shield.
+  // The bearing ring is the shield's oval scaled up so it clears the bow by `out`: the point on
+  // it at a bearing (relative to the bow) lies on the true bearing line from the ship's centre.
   function ringAt(tu, rel, out) {
-    var R = tu.R, r = R.ry + (out || 0.05), a = rel * Math.PI / 180;
+    var R = tu.R, k = 1 + (out || 0.05) / R.ry, A = R.rx * k, B = R.ry * k, a = rel * Math.PI / 180;
+    var r = A * B / Math.sqrt(Math.pow(B * Math.sin(a), 2) + Math.pow(A * Math.cos(a), 2));
     return { x: R.cx + r * Math.sin(a), y: R.cy - r * Math.cos(a) };
+  }
+  // A canvas angle (from +x, clockwise) to the oval's own angle for c.ellipse, kept on the same turn.
+  function ovalT(A, B, phi) {
+    var t = Math.atan2(A * Math.sin(phi), B * Math.cos(phi));
+    return t + 2 * Math.PI * Math.round((phi - t) / (2 * Math.PI));
   }
   function rel(helm, hdg) { var d = ((hdg - helm.compass()) % 360 + 540) % 360 - 180; return d; }
   // The carrier's launch tube around the gunboat: rails with a chase of lights while it waits,
@@ -315,9 +323,9 @@
   // heading (blue), where the bow will stop if the wheel is centered now (white), and the turn
   // the rudder is asking for (faint arc) against the turn the ship is making (bright arc).
   function drawHelm(c, S, tu, helm, t) {
-    var R = tu.R, o = helm.orderView(), r0 = R.ry + 0.05;
+    var R = tu.R, o = helm.orderView(), k = 1 + 0.05 / R.ry, A = R.rx * k, B = R.ry * k;
     c.lineWidth = 1.5 / S;
-    c.strokeStyle = "rgba(214,224,232,0.12)"; c.beginPath(); c.arc(R.cx, R.cy, r0, 0, Math.PI * 2); c.stroke();
+    c.strokeStyle = "rgba(214,224,232,0.12)"; c.beginPath(); c.ellipse(R.cx, R.cy, A, B, 0, 0, Math.PI * 2); c.stroke();
     function tick(relDeg, col, len, w) {
       var a = ringAt(tu, relDeg, 0.05 - len / 2), b = ringAt(tu, relDeg, 0.05 + len / 2);
       c.strokeStyle = col; c.lineWidth = w / S; c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.stroke();
@@ -325,7 +333,7 @@
     function arc(deg, col, w) {
       if (Math.abs(deg) < 0.3) return;
       var a0 = -Math.PI / 2, a1 = a0 + Math.max(-350, Math.min(350, deg)) * Math.PI / 180;
-      c.strokeStyle = col; c.lineWidth = w / S; c.beginPath(); c.arc(R.cx, R.cy, r0, Math.min(a0, a1), Math.max(a0, a1)); c.stroke();
+      c.strokeStyle = col; c.lineWidth = w / S; c.beginPath(); c.ellipse(R.cx, R.cy, A, B, 0, ovalT(A, B, Math.min(a0, a1)), ovalT(A, B, Math.max(a0, a1))); c.stroke();
     }
     arc(helm.want, "rgba(76,195,238,0.3)", 7);
     arc(helm.omega, Math.abs(helm.omega) > helm.C.safe ? "rgba(255,107,90,0.9)" : "rgba(76,195,238,0.85)", 4);
