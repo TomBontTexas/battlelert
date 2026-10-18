@@ -124,7 +124,7 @@
           (sim.hasDrive ? " Jump window " + sim.windowFor(i) + " s." : " Recovered after " + sim.windowFor(i) + " s.") + "</li>"; }
       return "<li>" + (sim.hasDrive ? "System " : "Sortie ") + (i + 1) + ": <b>" + e.name + "</b>. " + e.what + ". Tests: " + e.tests.toLowerCase() +
         (sim.hasDrive ? ". Jump window opens " + sim.windowFor(i) + " s after arrival." : ". The carrier recovers you " + sim.windowFor(i) + " s after launch.") + "</li>";
-    }).join("") + (sim.hasDrive ? "<li>The Azurian world: drop the planet buster.</li>" : "");
+    }).join("") + (sim.sys("buster") ? "<li>The Azurian world: drop the planet buster.</li>" : "");
     $("brief-ship-title").textContent = "Your ship: " + (j.test ? cls.name : BL.shipLabel(j.classId, j.ship) + ", " + cls.name) + ", tech level " + j.tl;
     var html = [
       d.reactors.length > 1 ? "<div><span>Reactors</span> " + d.reactors.map(function (x) { return x.name + " " + x.mw + " MW"; }).join(", ") + "</div>"
@@ -218,6 +218,10 @@
     click();
   }
   $("btn-pause").onclick = pause;
+  // Testing: win the mission now at 75% (BL.Mission.testWin), to move up the career quickly.
+  function testWin() { if (!sim || sim.phase === "done" || !running) return; click(); sim.testWin(75); }
+  $("btn-testwin").onclick = testWin;
+  $("btn-tu-testwin").onclick = testWin;
   $("btn-resume").onclick = resume;
   $("btn-look").onclick = look;
   $("btn-abandon").onclick = function () {
@@ -495,7 +499,8 @@
       report = null;
       if (!job.test && career) { report = BL.career.applyResult(career, job, sim.result); saveCareer(); }
       // A finished mission gets the last jump's report too (as every jump before it did), then the debriefing.
-      if (sim.result.outcome === "success") { flashJump(); setTimeout(function () { showGrav(true); }, 1600); }
+      if (sim.result.testWin) setTimeout(showDebrief, 300);
+      else if (sim.result.outcome === "success") { flashJump(); setTimeout(function () { showGrav(true); }, 1600); }
       else setTimeout(showDebrief, sim.result.outcome === "abandoned" ? 400 : 1600);
     }
   }
@@ -1416,7 +1421,7 @@
   }
   function wentWellHelm(r) {
     var hm = r.helm, notes = [];
-    if (r.outcome === "success") notes.push(r.hasDrive ? "The planet buster got through." : "The gunboat made it back aboard.");
+    if (r.outcome === "success") notes.push(sim.sys("buster") ? "The planet buster got through." : r.hasDrive ? "The ship made all its jumps." : "The gunboat made it back aboard.");
     if (hm.orders && hm.ordersMet === hm.orders) notes.push("Every order met.");
     else if (hm.orders && hm.ordersMet / hm.orders >= 0.75) notes.push(hm.ordersMet + " of " + hm.orders + " orders met.");
     if (!hm.stressHits && !hm.flankHits) notes.push("No structural damage from your flying.");
@@ -1442,7 +1447,7 @@
     gravFinal = !!final;
     var n = sim.stats.jumps.length, js = sim.stats.jumps[n - 1], next = final ? null : sim.encounter();
     var dmg = sim.stats.damageReports.filter(function (d) { return d.jump === n; });
-    $("grav-title").textContent = final ? (sim.hasDrive ? "Jump " + n + " of " + sim.cfg.jumps + " complete: planet buster away" : "Sortie " + n + " of " + sim.cfg.jumps + " complete: back aboard the carrier")
+    $("grav-title").textContent = final ? (sim.hasDrive ? "Jump " + n + " of " + sim.cfg.jumps + " complete" + (sim.sys("buster") ? ": planet buster away" : "") : "Sortie " + n + " of " + sim.cfg.jumps + " complete: back aboard the carrier")
       : sim.hasDrive ? "In warp space: jump " + n + " of " + sim.cfg.jumps + " complete" : "Aboard the carrier: sortie " + n + " of " + sim.cfg.jumps + " complete";
     $("btn-grav-go").textContent = final ? "Mission debriefing" : sim.hasDrive ? "Drop out of warp space" : "Launch";
     if (sim.turret) { $("grav-body").innerHTML = sim.helm ? gravHelm(js, dmg, next, n) : gravGunner(js, dmg, next, n); overlay("ov-grav", true); return; }
@@ -1528,8 +1533,9 @@
   function showDebrief() {
     var r = sim.result, d = r.detail;
     show("scr-debrief");
-    $("db-title").textContent = r.outcome === "success" ? (r.hasDrive ? "Mission complete: planet buster delivered" : "Sortie complete: recovered by the carrier") :
+    $("db-title").textContent = r.outcome === "success" ? (r.hasDrive ? (sim.sys("buster") ? "Mission complete: planet buster delivered" : "Mission complete") : "Sortie complete: recovered by the carrier") :
       r.outcome === "destroyed" ? "Ship destroyed" : "Abandoned ship";
+    if (r.testWin) $("db-title").textContent += " (test win)";
     $("db-lede").textContent = (job.test ? "" : BL.shipLabel(job.classId, job.ship) + ", " + r.className + ", tech level " + r.tl + " · ") + "Seed " + r.seed + " · " +
       r.jumpsDone + " of " + sim.cfg.jumps + (r.hasDrive ? " jumps · " : " sorties · ") + d.minutes + " minutes · hull " + r.hull + " / " + r.hullMax +
       (r.looks ? " · looked at the paused console " + r.looks + (r.looks === 1 ? " time" : " times") + " (−" + (100 - Math.round(100 * r.score / Math.max(1, r.raw))) + "%)" : "");
@@ -1648,7 +1654,7 @@
 
   function wentWell(r) {
     var d = r.detail, notes = [];
-    if (r.outcome === "success") notes.push("The planet buster got through.");
+    if (r.outcome === "success") notes.push(sim.sys("buster") ? "The planet buster got through." : "The ship made all its jumps.");
     if (d.salvosAnnounced && d.salvosShielded === d.salvosAnnounced) notes.push("Every announced salvo hit full shields.");
     else if (d.salvosAnnounced && d.salvosShielded / d.salvosAnnounced >= 0.75) notes.push("Shields stopped " + d.salvosShielded + " of " + d.salvosAnnounced + " announced salvos.");
     if (r.jumpsDone && d.jumpsOnTime === r.jumpsDone) notes.push("Every jump was on time.");

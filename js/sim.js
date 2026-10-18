@@ -258,13 +258,28 @@
     this.cue("jump");
     if (!this.hasDrive) this.chat("recovered", null, "good");
     if (this.jumpIndex >= this.cfg.jumps - 1) {
-      if (this.hasDrive) this.say("Bridge: Azurian world dead ahead. Planet buster away!", "good");
+      if (this.sys("buster")) this.say("Bridge: Azurian world dead ahead. Planet buster away!", "good");   // (only a dreadnought carries one)
       this.finish("success");
     } else {
       this.phase = "gravspace";
       this.jumpIndex++;
       this.repairInWarp();
     }
+  };
+
+  // Testing: end the mission now as a success scored pct% (the systems not flown count as flown,
+  // with nothing in them). Reputation and qualification follow from that score as usual.
+  Mission.prototype.testWin = function (pct) {
+    if (this.phase === "done") return;
+    while (this.stats.jumps.length < this.cfg.jumps) {
+      this.stats.jumps.push({ salvos: 0, shielded: 0, hullLost: 0, trips: 0, kills: 0, start: this.totalT, duration: 0, onTime: true,
+        encounter: this.route[this.stats.jumps.length] });
+    }
+    this.jumpIndex = this.cfg.jumps - 1;
+    this.finish("success");
+    var r = this.result;
+    Object.keys(r.parts).forEach(function (k) { r.parts[k] = Math.round(25 * pct / 100); });
+    r.score = r.raw = pct; r.testWin = true;
   };
 
   Mission.prototype.finish = function (outcome) {
