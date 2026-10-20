@@ -84,7 +84,7 @@
         sys("drive", "Warp drive", "DRIVE", "drive", 3200, 60, 0, 0)
       ] },
     { n: 5, id: "lightCruiser", name: "Light Cruiser", built: true, baseRep: 550,
-      crew: 7, hull: 100, reactorMW: 129, engineMWperG: 6, cruiseG: 2, maxG: 7, gScale: 0.9,
+      crew: 7, hull: 100, reactorMW: 129, engineMWperG: 6, cruiseG: 2, maxG: 8, gScale: 0.9,
       aux: { capacity: 550, rateMW: 45 }, hullPerMJ: 0.3,
       mission: { jumps: 3, windows: [140, 150, 160] }, encounters: ["raiders", "interceptors", "siege", "minefield"],
       mainGun: { dmgPerMJ: 0.6 },
@@ -99,7 +99,7 @@
         sys("drive", "Warp drive", "DRIVE", "drive", 4000, 70, 0, 0)
       ] },
     { n: 6, id: "cruiser", name: "Cruiser", built: true, baseRep: 662,
-      crew: 8, hull: 134, reactorMW: 167, engineMWperG: 7, cruiseG: 2, maxG: 6, gScale: 0.85,
+      crew: 8, hull: 134, reactorMW: 167, engineMWperG: 7, cruiseG: 2, maxG: 7, gScale: 0.85,
       aux: { capacity: 650, rateMW: 50 }, hullPerMJ: 0.3,
       mission: { jumps: 3, windows: [150, 160, 170] }, encounters: ["raiders", "interceptors", "siege", "minefield"],
       mainGun: { dmgPerMJ: 0.6 },
@@ -117,7 +117,7 @@
         sys("drive", "Warp drive", "DRIVE", "drive", 4800, 80, 0, 0)
       ] },
     { n: 7, id: "heavyCruiser", name: "Heavy Cruiser", built: true, baseRep: 775,
-      crew: 9, hull: 181, reactorMW: 217, engineMWperG: 8, cruiseG: 2, maxG: 5, gScale: 0.8,
+      crew: 9, hull: 181, reactorMW: 217, engineMWperG: 8, cruiseG: 2, maxG: 6, gScale: 0.8,
       aux: { capacity: 750, rateMW: 55 }, hullPerMJ: 0.3,
       mission: { jumps: 3, windows: [160, 170, 180] }, encounters: ["raiders", "interceptors", "siege", "minefield", "hunters"],
       gunnerEncounters: ["raiders", "interceptors", "siege", "minefield", "hunters", "cruiserA"],
@@ -138,7 +138,7 @@
         sys("drive", "Warp drive", "DRIVE", "drive", 5600, 90, 0, 0)
       ] },
     { n: 8, id: "battleship", name: "Battleship", built: true, baseRep: 887,
-      crew: 10, hull: 245, engineMWperG: 9, cruiseG: 2, maxG: 4, gScale: 0.75,
+      crew: 10, hull: 245, engineMWperG: 9, cruiseG: 2, maxG: 5, gScale: 0.75,
       reactors: [{ name: "A", mw: 142, aux: { capacity: 450, rateMW: 35 } }, { name: "B", mw: 142, aux: { capacity: 450, rateMW: 35 } }],
       hullPerMJ: 0.3,
       mission: { jumps: 3, windows: [170, 180, 190] }, encounters: ["raiders", "interceptors", "siege", "minefield", "hunters"],
@@ -161,7 +161,7 @@
         sys("drive", "Warp drive", "DRIVE", "drive", 6400, 100, 0, 0, { reactor: 1 })
       ] },
     { n: 9, id: "dreadnought", name: "Dreadnaught", built: true, baseRep: 1000,
-      crew: 12, hull: 331, engineMWperG: 10, cruiseG: 2, maxG: 3, gScale: 0.7,
+      crew: 12, hull: 331, engineMWperG: 10, cruiseG: 2, maxG: 4, gScale: 0.7,
       reactors: [{ name: "A", mw: 122, aux: { capacity: 380, rateMW: 30 } }, { name: "B", mw: 122, aux: { capacity: 380, rateMW: 30 } },
         { name: "C", mw: 122, aux: { capacity: 380, rateMW: 30 } }],
       hullPerMJ: 0.3,
