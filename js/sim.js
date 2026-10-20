@@ -234,6 +234,7 @@
     this.chat(this.hasDrive ? "arrival" : "launch", { hdg: this.helm && this.helm.jumpHdg !== null ? BL.hdgText(this.helm.jumpHdg) : "" }, "info");
     this.chat(enc.chat || "briefing", { enemies: BL.plural(enc.enemy), what: enc.what }, "info");
     this.reportAt = this.reports[this.jumpIndex] ? this.cfg.arrivalSeconds + 4 : Infinity;   // the story's report for this system
+    this.gunSaid = false;
   };
 
   // Called by the display after the warp space report (or by the harness).
@@ -331,15 +332,19 @@
   // typeId: the encounter this wave belongs to (default: this system's); line: its chatter.
   Mission.prototype.spawnWave = function (enc, typeId, line) {
     var r = this.rng, w = enc.wave, t = this.t;
-    var th = this.data.threat, hp = Math.round(w.hp * th.hp);
-    var wave = { id: this.nextId++, type: typeId || this.route[this.jumpIndex], name: enc.enemy, hp: hp, hpMax: hp, spawn: t, lastAt: 0, dead: false };
+    // The enemy's own tech level (not ours): toughness and weapons x its factor.
+    var tl = r.pick(enc.tl || [5, 6]), f = BL.enemyTlFactor(tl), hp = Math.round(w.hp * f);
+    var wave = { id: this.nextId++, type: typeId || this.route[this.jumpIndex], name: enc.enemy, hp: hp, hpMax: hp, spawn: t, lastAt: 0, dead: false, tl: tl, factor: f };
+    function torp(size) { var T = BL.TORPEDOES[size] || BL.TORPEDOES.torpedo; return { torpSize: size, mj: Math.round(T.mj * f), travel: T.travel, warn: T.warn }; }
     var n = r.int(w.salvos), at = t + r.range(w.approach);
     for (var i = 0; i < n; i++) {
       if (i > 0) at += r.range(w.salvoGap);
       var surprise = r.chance(enc.surpriseChance);
-      // Drive hunters fire drive strikes (mj = CIWS charge needed to stop one).
-      this.events.push({ id: this.nextId++, type: w.strikes ? "strike" : "salvo", wave: wave.id, at: at, mj: Math.round(r.range(w.salvoMJ) * th.dmg),
-        announceAt: Math.max(t, at - enc.salvoWarning), announced: false, visible: !surprise });
+      // Drive hunters fire drive strikes (mj = CIWS charge needed to stop one); the rest torpedoes
+      // of their size, a ship killer every killerEvery-th salvo.
+      var T = w.strikes ? { mj: Math.round(r.range(w.salvoMJ) * f), warn: enc.salvoWarning } : torp(w.killerEvery && (i + 1) % w.killerEvery === 0 ? "killer" : w.torp);
+      this.events.push(Object.assign({ id: this.nextId++, type: w.strikes ? "strike" : "salvo", wave: wave.id, at: at,
+        announceAt: Math.max(t, at - T.warn), announced: false, visible: !surprise }, T));
       // A frigate fires in pairs, a battleship or fortress in threes: equal salvos 0.6 s apart.
       var e1 = this.events[this.events.length - 1];
       for (var v = 1; v < (w.volley || (w.pairs ? 2 : 1)); v++) this.events.push(Object.assign({}, e1, { id: this.nextId++, at: at + 0.6 * v, announceAt: e1.announceAt + 0.6 * v }));
@@ -352,8 +357,9 @@
         var ns = r.int(ef.salvos), ea = t + r.range(w.approach) + r.range(ef.start);
         for (var z = 0; z < ns; z++) {
           if (z > 0) ea += r.range(ef.gap);
-          this.events.push({ id: this.nextId++, type: "salvo", wave: wave.id, at: ea, mj: Math.round(r.range(ef.salvoMJ) * th.dmg), escort: q,
-            announceAt: Math.max(t, ea - enc.salvoWarning), announced: false, visible: true });
+          var TE = torp(ef.torp);
+          this.events.push(Object.assign({ id: this.nextId++, type: "salvo", wave: wave.id, at: ea, escort: q,
+            announceAt: Math.max(t, ea - TE.warn), announced: false, visible: true }, TE));
           wave.lastAt = Math.max(wave.lastAt, ea);
         }
       }
@@ -386,12 +392,48 @@
     this.runLifeSupport(dt);
     this.runWaves();
     this.runJump();
+    this.runEnemyGuns(dt);
     if (this.t >= this.reportAt) { this.reportAt = Infinity; this.say(this.reports[this.jumpIndex], "info"); this.cue("chatter"); }
     if (this.ship.hull <= 0 && this.phase !== "done") {
       this.ship.hull = 0;
       this.say("Damage control: hull failure! We're breaking up!", "bad");
       this.finish("destroyed");
     }
+  };
+
+  /* Enemy guns (BL.ENEMY_GUNS): once a wave has closed, each of its gun-carrying ships still in the
+     fight fires `rate` shots a second, hitting with `hit`; only the shields stop it, and what gets
+     past them hits the hull at hullPerMJ like a torpedo. Range, our motion and aiming come later
+     (tuning steps 5 to 7). */
+  Mission.prototype.runEnemyGuns = function (dt) {
+    if (this.phase !== "engage" && this.phase !== "countdown") return;
+    var G = BL.ENEMY_GUNS, self = this, t = this.t;
+    this.waves.forEach(function (w) {
+      var enc = BL.ENCOUNTERS[w.type];
+      if (w.dead || !enc || !enc.guns || t < w.spawn + G.after) return;
+      // the share of the wave still fighting: its ships at the gun and the helm, its toughness in the engine room
+      var alive = w.ships ? w.ships.filter(function (s) { return !s.dead && s.state !== "leave"; }).length / Math.max(1, w.ships.length) : w.hp / w.hpMax;
+      if (alive <= 0) return;
+      enc.guns.forEach(function (g) {
+        var spec = G[g[0]], n = Math.ceil(g[1] * alive - 1e-9);
+        for (var k = 0; k < n; k++) if (self.rng.chance(spec.rate * dt)) {
+          var hit = self.rng.chance(G.hit);
+          if (self.turret && self.turret.enemyShot) self.turret.enemyShot(w, g[0], hit);
+          if (hit) self.gunHit(spec.mj * (w.factor || 1));
+        }
+      });
+    });
+  };
+  Mission.prototype.gunHit = function (mj) {
+    var sh = this.sys("shield"), st = this.stats, js = this.jumpStats, took = Math.min(sh.mj, mj);
+    sh.mj -= took; st.gunMJ = (st.gunMJ || 0) + mj; js.gunMJ = (js.gunMJ || 0) + mj;
+    if (!this.gunSaid) { this.gunSaid = true; this.say("Tactical: they're in gun range.", "warn"); }
+    var over = mj - took; if (over <= 0) return;
+    this.gunHull = (this.gunHull || 0) + over * this.data.hullPerMJ;
+    if (this.gunHull < 1) return;
+    var dmg = Math.floor(this.gunHull); this.gunHull -= dmg;
+    this.ship.hull -= dmg; this.ship.fresh.hull += dmg; st.hullLost += dmg; js.hullLost += dmg; st.gunHull = (st.gunHull || 0) + dmg;
+    this.cue("hullHit");
   };
 
   Mission.prototype.runEvents = function () {
@@ -476,7 +518,8 @@
     if (!this.turret && e.type === "salvo") {
       var g = this.data.gun, guns = this.ship.systems.filter(function (x) { return x.kind === "gun"; });
       var ready = guns.filter(function (x) { return x.mj >= g.shotMJ && !x.tripped; });
-      if (ready.length && this.rng.chance((BL.CREW_DOWN[this.data.classId] || 0) * ready.length / guns.length)) {
+      var down = (BL.TORPEDOES[e.torpSize] || {}).down || 1;
+      if (ready.length && this.rng.chance(Math.min(0.95, (BL.CREW_DOWN[this.data.classId] || 0) * down * ready.length / guns.length))) {
         this.rng.pick(ready).mj -= g.shotMJ;
         st.salvos++; js.salvos++; st.crewDowned++;
         if (e.visible) { st.salvosAnnounced++; st.salvosShielded++; }
@@ -727,7 +770,7 @@
   };
   // Mines hit the hull directly; shields don't stop them.
   Mission.prototype.mineStrike = function (enc) {
-    var dmg = Math.max(1, Math.round(this.rng.range(enc.mines.mj) * this.data.threat.dmg * this.data.hullPerMJ));
+    var dmg = Math.max(1, Math.round(this.rng.range(enc.mines.mj) * this.data.hullPerMJ));
     this.ship.hull -= dmg; this.ship.fresh.hull += dmg;
     this.stats.hullLost += dmg; this.jumpStats.hullLost += dmg; this.stats.mineStrikes++;
     this.cue("hullHit");

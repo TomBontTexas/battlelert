@@ -15,7 +15,9 @@
      Nine classes, smallest to largest. `built` classes can be offered as jobs; the rest
      arrive in later steps. Each ship's numbers are its tech-level-4 values: BL.shipFor()
      scales them for the tech level on the job offer.
-     threat: multipliers on encounter salvo damage (dmg) and enemy toughness (hp).
+     Ratings (tuning step 4, approved Oct 20, 2026): each class up multiplies hull by 1.35, shields
+     and reactor by 1.3 and the shield charger by 1.25; every MJ past the shields does hullPerMJ
+     (0.3, every class) hull damage. Enemies don't scale with our class (BL.TORPEDOES, BL.ENEMY_GUNS).
      gScale: multiplier on the G of announced burns (small ships burn harder).
      maxG: thruster top speed; burns never exceed it, and thruster damage lowers it by 1 G.
      mainGun (light cruiser and up): fires by itself the moment its capacitor is full and a target
@@ -40,8 +42,8 @@
   }
   BL.CLASSES = [
     { n: 1, id: "gunboat", name: "Gunboat", built: true, baseRep: 100,
-      crew: 4, hull: 30, reactorMW: 40, engineMWperG: 2, cruiseG: 4, maxG: 16, gScale: 1.5,
-      aux: { capacity: 0, rateMW: 0 }, hullPerMJ: 0.3, threat: { dmg: 0.35, hp: 0.4 }, torpedoes: 2,
+      crew: 4, hull: 30, reactorMW: 45, engineMWperG: 2, cruiseG: 4, maxG: 16, gScale: 1.5,
+      aux: { capacity: 0, rateMW: 0 }, hullPerMJ: 0.3, torpedoes: 2,
       mission: { jumps: 3, windows: [70, 80, 90] }, encounters: ["raiders", "interceptors", "frigate"],
       systems: [
         sys("life", "Life support", "LIFE", "life", 25, 6, 25, 2, { drainMW: 1.2 }),
@@ -49,46 +51,46 @@
         sys("gun1", "Gun 1", "GUN1", "gun", 60, 30, 30, 4, { gunner: 1 })
       ] },
     { n: 2, id: "picket", name: "Picket Ship", built: true, baseRep: 212,
-      crew: 4, hull: 60, reactorMW: 60, engineMWperG: 3, cruiseG: 2, maxG: 11, gScale: 1.2,
-      aux: { capacity: 0, rateMW: 0 }, hullPerMJ: 0.16, threat: { dmg: 0.6, hp: 0.55 },
+      crew: 4, hull: 41, reactorMW: 59, engineMWperG: 3, cruiseG: 2, maxG: 11, gScale: 1.2,
+      aux: { capacity: 0, rateMW: 0 }, hullPerMJ: 0.3,
       mission: { jumps: 3, windows: [110, 120, 130] }, encounters: ["raiders", "interceptors", "siege"],
       systems: [
         sys("life", "Life support", "LIFE", "life", 35, 8, 35, 2, { drainMW: 1.5 }),
-        sys("shield", "Shields", "SHLD", "shield", 120, 45, 60, 12),
+        sys("shield", "Shields", "SHLD", "shield", 117, 44, 58, 12),
         sys("gun1", "Gun 1", "GUN1", "gun", 70, 30, 35, 8, { gunner: 1 }),
         sys("drive", "Warp drive", "DRIVE", "drive", 1800, 40, 0, 0)
       ] },
     { n: 3, id: "destroyerEscort", name: "Destroyer Escort", built: true, baseRep: 325,
-      crew: 5, hull: 80, reactorMW: 80, engineMWperG: 4, cruiseG: 2, maxG: 10, gScale: 1.1,
-      aux: { capacity: 0, rateMW: 0 }, hullPerMJ: 0.14, threat: { dmg: 0.8, hp: 0.75 },
+      crew: 5, hull: 55, reactorMW: 76, engineMWperG: 4, cruiseG: 2, maxG: 10, gScale: 1.1,
+      aux: { capacity: 0, rateMW: 0 }, hullPerMJ: 0.3,
       mission: { jumps: 3, windows: [120, 130, 140] }, encounters: ["raiders", "interceptors", "siege"],
       systems: [
         sys("life", "Life support", "LIFE", "life", 45, 10, 45, 3, { drainMW: 2.2 }),
-        sys("shield", "Shields", "SHLD", "shield", 140, 55, 70, 16),
+        sys("shield", "Shields", "SHLD", "shield", 152, 55, 76, 16),
         sys("gun1", "Gun 1", "GUN1", "gun", 85, 35, 42, 9, { gunner: 1 }),
         sys("gun2", "Gun 2", "GUN2", "gun", 85, 35, 42, 9, { gunner: 2 }),
         sys("drive", "Warp drive", "DRIVE", "drive", 2400, 50, 0, 0)
       ] },
     { n: 4, id: "destroyer", name: "Destroyer", built: true, baseRep: 437,
-      crew: 6, hull: 100, reactorMW: 100, engineMWperG: 5, cruiseG: 2, maxG: 9, gScale: 1,
-      aux: { capacity: 450, rateMW: 40 }, hullPerMJ: 0.12, threat: { dmg: 1, hp: 1 },
+      crew: 6, hull: 74, reactorMW: 99, engineMWperG: 5, cruiseG: 2, maxG: 9, gScale: 1,
+      aux: { capacity: 450, rateMW: 40 }, hullPerMJ: 0.3,
       mission: { jumps: 3, windows: [130, 140, 150] }, encounters: ["raiders", "interceptors", "siege"],
       systems: [
         sys("life", "Life support", "LIFE", "life", 60, 12, 60, 4, { drainMW: 3 }),
-        sys("shield", "Shields", "SHLD", "shield", 160, 70, 80, 20),
+        sys("shield", "Shields", "SHLD", "shield", 198, 68, 99, 20),
         sys("gun1", "Gun 1", "GUN1", "gun", 100, 40, 50, 10, { gunner: 1 }),
         sys("gun2", "Gun 2", "GUN2", "gun", 100, 40, 50, 10, { gunner: 2 }),
         sys("gun3", "Gun 3", "GUN3", "gun", 100, 40, 50, 10, { gunner: 3 }),
         sys("drive", "Warp drive", "DRIVE", "drive", 3200, 60, 0, 0)
       ] },
     { n: 5, id: "lightCruiser", name: "Light Cruiser", built: true, baseRep: 550,
-      crew: 7, hull: 120, reactorMW: 125, engineMWperG: 6, cruiseG: 2, maxG: 7, gScale: 0.9,
-      aux: { capacity: 550, rateMW: 45 }, hullPerMJ: 0.17, threat: { dmg: 1.35, hp: 1.6 },
+      crew: 7, hull: 100, reactorMW: 129, engineMWperG: 6, cruiseG: 2, maxG: 7, gScale: 0.9,
+      aux: { capacity: 550, rateMW: 45 }, hullPerMJ: 0.3,
       mission: { jumps: 3, windows: [140, 150, 160] }, encounters: ["raiders", "interceptors", "siege", "minefield"],
       mainGun: { dmgPerMJ: 0.6 },
       systems: [
         sys("life", "Life support", "LIFE", "life", 70, 14, 70, 4, { drainMW: 3.5 }),
-        sys("shield", "Shields", "SHLD", "shield", 225, 85, 110, 22),
+        sys("shield", "Shields", "SHLD", "shield", 257, 85, 128, 22),
         sys("gun1", "Gun 1", "GUN1", "gun", 105, 40, 52, 10, { gunner: 1 }),
         sys("gun2", "Gun 2", "GUN2", "gun", 105, 40, 52, 10, { gunner: 2 }),
         sys("gun3", "Gun 3", "GUN3", "gun", 105, 40, 52, 10, { gunner: 3 }),
@@ -97,14 +99,14 @@
         sys("drive", "Warp drive", "DRIVE", "drive", 4000, 70, 0, 0)
       ] },
     { n: 6, id: "cruiser", name: "Cruiser", built: true, baseRep: 662,
-      crew: 8, hull: 140, reactorMW: 150, engineMWperG: 7, cruiseG: 2, maxG: 6, gScale: 0.85,
-      aux: { capacity: 650, rateMW: 50 }, hullPerMJ: 0.19, threat: { dmg: 1.55, hp: 1.9 },
+      crew: 8, hull: 134, reactorMW: 167, engineMWperG: 7, cruiseG: 2, maxG: 6, gScale: 0.85,
+      aux: { capacity: 650, rateMW: 50 }, hullPerMJ: 0.3,
       mission: { jumps: 3, windows: [150, 160, 170] }, encounters: ["raiders", "interceptors", "siege", "minefield"],
       mainGun: { dmgPerMJ: 0.6 },
       hangar: { launchAfter: [6, 12], lead: 10, window: 8, retry: 15, recoverBefore: 25, recoverLead: 12, recoverWindow: 10, intercept: 0.25, dps: 6 },
       systems: [
         sys("life", "Life support", "LIFE", "life", 80, 16, 80, 4, { drainMW: 4 }),
-        sys("shield", "Shields", "SHLD", "shield", 265, 95, 130, 24),
+        sys("shield", "Shields", "SHLD", "shield", 334, 107, 167, 24),
         sys("gun1", "Gun 1", "GUN1", "gun", 110, 40, 55, 10, { gunner: 1 }),
         sys("gun2", "Gun 2", "GUN2", "gun", 110, 40, 55, 10, { gunner: 2 }),
         sys("gun3", "Gun 3", "GUN3", "gun", 110, 40, 55, 10, { gunner: 3 }),
@@ -115,15 +117,15 @@
         sys("drive", "Warp drive", "DRIVE", "drive", 4800, 80, 0, 0)
       ] },
     { n: 7, id: "heavyCruiser", name: "Heavy Cruiser", built: true, baseRep: 775,
-      crew: 9, hull: 160, reactorMW: 175, engineMWperG: 8, cruiseG: 2, maxG: 5, gScale: 0.8,
-      aux: { capacity: 750, rateMW: 55 }, hullPerMJ: 0.26, threat: { dmg: 1.75, hp: 2.2 },
+      crew: 9, hull: 181, reactorMW: 217, engineMWperG: 8, cruiseG: 2, maxG: 5, gScale: 0.8,
+      aux: { capacity: 750, rateMW: 55 }, hullPerMJ: 0.3,
       mission: { jumps: 3, windows: [160, 170, 180] }, encounters: ["raiders", "interceptors", "siege", "minefield", "hunters"],
       gunnerEncounters: ["raiders", "interceptors", "siege", "minefield", "hunters", "cruiserA"],
       mainGun: { dmgPerMJ: 0.6 },
       hangar: { launchAfter: [6, 12], lead: 10, window: 8, retry: 15, recoverBefore: 25, recoverLead: 12, recoverWindow: 10, intercept: 0.25, dps: 6 },
       systems: [
         sys("life", "Life support", "LIFE", "life", 90, 18, 90, 5, { drainMW: 4.5 }),
-        sys("shield", "Shields", "SHLD", "shield", 300, 105, 150, 26),
+        sys("shield", "Shields", "SHLD", "shield", 434, 134, 217, 26),
         sys("gun1", "Gun 1", "GUN1", "gun", 115, 42, 57, 10, { gunner: 1 }),
         sys("gun2", "Gun 2", "GUN2", "gun", 115, 42, 57, 10, { gunner: 2 }),
         sys("gun3", "Gun 3", "GUN3", "gun", 115, 42, 57, 10, { gunner: 3 }),
@@ -136,16 +138,16 @@
         sys("drive", "Warp drive", "DRIVE", "drive", 5600, 90, 0, 0)
       ] },
     { n: 8, id: "battleship", name: "Battleship", built: true, baseRep: 887,
-      crew: 10, hull: 180, engineMWperG: 9, cruiseG: 2, maxG: 4, gScale: 0.75,
-      reactors: [{ name: "A", mw: 112, aux: { capacity: 450, rateMW: 35 } }, { name: "B", mw: 112, aux: { capacity: 450, rateMW: 35 } }],
-      hullPerMJ: 0.42, threat: { dmg: 1.6, hp: 3.2 },
+      crew: 10, hull: 245, engineMWperG: 9, cruiseG: 2, maxG: 4, gScale: 0.75,
+      reactors: [{ name: "A", mw: 142, aux: { capacity: 450, rateMW: 35 } }, { name: "B", mw: 142, aux: { capacity: 450, rateMW: 35 } }],
+      hullPerMJ: 0.3,
       mission: { jumps: 3, windows: [170, 180, 190] }, encounters: ["raiders", "interceptors", "siege", "minefield", "hunters"],
       gunnerEncounters: ["raiders", "interceptors", "siege", "minefield", "hunters", "cruiserA", "battleshipA"],
       mainGun: { dmgPerMJ: 0.6 },
       hangar: { launchAfter: [6, 12], lead: 10, window: 8, retry: 15, recoverBefore: 25, recoverLead: 12, recoverWindow: 10, intercept: 0.25, dps: 7 },
       systems: [
         sys("life", "Life support", "LIFE", "life", 100, 20, 100, 5, { drainMW: 5, reactor: 0 }),
-        sys("shield", "Shields", "SHLD", "shield", 280, 110, 140, 28, { reactor: 0 }),
+        sys("shield", "Shields", "SHLD", "shield", 565, 167, 282, 28, { reactor: 0 }),
         sys("gun1", "Gun 1", "GUN1", "gun", 120, 44, 60, 10, { gunner: 1, reactor: 0 }),
         sys("gun2", "Gun 2", "GUN2", "gun", 120, 44, 60, 10, { gunner: 2, reactor: 0 }),
         sys("gun3", "Gun 3", "GUN3", "gun", 120, 44, 60, 10, { gunner: 3, reactor: 1 }),
@@ -159,17 +161,17 @@
         sys("drive", "Warp drive", "DRIVE", "drive", 6400, 100, 0, 0, { reactor: 1 })
       ] },
     { n: 9, id: "dreadnought", name: "Dreadnaught", built: true, baseRep: 1000,
-      crew: 12, hull: 220, engineMWperG: 10, cruiseG: 2, maxG: 3, gScale: 0.7,
-      reactors: [{ name: "A", mw: 112, aux: { capacity: 380, rateMW: 30 } }, { name: "B", mw: 112, aux: { capacity: 380, rateMW: 30 } },
-        { name: "C", mw: 112, aux: { capacity: 380, rateMW: 30 } }],
-      hullPerMJ: 0.48, threat: { dmg: 1.7, hp: 3.6 },
+      crew: 12, hull: 331, engineMWperG: 10, cruiseG: 2, maxG: 3, gScale: 0.7,
+      reactors: [{ name: "A", mw: 122, aux: { capacity: 380, rateMW: 30 } }, { name: "B", mw: 122, aux: { capacity: 380, rateMW: 30 } },
+        { name: "C", mw: 122, aux: { capacity: 380, rateMW: 30 } }],
+      hullPerMJ: 0.3,
       mission: { jumps: 3, windows: [180, 190, 200] }, encounters: ["raiders", "interceptors", "siege", "minefield", "hunters"],
       gunnerEncounters: ["raiders", "interceptors", "siege", "minefield", "hunters", "cruiserA", "battleshipA"], gunnerFinal: "fortress",
       mainGun: { dmgPerMJ: 0.6 },
       hangar: { launchAfter: [6, 12], lead: 10, window: 8, retry: 15, recoverBefore: 25, recoverLead: 12, recoverWindow: 10, intercept: 0.25, dps: 8 },
       systems: [
         sys("life", "Life support", "LIFE", "life", 110, 22, 110, 6, { drainMW: 5.5, reactor: 0 }),
-        sys("shield", "Shields", "SHLD", "shield", 300, 115, 150, 30, { reactor: 0 }),
+        sys("shield", "Shields", "SHLD", "shield", 734, 209, 367, 30, { reactor: 0 }),
         sys("gun1", "Gun 1", "GUN1", "gun", 125, 45, 62, 10, { gunner: 1, reactor: 0 }),
         sys("gun2", "Gun 2", "GUN2", "gun", 125, 45, 62, 10, { gunner: 2, reactor: 1 }),
         sys("gun3", "Gun 3", "GUN3", "gun", 125, 45, 62, 10, { gunner: 3, reactor: 1 }),
@@ -211,24 +213,28 @@
     cruiser: 0.52, heavyCruiser: 0.55, battleship: 0.64, dreadnought: 0.61 };
 
   // A ship of class `classId` at tech level `tl`, ready for BL.Mission.
+  // Our guns' Mk is the ship's class: each Mk up hits x1.2 as hard for x1.15 the charge per shot.
+  // Gun capacitors grow with the charge per shot (same shots held); gun chargers don't.
+  BL.MK = { dmg: function (n) { return Math.pow(1.2, n - 1); }, charge: function (n) { return Math.pow(1.15, n - 1); } };
   BL.shipFor = function (classId, tl) {
-    var c = BL.classById(classId); tl = BL.TECH.clamp(c.id, tl); var f = BL.TECH.factor(tl, c.id);
+    var c = BL.classById(classId); tl = BL.TECH.clamp(c.id, tl); var f = BL.TECH.factor(tl, c.id), mkD = BL.MK.dmg(c.n), mkC = BL.MK.charge(c.n);
     function r(v) { return Math.round(v); }
     var reactors = (c.reactors || [{ name: "", mw: c.reactorMW, aux: c.aux }]).map(function (x) {
       return { name: x.name, mw: r(x.mw * f), aux: { capacity: r(x.aux.capacity * f), rateMW: r(x.aux.rateMW * f) } };
     });
     return {
       classId: c.id, className: c.name, n: c.n, tl: tl, reactors: reactors,
-      name: c.name, hull: c.hull, crew: c.crew,
+      name: c.name, hull: r(c.hull * f), crew: c.crew, mk: c.n, mkDmg: mkD * f, mkCharge: mkC,
       reactorMW: reactors.reduce(function (a, x) { return a + x.mw; }, 0), engineMWperG: c.engineMWperG, cruiseG: c.cruiseG, maxG: c.maxG, gScale: c.gScale,
       aux: reactors[0].aux,
-      hullPerMJ: c.hullPerMJ, threat: c.threat, mission: c.mission, encounters: c.encounters, gunnerEncounters: c.gunnerEncounters, gunnerFinal: c.gunnerFinal,
+      hullPerMJ: c.hullPerMJ, mission: c.mission, encounters: c.encounters, gunnerEncounters: c.gunnerEncounters, gunnerFinal: c.gunnerFinal,
       mainGun: c.mainGun || null, torpedoes: c.torpedoes || 0,
       hangar: c.hangar ? Object.assign({}, c.hangar, { dps: c.hangar.dps * f }) : null,
-      gun: { shotMJ: GUN.shotMJ, normalInterval: GUN.normalInterval, fullInterval: GUN.fullInterval, hitChance: GUN.hitChance, damage: GUN.damage * f },
+      gun: { shotMJ: GUN.shotMJ * mkC, normalInterval: GUN.normalInterval, fullInterval: GUN.fullInterval, hitChance: GUN.hitChance, damage: GUN.damage * f * mkD },
       systems: c.systems.map(function (s) {
         var o = {}; for (var k in s) o[k] = s[k];
         if (s.kind !== "life") { o.maxMJ = r(s.maxMJ * f); o.maxMW = r(s.maxMW * f); o.startMJ = r(s.startMJ * f); }
+        if (s.kind === "gun") { o.maxMJ = r(o.maxMJ * mkC); o.startMJ = r(o.startMJ * mkC); }
         return o;
       })
     };
@@ -264,8 +270,28 @@
     lookCostPct: 10                    // looking at the console while paused
   };
 
+  /* ------------------------------------------- Enemy weapons (ratings model)
+     The same at every station and on every ship we serve on. Three torpedo sizes, set by the ship
+     that fires them: mj = damage, travel = s from launch to impact, warn = s of warning, down =
+     how hard it is to shoot down (the crew's chance and the torpedo's size as a target, x).
+     Guns: steady fire once a wave closes, mj per hit, rate = shots per second per ship, a hit
+     chance of `hit`; only the shields stop it. Enemy tech level: an encounter's `tl` list (the
+     interceptors are tech level 4; the rest 5 or 6, drawn per wave): toughness and damage x
+     1 + 0.1 x (tl - 6), the tables being tech level 6 (the interceptors' their 4). */
+  BL.TORPEDOES = {
+    dart:    { name: "dart",        mj: 20,  travel: 1.8, warn: 4, down: 0.6 },
+    torpedo: { name: "torpedo",     mj: 45,  travel: 2.6, warn: 6, down: 1 },
+    killer:  { name: "ship killer", mj: 150, travel: 3.6, warn: 8, down: 1.4 }
+  };
+  BL.ENEMY_GUNS = { light: { mj: 4, rate: 0.7 }, heavy: { mj: 6, rate: 0.8 }, capital: { mj: 10, rate: 0.7 }, hit: 0.5, after: 4 };
+  BL.enemyTlFactor = function (tl) { return tl === 4 ? 1 : 1 + 0.1 * (tl - 6); };
+
   /* --------------------------------------------------------- Encounters
-     Each encounter is a load pattern. Ranges [a, b] are rolled from the mission seed. */
+     Each encounter is a load pattern. Ranges [a, b] are rolled from the mission seed.
+     wave.hp: the whole wave's toughness at enemy tech level 6 (ships x their toughness: raider 40,
+     interceptor 12, drive hunter 30, siege battery 45, frigate 250, Azurian cruiser 450, Azurian
+     battleship 800, fortress 2,500). torp: the size of its torpedoes (killerEvery: every Nth salvo
+     is a ship killer). guns: [gun size, ships carrying it] (BL.ENEMY_GUNS). tl: its tech levels. */
   BL.ENCOUNTERS = {
     raiders: {
       name: "Raiders",
@@ -275,7 +301,8 @@
       salvoWarning: 7,
       firstWave: [4, 6],
       waveEvery: [24, 32],
-      wave: { hp: 300, salvos: [3, 4], approach: [6, 8], salvoGap: [2.5, 4], salvoMJ: [120, 170], requests: 2 },
+      wave: { hp: 120, salvos: [3, 4], approach: [6, 8], salvoGap: [2.5, 4], torp: "torpedo", requests: 2 },
+      guns: [["light", 3]],
       request: { lead: 4, duration: [6, 8] },
       burns: { every: [28, 40], g: [5, 6], duration: [3, 4], warning: 5 },
       surpriseChance: 0.08
@@ -288,7 +315,8 @@
       salvoWarning: 6,
       firstWave: [3, 5],
       waveEvery: [38, 48],
-      wave: { hp: 420, salvos: [11, 14], approach: [6, 7], salvoGap: [2.5, 3.8], salvoMJ: [75, 105], requests: 3 },
+      wave: { hp: 180, salvos: [4, 6], approach: [6, 7], salvoGap: [5, 8], torp: "torpedo", requests: 3 },
+      guns: [["heavy", 4]],                 // the gun line: steady gunfire, torpedoes now and then
       request: { lead: 4, duration: [6, 8] },
       burns: { every: [35, 50], g: [3, 4], duration: [3, 5], warning: 5 },
       surpriseChance: 0.05
@@ -301,7 +329,8 @@
       salvoWarning: 5,
       firstWave: [3, 5],
       waveEvery: [15, 21],
-      wave: { hp: 130, salvos: [4, 6], approach: [4, 6], salvoGap: [1.8, 2.8], salvoMJ: [45, 70], requests: 1 },
+      wave: { hp: 54, salvos: [4, 6], approach: [4, 6], salvoGap: [1.8, 2.8], torp: "dart", requests: 1 },
+      guns: [["light", 4.5]], tl: [4],
       request: { lead: 3, duration: [5, 7] },
       burns: { every: [9, 14], g: [7, 9], duration: [4, 6], warning: 5 },
       surpriseChance: 0.1
@@ -317,7 +346,7 @@
       salvoWarning: 6,
       firstWave: [3, 5],
       waveEvery: [20, 28],
-      wave: { hp: 200, salvos: [4, 6], approach: [5, 7], salvoGap: [2.5, 4], salvoMJ: [30, 45], requests: 2, strikes: true },
+      wave: { hp: 90, salvos: [4, 6], approach: [5, 7], salvoGap: [2.5, 4], salvoMJ: [30, 45], requests: 2, strikes: true },
       request: { lead: 4, duration: [6, 8] },
       burns: { every: [20, 30], g: [4, 5], duration: [3, 5], warning: 5 },
       surpriseChance: 0.05, driveDrain: 0.15,
@@ -332,9 +361,10 @@
       salvoWarning: 6,
       firstWave: [3, 5],
       waveEvery: [70, 80],
-      wave: { hp: 360, salvos: [8, 10], approach: [6, 8], salvoGap: [6, 8], salvoMJ: [70, 100], requests: 3, pairs: true,
+      guns: [["heavy", 1], ["light", 2]],
+      wave: { hp: 274, salvos: [8, 10], approach: [6, 8], salvoGap: [6, 8], torp: "torpedo", requests: 3, pairs: true,
               // each escort fires its own light torpedoes, like an interceptor flight's
-              escortFire: { count: 2, salvos: [3, 4], start: [2, 4], gap: [4, 6], salvoMJ: [45, 70] } },
+              escortFire: { count: 2, salvos: [3, 4], start: [2, 4], gap: [4, 6], torp: "dart" } },
       // Light attack craft keep coming while the frigate fights: stragglers from another quadrant.
       stragglers: { first: [12, 16], every: [18, 26], types: ["interceptors", "interceptors", "interceptors", "raiders", "raiders"] },
       request: { lead: 4, duration: [6, 8] },
@@ -351,8 +381,9 @@
       salvoWarning: 6,
       firstWave: [3, 5],
       waveEvery: [80, 90],
-      wave: { hp: 560, salvos: [10, 12], approach: [6, 8], salvoGap: [5, 7], salvoMJ: [80, 110], requests: 3, pairs: true,
-              escortFire: { count: 3, salvos: [3, 4], start: [2, 4], gap: [4, 6], salvoMJ: [45, 70] } },
+      guns: [["capital", 1], ["light", 3]],
+      wave: { hp: 486, salvos: [10, 12], approach: [6, 8], salvoGap: [5, 7], torp: "torpedo", killerEvery: 3, requests: 3, pairs: true,
+              escortFire: { count: 3, salvos: [3, 4], start: [2, 4], gap: [4, 6], torp: "dart" } },
       stragglers: { first: [14, 18], every: [20, 28], types: ["interceptors", "interceptors", "raiders", "raiders"] },
       request: { lead: 4, duration: [6, 8] },
       burns: { every: [24, 34], g: [5, 6], duration: [3, 4], warning: 5 },
@@ -369,8 +400,9 @@
       salvoWarning: 6,
       firstWave: [3, 5],
       waveEvery: [100, 115],
-      wave: { hp: 760, salvos: [10, 12], approach: [6, 8], salvoGap: [6, 8], salvoMJ: [60, 85], requests: 3, volley: 3,
-              escortFire: { count: 3, salvos: [2, 3], start: [3, 5], gap: [6, 8], salvoMJ: [90, 130] } },
+      guns: [["capital", 1], ["light", 3]],
+      wave: { hp: 920, salvos: [10, 12], approach: [6, 8], salvoGap: [6, 8], torp: "killer", requests: 3, volley: 3,
+              escortFire: { count: 3, salvos: [2, 3], start: [3, 5], gap: [6, 8], torp: "torpedo" } },
       stragglers: { first: [16, 20], every: [22, 30], types: ["interceptors", "interceptors", "raiders", "hunters"] },
       request: { lead: 4, duration: [6, 8] },
       burns: { every: [26, 36], g: [4, 5], duration: [3, 4], warning: 5 },
@@ -388,8 +420,9 @@
       salvoWarning: 6,
       firstWave: [2, 3],
       waveEvery: [999, 999],
-      wave: { hp: 2000, salvos: [34, 38], approach: [8, 10], salvoGap: [6, 8], salvoMJ: [55, 80], requests: 3, volley: 3,
-              escortFire: { count: 4, salvos: [3, 4], start: [2, 4], gap: [4, 6], salvoMJ: [45, 70] } },
+      guns: [["capital", 1], ["light", 4]],
+      wave: { hp: 2548, salvos: [34, 38], approach: [8, 10], salvoGap: [6, 8], torp: "killer", requests: 3, volley: 3,
+              escortFire: { count: 4, salvos: [3, 4], start: [2, 4], gap: [4, 6], torp: "dart" } },
       stragglers: { first: [18, 24], every: [20, 28], types: ["interceptors", "interceptors", "raiders", "hunters"] },
       request: { lead: 4, duration: [6, 8] },
       burns: { every: [26, 36], g: [3, 4], duration: [3, 4], warning: 5 },
@@ -408,7 +441,7 @@
       tests: "Clearing mines",
       firstWave: [0, 0], waveEvery: [999, 999],
       burns: { every: [999, 999], g: [1, 1], duration: [1, 1], warning: 5 },   // none: no burns, no course orders
-      sweep: { every: [1.3, 2.0], flow: 0.1, spread: 5, maxFlow: 1.5, mj: [30, 45] },
+      sweep: { every: [1.3, 2.0], flow: 0.1, spread: 5, maxFlow: 1.5, mj: [90, 90] },
       surpriseChance: 0
     },
     // No enemy fire. The pilot weaves through the field with long burns, and the engines get
@@ -420,11 +453,11 @@
       tests: "Keeping engines fed",
       firstWave: [0, 0], waveEvery: [999, 999],
       burns: { every: [7, 11], g: [6, 8], duration: [6, 9], warning: 6 },
-      mines: { strikePerSec: 0.5, mj: [90, 140], engineMult: 2,     // weaving takes twice the engine power
+      mines: { strikePerSec: 0.5, mj: [90, 90], engineMult: 2,     // one mine size at every station (90 MJ)     // weaving takes twice the engine power
                // At the gunner station the mines are seen: one drifts in every `every` s (twice as
                // often while the engines are starved), `drift` fields/s; one that reaches the shield
                // hits like a torpedo of mj x the class's threat dmg. No random strikes there.
-               gunner: { every: [1.8, 2.8], drift: [0.06, 0.09], mj: [45, 70], starvedMult: 2 },
+               gunner: { every: [1.8, 2.8], drift: [0.06, 0.09], mj: [90, 90], starvedMult: 2 },
                // At the helm the mines sit still and the ship moves through them: a steering test
                // (the captain gives no course orders here). At standard they stream past at `flow`
                // fields/s, one every `every` s, scattered `spread` x the shield's half-width either
@@ -435,7 +468,7 @@
                // turner time to steer clear. Small and hard for the gun crew: a crew bolt that
                // reaches one destroys it only with `crewHit` x 3 / the number of guns (so a big
                // battery doesn't do the steering), else a near miss.
-               helm: { every: [3.2, 4.6], flow: 0.12, spread: 2.6, maxFlow: 1, mj: 3.5, lagSlow: 2, crewHit: 0.12 } },
+               helm: { every: [3.2, 4.6], flow: 0.12, spread: 2.6, maxFlow: 1, mj: 1, lagSlow: 2, crewHit: 0.12 } },
       windowScale: 0.7,                // the captain wants out: the jump window comes sooner
       surpriseChance: 0
     }
@@ -559,7 +592,7 @@
     // Slow and homing on the nearest siege battery or capital ship; damage x the class's threat
     // hp. A target sidesteps (jink, fields/s) when one gets within jinkAt, and its point defense
     // has pd chance per second to kill one within pdRange.
-    pt: { speed: 0.3, turn: 60, damage: 135, size: 0.018, jinkAt: 0.3, jinkSeconds: 1.2,
+    pt: { speed: 0.3, turn: 60, damage: 110, size: 0.018, jinkAt: 0.3, jinkSeconds: 1.2,
           jink: { frigate: 0.18, cruiserA: 0.12, carrier: 0.08, battleshipA: 0.04, fortress: 0, siege: 0.03 },
           pdRange: 0.35, pd: { frigate: 0.3, cruiserA: 0.4, carrier: 0.35, battleshipA: 0.55, fortress: 0.7, siege: 0.15 } },
     // Guns sit outside the shields. When a hit damages a gun's charger it damages its turret too,
@@ -583,18 +616,18 @@
                       what: "a slow line that holds far out and never stops firing" },
       // Azurian capital ships: one big hull (the wave's toughness minus the escorts' share).
       frigate:      { ship: "frigate", ringR: [0.42, 0.46], capital: true, count: [1, 1], w: 0.13, h: 0.25, band: [0.15, 0.2], sway: 0.1, period: [10, 12], dive: 0,
-                      escorts: { type: "interceptors", count: 2, share: 0.17 },
+                      escorts: { type: "interceptors", count: 2, share: 0.088 },
                       what: "one big hull escorted by two interceptors; it holds far out and fires torpedoes in pairs" },
       cruiserA:     { ship: "Azurian cruiser", ringR: [0.44, 0.48], capital: true, count: [1, 1], w: 0.2, h: 0.23, band: [0.15, 0.2], sway: 0.08, period: [11, 13], dive: 0,
-                      escorts: { type: "interceptors", count: 3, share: 0.2 },
+                      escorts: { type: "interceptors", count: 3, share: 0.074 },
                       what: "one heavy hull escorted by three interceptors; it holds far out and fires heavy torpedoes in pairs" },
       battleshipA:  { ship: "Azurian battleship", ringR: [0.54, 0.58], capital: true, count: [1, 1], w: 0.24, h: 0.29, band: [0.15, 0.2], sway: 0.06, period: [12, 14], dive: 0,
-                      escorts: { type: "raiders", count: 3, share: 0.22 },
+                      escorts: { type: "raiders", count: 3, share: 0.13 },
                       what: "the biggest hull yet, screened by three raiders; it holds far out and fires torpedoes in threes" },
       // still: it never moves (no sway, no sliding away from the bow); bearing: always comes from dead ahead;
       // only: there is just the one.
       fortress:     { ship: "Azurian fortress", ringR: [0.53, 0.57], capital: true, still: true, bearing: 0, count: [1, 1], w: 0.3, h: 0.3, band: [0.12, 0.16], sway: 0, period: [12, 14], dive: 0,
-                      escorts: { type: "interceptors", count: 4, share: 0.12 },
+                      escorts: { type: "interceptors", count: 4, share: 0.019 },
                       only: true,
                       what: "fixed dead ahead, guarding the Azurian world with four interceptors; it fires torpedoes in threes for the whole fight" },
       hunters:      { ship: "drive hunter", ringR: [0.35, 0.42], count: [3, 3], w: 0.065, h: 0.07, band: [0.18, 0.4], sway: 0.24, period: [3, 4], dive: 0.12,

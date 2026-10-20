@@ -217,6 +217,12 @@
         var dl = Math.hypot(f.dx, f.dy) || 1, ux = f.dx / dl, uy = f.dy / dl, px = f.x + ux * a * 0.35, py = f.y + uy * a * 0.35;
         c.strokeStyle = "rgba(150,255,190," + (1 - a / 0.8).toFixed(2) + ")"; c.lineWidth = 3 / S;
         c.beginPath(); c.moveTo(px - ux * 0.04, py - uy * 0.04); c.lineTo(px, py); c.stroke(); c.lineWidth = 1.5 / S;
+      } else if (f.type === "ebolt" && a < 0.14) {          // enemy gunfire: a red bolt at our shield
+        var k3 = a / 0.14;
+        c.strokeStyle = "rgba(255,90,70," + (0.95 - k3 * 0.8).toFixed(2) + ")"; c.lineWidth = (f.big ? 2.6 : 1.6) / S;
+        c.beginPath(); c.moveTo(f.x + (f.x1 - f.x) * k3 * 0.6, f.y + (f.y1 - f.y) * k3 * 0.6); c.lineTo(f.x + (f.x1 - f.x) * Math.min(1, k3 * 0.6 + 0.4), f.y + (f.y1 - f.y) * Math.min(1, k3 * 0.6 + 0.4)); c.stroke();
+        if (f.hit && k3 > 0.5) { c.fillStyle = "rgba(160,220,255," + (1 - k3).toFixed(2) + ")"; c.beginPath(); c.arc(f.x1, f.y1, 0.006, 0, Math.PI * 2); c.fill(); }
+        c.lineWidth = 1.5 / S;
       } else if (f.type === "fizzle" && a < 0.25) {
         c.fillStyle = "rgba(240,181,74," + (0.6 - a * 2.4) + ")"; c.fillRect(f.x - 0.004, f.y - 0.004, 0.008, 0.008);
       }

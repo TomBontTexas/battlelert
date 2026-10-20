@@ -192,7 +192,7 @@
     this.ships.forEach(function (s) { s.chargeAt = 0; });
     m.events.forEach(function (e) {
       if ((e.type !== "salvo" && e.type !== "strike") || e.done || e.torp || !e.announced || !e.visible) return;
-      var s = self.shipOf(e), la = e.at - G.torpedo.travel;
+      var s = self.shipOf(e), la = e.at - (e.travel || G.torpedo.travel);
       if (s && !s.dead && s.state !== "leave" && (!s.chargeAt || la < s.chargeAt)) { s.chargeAt = la; s.chargeFrom = Math.min(e.announceAt, la - 0.5); }
     });
     this.fire(dt);
@@ -425,7 +425,7 @@
     var b0 = this.pickBearing(), hitB = b0 + (r.next() - 0.5) * 20, p = this.rim(hitB);
     var x0 = R.cx + R.enter * Math.sin(b0 * RAD), y0 = R.cy - R.enter * Math.cos(b0 * RAD);
     var travel = Math.hypot(x0 - p.x, y0 - p.y) / r.range(M.drift);
-    var e = { id: m.nextId++, type: "mine", at: m.t + travel, mj: Math.round(r.range(M.mj) * m.data.threat.dmg), announced: true, visible: true };
+    var e = { id: m.nextId++, type: "mine", at: m.t + travel, mj: Math.round(r.range(M.mj)), announced: true, visible: true };
     m.events.push(e);
     var tp = { id: this.nextId++, ev: e, mine: true, x0: x0, y0: y0, x1: p.x, y1: p.y, hitB: hitB, t0: m.t, t1: e.at, x: x0, y: y0, spin: r.next() * 6 };
     e.torp = tp; this.torps.push(tp);
@@ -445,7 +445,7 @@
     if (this.mineDue < 1) return;
     this.mineDue -= 1;
     var x = R.cx + (r.next() * 2 - 1) * H.spread * R.rx, y = v >= 0 ? -0.3 : 1.3;      // (out of sight on a tall view)
-    var e = { id: m.nextId++, type: "mine", at: Infinity, mj: Math.round(r.range(mj) * m.data.threat.dmg), announced: true, visible: true };
+    var e = { id: m.nextId++, type: "mine", at: Infinity, mj: Math.round(r.range(mj)), announced: true, visible: true };
     m.events.push(e);
     var tp = { id: this.nextId++, ev: e, mine: true, field: true, crewHit: H.crewHit && H.crewHit * Math.min(1, 3 / this.bats.length), x0: x, y0: y, x1: x, y1: y, hitB: 0, t0: m.t, t1: m.t + 99, x: x, y: y, spin: r.next() * 6 };
     e.torp = tp; this.torps.push(tp);
@@ -562,18 +562,19 @@
     var m = this.m, t = m.t, G = this.G, self = this;
     m.events.forEach(function (e) {
       if ((e.type !== "salvo" && e.type !== "strike") || e.done || e.torp) return;
-      if (t < e.at - G.torpedo.travel) return;
+      if (t < e.at - (e.travel || G.torpedo.travel)) return;
       var s = self.shipOf(e);
       if (!s || s.dead || s.state === "leave") { e.done = true; e.cancelled = true; e.visible = false; return; }
       var ion = BL.WEAPONS.ion.ion;
       if (t < s.ionUntil && !e.ionized) {
         e.ionized = true; e.at += ion.delay; e.mj = Math.round(e.mj * ion.salvoMult);
-        if (t < e.at - G.torpedo.travel) return;
+        if (t < e.at - (e.travel || G.torpedo.travel)) return;
       }
       if (m.helm && e.type === "salvo") m.helm.torpedoLaunched(e, s);       // Tactical reports it; the captain: break, or take it
       var hitB = s.bearing + (self.rng.next() - 0.5) * 24, hit = self.rim(hitB);
       var nose = { x: s.x - Math.sin(s.rot) * s.h / 2, y: s.y + Math.cos(s.rot) * s.h / 2 };
-      var torp = { id: self.nextId++, ev: e, x0: nose.x, y0: nose.y, x1: hit.x, y1: hit.y, hitB: hitB, t0: t, t1: e.at, x: nose.x, y: nose.y, weak: !!e.ionized };
+      var torp = { id: self.nextId++, ev: e, x0: nose.x, y0: nose.y, x1: hit.x, y1: hit.y, hitB: hitB, t0: t, t1: e.at, x: nose.x, y: nose.y, weak: !!e.ionized,
+        size: (BL.TORPEDOES[e.torpSize] || {}).down || 1 };      // a dart is a small target, a ship killer a big one
       if (e.type === "strike") {
         // A drive strike swings wide around the shield and dives into the stern: its curve bends
         // through a point off the beam on its own side, halfway round to the stern.
@@ -586,6 +587,15 @@
       if (self.cur) { self.stats.torps++; self.cur.torps++; } else self.stats.torps++;
       m.cue("torpLaunch");
     });
+  };
+
+  // An enemy gun fires (Mission.runEnemyGuns): a red bolt from one of the wave's ships to our shield.
+  RingTurret.prototype.enemyShot = function (w, size, hit) {
+    var live = (w.ships || []).filter(function (s) { return !s.dead && s.state !== "leave" && s.state !== "enter"; });
+    if (!live.length) return;
+    var s = live[Math.floor(this.rng.next() * live.length)], p = this.rim(s.bearing + (this.rng.next() - 0.5) * 20);
+    var miss = hit ? 0 : 0.06;
+    this.effects.push({ type: "ebolt", x: s.x, y: s.y, x1: p.x + (this.rng.next() - 0.5) * miss * 2, y1: p.y + (this.rng.next() - 0.5) * miss * 2, at: this.m.totalT, big: size !== "light", hit: hit });
   };
 
   /* ----------------------------------------------------------------- CIWS
@@ -702,7 +712,7 @@
         var u = clamp(((px - x0) * dx + (py - y0) * dy) / L2, 0, 1), cx = x0 + u * dx - px, cy = y0 + u * dy - py;
         if (cx * cx + cy * cy <= rad * rad && u < bestT) { bestT = u; best = what; }
       };
-      this.torps.forEach(function (tp) { consider(tp.x, tp.y, 0.024, { torp: tp }); });
+      this.torps.forEach(function (tp) { consider(tp.x, tp.y, 0.024 * (tp.size || 1), { torp: tp }); });
       this.ships.forEach(function (s) { if (!s.dead && s.state !== "leave") consider(s.x, s.y, Math.max(s.w, s.h) * 0.45, { ship: s }); });
       if (best && b.dist + step * bestT <= maxD) {
         var d = b.dist + step * bestT;

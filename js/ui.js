@@ -164,7 +164,7 @@
       var bats = sim.turret.bats;
       // The guns and their arcs; how they work is in How to play.
       $("brief-guns").innerHTML = "<b>" + (bats.length > 1 ? "Guns" : "Gun") + ":</b> " + bats.map(function (b) {
-        return "Gun " + b.gunNo + " " + b.w.name.toLowerCase() + (b.arcName ? " " + b.arcName : "") + (b.arcH === undefined ? "" : " (" + (b.arcH >= 180 ? "all round" : (b.arcH * 2) + "°") + ")");
+        return "Gun " + b.gunNo + " " + b.w.name.toLowerCase() + " Mk" + (b.w.mk || 1) + (b.arcName ? " " + b.arcName : "") + (b.arcH === undefined ? "" : " (" + (b.arcH >= 180 ? "all round" : (b.arcH * 2) + "°") + ")");
       }).join(" · ") + (sim.helm ? ". Your gun crew works " + (bats.length > 1 ? "them." : "it.") : bats.length > 1 ? ". You aim one; your gun crew works the rest." : ".");
       $("brief-crew").hidden = bats.length < 2 && !sim.helm;
       $("brief-crew").innerHTML = "<b>Gun crew:</b> " + bats.filter(function (b) { return b.crew; }).map(function (b) {
@@ -1855,7 +1855,7 @@
     if ((j.station === "gunner" || pilot) && BL.pickGunCrew) BL.pickGunCrew(j.seed, j.classId, pilot).forEach(function (c, k) {
       if (c) crew.push("Gun " + (k + 1) + " " + esc(c.name) + ", " + c.label + " (skill " + Math.round(c.skill * 100) + ")");
     });
-    var arms = j.station === "gunner" || pilot ? (j.weapons || BL.GUNNERY.loadout[j.classId] || ["pulse"]).map(function (id, k) { return "Gun " + (k + 1) + " " + BL.WEAPONS[id].name.toLowerCase(); })
+    var arms = j.station === "gunner" || pilot ? (j.weapons || BL.GUNNERY.loadout[j.classId] || ["pulse"]).map(function (id, k) { return "Gun " + (k + 1) + " " + BL.WEAPONS[id].name.toLowerCase() + " Mk" + j.n; })
       .concat(BL.classById(j.classId).mainGun ? ["Main gun"] : [], j.classId === "gunboat" ? ["Two torpedoes"] : []) : [];
     function sec(title, rows) { return rows.length ? '<div class="offer-sec"><div class="offer-sec-h">' + title + "</div>" + rows.map(function (x) { return "<div>" + x + "</div>"; }).join("") + "</div>" : ""; }
     return '<div class="offer' + (up ? " stepup" : "") + '"><h3>' + esc(BL.shipLabel(j.classId, j.ship)) + " (TL" + j.tl + ")" + tag + "</h3>" +

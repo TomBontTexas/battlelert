@@ -18,7 +18,8 @@
     var list = opts.weapons || [opts.weapon || "pulse"], n = list.length, orders = opts.orders || [];
     this.bats = list.map(function (id, i) {
       var wid = BL.WEAPONS[id] ? id : "pulse", x = n === 1 ? 0.5 : 0.2 + 0.6 * i / (n - 1);
-      return { i: i, gunNo: i + 1, gunId: "gun" + (i + 1), weaponId: wid, w: BL.WEAPONS[wid], x: x, aimX: x, dir: 0,
+      var W = BL.WEAPONS[wid], w = Object.assign({}, W, { damage: W.damage * (m.data.mkDmg || 1), shotMJ: W.shotMJ * (m.data.mkCharge || 1), mk: m.data.mk });
+      return { i: i, gunNo: i + 1, gunId: "gun" + (i + 1), weaponId: wid, w: w, x: x, aimX: x, dir: 0,
         firing: false, nextShot: 0, dryCueAt: 0, callReadyAt: 0, aiNext: 0, aiJitter: 0,
         // hit rate on this gun for the whole mission: yours, and the AI gunner's when it has the gun
         shots: 0, hits: 0, aiShots: 0, aiHits: 0,
@@ -196,7 +197,7 @@
     this.ships.forEach(function (s) { s.chargeAt = 0; });
     m.events.forEach(function (e) {
       if ((e.type !== "salvo" && e.type !== "strike") || e.done || e.torp || !e.announced || !e.visible) return;
-      var s = self.shipOf(e), la = e.at - G.torpedo.travel;
+      var s = self.shipOf(e), la = e.at - (e.travel || G.torpedo.travel);
       if (s && !s.dead && s.state !== "leave" && (!s.chargeAt || la < s.chargeAt)) { s.chargeAt = la; s.chargeFrom = Math.min(e.announceAt, la - 0.5); }
     });
     this.fire(dt);
@@ -253,13 +254,13 @@
     var m = this.m, t = m.t, G = this.G, self = this;
     m.events.forEach(function (e) {
       if ((e.type !== "salvo" && e.type !== "strike") || e.done || e.torp) return;
-      if (t < e.at - G.torpedo.travel) return;
+      if (t < e.at - (e.travel || G.torpedo.travel)) return;
       var s = self.shipOf(e);
       if (!s || s.dead || s.state === "leave") { e.done = true; e.cancelled = true; e.visible = false; return; }
       var ion = BL.WEAPONS.ion.ion;
       if (t < s.ionUntil && !e.ionized) {
         e.ionized = true; e.at += ion.delay; e.mj = Math.round(e.mj * ion.salvoMult);
-        if (t < e.at - G.torpedo.travel) return;          // launches later
+        if (t < e.at - (e.travel || G.torpedo.travel)) return;          // launches later
       }
       var x1 = 0.22 + self.rng.next() * 0.56;
       var torp = { id: self.nextId++, ev: e, x0: s.x, y0: s.y + s.h / 2, x1: x1, y1: BL.shieldY(x1), t0: t, t1: e.at, x: s.x, y: s.y + s.h / 2, weak: !!e.ionized };
@@ -497,7 +498,7 @@
         this.effects.push({ type: "boom", x: tp.x, y: tp.y, at: m.totalT, size: 0.16 });
         m.cue("main");
         m.chat("ptHit", { enemy: hit.name }, "good");
-        this.damageShip(hit, P.damage * m.data.threat.hp, 0, true);
+        this.damageShip(hit, P.damage, 0, true);
         continue;
       }
       if (tp.y < -0.08 || tp.x < -0.08 || tp.x > 1.08 || tp.y > 1.05) { bump(this, "ptMissed"); m.chat("ptMiss", null, "info"); continue; }
