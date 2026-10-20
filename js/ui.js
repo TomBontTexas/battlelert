@@ -1511,7 +1511,7 @@
   // brief = leave out what the enemy is like (already said).
   function gunnerTip(encId, brief) {
     var look = BL.GUNNERY.looks[encId] || {}, bats = sim.turret.bats;
-    if (encId === "minefield") return brief ? "Shoot the mines." : "Mines drift in toward the ship: shoot them before they reach the shield. One hit from any gun kills a mine.";
+    if (encId === "minefield") return brief ? "Shoot the mines." : "The mines sit still and stream past from ahead as the ship moves through them: shoot the ones on a collision course before they reach the shield. One hit from any gun kills a mine.";
     var good = bats.filter(function (b) { return b.w.best.indexOf(encId) >= 0; }).map(function (b) { return b.w.name.toLowerCase(); })
       .filter(function (n, i, a) { return a.indexOf(n) === i; });
     var gun = bats.length === 1 ? "Your " + bats[0].w.name.toLowerCase() : "None of your guns";

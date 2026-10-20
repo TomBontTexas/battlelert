@@ -419,22 +419,15 @@
     if (m.phase !== "engage" && m.phase !== "countdown") return;
     if (enc && enc.sweep) { this.dropFieldMine(enc.sweep, enc.sweep.mj); return; }      // the mine lane, either station
     if (!M) return;
-    if (m.helm) { this.dropFieldMine(enc.mines.helm, M.mj.map(function (x) { return x * enc.mines.helm.mj; })); return; }
-    if (m.t < this.nextMineAt) return;
-    this.nextMineAt = m.t + r.range(M.every) / (m.ship.starved ? M.starvedMult : 1);
-    var b0 = this.pickBearing(), hitB = b0 + (r.next() - 0.5) * 20, p = this.rim(hitB);
-    var x0 = R.cx + R.enter * Math.sin(b0 * RAD), y0 = R.cy - R.enter * Math.cos(b0 * RAD);
-    var travel = Math.hypot(x0 - p.x, y0 - p.y) / r.range(M.drift);
-    var e = { id: m.nextId++, type: "mine", at: m.t + travel, mj: Math.round(r.range(M.mj)), announced: true, visible: true };
-    m.events.push(e);
-    var tp = { id: this.nextId++, ev: e, mine: true, x0: x0, y0: y0, x1: p.x, y1: p.y, hitB: hitB, t0: m.t, t1: e.at, x: x0, y: y0, spin: r.next() * 6 };
-    e.torp = tp; this.torps.push(tp);
-    count(this, "mines");
+    // The mines sit still and the ship moves through them, at the gun as at the helm (at the gun
+    // the coxswain or captain holds her at standard and nobody steers round them: shoot them).
+    this.dropFieldMine(enc.mines.helm, M.mj.map(function (x) { return x * enc.mines.helm.mj; }));
   };
   // How fast a field of still mines streams past (fields/s, + down the view), from the ship's
   // speed at the helm; at the gun the coxswain holds her at standard.
   RingTurret.prototype.fieldFlow = function (H) {
-    var h = this.m.helm; if (!h) return H.flow;
+    var h = this.m.helm, C = BL.HELM.classes[this.m.data.classId];
+    if (!h) return H.flow / (H.lagSlow && C ? 1 + H.lagSlow * C.lag : 1);   // at the gun: standard, as the helm's field would stream
     var f = h.speed / Math.max(1, h.gOf("standard")), slow = H.lagSlow ? 1 + H.lagSlow * h.C.lag : 1;
     return h.inTube ? 0 : H.flow / slow * Math.max(-H.maxFlow, Math.min(H.maxFlow, f));
   };

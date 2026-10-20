@@ -458,10 +458,9 @@
       firstWave: [0, 0], waveEvery: [999, 999],
       burns: { every: [7, 11], g: [6, 8], duration: [6, 9], warning: 6 },
       mines: { strikePerSec: 0.5, mj: [90, 90], engineMult: 2,     // one mine size at every station (90 MJ)     // weaving takes twice the engine power
-               // At the gunner station the mines are seen: one drifts in every `every` s (twice as
-               // often while the engines are starved), `drift` fields/s; one that reaches the shield
-               // hits like a torpedo of mj x the class's threat dmg. No random strikes there.
-               gunner: { every: [1.8, 2.8], drift: [0.06, 0.09], mj: [90, 90], starvedMult: 2 },
+               // At the gun and the helm the mines are seen, sitting still in the ship's path (helm
+               // below, at standard at the gun); mj: each mine's charge. No random strikes there.
+               gunner: { mj: [90, 90] },
                // At the helm the mines sit still and the ship moves through them: a steering test
                // (the captain gives no course orders here). At standard they stream past at `flow`
                // fields/s, one every `every` s, scattered `spread` x the shield's half-width either

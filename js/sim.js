@@ -773,11 +773,16 @@
     this.stats.burns.push({ met: this.curBurn.short < 0.5, jump: this.curBurn.jump });
     this.curBurn = null;
   };
-  // Mines hit the hull directly; shields don't stop them.
+  // In the engine room the mines aren't seen: the helm weaves through the field, and a mine strikes
+  // only when the engines are starved and she can't turn clear. Like a mine at the gun or the helm,
+  // it hits the shields first; what gets past them hits the hull at hullPerMJ.
   Mission.prototype.mineStrike = function (enc) {
-    var dmg = Math.max(1, Math.round(this.rng.range(enc.mines.mj) * this.data.hullPerMJ));
+    var sh = this.sys("shield"), mj = this.rng.range(enc.mines.mj), took = Math.min(sh.mj, mj);
+    sh.mj -= took; this.stats.mineStrikes++;
+    var dmg = Math.round((mj - took) * this.data.hullPerMJ);
+    if (dmg < 1) { this.cue("shieldHit"); this.chat("shielded", null, "good"); return; }
     this.ship.hull -= dmg; this.ship.fresh.hull += dmg;
-    this.stats.hullLost += dmg; this.jumpStats.hullLost += dmg; this.stats.mineStrikes++;
+    this.stats.hullLost += dmg; this.jumpStats.hullLost += dmg;
     this.cue("hullHit");
     this.chat("mineHit", { dmg: dmg }, "bad");
     if (this.rng.chance(0.4)) this.damageSystem();
