@@ -285,6 +285,10 @@
   };
   BL.ENEMY_GUNS = { light: { mj: 4, rate: 0.7 }, heavy: { mj: 6, rate: 0.8 }, capital: { mj: 10, rate: 0.7 }, hit: 0.5, after: 4 };
   BL.enemyTlFactor = function (tl) { return tl === 4 ? 1 : 1 + 0.1 * (tl - 6); };
+  // Force: how many enemy waves arrive together on each class (Mission.forceCount), set so the
+  // story missions are an even fight for the AI crews (tuning, Oct 20, 2026). Minefields aren't
+  // affected (no waves).
+  BL.FORCE = { gunboat: 2.25, picket: 2.6, destroyerEscort: 3.2, destroyer: 2.45, lightCruiser: 2.55, cruiser: 3.55, heavyCruiser: 4.5, battleship: 3.25, dreadnought: 3.95 };
 
   /* --------------------------------------------------------- Encounters
      Each encounter is a load pattern. Ranges [a, b] are rolled from the mission seed.

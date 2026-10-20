@@ -291,19 +291,24 @@
   };
 
   /* ----------------------------------------------------------- Scheduler */
+  // How many waves come at once (BL.FORCE for our class: 2.4 = two, and a 40% chance of a third).
+  // The same at every station: the battle is balanced by the enemy's numbers, never our ratings.
+  Mission.prototype.forceCount = function () {
+    var f = BL.FORCE[this.data.classId] || 1, n = Math.floor(f);
+    return Math.max(1, n + (this.rng.chance(f - n) ? 1 : 0));
+  };
   Mission.prototype.schedule = function () {
     var enc = this.encounter(), r = this.rng, t = this.t;
     // Once the jump window has been open a while, the enemy breaks off (drive hunters at once),
     // so a drive that can't keep up never stalls the mission forever.
     var cutoff = this.windowAt() + (enc.breakOff === undefined ? this.cfg.breakOff : enc.breakOff);
     if (!enc.mines && !enc.sweep && t >= this.nextWaveAt && t < cutoff) {
-      this.spawnWave(enc);
+      for (var k = this.forceCount(); k > 0; k--) this.spawnWave(enc);
       this.nextWaveAt = t + r.range(enc.waveEvery);
     }
     // Stragglers: light waves of another encounter type that join the fight (frigate groups).
     if (enc.stragglers && t >= this.nextStragglerAt && t < cutoff) {
-      var sty = r.pick(enc.stragglers.types);
-      this.spawnWave(BL.ENCOUNTERS[sty], sty, "straggler");
+      for (var q = this.forceCount(); q > 0; q--) { var sty = r.pick(enc.stragglers.types); this.spawnWave(BL.ENCOUNTERS[sty], sty, "straggler"); }
       this.nextStragglerAt = t + r.range(enc.stragglers.every);
     }
     var b = enc.burns;
