@@ -421,7 +421,7 @@
     if (!M) return;
     // The mines sit still and the ship moves through them, at the gun as at the helm (at the gun
     // the coxswain or captain holds her at standard and nobody steers round them: shoot them).
-    this.dropFieldMine(enc.mines.helm, M.mj.map(function (x) { return x * enc.mines.helm.mj; }));
+    this.dropFieldMine(enc.mines.helm, M.mj.map(function (x) { return x * enc.mines.helm.mj; }), m.force("minefield"));
   };
   // How fast a field of still mines streams past (fields/s, + down the view), from the ship's
   // speed at the helm; at the gun the coxswain holds her at standard.
@@ -432,9 +432,10 @@
     return h.inTube ? 0 : H.flow / slow * Math.max(-H.maxFlow, Math.min(H.maxFlow, f));
   };
   // Mines come up ahead (astern when going astern) as the ship covers ground. mj: their charge range.
-  RingTurret.prototype.dropFieldMine = function (H, mj) {
+  // dense: how thick the field is (the encounter's force on our class; 1 = one per `every` s).
+  RingTurret.prototype.dropFieldMine = function (H, mj, dense) {
     var m = this.m, r = this.rng, R = this.R, v = this.fieldFlow(H), dt = 1 / BL.TICK_RATE;
-    this.mineDue = (this.mineDue || 0) + Math.abs(v) / H.flow * dt / r.range(H.every);   // one per `every` s at standard
+    this.mineDue = (this.mineDue || 0) + (dense || 1) * Math.abs(v) / H.flow * dt / r.range(H.every);   // one per `every` s at standard
     if (this.mineDue < 1) return;
     this.mineDue -= 1;
     var x = R.cx + (r.next() * 2 - 1) * H.spread * R.rx, y = v >= 0 ? -0.3 : 1.3;      // (out of sight on a tall view)

@@ -293,8 +293,14 @@
   /* ----------------------------------------------------------- Scheduler */
   // How many waves come at once (BL.FORCE for our class: 2.4 = two, and a 40% chance of a third).
   // The same at every station: the battle is balanced by the enemy's numbers, never our ratings.
+  // The force of an encounter on our class: its own entry in BL.FORCE_ENC, else the class's.
+  Mission.prototype.force = function (encId) {
+    var c = this.data.classId, e = BL.FORCE_ENC[c];
+    var id = encId || this.route[this.jumpIndex];
+    return (e && e[id]) || (id === "minefield" ? 1 : BL.FORCE[c] || 1);   // (a field's thickness is its own)
+  };
   Mission.prototype.forceCount = function () {
-    var f = BL.FORCE[this.data.classId] || 1, n = Math.floor(f);
+    var f = this.force(), n = Math.floor(f);
     return Math.max(1, n + (this.rng.chance(f - n) ? 1 : 0));
   };
   Mission.prototype.schedule = function () {
@@ -763,7 +769,7 @@
         if (this.curBurn) this.curBurn.short += dt;
         if (!this.starvedSaid) { this.starvedSaid = true; this.chat("starved", null, "bad"); }
         // (At the gunner station the mines are seen and shot instead; starving brings more of them.)
-        if (!(this.turret && this.turret.ring) && this.rng.chance(enc.mines.strikePerSec * Math.min(1, short / Math.max(1, ship.gWant)) * dt)) this.mineStrike(enc);
+        if (!(this.turret && this.turret.ring) && this.rng.chance(enc.mines.strikePerSec * this.force("minefield") * Math.min(1, short / Math.max(1, ship.gWant)) * dt)) this.mineStrike(enc);
       } else if (short < 0.05) this.starvedSaid = false;
     }
     ship.engineMW = ship.g * perG;

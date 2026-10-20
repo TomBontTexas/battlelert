@@ -288,6 +288,20 @@
   // Force: how many enemy waves arrive together on each class (Mission.forceCount), set so the
   // story missions are an even fight for the AI crews (tuning, Oct 20, 2026). Minefields aren't
   // affected (no waves).
+  // FORCE_ENC: an encounter's own force on a class, so each kind of fight is even, not just the
+  // class's average (a minefield's force is how thick the field is: mines per second x force).
+  BL.FORCE_ENC = {
+    gunboat:         { raiders: 3.4, interceptors: 1.9, frigate: 1.2, minefield: 3.5 },   // interceptors a notch under the AI's even (TexasBont at the gun)
+    picket:          { raiders: 3.38, interceptors: 2.29, frigate: 1.14 },
+    destroyerEscort: { raiders: 4.37, interceptors: 3.9, frigate: 1.56 },
+    destroyer:       { interceptors: 4.63, siege: 4.78, frigate: 2.5, cruiserA: 1.56 },
+    lightCruiser:    { raiders: 8.32, siege: 6.96, frigate: 3.38, cruiserA: 2.19 },
+    cruiser:         { raiders: 11.86, interceptors: 8.42, frigate: 4.47, cruiserA: 3.38 },
+    heavyCruiser:    { interceptors: 10.19, frigate: 5.51, cruiserA: 4.26, battleshipA: 2.6 },
+    battleship:      { siege: 13, frigate: 6.14, cruiserA: 4.78, battleshipA: 3.22 },
+    dreadnought:     { siege: 14.77, frigate: 6.96, cruiserA: 5.51, battleshipA: 3.64 }
+    // (drive hunters can't sink a ship, only drain its drive: they keep the class's force)
+  };
   BL.FORCE = { gunboat: 2.25, picket: 2.6, destroyerEscort: 3.2, destroyer: 2.45, lightCruiser: 2.55, cruiser: 3.55, heavyCruiser: 4.5, battleship: 3.25, dreadnought: 3.95 };
 
   /* --------------------------------------------------------- Encounters
