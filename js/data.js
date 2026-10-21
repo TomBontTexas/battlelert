@@ -209,6 +209,12 @@
   // down with this chance x the share of the ship's guns charged for a shot, and it costs that gun
   // a shot. The shares are what the crew managed at the helm on every story mission (Oct 15, 2026),
   // so every station fights the same enemy with the same torpedoes.
+  // The pilot dodging torpedoes. At the helm you fly the ship; at the other stations the pilot is a
+  // crewman, and dodges this share of the torpedoes (what the pilot at the helm managed on each class
+  // across the story missions, Oct 20, 2026: small ships swing in time, big ones can't).
+  BL.PILOT_DODGE = { gunboat: 0.68, picket: 0.44, destroyerEscort: 0.23, destroyer: 0.15, lightCruiser: 0.02,
+    cruiser: 0, heavyCruiser: 0, battleship: 0, dreadnought: 0 };
+
   BL.CREW_DOWN = { gunboat: 0.38, picket: 0.33, destroyerEscort: 0.49, destroyer: 0.57, lightCruiser: 0.64,
     cruiser: 0.52, heavyCruiser: 0.55, battleship: 0.64, dreadnought: 0.61 };
 
@@ -292,9 +298,9 @@
   // class's average (a minefield's force is how thick the field is: mines per second x force).
   BL.FORCE_ENC = {
     gunboat:         { raiders: 3.4, interceptors: 1.9, frigate: 1.2, minefield: 3.5 },   // interceptors a notch under the AI's even (TexasBont at the gun)
-    picket:          { raiders: 3.38, interceptors: 2.29, frigate: 1.14 },
-    destroyerEscort: { raiders: 4.37, interceptors: 3.9, frigate: 1.56 },
-    destroyer:       { interceptors: 4.63, siege: 4.78, frigate: 2.5, cruiserA: 1.56 },
+    picket:          { raiders: 3.65, interceptors: 2.47, frigate: 1.23 },
+    destroyerEscort: { raiders: 4.59, interceptors: 4.09, frigate: 1.64 },
+    destroyer:       { interceptors: 4.86, siege: 5.02, frigate: 2.62, cruiserA: 1.64 },
     lightCruiser:    { raiders: 8.32, siege: 6.96, frigate: 3.38, cruiserA: 2.19 },
     cruiser:         { raiders: 11.86, interceptors: 8.42, frigate: 4.47, cruiserA: 3.38 },
     heavyCruiser:    { interceptors: 10.19, frigate: 5.51, cruiserA: 4.26, battleshipA: 2.6 },

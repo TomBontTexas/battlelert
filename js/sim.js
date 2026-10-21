@@ -541,7 +541,9 @@
       }
     }
     // At the helm a torpedo can miss altogether: the captain ordered a break and the pilot made it (helm.js).
-    if (this.helm && this.helm.torpedoArrives(e)) {
+    // In the engine room and at the gun the pilot is a crewman: he dodges the share of torpedoes a
+    // pilot at the helm does on this class (BL.PILOT_DODGE), as the crew shoots its share down.
+    if (this.helm ? this.helm.torpedoArrives(e) : e.type === "salvo" && this.rng.chance(BL.PILOT_DODGE[this.data.classId] || 0)) {
       st.salvos++; js.salvos++; js.dodged = (js.dodged || 0) + 1;
       if (e.visible) { st.salvosAnnounced++; st.salvosShielded++; }
       js.shielded++; e.outcome = "dodged";
