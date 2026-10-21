@@ -234,7 +234,7 @@
     this.chat(this.hasDrive ? "arrival" : "launch", { hdg: this.helm && this.helm.jumpHdg !== null ? BL.hdgText(this.helm.jumpHdg) : "" }, "info");
     this.chat(enc.chat || "briefing", { enemies: BL.plural(enc.enemy), what: enc.what }, "info");
     this.reportAt = this.reports[this.jumpIndex] ? this.cfg.arrivalSeconds + 4 : Infinity;   // the story's report for this system
-    this.gunSaid = false;
+    this.gunSaid = false; this.spawnedHere = 0;
   };
 
   // Called by the display after the warp space report (or by the harness).
@@ -299,9 +299,12 @@
     var id = encId || this.route[this.jumpIndex];
     return (e && e[id]) || (id === "minefield" ? 1 : BL.FORCE[c] || 1);   // (a field's thickness is its own)
   };
+  // Under 1, it's the chance a wave comes at all when one is due (the system's first always comes).
   Mission.prototype.forceCount = function () {
-    var f = this.force(), n = Math.floor(f);
-    return Math.max(1, n + (this.rng.chance(f - n) ? 1 : 0));
+    var f = this.force(), n = Math.floor(f) + (this.rng.chance(f - Math.floor(f)) ? 1 : 0);
+    if (!n && !this.spawnedHere) n = 1;
+    this.spawnedHere = (this.spawnedHere || 0) + n;
+    return n;
   };
   Mission.prototype.schedule = function () {
     var enc = this.encounter(), r = this.rng, t = this.t;
