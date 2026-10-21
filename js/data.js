@@ -298,15 +298,16 @@
   // class's average (a minefield's force is how thick the field is: mines per second x force).
   BL.FORCE_ENC = {
     gunboat:         { raiders: 3.4, interceptors: 1.9, frigate: 1.2, minefield: 3.5 },   // interceptors a notch under the AI's even (TexasBont at the gun)
-    picket:          { raiders: 3.65, interceptors: 2.47, frigate: 1.23 },
-    destroyerEscort: { raiders: 4.59, interceptors: 4.09, frigate: 1.64 },
-    destroyer:       { interceptors: 4.86, siege: 5.02, frigate: 2.62, cruiserA: 1.64 },
-    lightCruiser:    { raiders: 8.32, siege: 6.96, frigate: 3.38, cruiserA: 2.19 },
-    cruiser:         { raiders: 11.86, interceptors: 8.42, frigate: 4.47, cruiserA: 3.38 },
+    picket:          { raiders: 3.65, interceptors: 2.47, frigate: 1.23, hunters: 1 },
+    destroyerEscort: { raiders: 4.59, interceptors: 4.09, frigate: 1.64, hunters: 1 },
+    destroyer:       { interceptors: 4.86, siege: 5.02, frigate: 2.62, cruiserA: 1.64, hunters: 1 },
+    lightCruiser:    { raiders: 8.32, siege: 6.96, frigate: 3.38, cruiserA: 2.19, hunters: 1 },
+    cruiser:         { raiders: 11.86, interceptors: 8.42, frigate: 4.47, cruiserA: 3.38, hunters: 1 },
     heavyCruiser:    { interceptors: 10.19, frigate: 5.51, cruiserA: 4.26, battleshipA: 2.6 },
     battleship:      { siege: 13, frigate: 6.14, cruiserA: 4.78, battleshipA: 3.22 },
     dreadnought:     { siege: 14.77, frigate: 6.96, cruiserA: 5.51, battleshipA: 3.64 }
-    // (drive hunters can't sink a ship, only drain its drive: they keep the class's force)
+    // (drive hunters can't sink a ship, they drain its drive: one pack at a time on ships without a
+    // CIWS (picket ship to cruiser); the class's force from the heavy cruiser up, where the CIWS stops them)
   };
   BL.FORCE = { gunboat: 2.25, picket: 2.6, destroyerEscort: 3.2, destroyer: 2.45, lightCruiser: 2.55, cruiser: 3.55, heavyCruiser: 4.5, battleship: 3.25, dreadnought: 3.95 };
 

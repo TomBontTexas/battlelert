@@ -515,6 +515,16 @@
     }
   };
 
+  // The engine room's gun crew fires at an incoming torpedo or drive-hunter missile: the class's crew
+  // share (BL.CREW_DOWN) x how hard it is to hit x the share of guns charged; a try costs a gun a shot.
+  Mission.prototype.crewShootsDown = function (e) {
+    var g = this.data.gun, guns = this.ship.systems.filter(function (x) { return x.kind === "gun"; });
+    var ready = guns.filter(function (x) { return x.mj >= g.shotMJ && !x.tripped; });
+    var down = (BL.TORPEDOES[e.torpSize] || {}).down || 1;
+    if (!ready.length || !this.rng.chance(Math.min(0.95, (BL.CREW_DOWN[this.data.classId] || 0) * down * ready.length / guns.length))) return false;
+    this.rng.pick(ready).mj -= g.shotMJ;
+    return true;
+  };
   Mission.prototype.salvoHits = function (e) {
     var sh = this.sys("shield"), st = this.stats, js = this.jumpStats;
     if (this.squadron === "out" && !(this.turret && this.turret.ring) && this.rng.chance(this.data.hangar.intercept)) {
@@ -526,19 +536,13 @@
       return;
     }
     // In the engine room the gun crew shoots some down (BL.CREW_DOWN), each with a gun's charged shot.
-    if (!this.turret && e.type === "salvo") {
-      var g = this.data.gun, guns = this.ship.systems.filter(function (x) { return x.kind === "gun"; });
-      var ready = guns.filter(function (x) { return x.mj >= g.shotMJ && !x.tripped; });
-      var down = (BL.TORPEDOES[e.torpSize] || {}).down || 1;
-      if (ready.length && this.rng.chance(Math.min(0.95, (BL.CREW_DOWN[this.data.classId] || 0) * down * ready.length / guns.length))) {
-        this.rng.pick(ready).mj -= g.shotMJ;
-        st.salvos++; js.salvos++; st.crewDowned++;
-        if (e.visible) { st.salvosAnnounced++; st.salvosShielded++; }
-        js.shielded++; e.outcome = "downed";
-        this.cue("torpDown");
-        if (this.rng.chance(0.3)) this.chat("torpDown", null, "good");
-        return;
-      }
+    if (!this.turret && e.type === "salvo" && this.crewShootsDown(e)) {
+      st.salvos++; js.salvos++; st.crewDowned++;
+      if (e.visible) { st.salvosAnnounced++; st.salvosShielded++; }
+      js.shielded++; e.outcome = "downed";
+      this.cue("torpDown");
+      if (this.rng.chance(0.3)) this.chat("torpDown", null, "good");
+      return;
     }
     // At the helm a torpedo can miss altogether: the captain ordered a break and the pilot made it (helm.js).
     // In the engine room and at the gun the pilot is a crewman: he dodges the share of torpedoes a
@@ -582,6 +586,11 @@
     if (this.squadron === "out" && !(this.turret && this.turret.ring) && this.rng.chance(this.data.hangar.intercept)) {
       st.intercepts++; if (e.visible) st.strikesStopped++;
       this.cue("kill"); this.chat("intercepted", null, "good"); return;
+    }
+    // In the engine room the gun crew shoots at it too, as the guns do at the gun station.
+    if (!this.turret && this.crewShootsDown(e)) {
+      if (e.visible) st.strikesStopped++; st.crewDowned = (st.crewDowned || 0) + 1;
+      this.cue("torpDown"); return;
     }
     // At the gun the CIWS mounts already fired on it as it came in (ring.js); it got through.
     var seen = this.turret && this.turret.ring;
