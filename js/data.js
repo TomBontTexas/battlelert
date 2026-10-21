@@ -201,6 +201,7 @@
     clamp: function (classId, tl) { var L = BL.TECH.levels(classId); return Math.max(L[0], Math.min(L[L.length - 1], Math.round(+tl) || BL.TECH.base(classId))); },
     // Strength against the class numbers: the gunboat's one level is its numbers; TL5 0.9, TL6 1.0, TL7 1.1.
     factor: function (tl, classId) { return classId === "gunboat" ? 1 : 1 + 0.1 * (BL.TECH.clamp(classId, tl) - 6); },
+    forceStep: 0.15,         // enemy force x (1 + forceStep x (tl - 6)) for our tech level (Mission.force)
     repMult: function (tl) { return 1 + 0.25 * (7 - Math.max(4, Math.min(7, tl))); }   // TL4 x1.75 ... TL7 x1.0
   };
 

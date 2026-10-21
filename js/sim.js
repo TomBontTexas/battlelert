@@ -297,7 +297,11 @@
   Mission.prototype.force = function (encId) {
     var c = this.data.classId, e = BL.FORCE_ENC[c];
     var id = encId || this.route[this.jumpIndex];
-    return (e && e[id]) || (id === "minefield" ? 1 : BL.FORCE[c] || 1);   // (a field's thickness is its own)
+    var f = (e && e[id]) || (id === "minefield" ? 1 : BL.FORCE[c] || 1);   // (a field's thickness is its own)
+    // Our ship's tech level: the forces are set for tech level 6 (the gunboat's 4); an older ship
+    // meets fewer of them, a newer one more (BL.TECH.forceStep a level), so lower tech is harder
+    // but not hopeless.
+    return c === "gunboat" ? f : f * (1 + BL.TECH.forceStep * (this.data.tl - 6));
   };
   // Under 1, it's the chance a wave comes at all when one is due (the system's first always comes).
   Mission.prototype.forceCount = function () {
