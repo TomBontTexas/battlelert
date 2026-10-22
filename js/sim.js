@@ -205,6 +205,7 @@
     this.t = 0;
     this.events = [];
     this.waves = [];
+    this.spawnQueue = [];
     this.gunRotor = 0;
     this.nextWaveAt = this.cfg.arrivalSeconds + r.range(enc.firstWave);
     this.nextStragglerAt = enc.stragglers ? this.cfg.arrivalSeconds + r.range(enc.stragglers.first) : Infinity;
@@ -316,14 +317,16 @@
     // so a drive that can't keep up never stalls the mission forever.
     var cutoff = this.windowAt() + (enc.breakOff === undefined ? this.cfg.breakOff : enc.breakOff);
     if (!enc.mines && !enc.sweep && t >= this.nextWaveAt && t < cutoff) {
-      for (var k = this.forceCount(); k > 0; k--) this.spawnWave(enc);
+      this.queueWaves(this.forceCount(), enc);
       this.nextWaveAt = t + r.range(enc.waveEvery);
     }
     // Stragglers: light waves of another encounter type that join the fight (frigate groups).
     if (enc.stragglers && t >= this.nextStragglerAt && t < cutoff) {
-      for (var q = this.forceCount(); q > 0; q--) { var sty = r.pick(enc.stragglers.types); this.spawnWave(BL.ENCOUNTERS[sty], sty, "straggler"); }
+      for (var q = this.forceCount(), qi = 0; qi < q; qi++) { var sty = r.pick(enc.stragglers.types); this.queueWaves(1, BL.ENCOUNTERS[sty], sty, "straggler", qi); }
       this.nextStragglerAt = t + r.range(enc.stragglers.every);
     }
+    // Groups that were due together come in one after another (BL.MISSION.staggerGap apart).
+    while (this.spawnQueue.length && this.spawnQueue[0].at <= t) { var sq = this.spawnQueue.shift(); this.spawnWave(sq.enc, sq.typeId, sq.line); }
     var b = enc.burns;
     // At the helm the captain gives course and engine orders instead of the bridge's burns.
     if (this.helm) this.helm.schedule(t);
@@ -345,6 +348,16 @@
       var ra = Math.max(t + hg.recoverLead, this.windowAt() - hg.recoverBefore);
       this.events.push({ id: this.nextId++, type: "recover", at: ra, dur: hg.recoverWindow, announceAt: t, announced: false, visible: true });
     }
+  };
+
+  // n groups due now: the first comes at once, the rest staggerGap apart, so their torpedoes come
+  // in a stream rather than one burst the shields can't hold (the same numbers either way).
+  Mission.prototype.queueWaves = function (n, enc, typeId, line, first) {
+    for (var k = first || 0; k < (first || 0) + n; k++) {
+      if (!k) { this.spawnWave(enc, typeId, line); continue; }
+      this.spawnQueue.push({ at: this.t + k * this.cfg.staggerGap, enc: enc, typeId: typeId, line: line });
+    }
+    this.spawnQueue.sort(function (x, y) { return x.at - y.at; });
   };
 
   // typeId: the encounter this wave belongs to (default: this system's); line: its chatter.

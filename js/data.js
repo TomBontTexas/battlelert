@@ -274,6 +274,7 @@
     jumpCountdown: 3,
     forecastSpan: 15,                  // seconds shown on the forecast strip
     breakOff: 60,                      // no new enemy waves this long after the jump window opens
+    staggerGap: 3,                     // s between enemy groups that are due at the same time
     lookCostPct: 10                    // looking at the console while paused
   };
 
@@ -294,23 +295,24 @@
   BL.enemyTlFactor = function (tl) { return tl === 4 ? 1 : 1 + 0.1 * (tl - 6); };
   // Force: how many enemy waves arrive together on each class (Mission.forceCount), set so the
   // story missions are an even fight for the AI crews (tuning, Oct 20, 2026). Minefields aren't
-  // affected (no waves).
+  // affected (no waves). Raised x1.2 on Oct 21, 2026, when groups due together began arriving
+  // BL.MISSION.staggerGap apart instead of all at once (an even fight again).
   // FORCE_ENC: an encounter's own force on a class, so each kind of fight is even, not just the
   // class's average (a minefield's force is how thick the field is: mines per second x force).
   BL.FORCE_ENC = {
-    gunboat:         { raiders: 3.4, interceptors: 1.9, frigate: 1.2, minefield: 3.5 },   // interceptors a notch under the AI's even (TexasBont at the gun)
-    picket:          { raiders: 3.65, interceptors: 2.47, frigate: 1.23, hunters: 0.5 },
-    destroyerEscort: { raiders: 4.59, interceptors: 4.09, frigate: 1.64, hunters: 0.5 },
-    destroyer:       { interceptors: 4.86, siege: 5.02, frigate: 2.62, cruiserA: 1.64, hunters: 0.5 },
-    lightCruiser:    { raiders: 8.32, siege: 6.96, frigate: 3.38, cruiserA: 2.19, hunters: 0.5 },
-    cruiser:         { raiders: 11.86, interceptors: 8.42, frigate: 4.47, cruiserA: 3.38, hunters: 0.5 },
-    heavyCruiser:    { interceptors: 10.19, frigate: 5.51, cruiserA: 4.26, battleshipA: 2.6 },
-    battleship:      { siege: 13, frigate: 6.14, cruiserA: 4.78, battleshipA: 3.22 },
-    dreadnought:     { siege: 14.77, frigate: 6.96, cruiserA: 5.51, battleshipA: 3.64 }
+    gunboat:         { raiders: 4.08, interceptors: 2.28, frigate: 1.44, minefield: 3.5 },   // interceptors a notch under the AI's even (TexasBont at the gun)
+    picket:          { raiders: 4.38, interceptors: 2.96, frigate: 1.48, hunters: 0.5 },
+    destroyerEscort: { raiders: 5.51, interceptors: 4.91, frigate: 1.97, hunters: 0.5 },
+    destroyer:       { interceptors: 5.83, siege: 6.02, frigate: 3.14, cruiserA: 1.97, hunters: 0.5 },
+    lightCruiser:    { raiders: 9.98, siege: 8.35, frigate: 4.06, cruiserA: 2.63, hunters: 0.5 },
+    cruiser:         { raiders: 14.23, interceptors: 10.1, frigate: 5.36, cruiserA: 4.06, hunters: 0.5 },
+    heavyCruiser:    { interceptors: 12.23, frigate: 6.61, cruiserA: 5.11, battleshipA: 3.12 },
+    battleship:      { siege: 15.6, frigate: 7.37, cruiserA: 5.74, battleshipA: 3.86 },
+    dreadnought:     { siege: 17.72, frigate: 8.35, cruiserA: 6.61, battleshipA: 4.37 }
     // (drive hunters can't sink a ship, they drain its drive: on ships without a CIWS (picket ship
     // to cruiser) a pack comes half the times one is due; the class's force from the heavy cruiser up, where the CIWS stops them)
   };
-  BL.FORCE = { gunboat: 2.25, picket: 2.6, destroyerEscort: 3.2, destroyer: 2.45, lightCruiser: 2.55, cruiser: 3.55, heavyCruiser: 4.5, battleship: 3.25, dreadnought: 3.95 };
+  BL.FORCE = { gunboat: 2.7, picket: 3.12, destroyerEscort: 3.84, destroyer: 2.94, lightCruiser: 3.06, cruiser: 4.26, heavyCruiser: 5.4, battleship: 3.9, dreadnought: 4.74 };
 
   /* --------------------------------------------------------- Encounters
      Each encounter is a load pattern. Ranges [a, b] are rolled from the mission seed.
