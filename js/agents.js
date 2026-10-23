@@ -93,6 +93,12 @@
       if (q.starve === undefined) q.starve = rr.chance(Math.min(1, slack * 2.5));
       if (q.starve && m.t - q.t >= slack * 2.5) order = [s.id].concat(order.filter(function (id) { return id !== s.id; }));
     });
+    // A launch or recovery call open or coming: the hangar goes first (a squadron out is worth more
+    // than a few seconds of shield charge; one left behind is gone).
+    ship.systems.forEach(function (s) {
+      if (s.kind !== "hangar" || s.mode === "lost" || !want[s.id] || want[s.id] < s.maxMW) return;
+      order = [s.id].concat(order.filter(function (id) { return id !== s.id; }));
+    });
     // Fill in priority order, each from its own reactor; the drive and buster take what's left.
     order.forEach(function (id) {
       var s = m.sys(id);

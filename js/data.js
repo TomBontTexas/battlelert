@@ -212,9 +212,18 @@
   // so every station fights the same enemy with the same torpedoes.
   // The pilot dodging torpedoes. At the helm you fly the ship; at the other stations the pilot is a
   // crewman, and dodges this share of the torpedoes (what the pilot at the helm managed on each class
-  // across the story missions, Oct 20, 2026: small ships swing in time, big ones can't).
-  BL.PILOT_DODGE = { gunboat: 0.68, picket: 0.44, destroyerEscort: 0.23, destroyer: 0.15, lightCruiser: 0.02,
-    cruiser: 0, heavyCruiser: 0, battleship: 0, dreadnought: 0 };
+  // across the story missions; remeasured Oct 23, 2026 with the corridor (the pilot dodges inside his
+  // 30 degrees, and the captain's breaks): small ships swing in time, big ones can't).
+  BL.PILOT_DODGE = { gunboat: 0.62, picket: 0.37, destroyerEscort: 0.31, destroyer: 0.22, lightCruiser: 0.08,
+    cruiser: 0.02, heavyCruiser: 0, battleship: 0, dreadnought: 0 };
+
+  // The gun crew's hits on enemy ships in the engine room. There the guns aren't on screen, so each
+  // gun's shot hits with GUN.hitChance x this share: what a crew aiming real guns lands (the gun crew
+  // at the helm, every gun crewed; on the one-gun gunboat and picket, a crewman on the gun at the gun
+  // station), set so the engine room's gun damage per gun matches it on the same ships and routes (Oct 23, 2026).
+  // Before, the engine room's guns did 1.5 to 2.6 times what a real crew does (the one-gun ships were already even).
+  BL.CREW_GUNS = { gunboat: 1, picket: 1, destroyerEscort: 0.66, destroyer: 0.7, lightCruiser: 0.72,
+    cruiser: 0.75, heavyCruiser: 0.52, battleship: 0.44, dreadnought: 0.34 };
 
   BL.CREW_DOWN = { gunboat: 0.38, picket: 0.33, destroyerEscort: 0.49, destroyer: 0.57, lightCruiser: 0.64,
     cruiser: 0.52, heavyCruiser: 0.55, battleship: 0.64, dreadnought: 0.61 };
@@ -297,22 +306,25 @@
   // story missions are an even fight for the AI crews (tuning, Oct 20, 2026). Minefields aren't
   // affected (no waves). Raised x1.2 on Oct 21, 2026, when groups due together began arriving
   // BL.MISSION.staggerGap apart instead of all at once (an even fight again).
+  // Oct 23, 2026: set per class so the test gunner who plays like TexasBont (BL.GUNNERY.testGunner)
+  // wins about half his story missions, after the engine room's guns and salvos were brought to
+  // the same standard as the gun and the helm (BL.CREW_GUNS; part-destroyed waves fire less).
   // FORCE_ENC: an encounter's own force on a class, so each kind of fight is even, not just the
   // class's average (a minefield's force is how thick the field is: mines per second x force).
   BL.FORCE_ENC = {
-    gunboat:         { raiders: 4.08, interceptors: 2.28, frigate: 1.44, minefield: 3.5 },   // interceptors a notch under the AI's even (TexasBont at the gun)
-    picket:          { raiders: 4.38, interceptors: 2.96, frigate: 1.48, hunters: 0.5 },
-    destroyerEscort: { raiders: 5.51, interceptors: 4.91, frigate: 1.97, hunters: 0.5 },
-    destroyer:       { interceptors: 5.83, siege: 6.02, frigate: 3.14, cruiserA: 1.97, hunters: 0.5 },
-    lightCruiser:    { raiders: 9.98, siege: 8.35, frigate: 4.06, cruiserA: 2.63, hunters: 0.5 },
+    gunboat:         { raiders: 4.28, interceptors: 2.39, frigate: 1.51, minefield: 3.5 },   // interceptors a notch under the AI's even (TexasBont at the gun)
+    picket:          { raiders: 3.99, interceptors: 2.69, frigate: 1.35, hunters: 0.5 },
+    destroyerEscort: { raiders: 5.23, interceptors: 4.66, frigate: 1.87, hunters: 0.5 },
+    destroyer:       { interceptors: 5.25, siege: 5.42, frigate: 2.83, cruiserA: 1.77, hunters: 0.5 },
+    lightCruiser:    { raiders: 9.38, siege: 7.85, frigate: 3.82, cruiserA: 2.47, hunters: 0.5 },
     cruiser:         { raiders: 14.23, interceptors: 10.1, frigate: 5.36, cruiserA: 4.06, hunters: 0.5 },
     heavyCruiser:    { interceptors: 12.23, frigate: 6.61, cruiserA: 5.11, battleshipA: 3.12 },
-    battleship:      { siege: 15.6, frigate: 7.37, cruiserA: 5.74, battleshipA: 3.86 },
-    dreadnought:     { siege: 17.72, frigate: 8.35, cruiserA: 6.61, battleshipA: 4.37 }
+    battleship:      { siege: 14.82, frigate: 7, cruiserA: 5.45, battleshipA: 3.67 },
+    dreadnought:     { siege: 17.37, frigate: 8.18, cruiserA: 6.48, battleshipA: 4.28 }
     // (drive hunters can't sink a ship, they drain its drive: on ships without a CIWS (picket ship
     // to cruiser) a pack comes half the times one is due; the class's force from the heavy cruiser up, where the CIWS stops them)
   };
-  BL.FORCE = { gunboat: 2.7, picket: 3.12, destroyerEscort: 3.84, destroyer: 2.94, lightCruiser: 3.06, cruiser: 4.26, heavyCruiser: 5.4, battleship: 3.9, dreadnought: 4.74 };
+  BL.FORCE = { gunboat: 2.84, picket: 2.84, destroyerEscort: 3.65, destroyer: 2.65, lightCruiser: 2.88, cruiser: 4.26, heavyCruiser: 5.4, battleship: 3.7, dreadnought: 4.65 };
 
   /* --------------------------------------------------------- Encounters
      Each encounter is a load pattern. Ranges [a, b] are rolled from the mission seed.

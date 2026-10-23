@@ -513,6 +513,13 @@
   };
 
   Mission.prototype.fire = function (e) {
+    // In the engine room a wave is its toughness, not ships on screen: a salvo from a wave already
+    // part destroyed comes only with the share still fighting (at the gun and the helm a dead
+    // ship's torpedoes never launch, ring.js; the enemy guns go the same way, runEnemyGuns).
+    if (!this.turret && (e.type === "salvo" || e.type === "strike") && e.wave) {
+      var w = null; for (var k = 0; k < this.waves.length; k++) if (this.waves[k].id === e.wave) w = this.waves[k];
+      if (w && w.hpMax && !this.rng.chance(Math.max(0, w.hp) / w.hpMax)) { e.cancelled = true; return; }
+    }
     if (e.type === "salvo" || e.type === "mine") this.salvoHits(e);
     else if (e.type === "strike") this.strikeHits(e);
     else if (e.type === "order") { if (this.helm) this.helm.beginOrder(e); }
@@ -731,6 +738,7 @@
         if (s.request) s.request.fired++;
         this.cue("shot");
         var hit = g.hitChance * (ship.crippled ? 0.6 : 1) * this.turretFactor(s, "slide") * this.turretFactor(s, "reach");
+        if (!this.turret) hit *= BL.CREW_GUNS[this.data.classId] || 1;     // a real crew's aim (BL.CREW_GUNS)
         if (this.rng.chance(hit)) {
           this.hitWave(target, g.damage, s.gunner);
         }
