@@ -563,7 +563,8 @@
   /* ------------------------------------------------------------ AI gunner
      Plays the turret for headless tests: shoots down a torpedo that is close to landing,
      otherwise leads the nearest ship in reach; calls for power when the gun runs low. */
-  function AIGunner(skill) { this.skill = skill === undefined ? 0.8 : skill; this.next = 0; this.jitter = 0; }
+  // person: play the gun you hold like a person (BL.GUNNERY.testGunner), not a machine.
+  function AIGunner(skill, person) { this.skill = skill === undefined ? 0.8 : skill; this.person = person || null; this.next = 0; this.jitter = 0; }
   BL.AIGunner = AIGunner;
   AIGunner.prototype.think = function (m) {
     var tu = m.turret; if (!tu || m.totalT < this.next) return;
@@ -571,13 +572,17 @@
     // Ring view: aim the gun you hold the way the AI gunners do (Free fire), choosing the gun
     // whose arc and weapon suit the nearest ship.
     if (tu.ring) {
+      // A person's eyes are on the gun only part of the time (the rest: torpedoes, guns, power).
+      var P = this.person;
+      if (P && m.totalT % P.period >= P.period * P.duty) { tu.trigger(false); return; }
       if (m.totalT >= (this.pickAt || 0)) {
         this.pickAt = m.totalT + 3;
         var near = tu.ships.filter(function (s) { return !s.dead && s.state !== "leave"; }).sort(function (a, b) { return a.r - b.r; })[0];
         if (near) tu.bats.forEach(function (b, i) { if (tu.inReachOf(b, near.x, near.y) !== null && b.w.best.indexOf(near.type) >= 0) tu.select(i); });
       }
-      var held = tu.bat(), keep = held.order; held.order = "free"; held.aiNext = 0;
-      tu.aiBattery(held); held.order = keep;
+      var held = tu.bat(), keep = held.order, crew = held.crew; held.order = "free"; held.aiNext = 0;
+      if (P) held.crew = { skill: P.skill };          // aims like a crewman of this skill
+      tu.aiBattery(held); held.order = keep; held.crew = crew;
       this.launchTorps(tu);
       if (tu.firesMain && tu.mainState().ready && tu.mainLine()) tu.fireMain();
       return;
@@ -623,7 +628,7 @@
     var gunner = weapon ? { weapon: weapon } : { weapons: BL.GUNNERY.loadout[classId] };
     if (rc && !weapon) { gunner.ring = true; gunner.arcs = rc.arcs; gunner.arcNames = rc.arcNames; }
     var m = new BL.Mission(Object.assign({ seed: seed, quiet: true, classId: classId, tl: tl, gunner: gunner }, extra));
-    var eng = new BL.AIEngineer(0.5, 0.25, m.turret.engineer.skill), gun = new AIGunner(skill);
+    var eng = new BL.AIEngineer(0.5, 0.25, m.turret.engineer.skill), gun = new AIGunner(skill, BL.GUNNERY.testGunner);
     m.beginJump();
     var guard = 0;
     while (m.phase !== "done" && guard++ < BL.TICK_RATE * 60 * 30) {

@@ -1224,15 +1224,14 @@
         '<div class="ln"><b>All ahead ' + h.preset(h.engOrder.eng).name + "</b></div>";
       setCls(ob, "hm-order active");
     } else {
-      // No order: the last order's verdict for a few seconds, then STEADY while it stands (the
-      // heading to hold, the torpedoes he's taking), or FREE HELM only when you truly are free.
-      var vd = h.verdict && sim.t < h.verdict.until ? h.verdict : null, sv = h.steadyView();
+      // No order: the last order's verdict for a few seconds, then the course that stands: STEADY
+      // (lined up for the jump, 5° either side) or COURSE (the corridor, 30° either side).
+      var vd = h.verdict && sim.t < h.verdict.until ? h.verdict : null, sv = h.steadyView(), cv = h.corridorView();
       oh = vd ? '<div class="ln">' + vd.text + (vd.met ? ' <span class="ok">✔</span>' : ' <span class="no">✗</span>') + "</div>" : "";
       if (h.inTube) oh += '<div class="ln">IN THE TUBE</div><div class="ln">Launch when ready</div>';
-      else if (sv) {
-        var onS = Math.abs(((h.compass() - sv.hdg) % 360 + 540) % 360 - 180) <= BL.HELM.order.heading;
-        oh += '<div class="ln">STEADY</div><div class="ln"><b>Hold ' + BL.hdgText(sv.hdg) + "</b>" + (onS ? ' <span class="ok">✔</span>' : ' <span class="no">✗</span>') + "</div>" +
-          (sv.fish ? '<div class="ln">' + sv.fish + (sv.fish === 1 ? " torpedo" : " torpedoes") + " inbound</div>" : "");
+      else if (cv) {
+        var inC = h.inCorridor() ? ' <span class="ok">✔</span>' : ' <span class="no">✗</span>';
+        oh += '<div class="ln">' + (sv ? "STEADY" : "COURSE") + '</div><div class="ln"><b>' + BL.hdgText(cv.hdg) + " ±" + cv.width + "°</b>" + inC + "</div>";
       } else oh += '<div class="ln">FREE HELM</div><div class="ln">Fight the ' + (sim.hasDrive ? "ship" : "boat") + "</div>";
       setCls(ob, "hm-order" + (sv && !h.inTube ? " active" : ""));
     }
@@ -1243,8 +1242,8 @@
     // Each slot: one or two short lines (<span>), centered top to bottom.
     var slot1 = '<div class="empty"></div>';
     if (ev && ev.left > 0) slot1 = '<div class="torp"><span>⚠ BREAK ' + (ev.dir > 0 ? "RIGHT" : "LEFT") + " NOW: " + ev.left.toFixed(1) + " s</span><span>" + Math.round(ev.off) + "° of " + D.turn + "°</span></div>";
-    else if (inbound.length && !h.steady)
-      slot1 = '<div class="hold"><span>' + inbound.length + (inbound.length === 1 ? " torpedo" : " torpedoes") + " inbound.</span>" + (h.orderView() ? "<span>Hold the ordered course.</span>" : "") + "</div>";
+    else if (inbound.length)
+      slot1 = '<div class="hold"><span>' + inbound.length + (inbound.length === 1 ? " torpedo" : " torpedoes") + " inbound.</span>" + (h.corridorView() ? "<span>Dodge inside the corridor.</span>" : "") + "</div>";
     al.push(slot1);
     var jv = h.jumpView();
     if (h.jumpHdg !== null) al.push(!jv ? '<div class="empty"></div>' : '<div class="jump' + (jv.on ? "" : jv.in < 30 ? " off" : "") + '" data-hdg="' + jv.hdg + '"><span>Jump heading <b>' + BL.hdgText(jv.hdg) + "</b>" + (jv.on ? " ✔" : "") + "</span><span>" +
@@ -1374,7 +1373,7 @@
       "<li>Orders met: " + c.ordersMet + " of " + c.orders + "</li>" +
       (c.requests ? "<li>Gunners' calls answered: " + c.requestsMet + " of " + c.requests + "</li>" : "") +
       (c.evasive ? "<li>Breaks the " + sim.helm.who.toLowerCase() + " ordered: " + c.evasiveMet + " made of " + c.evasive + "</li>" : "") +
-      (c.disobeyed ? "<li>Dodged when told to hold course: " + c.disobeyed + " (each costs " + Math.round(BL.HELM.evade.disobeyCost * 100) + "% of the mission's score)</li>" : "") +
+      (c.disobeyed ? "<li>Out of the corridor: " + c.disobeyed + " (each costs " + Math.round(BL.HELM.evade.disobeyCost * 100) + "% of the mission's score)</li>" : "") +
       "<li>Torpedoes dodged: " + (c.dodged || 0) + " of " + (c.torps || 0) + "</li>" +
       (sim.hasDrive ? "" : "<li>Launch: " + (c.launchWait ? c.launchWait + " s after the call" : "right away") + "</li>") +
       (c.stressHits ? "<li>Structural hits from hard turns: " + c.stressHits + "</li>" : "") +
@@ -1401,7 +1400,7 @@
       ["Gun crew", r.crew.map(function (c) { return esc(c.name) + ", " + c.label + " (" + Math.round(c.skill * 100) + ")"; }).join(" · ")],
       ["Orders met", hm.ordersMet + " / " + hm.orders]].concat(hm.requests ? [["Gunners' calls answered", hm.requestsMet + " / " + hm.requests]] : [], [
       ["Breaks ordered and made", hm.evasiveMet + " / " + hm.evasive],
-      ["Disobeyed (dodged when told to hold course)", hm.disobeyed ? hm.disobeyed + " (−" + Math.round(BL.HELM.evade.disobeyCost * 100) + "% of the score each)" : "never"],
+      ["Disobeyed (out of the corridor)", hm.disobeyed ? hm.disobeyed + " (−" + Math.round(BL.HELM.evade.disobeyCost * 100) + "% of the score each)" : "never"],
       ["Torpedoes dodged", hm.dodged + " / " + hm.torpsAtUs],
       ["Steering", hm.autoPct ? hm.autoPct + "% on autopilot (earns " + Math.round(BL.HELM.autopilotRep * 100) + "% for that time)" : "all by hand"],
       ["Structural hits from hard turns", hm.stressHits],
@@ -1431,7 +1430,7 @@
   }
   function worstHelm(r) {
     var hm = r.helm;
-    if (hm.disobeyed) return "You dodged " + hm.disobeyed + (hm.disobeyed === 1 ? " time" : " times") + " when the " + (r.hasDrive ? "captain" : "coxswain") + " said to hold course. Each one went in the report: −" + Math.round(BL.HELM.evade.disobeyCost * 100) + "% of the score.";
+    if (hm.disobeyed) return "You left the corridor " + hm.disobeyed + (hm.disobeyed === 1 ? " time" : " times") + " when the " + (r.hasDrive ? "captain's" : "coxswain's") + " course stood. Each one went in the report: −" + Math.round(BL.HELM.evade.disobeyCost * 100) + "% of the score.";
     if (hm.stressHits >= 2) return hm.stressHits + " structural hits from turning past the safe rate. Ease off before the stress bar fills.";
     if (hm.orders && hm.ordersMet / hm.orders < 0.6) return "Only " + hm.ordersMet + " of " + hm.orders + " orders met. Start the turn early (watch the white stop tick) and set the engine order too.";
     if (hm.flankHits) return "Flank held too long burned out a thruster.";

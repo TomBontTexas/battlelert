@@ -40,6 +40,7 @@
     this.stats = { orders: 0, ordersMet: 0, stressHits: 0, flankHits: 0, autoT: 0, manualT: 0, overT: 0, hardT: 0, liveT: 0, launches: [],
       torps: 0, dodged: 0, requests: 0, requestsMet: 0, evasive: 0, evasiveMet: 0, disobeyed: 0 };
     this.evade = null;                    // the captain's order to break (dodge) the torpedo just launched
+    this.course = null;                   // the captain's standing course: the corridor's middle (BL.HELM.corridor)
     this.jumpHdg = null; this.jumpShown = false;
     this.jumps = []; this.cur = null;
   }
@@ -175,12 +176,15 @@
     this.rollTurn();
     this.nextOrderAt = enc.burns ? m.cfg.arrivalSeconds + Math.max(this.H.order.minGap, r.range(enc.burns.every) * 0.6) : Infinity;
     this.cur = { orders: 0, ordersMet: 0, stressHits: 0, launchWait: 0, torps: 0, dodged: 0, requests: 0, requestsMet: 0, evasive: 0, evasiveMet: 0, disobeyed: 0 };
+    this.course = null; this.corrOut = false; this.corrSaid = -99;
     this.evade = null; this.burst = null; this.steady = false; this.steadyHdg = null; this.steadyLast = -99; this.verdict = null; this.engOrder = null; this.mainOrdered = false; this.jumpOrderAt = -99; this.lastBreak = -99; this.lastDisobey = -99; this.steerAt = -99;
     this.jumps[m.jumpIndex] = this.cur;
     this.jumpSaid = false; this.conT = 0; this.conTaken = false;
     // Ships with a warp drive jump on a heading Navigation gives on arrival.
     this.jumpHdg = m.hasDrive ? 5 * Math.floor(r.next() * 72) : null;
     this.jumpShown = this.jumpHdg !== null;
+    // The captain's course on arrival: the way she's heading (a gunboat's once it's out of the tube).
+    if (!this.inTube) this.course = Math.round(this.compass()) % 360;
   };
 
   // The captain's orders, on the bridge's burn schedule (Mission.schedule calls this at the helm).
@@ -225,10 +229,10 @@
     // held: time on the whole order; hdgT, engT: on each part (to say which was missed). The first
     // `grace` s after the order starts don't count against the pilot.
     this.curOrder = { e: e, held: 0, hdgT: 0, engT: 0, end: e.at + e.dur };
-    this.steady = false;
+    this.course = e.hdg;
   };
   Helm.prototype.finishOrder = function () {
-    var o = this.curOrder, m = this.m, A = this.H.order; this.curOrder = null; this.steady = false;
+    var o = this.curOrder, m = this.m, A = this.H.order; this.curOrder = null;
     var judged = Math.max(1, o.e.dur - A.grace), met = o.held >= judged * A.held;
     this.stats.orders++; if (this.cur) this.cur.orders++;
     if (met) { this.stats.ordersMet++; if (this.cur) this.cur.ordersMet++; }
@@ -240,20 +244,45 @@
   Helm.prototype.setVerdict = function (met, part) {
     this.verdict = { met: met, text: met ? "Order met" : part ? "Missed: " + part : "Order missed", until: this.m.t + this.H.order.verdict };
   };
-  // Steady lapses once the torpedoes he said to take are gone and none have come for a while.
+  // "Steady as she goes": lined up for the jump, from BL.HELM.corridor.jumpLead s before the window.
   Helm.prototype.runSteady = function () {
-    var m = this.m;
-    if (!this.steady || m.t - this.steadyLast < this.H.evade.steadyLapse) return;
-    if (this.fishInAir().some(function (f) { return f.hold; })) return;
-    this.steady = false;
+    var m = this.m, K = this.H.corridor;
+    if (this.steady || this.jumpHdg === null || this.conTaken || m.t < m.windowAt() - K.jumpLead || !this.onJumpHeading() || this.curOrder || this.inBreak()) return;
+    this.steady = true; this.steadyHdg = this.jumpHdg; this.course = this.jumpHdg;
+    m.chat("jumpSteady", { who: this.who }, "info");
   };
-  // Steady in force: the heading to hold and how many of the torpedoes he said to take are inbound; else null.
-  Helm.prototype.steadyView = function () {
-    if (!this.steady) return null;
-    return { hdg: this.steadyHdg, fish: this.fishInAir().filter(function (f) { return f.hold; }).length };
+  // Steady in force (lined up for the jump): the heading to hold; else null.
+  Helm.prototype.steadyView = function () { return this.steady ? { hdg: this.steadyHdg, fish: 0 } : null; };
+  // The corridor in force: { hdg, width, steady, order }, or null while there's none (in the tube,
+  // a minefield, turning onto an order not yet begun, mid-break, the captain has the conn).
+  Helm.prototype.corridorView = function () {
+    var m = this.m, K = this.H.corridor, enc = m.encounter();
+    if (this.course === null || this.locked() || (enc && enc.mines) || this.conTaken || this.inBreak()) return null;
+    if (!this.curOrder && this.orderView()) return null;
+    if (this.curOrder && m.t < this.curOrder.e.at + this.H.order.grace) return null;     // (the order's grace: still coming round)
+    return { hdg: this.course, width: this.steady ? K.jump : K.width, steady: this.steady, order: !!this.curOrder };
   };
-  // On the ordered heading; both engines ordered near what the captain asked for; both.
-  Helm.prototype.onHeading = function (e) { return Math.abs(norm(e.hdg - this.compass())) <= this.H.order.heading; };
+  Helm.prototype.inCorridor = function () {
+    var c = this.corridorView();
+    return !c || Math.abs(norm(c.hdg - this.compass())) <= c.width;
+  };
+  // Out of the corridor: the captain says so; outside a course order (which is judged on its own)
+  // it's disobeying, once per time out.
+  Helm.prototype.runCorridor = function () {
+    var m = this.m, c = this.corridorView();
+    if (!c || (m.phase !== "engage" && m.phase !== "countdown")) { this.corrOut = false; return; }
+    // After a break the pilot has `rejoin` s to bring her back inside before it counts.
+    var ev = this.evade, out0 = Math.abs(norm(c.hdg - this.compass())) > c.width;
+    if (ev && !ev.rejoined) { if (!out0) ev.rejoined = true; else if (m.t < ev.until + this.H.corridor.rejoin) { this.corrOut = out0; return; } }
+    var out = Math.abs(norm(c.hdg - this.compass())) > c.width;
+    if (out && !this.corrOut) {
+      if (m.t - this.corrSaid >= this.H.corridor.say) { this.corrSaid = m.t; m.chat("corridor", { who: this.who }, "bad"); m.cue("warn"); }
+      if (!c.order) { this.stats.disobeyed++; if (this.cur) this.cur.disobeyed++; }
+    }
+    this.corrOut = out;
+  };
+  // On the ordered heading (inside the corridor); both engines ordered near what the captain asked for; both.
+  Helm.prototype.onHeading = function (e) { return Math.abs(norm(e.hdg - this.compass())) <= this.H.corridor.width; };
   Helm.prototype.onEngines = function (e) {
     var want = this.gOf(e.eng), avg = (this.port.g + this.stbd.g) / 2;
     return Math.abs(avg - want) <= Math.max(0.6, want * 0.15);
@@ -315,13 +344,8 @@
     var free = !this.busy() && now - this.lastBreak >= E.gap && this.canBreak(travel);
     var mj = e.mj; this.fishInAir().concat(this.burstToCome()).forEach(function (f) { if (f !== e) mj += f.mj; });
     if (free && (m.sys("shield").mj < mj * E.cover || this.rng.chance(E.chance))) { this.orderBreak([e], s); return; }
-    // Take it. During a course order the order stands (swerving already fails it, so it isn't
-    // counted again as disobeying). Otherwise "Steady": said once, and it stands until his next
-    // order (a break, a course order) changes things.
-    if (this.curOrder || this.orderView()) return;
+    // Take it: no order; the pilot may dodge it inside the corridor. He keeps watching (recheck).
     e.hold = bu.hold = true;
-    this.steadyLast = now;
-    if (!this.steady) { this.steady = true; this.steadyHdg = Math.round(this.compass()) % 360; m.chat("evadeHold", { who: this.who }, "info"); }
   };
   // The break covers torpedo f: it lands no sooner than the break allows.
   Helm.prototype.cover = function (f, ev) { f.evade = ev; f.hold = false; this.landBy(f, ev.until); };
@@ -330,7 +354,7 @@
     var m = this.m, E = this.H.evade, now = m.t, self = this;
     // Against the turn the ship is making (that throws the aim off fastest), else away from the torpedo.
     var dir = Math.abs(this.omega) > 3 ? (this.omega > 0 ? -1 : 1) : s && norm(s.bearing) < 0 ? 1 : -1;
-    this.lastBreak = now; this.steady = false;
+    this.lastBreak = now;
     var ev = this.evade = { at: now, until: now + E.orderTime + BL.GUNNERY.torpedo.travel, dir: dir, snap: this.aimSnap(), judged: false };
     if (this.burst && now - this.burst.at < E.burst) this.burst.evade = ev;
     fish.forEach(function (f) { self.cover(f, ev); });
@@ -355,13 +379,7 @@
     this.stats.torps++; if (this.cur) this.cur.torps++;
     if (!this.dodged(ev ? ev.snap : e.snap || this.aimSnap())) return false;
     this.stats.dodged++; if (this.cur) this.cur.dodged++;
-    // Dodged after the captain said "Steady" (one count per burst; turning for the captain's own
-    // course order, announced or under way, is fine, and so is the captain's own turn for the jump).
-    if (!ev && e.hold && e.snap && this.steerAt >= e.snap.t && !this.orderView() && !this.conTaken && m.t - this.lastDisobey > this.H.evade.burst + 0.5) {
-      this.lastDisobey = m.t;
-      this.stats.disobeyed++; if (this.cur) this.cur.disobeyed++;
-      m.chat("disobey", { who: this.who }, "bad"); m.cue("warn");
-    }
+    // (dodging inside the corridor is the pilot's to do; leaving it is what's disobeying: runCorridor)
     return true;
   };
   // A break is judged when its torpedoes land, whether or not the crew shot them down first.
@@ -454,7 +472,8 @@
     if (this.inTube) { this.tube(); return; }
     if (this.clearAt && m.totalT >= this.clearAt) {
       this.clearAt = 0;
-      this.engOrder = { eng: "standard", until: m.t + H.launch.setIn }; this.steady = false;
+      this.engOrder = { eng: "standard", until: m.t + H.launch.setIn };
+      this.course = Math.round(this.compass()) % 360;          // the coxswain's course: the way she came out
       m.chat("helmClear", null, "warn");
     }
     // Presets follow the class's top G (thruster damage lowers it).
@@ -494,6 +513,7 @@
     this.judgeBreak();
     this.recheck();
     this.runSteady();
+    this.runCorridor();
     if (m.phase === "engage" || m.phase === "countdown") {
       var st = this.stats; st.liveT += dt;
       if (this.auto) st.autoT += dt; else st.manualT += dt;
@@ -603,7 +623,7 @@
   /* -------------------------------------------------------------- Test bot
      Flies the helm for headless tests: launches at once, follows each order on autopilot, and
      breaks hard the way the captain orders, then holds the new heading. */
-  function HelmBot() { this.breaking = false; }
+  function HelmBot() { this.breaking = false; this.side = 1; this.weaveFor = null; }
   BL.HelmBot = HelmBot;
   HelmBot.prototype.think = function (m) {
     var h = m.helm; if (!h) return;
@@ -611,14 +631,29 @@
     if (h.locked()) return;
     if (h.engOrder) h.setOrder("both", h.engOrder.eng);
     var ev = h.evadeView();
-    if (ev && ev.left > 0) { h.setWheel(ev.dir * Math.min(1, h.C.safe / h.topTurn() * 0.98)); this.breaking = true; return; }
+    // A break: wheel over until the bow is well off (1.4 x the dodge), then ease the wheel.
+    if (ev && ev.left > 0) { h.setWheel(ev.off >= BL.HELM.dodge.turn * 1.4 ? 0 : ev.dir * Math.min(1, h.C.safe / h.topTurn() * 0.98)); this.breaking = true; return; }
     if (this.breaking) { this.breaking = false; h.setAuto(true, h.compass()); }
     var o = h.orderView(), lead = h.turnTime(norm(o ? o.hdg - h.compass() : 0)) + 1;
+    // Torpedoes it was told to take: jink inside the corridor (a dodge is a change of turn, not a
+    // steady swing): wheel over at the safe rate, reversing before the corridor's edge and on
+    // each new launch, so the bow keeps leaving where the enemy aimed.
+    var cv = h.corridorView(), fish = h.fishInAir().filter(function (f) { return f.hold && f.at - m.t > 0.3; });
+    var aim = o && (o.active || o.in < lead) ? o.hdg : cv ? cv.hdg : null;
+    if (cv && !cv.steady && fish.length && (!o || o.active)) {     // (lined up for the jump, it holds: 5° is no room to dodge)
+      var off = norm(h.stopHeading() - cv.hdg), edge = cv.width * 0.8, newest = 0;   // where the bow will stop: it carries on turning
+      fish.forEach(function (f) { if (f.snapT === undefined) f.snapT = m.t; newest = Math.max(newest, f.snapT); });
+      if (newest > (this.flipAt || -99) + 1.2) { this.flipAt = m.t; this.side = -this.side; }
+      if (off > edge) this.side = -1; else if (off < -edge) this.side = 1;
+      if (o && (h.port.ord !== o.eng || h.stbd.ord !== o.eng)) h.setOrder("both", o.eng);
+      h.setWheel(this.side * Math.min(1, h.C.safe / h.topTurn() * 0.98)); this.breaking = true;
+      return;
+    }
     if (o && (o.active || o.in < lead)) {
-      if (!h.auto || Math.abs(norm(h.autoHdg - o.hdg)) > 0.5) h.setAuto(true, o.hdg);
+      if (!h.auto || Math.abs(norm(h.autoHdg - aim)) > 0.5) h.setAuto(true, aim);
       if (h.port.ord !== o.eng || h.stbd.ord !== o.eng) h.setOrder("both", o.eng);
     } else {
-      var j = h.jumpView(), goal = j && j.in < 10 + h.turnTime(180) ? j.hdg : null;
+      var j = h.jumpView(), goal = cv ? aim : j && j.in < 10 + h.turnTime(180) ? j.hdg : null;   // the captain's course stands; he orders the jump heading
       if (goal !== null && (!h.auto || Math.abs(norm(h.autoHdg - goal)) > 0.5)) h.setAuto(true, goal);
       if (!h.engOrder && (h.port.ord !== "cruise" || h.stbd.ord !== "cruise")) h.setOrder("both", "cruise");   // back to cruise between orders
     }

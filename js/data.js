@@ -592,7 +592,12 @@
       wing: { n: 4, speed: 0.32, orbit: 0.075, spin: 1.4, size: 0.042, look: 0.1, tick: 0.4, kill: 0.35
       }
     },
-    aiGunner: 0.75,                    // skill of the machine gunner (rail view, and the test bot)
+    aiGunner: 0.75,                    // skill of the machine gunner (rail view)
+    // The test gunner on the ring (balance runs): it plays the gun it holds like TexasBont, not a
+    // machine. On his own missions (Oct 23, 2026: 62-83% hits, 809 damage and 56 kills in his first
+    // 2.3 minutes on seed 320939) he matched a raw crewman (skill) with his eyes on the gun `duty`
+    // of each `period` seconds. The machine took no damage there; this one dies where he did.
+    testGunner: { skill: 0.25, duty: 0.55, period: 5 },
     // The gun crew ("man, not machine"): every gun but yours has a gunner, a fresh crew each
     // mission, skill rolled from `skill`. Skill runs from green (first value of each pair) to
     // sharp (second): react = seconds to take in the fight and pick a target; notice = how long a
@@ -702,6 +707,12 @@
     // captain's orders: tolerance, share held, spacing; the first `grace` s after an order starts
     // don't count (judged on `held` of the rest); one given on the spot (a gunner's call, the main
     // gun, the jump heading) comes with `warn` s notice (time to hear it) plus time to swing, held `callHold` s
+    // The corridor (Oct 23, 2026, TexasBont): the captain's course stands between orders, and the
+    // pilot may swing `width` degrees either side of it (to dodge); from `jumpLead` s before the
+    // jump window he says "Steady as she goes" and the corridor narrows to `jump` degrees on the
+    // jump heading. Out of it, the captain says so (at most every `say` s); outside a course order
+    // that's disobeying. While turning onto a new order, mid-break or in a minefield there's none.
+    corridor: { width: 30, jump: 5, jumpLead: 10, say: 6, rejoin: 10 },   // rejoin: s after a break to come back inside
     order: { heading: 10, held: 0.7, minGap: 12, turn: [30, 100], warn: 6, grace: 2, callHold: 6, verdict: 3 },   // verdict: s the result shows on the panel
     autopilotRep: 0.75,    // autopilot time earns this share of the helm's reputation
     launch: { nagAfter: 8, autoAfter: 20, clear: 2.5, setIn: 5 },     // the gunboat in the carrier's tube; setIn: s to set the coxswain's standard
@@ -827,7 +838,9 @@
     flankDamage: ["Engineering: we burned out a thruster holding flank! {what}.", "Engineering: that's what flank does. {what}."],
     dodged:      ["Tactical: it missed! Nice flying.", "Tactical: torpedo went wide!", "Tactical: clean miss!"],
     evade:       ["{who}: break {dir}, now!", "{who}: evasive! Hard {dir}!", "{who}: break {dir}, Helm! Break {dir}!"],
-    evadeHold:   ["{who}: steady, Helm.", "{who}: maintain heading.", "{who}: steady as she goes. The shields can take it."],     // TexasBont's wording (Oct 14, 2026); said once, it stands
+    evadeHold:   ["{who}: steady, Helm.", "{who}: maintain heading.", "{who}: steady as she goes. The shields can take it."],     // TexasBont's wording (Oct 14, 2026); no longer used: the corridor replaced it
+    jumpSteady:  ["{who}: steady as she goes."],                         // lined up for the jump (TexasBont, Oct 23, 2026)
+    corridor:    ["{who}: Helm, you're outside the corridor."],          // out of the corridor (TexasBont, Oct 23, 2026)
     disobey:     ["{who}: Helm, I said hold your course!", "{who}: that was not my order, Helm. It goes in my report.", "{who}: Helm! Steady means steady!"],
     evadeMissed: ["{who}: too slow on that break, Helm!", "{who}: I said break, Helm!"],
     helmReq:     ["Gunner {n}: Captain, nothing in my arc. Target {side}."],     // to the captain, who orders the helm

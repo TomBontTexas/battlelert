@@ -351,6 +351,12 @@
       c.fillStyle = col; c.save(); c.translate(p.x, p.y); c.rotate(ro * Math.PI / 180);
       c.beginPath(); c.moveTo(0, 0.012); c.lineTo(-0.012, -0.01); c.lineTo(0.012, -0.01); c.closePath(); c.fill(); c.restore();
     }
+    // The corridor's edges, either side of the captain's course.
+    var cv = helm.corridorView();
+    if (cv) {
+      var cc = helm.inCorridor() ? "rgba(99,212,143,0.6)" : "rgba(255,107,90,0.85)";
+      tick(rel(helm, cv.hdg - cv.width), cc, 0.06, 2); tick(rel(helm, cv.hdg + cv.width), cc, 0.06, 2);
+    }
     var jv = helm.jumpView();
     if (jv) { var pj = ringAt(tu, rel(helm, jv.hdg), 0.05); c.strokeStyle = jv.on ? "rgba(99,212,143,0.95)" : "rgba(99,212,143,0.7)"; c.lineWidth = 2.5 / S; c.strokeRect(pj.x - 0.009, pj.y - 0.009, 0.018, 0.018); c.lineWidth = 1.5 / S; }
     if (helm.auto) { var pa = ringAt(tu, rel(helm, helm.autoHdg), 0.05); c.fillStyle = "rgba(76,195,238,0.95)"; c.save(); c.translate(pa.x, pa.y); c.rotate(Math.PI / 4); c.fillRect(-0.008, -0.008, 0.016, 0.016); c.restore(); }
@@ -385,6 +391,15 @@
       else if (shape === "jump") { c.lineWidth = 2; c.strokeRect(x - 6, y0 + h - 14, 12, 12); c.font = "700 9px ui-monospace, Consolas, monospace"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText("J", x, y0 + h - 8); }
       else if (shape === "ship") { c.lineWidth = 3; c.beginPath(); c.moveTo(x, y0 + 2); c.lineTo(x, y0 + h); c.stroke(); }
       else { c.lineWidth = 2; c.beginPath(); c.moveTo(x, y0 + 14); c.lineTo(x, y0 + h); c.stroke(); }
+    }
+    // The corridor: a band either side of the captain's course (red once the bow is out of it).
+    var cv = helm.corridorView();
+    if (cv) {
+      var dc = ((cv.hdg - hdg) % 360 + 540) % 360 - 180, xa = x0 + w / 2 + (dc - cv.width) * k, xb = x0 + w / 2 + (dc + cv.width) * k;
+      c.fillStyle = helm.inCorridor() ? "rgba(99,212,143,0.14)" : "rgba(255,107,90,0.2)";
+      c.fillRect(xa, y0, xb - xa, h);
+      c.strokeStyle = helm.inCorridor() ? "rgba(99,212,143,0.6)" : "rgba(255,107,90,0.8)"; c.lineWidth = 1.5;
+      c.beginPath(); c.moveTo(xa, y0); c.lineTo(xa, y0 + h); c.moveTo(xb, y0); c.lineTo(xb, y0 + h); c.stroke();
     }
     var o = helm.orderView();
     var jv2 = helm.jumpView();
