@@ -87,7 +87,7 @@
    "briefing": "Imperial scouts have reported Azurian interceptors moving toward our supply routes. {ship} will investigate three systems and report enemy activity before the fleet commits additional vessels. These ships depend upon their ability to withdraw when the enemy concentrates against them. Keep propulsion and the warp drive operational. Our purpose is to bring back information, not win a battle against the entire Nest.",
    "systems": [
     "interceptors",
-    "hunters",
+    "raiders",
     "interceptors"
    ],
    "after": "The patrol identified the enemy approaches and returned its reports. Verren remarked, \"A scout that comes home is worth two that don't.\"",
@@ -102,16 +102,16 @@
    "k": 3,
    "title": "The Long Way Home",
    "chapter": "Beyond the Line",
-   "briefing": "Azurian drive hunters are attacking Imperial patrols near the frontier. Their object is to disable warp drives and leave our ships stranded in hostile territory. {ship} must cross three systems to verify the enemy's positions. Engineering will need to watch the drive closely while maintaining combat power. The captain expects to return with the information and his ship intact.",
+   "briefing": "Azurian raiders are attacking Imperial patrols near the frontier, striking each time a scout stops to recharge its warp drive. Their object is to keep our ships under fire until they cannot leave. {ship} must cross three systems to verify the enemy's positions. Engineering will need to watch the drive closely while maintaining combat power. The captain expects to return with the information and his ship intact.",
    "systems": [
-    "hunters",
     "raiders",
-    "hunters"
+    "frigate",
+    "interceptors"
    ],
-   "after": "{ship} returned with intelligence on the drive-hunter deployments. Verren commented, \"Good work, {hero}. Being able to leave is half the battle.\"",
+   "after": "{ship} returned with intelligence on the raider deployments. Verren commented, \"Good work, {hero}. Being able to leave is half the battle.\"",
    "lost": "The enemy prevented the patrol from completing its assignment.",
    "reports": [
-    "Tactical: Drive hunters closing."
+    "Tactical: Raider contacts detected."
    ]
   },
   {
@@ -572,16 +572,16 @@
    "k": 2,
    "title": "Hunter in the Dark",
    "chapter": "Beyond the Line",
-   "briefing": "Azurian drive hunters have disabled several Imperial picket ships in the sector. {ship} must cross three systems to locate their patrol routes. Our guns may be the only means of keeping a hunter off the warp drive long enough to escape. Watch for attackers attempting to slip around the ship and maintain disciplined fire. An unnecessary shot will not protect us when the real threat arrives.",
+   "briefing": "Azurian raiders have disabled several Imperial picket ships in the sector. {ship} must cross three systems to locate their patrol routes. Our guns may be the only means of keeping them off the ship long enough to recharge the drive and escape. Watch for attackers attempting to slip around the ship and maintain disciplined fire. An unnecessary shot will not protect us when the real threat arrives.",
    "systems": [
-    "hunters",
     "raiders",
-    "hunters"
+    "frigate",
+    "raiders"
    ],
-   "after": "The patrol identified the drive-hunter threat and returned its report. Kest noted that you protected the ship’s escape capability.",
-   "lost": "The drive hunters stopped the patrol before it completed its assignment.",
+   "after": "The patrol identified the raider threat and returned its report. Kest noted that you protected the ship’s escape capability.",
+   "lost": "The raiders stopped the patrol before it completed its assignment.",
    "reports": [
-    "Tactical: Drive hunters approaching."
+    "Tactical: Raider contacts detected."
    ]
   },
   {
@@ -1046,7 +1046,7 @@
    "systems": [
     "raiders",
     "interceptors",
-    "hunters"
+    "interceptors"
    ],
    "after": "The picket ship returned with its survey reports. Renn approved the disciplined approaches and timely withdrawals.",
    "lost": "The scouting route remained unverified after enemy forces stopped the patrol.",
@@ -1076,18 +1076,18 @@
    "id": "pilot-2-3",
    "n": 2,
    "k": 3,
-   "title": "Drive-Hunter Trap",
+   "title": "Raider Trap",
    "chapter": "Beyond the Line",
-   "briefing": "Azurian drive hunters have been disabling the scouts that keep our fleet informed. {ship} must identify their positions in three systems and return with the findings. An enemy that damages our warp drive can strand us where help cannot arrive in time. Follow the captain’s maneuvering orders and resist the urge to outrun the jump window; haste will not recharge a drive.",
+   "briefing": "Azurian raiders have been ambushing the scouts that keep our fleet informed, waiting for them while they recharge for the next jump. {ship} must identify their positions in three systems and return with the findings. A ship that cannot reach its jump window can be stranded where help cannot arrive in time. Follow the captain’s maneuvering orders and resist the urge to outrun the jump window; haste will not recharge a drive.",
    "systems": [
-    "hunters",
     "raiders",
-    "hunters"
+    "frigate",
+    "interceptors"
    ],
-   "after": "The drive-hunter positions were reported to Fleet Command. Renn called the patrol a useful lesson in patience.",
-   "lost": "Drive hunters prevented the scouting mission from returning its intelligence.",
+   "after": "The raider positions were reported to Fleet Command. Renn called the patrol a useful lesson in patience.",
+   "lost": "Raiders prevented the scouting mission from returning its intelligence.",
    "reports": [
-    "Tactical: Drive hunters bearing down."
+    "Tactical: Raider contacts detected."
    ]
   },
   {
