@@ -64,7 +64,9 @@
     var want = {};
     want.life = life.mj < life.maxMJ * 0.9 ? 7 : 3.5;
     want.shield = guard(shield, salvos);
-    if (pd) want.pd = guard(pd, strikes);
+    // The CIWS only matters where drive hunters can come (their own system, or stragglers among them).
+    var enc = m.encounter(), hunted = !!enc && (!!(enc.wave && enc.wave.strikes) || !!(enc.stragglers && enc.stragglers.types.indexOf("hunters") >= 0));
+    if (pd) want.pd = hunted || strikes.next < 99 ? guard(pd, strikes) : 0;
     var wavesUp = m.waves && m.waves.some(function (w) { return !w.dead; });
     ship.systems.forEach(function (s) {
       if (s.kind !== "gun") return;

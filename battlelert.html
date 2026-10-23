@@ -134,7 +134,7 @@
       <li id="brief-pt"><b>Two torpedoes</b> (LAUNCH 1 and 2, keys 1 and 2): slow, they home on a frigate or siege battery and hit harder than anything else you carry. Reloaded every sortie.</li>
       <li id="brief-gmain" hidden><b>Main gun:</b> press M when it's charged; it hits the first ship straight off the bow (the gold line). The pilot swings the bow toward the biggest target, which slides away, so time your shot.</li>
       <li id="brief-gwing" hidden><b>Gunboat squadron:</b> launched early in each system, it strafes the enemy and shoots down nearby torpedoes, then comes home before the jump.</li>
-      <li id="brief-gciws" hidden><b>CIWS:</b> its mounts in the stern fire on drive hunters' missiles by themselves while the engineer keeps it charged. Your guns can shoot them down too.</li>
+      <li id="brief-gciws" hidden><b>CIWS:</b> its mounts in the stern fire on drive hunters' missiles by themselves while the engineer keeps it charged, and stop most of them; now and then one gets through. Your guns can shoot them down too.</li>
       <li id="brief-gmines" hidden><b>Minefield:</b> the mines sit still and stream past from ahead as the ship moves; shoot the ones on a collision course before they reach the shield.</li>
       <li id="brief-sweep" hidden><b>Mine lane</b> (sortie 2): clear a lane through a minefield so the fleet behind can get through. Shoot as many mines as you can; one that touches your shield hits. The report shows the share of the lane cleared.</li>
       <li id="brief-hmines" hidden><b>Minefield:</b> the mines sit still and stream past as you move; steer between them. More thrust brings them faster and more often.</li>
@@ -143,7 +143,7 @@
     <ul class="tight" id="brief-eng">
       <li id="brief-main" hidden><b>Main gun:</b> fires by itself whenever it's full and a target is up. Keep feeding it.</li>
       <li id="brief-hangar" hidden><b>Launchers and arresters:</b> full launchers at the launch call early in each system, full arresters at the recovery call before the jump. No jump without the gunboats unless the hull is at 20% or less.</li>
-      <li id="brief-pd" hidden><b>CIWS</b> (close-in weapon system) is the only thing that stops a drive hunter's strike on the warp drive.</li>
+      <li id="brief-pd" hidden><b>CIWS</b> (close-in weapon system) stops most drive hunters' strikes on the warp drive while it has charge; the gun crew shoots some down too.</li>
       <li id="brief-rx" hidden><b>Several reactors:</b> each capacitor is wired to one (the letter on its column). Tap the letter or press R to move it; it draws nothing for 2 s while it switches.</li>
       <li id="brief-buster" hidden><b>Planet buster:</b> must be full, as well as the drive, before the final jump. It can't charge in warp space.</li>
       <li id="brief-mines" hidden><b>Minefield:</b> the engines get only what the capacitors leave. Ease off charging during each weave, or the ship drifts into mines.</li>
@@ -525,15 +525,15 @@
       <li><b>Spend aux power to bridge a gap.</b> The aux bank charges a capacitor without loading the reactor. It only refills between jumps.</li>
       <li><b>Charge the warp drive.</b> When the jump window opens and the drive is full, the captain jumps. Three jumps and the planet buster is delivered.</li>
       <li><b>Every capacitor bleeds.</b> The fuller it is the more it loses, so holding everything full keeps costing reactor power. Charge what the forecast says is coming.</li>
-      <li><b>Bigger ships add more.</b> Light cruisers and up have a main gun that fires by itself whenever its capacitor is full and a target is up. Cruisers and up carry gunboats: charge the launchers for the launch near the start of each system, then the arresters to recover them near the end. No jump until they're aboard, unless the hull is at 20% or less.</li>
-      <li><b>The biggest ships.</b> Heavy cruisers and up have a CIWS (close-in weapon system), the only thing that stops drive hunters' strikes on the warp drive. Battleships have two reactors and dreadnoughts three: move capacitors between them to balance the load. The dreadnought also carries the planet buster, which must be full before the final jump.</li>
+      <li><b>Bigger ships add more.</b> Destroyer escorts and up have a CIWS (close-in weapon system): it stops most drive hunters' strikes on the warp drive while it has charge (each costs a chunk of it), though now and then one gets through. Light cruisers and up have a main gun that fires by itself whenever its capacitor is full and a target is up. Cruisers and up carry gunboats: charge the launchers for the launch near the start of each system, then the arresters to recover them near the end. No jump until they're aboard, unless the hull is at 20% or less.</li>
+      <li><b>The biggest ships.</b> Battleships have two reactors and dreadnoughts three: move capacitors between them to balance the load. The dreadnought also carries the planet buster, which must be full before the final jump.</li>
       <li><b>Minefields.</b> No enemy fire, but the engines get only what the capacitors leave of the reactor. Ease off charging during each weave, or the ship drifts into mines.</li>
     </ol>
     <p>Shields stop salvos; whatever gets through damages the hull, and damage slows chargers, lowers reactor output and weakens the thrusters. Fed guns kill enemies faster, and a dead enemy fires no more salvos. Keep life support topped up, or the crew falters.</p>
     <p class="muted">Not every salvo is announced; surprises are rare. Pausing is free; looking at the console while paused costs 10% of the mission's score.</p>
     <p class="muted">For testing, every station has a <b>Test win</b> button in its top bar: it ends the mission at once as a success scored 75%, earning that reputation and qualifying you on the class.</p>
     <h2>The enemy</h2>
-    <p>Azurian ships fire torpedoes in three sizes: <b>darts</b> (small and fast, hard to shoot down, light hits: interceptors), <b>torpedoes</b> (raiders, frigates, cruisers) and <b>ship killers</b> (slow and easy to hit, but huge: cruisers now and then, battleships and the fortress). They also carry <b>guns</b>: once a wave closes ("Tactical: they're in gun range."), its ships keep up a steady fire that only the shields stop. Drive hunters fire missiles at the warp drive, and mines are the same size everywhere. An enemy is equally strong whatever ship you're on and whatever station you serve at; bigger ships meet more of them, and bigger ones. When several groups are due at once, they come in a few seconds apart, one after another. A group that has lost ships fires fewer torpedoes, at every station: in the engine room, where you can't see its ships, the more of it the guns have destroyed, the fewer of its salvos come. Our guns carry a Mk number, the ship's class (Mk1 on a gunboat to Mk9 on a dreadnought): each Mk hits harder.</p>
+    <p>Azurian ships fire torpedoes in three sizes: <b>darts</b> (small and fast, hard to shoot down, light hits: interceptors), <b>torpedoes</b> (raiders, frigates, cruisers) and <b>ship killers</b> (slow and easy to hit, but huge: cruisers now and then, battleships and the fortress). They also carry <b>guns</b>: once a wave closes ("Tactical: they're in gun range."), its ships keep up a steady fire that only the shields stop. Drive hunters (destroyer escort and up) fire missiles at the warp drive, and mines are the same size everywhere. An enemy is equally strong whatever ship you're on and whatever station you serve at; bigger ships meet more of them, and bigger ones. When several groups are due at once, they come in a few seconds apart, one after another. A group that has lost ships fires fewer torpedoes, at every station: in the engine room, where you can't see its ships, the more of it the guns have destroyed, the fewer of its salvos come. Our guns carry a Mk number, the ship's class (Mk1 on a gunboat to Mk9 on a dreadnought): each Mk hits harder.</p>
     <h2>At the gun</h2>
     <p>Your ship sits in the middle of the view inside its oval shield, and enemies come in from every side, mostly ahead and on the flanks. Your engineer runs the power.</p>
     <ol class="tight">
@@ -545,7 +545,7 @@
       <li><b>Several guns.</b> You aim one; your gun crew works the others. They're people, not machines: each gunner has a skill (on the gun cards), reacts slower than you, aims rougher and now and then goes after the wrong target, so they need you. A fresh crew comes with every mission. Take a gun with its number key or its card; you trade places with its gunner. The letter on each card is its gunner's standing order: P point defense (torpedoes first), L stop launches (ships charging to fire first), H hunt (the ships its weapon is best against), F free fire. Take a gun and press O, or tap its letter, to change it; a green letter is the suggestion for this fight.</li>
       <li><b>Damage.</b> Guns sit outside the shields. A torpedo that gets through can damage a gun's charger and turret: it turns slower, fires slower or loses range. Damage control repairs half of it between systems.</li>
       <li><b>Bigger ships add more.</b> Gunboats carry two homing torpedoes (1 and 2), reloaded every sortie. Light cruisers and up have a main gun off the bow: press M when it's charged and the whole charge goes into the first ship on that line; the pilot swings the bow toward the biggest target, which tries to slide away. Cruisers launch a gunboat squadron that strafes the enemy and shoots down nearby torpedoes. In minefields the mines sit still and stream past from ahead as the ship moves through them (nobody steers round them at the gun): shoot the ones on a collision course before they reach the shield.</li>
-      <li><b>Drive hunters.</b> From the heavy cruiser up, drive hunters fire teal missiles that swing around the shield into the stern, at the warp drive. The CIWS mounts there fire on them by themselves while the CIWS has charge; one that gets through drains the drive. Shoot them down on the way in. The ion gun is best against the hunters.</li>
+      <li><b>Drive hunters.</b> From the destroyer escort up, drive hunters fire teal missiles that swing around the shield into the stern, at the warp drive. The CIWS mounts there fire on them by themselves while the CIWS has charge and stop most of them; one that gets through drains the drive. Shoot them down on the way in. The ion gun is best against the hunters.</li>
       <li><b>Azurian capital ships.</b> One big hull with escorts, holding far out: a frigate (gunboats now and then), a cruiser (heavy cruisers and up) whose torpedoes come in pairs, and a battleship (battleships and dreadnoughts) whose torpedoes come in threes. Lighter ships keep joining the fight while it lasts. The pilot swings the main gun onto them, and rail guns do extra damage. On a dreadnought, the final system is the fortress guarding the Azurian world: it sits dead ahead, never moves and keeps firing until the planet buster is away, unless you destroy it first.</li>
       <li><b>Views and switches.</b> W switches to wide view: the side panels give way to an overlay and the battle fills the screen, bow to the right. Switches on the left panel let you take a gun by clicking it on the view, or turn click-to-aim off.</li>
     </ol>
@@ -572,13 +572,13 @@
 
 <script src="version.js?b=a7c8a1b6"></script>
 <script src="update-banner.js?b=ec7860dd"></script>
-<script src="js/data.js?b=18e18401"></script>
-<script src="js/sim.js?b=94a4e2e5"></script>
-<script src="js/agents.js?b=9985748f"></script>
+<script src="js/data.js?b=f8a78a57"></script>
+<script src="js/sim.js?b=0752f5be"></script>
+<script src="js/agents.js?b=3b5a60c4"></script>
 <script src="js/gunnery.js?b=685ea271"></script>
-<script src="js/ring.js?b=b996d1bd"></script>
+<script src="js/ring.js?b=9e7070be"></script>
 <script src="js/helm.js?b=07452828"></script>
-<script src="js/art.js?b=0d222621"></script>
+<script src="js/art.js?b=b839fb3f"></script>
 <script src="js/turretview.js?b=960c39ae"></script>
 <script src="js/ringview.js?b=0ceb0d8b"></script>
 <script src="js/names.js?b=15a6a577"></script>

@@ -63,30 +63,32 @@
     { n: 3, id: "destroyerEscort", name: "Destroyer Escort", built: true, baseRep: 325,
       crew: 5, hull: 55, reactorMW: 76, engineMWperG: 4, cruiseG: 2, maxG: 10, gScale: 1.1,
       aux: { capacity: 0, rateMW: 0 }, hullPerMJ: 0.3,
-      mission: { jumps: 3, windows: [120, 130, 140] }, encounters: ["raiders", "interceptors", "siege"],
+      mission: { jumps: 3, windows: [120, 130, 140] }, encounters: ["raiders", "interceptors", "siege", "hunters"],
       systems: [
         sys("life", "Life support", "LIFE", "life", 45, 10, 45, 3, { drainMW: 2.2 }),
         sys("shield", "Shields", "SHLD", "shield", 152, 55, 76, 16),
         sys("gun1", "Gun 1", "GUN1", "gun", 85, 35, 42, 9, { gunner: 1 }),
         sys("gun2", "Gun 2", "GUN2", "gun", 85, 35, 42, 9, { gunner: 2 }),
+        sys("pd", "CIWS", "CIWS", "pd", 70, 20, 35, 6),
         sys("drive", "Warp drive", "DRIVE", "drive", 2400, 50, 0, 0)
       ] },
     { n: 4, id: "destroyer", name: "Destroyer", built: true, baseRep: 437,
       crew: 6, hull: 74, reactorMW: 99, engineMWperG: 5, cruiseG: 2, maxG: 9, gScale: 1,
       aux: { capacity: 450, rateMW: 40 }, hullPerMJ: 0.3,
-      mission: { jumps: 3, windows: [130, 140, 150] }, encounters: ["raiders", "interceptors", "siege"],
+      mission: { jumps: 3, windows: [130, 140, 150] }, encounters: ["raiders", "interceptors", "siege", "hunters"],
       systems: [
         sys("life", "Life support", "LIFE", "life", 60, 12, 60, 4, { drainMW: 3 }),
         sys("shield", "Shields", "SHLD", "shield", 198, 68, 99, 20),
         sys("gun1", "Gun 1", "GUN1", "gun", 100, 40, 50, 10, { gunner: 1 }),
         sys("gun2", "Gun 2", "GUN2", "gun", 100, 40, 50, 10, { gunner: 2 }),
         sys("gun3", "Gun 3", "GUN3", "gun", 100, 40, 50, 10, { gunner: 3 }),
+        sys("pd", "CIWS", "CIWS", "pd", 95, 25, 48, 6),
         sys("drive", "Warp drive", "DRIVE", "drive", 3200, 60, 0, 0)
       ] },
     { n: 5, id: "lightCruiser", name: "Light Cruiser", built: true, baseRep: 550,
       crew: 7, hull: 100, reactorMW: 129, engineMWperG: 6, cruiseG: 2, maxG: 8, gScale: 0.9,
       aux: { capacity: 550, rateMW: 45 }, hullPerMJ: 0.3,
-      mission: { jumps: 3, windows: [140, 150, 160] }, encounters: ["raiders", "interceptors", "siege", "minefield"],
+      mission: { jumps: 3, windows: [140, 150, 160] }, encounters: ["raiders", "interceptors", "siege", "minefield", "hunters"],
       mainGun: { dmgPerMJ: 0.6 },
       systems: [
         sys("life", "Life support", "LIFE", "life", 70, 14, 70, 4, { drainMW: 3.5 }),
@@ -96,12 +98,13 @@
         sys("gun3", "Gun 3", "GUN3", "gun", 105, 40, 52, 10, { gunner: 3 }),
         sys("gun4", "Gun 4", "GUN4", "gun", 105, 40, 52, 10, { gunner: 4 }),
         sys("main", "Main gun", "MAIN", "main", 480, 45, 160, 8),
+        sys("pd", "CIWS", "CIWS", "pd", 125, 32, 62, 7),
         sys("drive", "Warp drive", "DRIVE", "drive", 4000, 70, 0, 0)
       ] },
     { n: 6, id: "cruiser", name: "Cruiser", built: true, baseRep: 662,
       crew: 8, hull: 134, reactorMW: 167, engineMWperG: 7, cruiseG: 2, maxG: 7, gScale: 0.85,
       aux: { capacity: 650, rateMW: 50 }, hullPerMJ: 0.3,
-      mission: { jumps: 3, windows: [150, 160, 170] }, encounters: ["raiders", "interceptors", "siege", "minefield"],
+      mission: { jumps: 3, windows: [150, 160, 170] }, encounters: ["raiders", "interceptors", "siege", "minefield", "hunters"],
       mainGun: { dmgPerMJ: 0.6 },
       hangar: { launchAfter: [6, 12], lead: 10, window: 8, retry: 15, recoverBefore: 25, recoverLead: 12, recoverWindow: 10, intercept: 0.25, dps: 6 },
       systems: [
@@ -114,6 +117,7 @@
         sys("gun5", "Gun 5", "GUN5", "gun", 110, 40, 55, 10, { gunner: 5 }),
         sys("main", "Main gun", "MAIN", "main", 520, 50, 170, 8),
         sys("hangar", "Launchers", "LNCH", "hangar", 600, 40, 300, 6),
+        sys("pd", "CIWS", "CIWS", "pd", 150, 38, 75, 8),
         sys("drive", "Warp drive", "DRIVE", "drive", 4800, 80, 0, 0)
       ] },
     { n: 7, id: "heavyCruiser", name: "Heavy Cruiser", built: true, baseRep: 775,
@@ -224,6 +228,11 @@
   // Before, the engine room's guns did 1.5 to 2.6 times what a real crew does (the one-gun ships were already even).
   BL.CREW_GUNS = { gunboat: 1, picket: 1, destroyerEscort: 0.66, destroyer: 0.7, lightCruiser: 0.72,
     cruiser: 0.75, heavyCruiser: 0.52, battleship: 0.44, dreadnought: 0.34 };
+  // And by enemy and class: a crew on real guns has a harder time with some. Drive hunters sway and
+  // dive, so a real crew kills them slower and more of their strikes come in: set so the share of
+  // drive strikes that reach the drive in the engine room matches the gun and helm (Oct 23, 2026).
+  BL.CREW_GUNS_VS = { hunters: { destroyerEscort: 0.21, destroyer: 0.15, lightCruiser: 0.22, cruiser: 0.15,
+    heavyCruiser: 0.43, battleship: 0.33, dreadnought: 0.31 } };
 
   BL.CREW_DOWN = { gunboat: 0.38, picket: 0.33, destroyerEscort: 0.49, destroyer: 0.57, lightCruiser: 0.64,
     cruiser: 0.52, heavyCruiser: 0.55, battleship: 0.64, dreadnought: 0.61 };
@@ -313,7 +322,7 @@
   // class's average (a minefield's force is how thick the field is: mines per second x force).
   BL.FORCE_ENC = {
     gunboat:         { raiders: 4.28, interceptors: 2.39, frigate: 1.51, minefield: 3.5 },   // interceptors a notch under the AI's even (TexasBont at the gun)
-    picket:          { raiders: 3.99, interceptors: 2.69, frigate: 1.35, hunters: 0.5 },
+    picket:          { raiders: 3.99, interceptors: 2.69, frigate: 1.35 },
     destroyerEscort: { raiders: 5.23, interceptors: 4.66, frigate: 1.87, hunters: 0.5 },
     destroyer:       { interceptors: 5.25, siege: 5.42, frigate: 2.83, cruiserA: 1.77, hunters: 0.5 },
     lightCruiser:    { raiders: 9.38, siege: 7.85, frigate: 3.82, cruiserA: 2.47, hunters: 0.5 },
@@ -321,8 +330,9 @@
     heavyCruiser:    { interceptors: 12.23, frigate: 6.61, cruiserA: 5.11, battleshipA: 3.12 },
     battleship:      { siege: 14.82, frigate: 7, cruiserA: 5.45, battleshipA: 3.67 },
     dreadnought:     { siege: 17.37, frigate: 8.18, cruiserA: 6.48, battleshipA: 4.28 }
-    // (drive hunters can't sink a ship, they drain its drive: on ships without a CIWS (picket ship
-    // to cruiser) a pack comes half the times one is due; the class's force from the heavy cruiser up, where the CIWS stops them)
+    // (drive hunters can't sink a ship, they drain its drive. They meet the destroyer escort and up,
+    // which all carry a CIWS: on the destroyer escort to the cruiser a pack comes half the times one
+    // is due; the class's force from the heavy cruiser up)
   };
   BL.FORCE = { gunboat: 2.84, picket: 2.84, destroyerEscort: 3.65, destroyer: 2.65, lightCruiser: 2.88, cruiser: 4.26, heavyCruiser: 5.4, battleship: 3.7, dreadnought: 4.65 };
 
@@ -375,13 +385,13 @@
       burns: { every: [9, 14], g: [7, 9], duration: [4, 6], warning: 5 },
       surpriseChance: 0.1
     },
-    // Heavy cruiser and up. Hunters fire drive strikes: the CIWS (close-in weapon system) stops
-    // them if it has the charge (mj = CIWS charge per strike); one that gets through drains
-    // `driveDrain` of the drive.
+    // Destroyer escort and up. Hunters fire drive strikes: the CIWS (close-in weapon system) stops
+    // most of them if it has the charge (mj = CIWS charge per strike; BL.GUNNERY.ring.ciws.kill);
+    // the guns can shoot them down too. One that gets through drains `driveDrain` of the drive.
     hunters: {
       name: "Drive hunters",
       enemy: "Drive hunter",
-      what: "They fire at the warp drive; only the CIWS stops them",
+      what: "They fire at the warp drive; the CIWS stops most of them",
       tests: "Priority order, shielding the drive",
       salvoWarning: 6,
       firstWave: [3, 5],
@@ -593,10 +603,10 @@
                        view: { shipH: 0.4, rx: 0.16, ry: 0.27, gunSize: 0.06, pull: 0 },
                        pilot: { turn: 5, evade: 3, dodge: 30 } }
       },
-      // CIWS (heavy cruiser and up): mounts on the hull fire on a drive strike by themselves
+      // CIWS (destroyer escort and up): mounts on the hull fire on a drive strike by themselves
       // `engage` s before it lands, if the CIWS capacitor holds that strike's charge; the burst
-      // lasts `burst` s. mounts: [x, y] as shares of the ship's drawn width and height from its center.
-      ciws: { engage: 0.8, burst: 0.4, mounts: [[-0.3, 0.3], [0.3, 0.3], [-0.32, -0.1], [0.32, -0.1]] },
+      // lasts `burst` s and kills it with chance `kill` (now and then one gets through anyway). mounts: [x, y] as shares of the ship's drawn width and height from its center.
+      ciws: { engage: 0.8, burst: 0.4, kill: 0.85, mounts: [[-0.3, 0.3], [0.3, 0.3], [-0.32, -0.1], [0.32, -0.1]] },
       // The gunboat squadron (cruiser and up) as the gunner sees it: n gunboats fly at `speed`,
       // circle their target at `orbit` (spin radians/s) strafing it, and every `tick` s shoot at
       // a torpedo within `look` (kill = the chance it goes down). Their strafing adds up to the

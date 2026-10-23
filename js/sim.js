@@ -603,7 +603,7 @@
     if (this.rng.chance(Math.min(0.85, overflow / 110))) this.damageSystem();
   };
 
-  // A drive strike: the CIWS stops it if it holds the charge; shields don't help.
+  // A drive strike: the CIWS stops most of them if it holds the charge; shields don't help.
   // One that gets through drains a slice of the warp drive (the hull is untouched).
   Mission.prototype.strikeHits = function (e) {
     // (drive strikes are always drive hunters', even when they join another fight as stragglers)
@@ -623,12 +623,15 @@
     var seen = this.turret && this.turret.ring;
     if (pd && !seen && pd.mj >= e.mj - 0.5) {
       pd.mj -= e.mj;
+      if (!this.rng.chance(BL.GUNNERY.ring.ciws.kill)) { this.cue("pd"); pd = null; }   // it fired and missed
+    }
+    else if (pd && !seen) { pd.mj = 0; pd = null; }                 // it fired everything it had and missed
+    if (pd && !seen) {
       if (e.visible) st.strikesStopped++;
       this.cue("pd");
       if (this.rng.chance(0.4)) this.chat("pdStopped", null, "good");
       return;
     }
-    if (pd && !seen) pd.mj = 0;                     // it fired everything it had and missed
     if (drive) {
       var loss = Math.min(drive.mj, drive.maxMJ * drain);
       drive.mj -= loss; st.driveDrainedMJ += loss;
@@ -738,7 +741,7 @@
         if (s.request) s.request.fired++;
         this.cue("shot");
         var hit = g.hitChance * (ship.crippled ? 0.6 : 1) * this.turretFactor(s, "slide") * this.turretFactor(s, "reach");
-        if (!this.turret) hit *= BL.CREW_GUNS[this.data.classId] || 1;     // a real crew's aim (BL.CREW_GUNS)
+        if (!this.turret) hit *= (BL.CREW_GUNS[this.data.classId] || 1) * ((BL.CREW_GUNS_VS[target.type] || {})[this.data.classId] || 1);   // a real crew's aim
         if (this.rng.chance(hit)) {
           this.hitWave(target, g.damage, s.gunner);
         }

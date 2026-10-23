@@ -159,10 +159,10 @@
      L = length, B = beam (viewBox units); rel = length relative to the gunboat. */
   var CLASSES = {
     picket:          { code: "DL", L: 150, B: 34, rel: 1.4, guns: [[0, -42]], gunR: 6, engines: 2, mast: true },
-    destroyerEscort: { code: "DE", L: 160, B: 40, rel: 1.8, guns: [[0, -40], [0, 34]], gunR: 6.5, engines: 2 },
-    destroyer:       { code: "DD", L: 172, B: 46, rel: 2.2, guns: [[0, -60], [0, 12], [0, 44]], gunR: 7, engines: 3 },
-    lightCruiser:    { code: "CL", L: 180, B: 54, rel: 2.8, guns: [[-13, -16], [13, -16], [-13, 40], [13, 40]], gunR: 6.5, engines: 3, main: true },
-    cruiser:         { code: "C",  L: 186, B: 62, rel: 3.3, guns: [[-15, -18], [15, -18], [0, 22], [-10, 48], [10, 48]], gunR: 6.5, engines: 4, main: true, hangar: true },
+    destroyerEscort: { code: "DE", L: 160, B: 40, rel: 1.8, guns: [[0, -40], [0, 34]], gunR: 6.5, engines: 2, pd: 2 },
+    destroyer:       { code: "DD", L: 172, B: 46, rel: 2.2, guns: [[0, -60], [0, 12], [0, 44]], gunR: 7, engines: 3, pd: 2 },
+    lightCruiser:    { code: "CL", L: 180, B: 54, rel: 2.8, guns: [[-13, -16], [13, -16], [-13, 40], [13, 40]], gunR: 6.5, engines: 3, main: true, pd: 2 },
+    cruiser:         { code: "C",  L: 186, B: 62, rel: 3.3, guns: [[-15, -18], [15, -18], [0, 22], [-10, 48], [10, 48]], gunR: 6.5, engines: 4, main: true, hangar: true, pd: 2 },
     heavyCruiser:    { code: "CA", L: 190, B: 70, rel: 3.8, guns: [[-17, -20], [17, -20], [-24, 18], [24, 18], [-11, 50], [11, 50]], gunR: 7, engines: 4, main: true, hangar: true, pd: 4 },
     battleship:      { code: "BB", L: 194, B: 80, rel: 4.6, guns: [[-20, -24], [20, -24], [-28, 12], [28, 12], [0, 34], [-16, 60], [16, 60]], gunR: 7.5, engines: 5, main: true, hangar: true, pd: 6, reactors: [[-16, 38], [16, 38]] },
     dreadnought:     { code: "DN", L: 196, B: 92, rel: 5.6, guns: [[-22, -28], [22, -28], [-34, 2], [34, 2], [-31, 28], [31, 28], [-22, 66], [22, 66]], gunR: 7.5, engines: 6, main: true, hangar: true, pd: 8, reactors: [[-15, 50], [0, 52], [15, 50]], buster: true }

@@ -593,10 +593,10 @@
   };
 
   /* ----------------------------------------------------------------- CIWS
-     Heavy cruiser and up: the CIWS mounts fire on each drive strike by themselves as it closes
-     on the stern. If the CIWS capacitor holds that strike's charge, the burst kills it; if not,
-     it fires what it has and misses, and the strike hits the drive. Any gun can shoot one down
-     first. */
+     Destroyer escort and up: the CIWS mounts fire on each drive strike by themselves as it closes
+     on the stern. If the CIWS capacitor holds that strike's charge, the burst kills it most of the
+     time (ciws.kill); if not, it fires what it has and misses, and the strike hits the drive. Any
+     gun can shoot one down first. */
   RingTurret.prototype.runCIWS = function () {
     var m = this.m, pd = m.sys("pd"), C = this.G.ring.ciws, self = this, now = m.totalT, dead = [];
     if (!pd) return;
@@ -604,10 +604,10 @@
       if (!tp.strike) return;
       var e = tp.ev;
       if (!tp.ciws && e.at - m.t <= C.engage) {
-        var kill = pd.mj >= e.mj - 0.5, had = pd.mj > 1;
-        pd.mj = kill ? pd.mj - e.mj : 0;
-        tp.ciws = { at: now, kill: kill, fire: kill ? C.burst : had ? C.burst * 0.5 : 0, next: 0 };
-        if (!kill) m.chat("ciwsDry", null, "bad");
+        var full = pd.mj >= e.mj - 0.5, had = pd.mj > 1, kill = full && self.rng.chance(C.kill);
+        pd.mj = full ? pd.mj - e.mj : 0;
+        tp.ciws = { at: now, kill: kill, fire: full ? C.burst : had ? C.burst * 0.5 : 0, next: 0 };
+        if (!full) m.chat("ciwsDry", null, "bad");
       }
       var cw = tp.ciws;
       if (cw && now - cw.at < cw.fire && now >= cw.next) {
