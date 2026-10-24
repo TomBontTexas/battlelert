@@ -228,6 +228,7 @@
       }
     });
 
+    if (m.trainer) drawBuoys(c, S, m.trainer, t);
     // Our ship in the center.
     var ssp = sprite(m.data.classId === "gunboat" ? "gunboat" : "warship:" + m.data.classId);
     if (ssp) { var sh = R.shipH, sw = sh / ssp.aspect; c.drawImage(ssp.cv, R.cx - sw / 2, R.cy - sh / 2, sw, sh); }
@@ -362,6 +363,28 @@
     if (helm.auto) { var pa = ringAt(tu, rel(helm, helm.autoHdg), 0.05); c.fillStyle = "rgba(76,195,238,0.95)"; c.save(); c.translate(pa.x, pa.y); c.rotate(Math.PI / 4); c.fillRect(-0.008, -0.008, 0.016, 0.016); c.restore(); }
     if (Math.abs(helm.omega) > 0.5) tick(rel(helm, helm.stopHeading()), "rgba(255,255,255,0.9)", 0.05, 2.5);
     tick(0, "rgba(255,255,255,0.55)", 0.07, 3);
+    // Training: the next buoy's bearing, in its color.
+    var nv = helm.m.trainer && helm.m.trainer.nextView();
+    if (nv) { var pb = ringAt(tu, nv.rel, 0.05); c.fillStyle = nv.red ? "#ff4d4d" : "#3dff7a"; c.beginPath(); c.arc(pb.x, pb.y, 0.011, 0, Math.PI * 2); c.fill(); }
+  }
+  // Training buoys: red (keep it to port) and green (keep it to starboard), lights blinking; the
+  // next one ringed, with a chevron on the side to pass it.
+  function drawBuoys(c, S, tr, t) {
+    var hdg = tr.m.helm.compass();
+    tr.buoys.forEach(function (b, i) {
+      var p = tr.toView(b.x, b.y), col = b.red ? "#ff4d4d" : "#3dff7a";
+      if (p.x < -0.3 || p.x > 1.3 || p.y < -0.3 || p.y > 1.3) return;
+      c.fillStyle = "#1b2430"; c.beginPath(); c.arc(p.x, p.y, 0.014, 0, Math.PI * 2); c.fill();
+      c.fillStyle = col; c.globalAlpha = 0.55 + 0.45 * Math.max(0, Math.sin(t * 4 + i)); c.beginPath(); c.arc(p.x, p.y, 0.01, 0, Math.PI * 2); c.fill(); c.globalAlpha = 1;
+      if (i) return;
+      c.strokeStyle = col; c.lineWidth = 2 / S; c.beginPath(); c.arc(p.x, p.y, 0.022, 0, Math.PI * 2); c.stroke();
+      // The chevron: on the course side of the buoy, pointing along the course.
+      var a = (b.dir - hdg) * Math.PI / 180, fx = Math.sin(a), fy = -Math.cos(a), rx = -fy, ry = fx, k = b.red ? 1 : -1;
+      var cx = p.x + rx * k * 0.045, cy = p.y + ry * k * 0.045;
+      c.fillStyle = col; c.beginPath();
+      c.moveTo(cx + fx * 0.016, cy + fy * 0.016); c.lineTo(cx - fx * 0.01 + rx * 0.012, cy - fy * 0.01 + ry * 0.012); c.lineTo(cx - fx * 0.01 - rx * 0.012, cy - fy * 0.01 - ry * 0.012);
+      c.closePath(); c.fill();
+    });
   }
   // The compass tape across the top of the view: the ship's heading, 60 degrees either side, with
   // the same marks as the ring. A tap on it steers there on autopilot (BL.compassAt).
@@ -406,6 +429,8 @@
     if (jv2) mark(jv2.hdg, "#63d48f", "jump");
     if (o) mark(o.hdg, helm.onOrder({ hdg: o.hdg, eng: o.eng }) ? "#63d48f" : "#f0b54a", "tri");
     if (helm.auto) mark(helm.autoHdg, "#4cc3ee", "dia");
+    var nb = helm.m.trainer && helm.m.trainer.nextView();
+    if (nb) mark(hdg + nb.rel, nb.red ? "#ff4d4d" : "#3dff7a", "req");
     if (Math.abs(helm.omega) > 0.5) mark(helm.stopHeading(), "#ffffff", "line");
     c.restore();
     c.fillStyle = "#ffffff"; c.beginPath(); c.moveTo(W / 2, y0 + h + 7); c.lineTo(W / 2 - 6, y0 + h + 15); c.lineTo(W / 2 + 6, y0 + h + 15); c.closePath(); c.fill();

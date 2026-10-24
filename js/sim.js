@@ -43,7 +43,10 @@
     this.dt = 1 / BL.TICK_RATE;
     this.quiet = !!opts.quiet;              // harness: skip chatter text and sound cues
 
-    this.route = this.planRoute(!!opts.gunner);
+    // Pilot training (training.js): one endless system with no enemies and no jump.
+    this.training = !!opts.training;
+    if (this.training) this.cfg.jumps = 1, this.cfg.jumpWindowAt = [1e9];
+    this.route = this.training ? ["training"] : this.planRoute(!!opts.gunner);
     if (opts.sweep && this.route.length > 1) this.route[1] = "sweep";        // the gunboat tests: sortie 2 sweeps a mine lane
     // A story mission (story.js) flies the systems its story names. The mine lane needs the gun
     // view, so in the engine room it's a minefield. reports: a line to play in each system.
@@ -63,6 +66,7 @@
     this.turret = !opts.gunner ? null : opts.gunner.ring ? new BL.RingTurret(this, opts.gunner) : new BL.Turret(this, opts.gunner);
     // Pilot station: the player at the helm (opts.helm), the gun crew on every gun; see helm.js.
     this.helm = opts.helm && this.turret && this.turret.ring ? new BL.Helm(this) : null;
+    this.trainer = null;                    // made on arrival (the helm's heading is set then)
     this.stats = {
       heatSum: 0, heatTime: 0,
       deliveredMJ: 0, wastedMJ: 0, trips: 0, looks: 0,
@@ -220,7 +224,7 @@
     // recovered before the jump. A squadron left behind is gone for the rest of the mission.
     if (this.squadron !== "lost") this.squadron = "aboard";
     this.recoverCalled = false; this.holdSaid = false;
-    this.nextLaunchAt = this.sys("hangar") && !enc.mines && this.squadron === "aboard" ? this.cfg.arrivalSeconds + r.range(this.data.hangar.launchAfter) : Infinity;
+    this.nextLaunchAt = this.sys("hangar") && !enc.mines && !this.training && this.squadron === "aboard" ? this.cfg.arrivalSeconds + r.range(this.data.hangar.launchAfter) : Infinity;
     this.hangarMode("launch");
     this.ship.gTarget = this.data.cruiseG;
     var drive = this.sys("drive"); if (drive) drive.mj = 0;
@@ -233,6 +237,7 @@
     this.cue("arrive");
     if (this.turret) this.turret.reset();
     if (this.helm) this.helm.reset();
+    if (this.training) { this.trainer = new BL.Trainer(this); this.reportAt = Infinity; this.gunSaid = false; this.spawnedHere = 0; return; }
     this.chat(this.hasDrive ? "arrival" : "launch", { hdg: this.helm && this.helm.jumpHdg !== null ? BL.hdgText(this.helm.jumpHdg) : "" }, "info");
     this.chat(enc.chat || "briefing", { enemies: BL.plural(enc.enemy), what: enc.what }, "info");
     this.reportAt = this.reports[this.jumpIndex] ? this.cfg.arrivalSeconds + 4 : Infinity;   // the story's report for this system
@@ -313,6 +318,7 @@
     return n;
   };
   Mission.prototype.schedule = function () {
+    if (this.training) return;                    // (no enemies, no orders)
     var enc = this.encounter(), r = this.rng, t = this.t;
     // Once the jump window has been open a while, the enemy breaks off (drive hunters at once),
     // so a drive that can't keep up never stalls the mission forever.
@@ -419,11 +425,12 @@
     this.runGunners(dt);
     this.runCalls(dt);
     this.runPilot(dt);
+    if (this.trainer) this.trainer.step(dt);
     this.runCapacitors(dt);
     this.runReactor(dt);
     this.runLifeSupport(dt);
     this.runWaves();
-    this.runJump();
+    if (!this.training) this.runJump();
     this.runEnemyGuns(dt);
     if (this.t >= this.reportAt) { this.reportAt = Infinity; this.say(this.reports[this.jumpIndex], "info"); this.cue("chatter"); }
     if (this.ship.hull <= 0 && this.phase !== "done") {

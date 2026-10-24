@@ -81,6 +81,7 @@
       <button id="btn-hub-eng" class="big primary">Engineer jobs</button>
       <button id="btn-hub-gun" class="big primary">Gunner jobs</button>
       <button id="btn-hub-pilot" class="big primary">Pilot jobs</button>
+      <button id="btn-hub-train" class="big">Pilot training</button>
       <button id="btn-hub-signoffs">Rapid sign-offs</button>
       <button id="btn-hub-record">Service record</button>
       <button id="btn-hub-export">Export career</button>
@@ -267,6 +268,7 @@
     <button id="btn-tu-view" class="small">Wide view (W)</button>
     <button id="btn-tu-options" class="small">Options</button>
     <button id="btn-tu-testwin" class="small" title="Testing: end the mission now as a success at 75%.">Test win</button>
+    <button id="btn-tu-exit" class="small" hidden>Exit training</button>
     <button id="btn-tu-pause" class="small">Pause</button>
     <span class="hd-ver">v<span class="app-version"></span></span>
   </header>
@@ -396,6 +398,23 @@
 </section>
 
 <!-- ===================================================== Rapid sign-offs -->
+<section id="ov-train" class="overlay" hidden>
+  <div class="ov-card">
+    <h1>Pilot training</h1>
+    <p>An endless buoy course: keep <b style="color:#ff4d4d">red</b> buoys to port (on your left) and <b style="color:#3dff7a">green</b> to starboard. No enemies, no orders. It's scored and rated, but earns no reputation and isn't saved to your record. Fly as long as you like; Exit training ends it.</p>
+    <div id="train-ships" class="menu"></div>
+    <div class="menu"><button id="btn-train-close">Back</button></div>
+  </div>
+</section>
+<section id="ov-train-done" class="overlay" hidden>
+  <div class="ov-card">
+    <h1>Training complete</h1>
+    <div id="train-summary"></div>
+    <p class="muted">Not saved to your record.</p>
+    <div class="menu"><button id="btn-train-again">Fly again</button><button id="btn-train-done" class="primary">Done</button></div>
+  </div>
+</section>
+
 <section id="ov-signoffs" class="overlay" hidden>
   <div class="ov-card">
     <h1>Rapid sign-offs</h1>
@@ -570,6 +589,8 @@
       <li><b>Jump heading</b> (ships with a warp drive). Navigation gives a jump heading on arrival (green on the compass), and as the window nears, the captain orders it as a course order (again if the bow wanders off). The ship jumps once the drive is full and the bow is on it (±10°); if the drive is full and you're still off it 20 s after the window opens, the captain takes the conn.</li>
       <li><b>Autopilot.</b> T turns it on and holds the heading; tap the compass across the top to fly to that heading, or tap the captain's order to fly there. On autopilot the strip at the far right of the screen (clear of the battle) is the course set: drag it up and down (headings rise upward, blue box in the middle; the strip's whole height is 360°, so one sweep of the thumb reaches any heading) or tap a heading on it, and the autopilot speeds up and slows the turn to bring her onto it. For the last degree or two, the thin ▲ +1° and ▼ −1° buttons at the ends of the strip (or ] and [) nudge the course one degree; by hand they put her on autopilot one degree off the heading she's on. The compass across the top always shows the ship's actual heading. By hand (autopilot off) the strip is a wheel that slides up and down instead, with no numbers: the farther you slide it from the middle, the harder she turns (down for starboard, up for port), and it stays where you leave it; bringing her onto the heading is up to you. It flies carefully (never past the safe rate, never with split engines) and earns less reputation than steering by hand.</li>
     </ol>
+    <h2>Pilot training</h2>
+    <p>From the career screen, <b>Pilot training</b> puts you at the helm of any ship you're qualified on as a pilot (the gunboat if you aren't yet) on an endless buoy course: no enemies, no captain's orders, all the usual controls. Keep <b>red</b> buoys to port (on your left) and <b>green</b> to starboard; the next one is ringed, with a chevron on the side to pass, and marked in its color on the compass and the ring. The helm panel shows its side, bearing and seconds away, and a tally: passed on the right side, wrong side, hit (the hull touched it) and missed (too wide, or you wandered off and the course starts again ahead). The rating is the share passed on the right side: Excellent 90% and up, Good 75%, Fair 50%, else Needs work. Turning too hard still fills the stress bar and counts structural hits, but does the hull no harm. Fly as long as you like; <b>Exit training</b> shows the summary. Training earns no reputation and isn't saved to your record.</p>
     <p class="muted small-text">Battlelert © 2011–2026 Tom Bont. All rights reserved. Free to play. The code, art and sounds may not be copied, changed or shared without written permission.</p>
     <div class="menu"><button id="btn-how-close" class="primary">Got it</button></div>
   </div>
@@ -577,20 +598,21 @@
 
 <script src="version.js?b=1f9c73ef"></script>
 <script src="update-banner.js?b=ec7860dd"></script>
-<script src="js/data.js?b=8b903e07"></script>
-<script src="js/sim.js?b=f8dcac52"></script>
+<script src="js/data.js?b=eacbf504"></script>
+<script src="js/sim.js?b=107a865a"></script>
 <script src="js/agents.js?b=3b5a60c4"></script>
 <script src="js/gunnery.js?b=685ea271"></script>
 <script src="js/ring.js?b=9e7070be"></script>
-<script src="js/helm.js?b=2741cf31"></script>
+<script src="js/helm.js?b=6265c914"></script>
+<script src="js/training.js?b=48646f29"></script>
 <script src="js/art.js?b=b839fb3f"></script>
 <script src="js/turretview.js?b=960c39ae"></script>
-<script src="js/ringview.js?b=0ceb0d8b"></script>
+<script src="js/ringview.js?b=6a6b6741"></script>
 <script src="js/names.js?b=15a6a577"></script>
 <script src="js/story.js?b=6ce99bc9"></script>
 <script src="js/career.js?b=b8876d13"></script>
 <script src="js/speech.js?b=f9e428ef"></script>
 <script src="js/audio.js?b=273e5325"></script>
-<script src="js/ui.js?b=3c5c9299"></script>
+<script src="js/ui.js?b=08d3da85"></script>
 </body>
 </html>

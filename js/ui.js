@@ -201,6 +201,7 @@
     BL.speech.stop();
     if (sim.turret) releaseTurret();
     $("btn-look").hidden = !!sim.turret;
+    $("btn-abandon").hidden = !!sim.training;
     $("btn-resume").textContent = sim.turret ? "Resume (P)" : "Resume (Space)";
     overlay("ov-pause", true); $("planning-banner").hidden = true;
     $("pause-voice").textContent = BL.speech.status();
@@ -774,7 +775,7 @@
     $("hm-launch").hidden = true;
     if (helm) {
       $("tu-tubes").hidden = true; $("btn-tu-main").hidden = true;
-      $("tu-station").textContent = "Helm · " + (job.test ? sim.data.className : BL.shipLabel(job.classId, job.ship) + " (" + sim.data.className + ")") + " · tech level " + sim.data.tl;
+      $("tu-station").textContent = (sim.training ? "Pilot training · " : "Helm · ") + (job.test ? sim.data.className : BL.shipLabel(job.classId, job.ship) + " (" + sim.data.className + ")") + " · tech level " + sim.data.tl;
       $("tu-keys").textContent = "← → wheel · 0 midships · ↑ ↓ both engines · Q A port · P L starboard · + − 1 G · T autopilot · [ ] course 1° · E warn engineering · Space launch · Esc pause · Drag the wheel · Tap the telegraph · Tap the compass for autopilot · Right strip: course on autopilot, wheel by hand";
       buildHelm();
     }
@@ -1193,6 +1194,7 @@
   }
   function renderHelm(ts) {
     var tu = sim.turret, h = sim.helm, ship = sim.ship, enc = sim.encounter() || {};
+    $("btn-tu-exit").hidden = !sim.training; $("btn-tu-testwin").hidden = !!sim.training;
     tu.effects.forEach(function (f) {
       if (f.type === "hullHit" && f.at > lastJolt) {
         lastJolt = f.at; var el = $("scr-turret");
@@ -1203,7 +1205,7 @@
     sizeTurret();
     BL.drawRing(tuCtx, { w: tuW, h: tuH, wide: false }, sim, tu, ts);
     drawStrip();
-    $("tu-jump").innerHTML = (sim.hasDrive ? "Jump" : "Sortie") + " <b>" + (sim.jumpIndex + 1) + "</b> of " + sim.cfg.jumps + " · <b>" + (enc.name || "") + "</b>";
+    $("tu-jump").innerHTML = sim.training ? "<b>Training course</b>" : (sim.hasDrive ? "Jump" : "Sortie") + " <b>" + (sim.jumpIndex + 1) + "</b> of " + sim.cfg.jumps + " · <b>" + (enc.name || "") + "</b>";
     setText($("tu-phase"), h.inTube ? "IN THE TUBE: LAUNCH WHEN READY" : sim.phase === "arrival" ? "Engagement in " + Math.ceil(sim.cfg.arrivalSeconds - sim.t) + " s" :
       sim.phase === "countdown" ? "JUMPING IN " + Math.max(1, Math.ceil(sim.jumpAt - sim.t)) : sim.phase === "engage" ? "T+" + mmss(sim.t) : "");
     renderComms();
@@ -1235,6 +1237,13 @@
       } else oh += '<div class="ln">FREE HELM</div><div class="ln">Fight the ' + (sim.hasDrive ? "ship" : "boat") + "</div>";
       setCls(ob, "hm-order" + (sv && !h.inTube ? " active" : ""));
     }
+    // Training: the next buoy instead of an order.
+    var tr = sim.trainer, nv = tr && tr.nextView();
+    if (tr) {
+      oh = '<div class="ln">TRAINING · T+' + mmss(sim.t) + "</div>" + (nv ? '<div class="ln"><b style="color:' + (nv.red ? "#ff4d4d" : "#3dff7a") + '">' + (nv.red ? "RED: keep it to port" : "GREEN: keep it to starboard") + "</b></div>" +
+        '<div class="ln">' + (Math.abs(nv.rel) < 3 ? "Dead ahead" : Math.round(Math.abs(nv.rel)) + "° " + (nv.rel > 0 ? "right" : "left")) + " · " + (nv.secs < 99 ? Math.ceil(nv.secs) + " s" : "far") + "</div>" : "");
+      setCls(ob, "hm-order");
+    }
     if (ob.innerHTML !== oh) { ob.innerHTML = oh; fitLines(ob); }
     // Alerts: the captain's break order (or "Steady"), the jump heading (tap it to fly it on autopilot)
     var al = [], D = BL.HELM.dodge, ev = h.evadeView(), inbound = tu.torps.filter(function (tp) { return tp.ev && tp.ev.type === "salvo" && !tp.ev.done && !tp.mine; });
@@ -1248,6 +1257,10 @@
     var jv = h.jumpView();
     if (h.jumpHdg !== null) al.push(!jv ? '<div class="empty"></div>' : '<div class="jump' + (jv.on ? "" : jv.in < 30 ? " off" : "") + '" data-hdg="' + jv.hdg + '"><span>Jump heading <b>' + BL.hdgText(jv.hdg) + "</b>" + (jv.on ? " ✔" : "") + "</span><span>" +
       (jv.in > 0 ? "Window in " + Math.ceil(jv.in) + " s" : "Window open") + "</span></div>");
+    if (tr) {
+      var ts2 = tr.stats, rt = tr.rating();
+      al = ['<div class="hold"><span>✔ ' + ts2.passed + " · wrong side " + ts2.wrong + " · hit " + ts2.hit + " · missed " + ts2.missed + "</span><span>Streak " + ts2.streak + " · " + rt.name + (tr.total() ? " " + rt.pct + "%" : "") + "</span></div>"];
+    }
     setHtml($("hm-alerts"), al.join(""));
     // Telegraph and thrust
     Array.prototype.forEach.call($("hm-tele").querySelectorAll("button"), function (b) {
@@ -1319,6 +1332,14 @@
       "<span>Ships destroyed</span><b>" + (g.kills || 0) + " / " + (g.ships || 0) + "</b><span>Torpedoes shot down</span><b>" + (g.downed || 0) + " / " + (g.torps || 0) + "</b>" +
       (tu.pt.length ? "<span>Our torpedoes</span><b>" + (g.ptHits || 0) + " hit / " + (g.ptFired || 0) + "</b>" : "") +
       (c.stressHits ? '<span class="bad">Structural hits</span><b>' + c.stressHits + "</b>" : "") + (ship.crippled ? '<span class="bad">✖ Crew crippled</span><b></b>' : ""));
+    // Training: no jump, no fight; the buoy tally instead.
+    $("tu-rec-label").parentNode.hidden = $("tu-rec").parentNode.hidden = !!sim.training;
+    if (sim.trainer) {
+      var trs = sim.trainer.stats, trr = sim.trainer.rating();
+      setHtml($("tu-tally"), "<span>Buoys passed</span><b>" + trs.passed + " / " + sim.trainer.total() + "</b><span>Wrong side</span><b>" + trs.wrong + "</b><span>Hit</span><b>" + trs.hit + "</b>" +
+        "<span>Missed</span><b>" + trs.missed + "</b><span>Best streak</span><b>" + trs.best + "</b>" + '<span class="' + (h.stats.stressHits ? "bad" : "") + '">Structural hits</span><b>' + h.stats.stressHits + "</b>" +
+        "<span>Rating</span><b>" + trr.name + (sim.trainer.total() ? " " + trr.pct + "%" : "") + "</b>");
+    }
   }
   function fmtG(v) { var r = Math.round(v * 10) / 10; return r % 1 ? r.toFixed(1) : String(r); }
   // Keys at the helm: ← → wheel, 0 midships, ↑ ↓ both engines, Q A port, P L starboard, W S / O K trim port / starboard,
@@ -1814,6 +1835,40 @@
   $("btn-hub-eng").onclick = function () { click(); showOffers("offers", "engineer"); };
   $("btn-hub-gun").onclick = function () { click(); showOffers("offers", "gunner"); };
   $("btn-hub-pilot").onclick = function () { click(); showOffers("offers", "pilot"); };
+  /* Pilot training (training.js): any class the pilot is qualified on (a new pilot: the gunboat). */
+  var trainClass = null;
+  $("btn-hub-train").onclick = function () {
+    click();
+    var q = Math.max(1, BL.career.qualified(career, "pilot"));
+    $("train-ships").innerHTML = BL.CLASSES.filter(function (c) { return c.n <= q && c.built && BL.GUNNERY.ring.classes[c.id]; }).map(function (c) {
+      return '<button class="primary" data-cls="' + c.id + '">' + c.name + "</button>";
+    }).join("");
+    overlay("ov-train", true);
+  };
+  $("train-ships").addEventListener("click", function (ev) { var b = ev.target.closest("button[data-cls]"); if (b) { click(); overlay("ov-train", false); startTraining(b.dataset.cls); } });
+  $("btn-train-close").onclick = function () { click(); overlay("ov-train", false); };
+  function startTraining(classId) {
+    var tl = BL.TECH.base(classId), rc = BL.GUNNERY.ring.classes[classId];
+    trainClass = classId;
+    job = { test: true, training: true, station: "pilot", helm: true, classId: classId, tl: tl, seed: BL.randomSeed(), n: BL.classById(classId).n };
+    var guns = { weapons: BL.GUNNERY.loadout[classId] || ["pulse"], helm: true, ring: true, arcs: rc.arcs, arcNames: rc.arcNames,
+      orders: [1, 2, 3, 4, 5, 6, 7, 8].map(function (n) { return (settings.gunOrders || {})[n] || "auto"; }) };
+    sim = new BL.Mission({ seed: job.seed, classId: classId, tl: tl, gunner: guns, helm: true, training: true });
+    startMission();
+  }
+  $("btn-tu-exit").onclick = function () {
+    if (!sim || !sim.training) return;
+    click(); running = false; paused = false; overlay("ov-pause", false);
+    var tr = sim.trainer, s = tr ? tr.stats : {}, rt = tr ? tr.rating() : { pct: 0, name: "—" };
+    $("train-summary").innerHTML = "<p><b>" + sim.data.className + "</b> · " + mmss(sim.t) + " flown</p><ul>" +
+      "<li>Buoys passed on the right side: <b>" + (s.passed || 0) + "</b> of " + (tr ? tr.total() : 0) + "</li>" +
+      "<li>Wrong side " + (s.wrong || 0) + " · hit " + (s.hit || 0) + " · missed " + (s.missed || 0) + "</li>" +
+      "<li>Best streak " + (s.best || 0) + " · stress hits " + sim.helm.stats.stressHits + "</li>" +
+      "<li>Rating: <b>" + rt.name + "</b>" + (tr && tr.total() ? " (" + rt.pct + "%)" : "") + "</li></ul>";
+    overlay("ov-train-done", true);
+  };
+  $("btn-train-again").onclick = function () { click(); overlay("ov-train-done", false); startTraining(trainClass); };
+  $("btn-train-done").onclick = function () { click(); overlay("ov-train-done", false); BL.audio.humSet(0, false); sim = null; if (career) showHub(); else show("scr-title"); };
   $("btn-offers-lower").onclick = function () { click(); showOffers(offersMode === "lower" ? "offers" : "lower", offersStation); };
   $("btn-hub-record").onclick = function () { click(); showRecord(); };
   $("btn-hub-options").onclick = function () { click(); openOptions(); };
@@ -1929,5 +1984,5 @@
   refreshTitle();
   show("scr-title");
   requestAnimationFrame(frame);
-  window.__bl = { get sim() { return sim; } };   // for automated tests
+  window.__bl = { get sim() { return sim; }, train: startTraining };   // for automated tests
 })();

@@ -237,6 +237,14 @@
   BL.CREW_GUNS_VS = { hunters: { destroyerEscort: 0.21, destroyer: 0.15, lightCruiser: 0.22, cruiser: 0.15,
     heavyCruiser: 0.43, battleship: 0.33, dreadnought: 0.31 } };
 
+  // Pilot training's buoy course (training.js). vStd: battle units a second at standard speed;
+  // buoys `gapBase + gapPerSafe / safe turn rate` s apart at cruise (gapMin to gapMax), and at least
+  // `lengths` ship lengths; each `clear` past the hull's side from the course line; the course bends
+  // `bend` degrees a buoy; `ahead` buoys laid out; a pass wider than `wide` x that offset is a miss;
+  // `lost` gaps away and opening for 3 s, the course is laid again ahead. ratings: share passed, name.
+  BL.TRAINING = { vStd: 0.1, gapBase: 5, gapPerSafe: 80, gapMin: 6, gapMax: 22, lengths: 2, clear: 0.05, bend: [15, 40],
+    ahead: 3, wide: 3, lost: 2.5, ratings: [[0.9, "Excellent"], [0.75, "Good"], [0.5, "Fair"], [0, "Needs work"]] };
+
   BL.CREW_DOWN = { gunboat: 0.38, picket: 0.33, destroyerEscort: 0.49, destroyer: 0.57, lightCruiser: 0.64,
     cruiser: 0.52, heavyCruiser: 0.55, battleship: 0.64, dreadnought: 0.61 };
 
@@ -387,6 +395,12 @@
       request: { lead: 3, duration: [5, 7] },
       burns: { every: [9, 14], g: [7, 9], duration: [4, 6], warning: 5 },
       surpriseChance: 0.1
+    },
+    // Pilot training (training.js): no enemies, no orders; the trainer lays the buoys.
+    training: {
+      name: "Training course", enemy: "buoy", what: "Buoys: keep red to port, green to starboard",
+      firstWave: [1e9, 1e9], waveEvery: [1e9, 1e9], wave: {}, salvoWarning: 5, surpriseChance: 0,
+      burns: { every: [1e9, 1e9], g: [1, 1], duration: [1, 1], warning: 5 }
     },
     // Destroyer escort and up. Hunters fire drive strikes: the CIWS (close-in weapon system) stops
     // most of them if it has the charge (mj = CIWS charge per strike; BL.GUNNERY.ring.ciws.kill);

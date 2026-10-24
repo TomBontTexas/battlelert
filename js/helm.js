@@ -174,7 +174,7 @@
   /* ------------------------------------------------------------ Lifecycle */
   Helm.prototype.reset = function () {
     var m = this.m, r = this.rng, enc = m.encounter();
-    this.inTube = !m.hasDrive; this.launchAt = -99; this.clearAt = 0; this.tubeSaid = 0;
+    this.inTube = !m.hasDrive && !m.training; this.launchAt = -99; this.clearAt = 0; this.tubeSaid = 0;
     this.omega = 0; this.want = 0; this.wheel = 0; this.hist = []; this.stress = 0; this.flankT = 0;
     this.stressSaid = false; this.flankSaid = false; this.curOrder = null; this.auto = false;
     this.base = 10 * Math.floor(r.next() * 36);
@@ -189,10 +189,10 @@
     this.jumps[m.jumpIndex] = this.cur;
     this.jumpSaid = false; this.conT = 0; this.conTaken = false;
     // Ships with a warp drive jump on a heading Navigation gives on arrival.
-    this.jumpHdg = m.hasDrive ? 5 * Math.floor(r.next() * 72) : null;
+    this.jumpHdg = m.hasDrive && !m.training ? 5 * Math.floor(r.next() * 72) : null;
     this.jumpShown = this.jumpHdg !== null;
     // The captain's course on arrival: the way she's heading (a gunboat's once it's out of the tube).
-    if (!this.inTube) this.course = Math.round(this.compass()) % 360;
+    if (!this.inTube && !m.training) this.course = Math.round(this.compass()) % 360;     // (training: free helm)
   };
 
   // The captain's orders, on the bridge's burn schedule (Mission.schedule calls this at the helm).
@@ -576,7 +576,7 @@
     if (this.stress < 1) return;
     this.stress = S.after;
     var ship = m.ship, dmg = Math.max(1, Math.round(ship.hullMax * S.hullShare)), R = m.turret.R;
-    ship.hull -= dmg; ship.fresh.hull += dmg; m.stats.hullLost += dmg; m.jumpStats.hullLost += dmg;
+    if (!m.training) { ship.hull -= dmg; ship.fresh.hull += dmg; m.stats.hullLost += dmg; m.jumpStats.hullLost += dmg; }   // (training: counted, no harm)
     this.stats.stressHits++; if (this.cur) this.cur.stressHits++;
     m.turret.effects.push({ type: "hullHit", x: R.cx, y: R.cy - R.ry, at: m.totalT, mj: 40 });
     m.cue("hullHit"); m.cue("breach");
