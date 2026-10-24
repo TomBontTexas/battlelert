@@ -722,12 +722,18 @@
       { id: "full",       name: "Full",             short: "FULL",     f: 1 },
       { id: "flank",      name: "Flank",            short: "FLANK",    f: 1.1 }
     ],
-    split: 0.625,          // split engines add this share of top turn per unit of (port - starboard) / (2 x full)
+    split: 0.625,          // engines giving different thrust add up to this share of the top turn (see yaw below)
     engineTau: 0.5,        // engines spool toward their order (s), plus engineLagTau x the class's lag
     engineLagTau: 1.5,
     speedTau: 2,           // the ship eases to the speed its engines order (s)
     stress: { fill: 0.6, drain: 1 / 6, hullShare: 0.05, thrusterChance: 0.3, warnAt: 0.6, after: 0.25 },
     flank: { warnAt: 15, safe: 20, damagePerSec: 0.05 },
+    // Engine damage at the helm (Oct 24, 2026, TexasBont): a thruster hit takes `engineHit` of one
+    // engine's thrust (port or starboard, 50/50; never under `engineMin`), so at any speed the
+    // strong engine pushes the bow toward the weak side. Engines give (port - starboard) G x `yaw`
+    // of the safe turn rate (up to `split` of the top rate), so the pilot trims them (`trim` G a step)
+    // to stop the drift. (At the other stations a hit still costs 1 G of top speed and turn rate.)
+    engineHit: 0.15, engineMin: 0.4, yaw: 0.5, trim: 0.25,
     turnLoss: 0.15,        // a thruster hit costs this share of the top turn rate (up to 60%)
     // captain's orders: tolerance, share held, spacing; the first `grace` s after an order starts
     // don't count (judged on `held` of the rest); one given on the spot (a gunner's call, the main

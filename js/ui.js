@@ -1257,6 +1257,11 @@
     });
     setText($("hm-tele-txt"), h.telegraph());
     setText($("hm-gval"), "ordered " + fmtG(h.port.g) + " / " + fmtG(h.stbd.g) + " G");
+    var th = ship.thrust, dmg = [];
+    if (th.port < 0.995) dmg.push("Port " + Math.round(th.port * 100) + "%");
+    if (th.stbd < 0.995) dmg.push("Stbd " + Math.round(th.stbd * 100) + "%");
+    $("hm-engdmg").hidden = !dmg.length;
+    setText($("hm-engdmg"), "⚠ Engine damage: " + dmg.join(" · ") + " · giving " + fmtG(h.out.port) + " / " + fmtG(h.out.stbd) + " G");
     setText($("hm-thrust"), fmtG(ship.g) + " G · " + Math.round(ship.engineMW) + " MW" + (ship.starved ? " · STARVED" : ""));
     $("hm-thrust-fill").style.width = pct(ship.g / (h.full() * 1.1));
     var rxEls = $("hm-rxs").children;
@@ -1316,7 +1321,7 @@
       (c.stressHits ? '<span class="bad">Structural hits</span><b>' + c.stressHits + "</b>" : "") + (ship.crippled ? '<span class="bad">✖ Crew crippled</span><b></b>' : ""));
   }
   function fmtG(v) { var r = Math.round(v * 10) / 10; return r % 1 ? r.toFixed(1) : String(r); }
-  // Keys at the helm: ← → wheel, 0 midships, ↑ ↓ both engines, Q A port, P L starboard,
+  // Keys at the helm: ← → wheel, 0 midships, ↑ ↓ both engines, Q A port, P L starboard, W S / O K trim port / starboard,
   // + − one G, T autopilot, [ ] course 1° (autopilot), E warn engineering, Space launch, Esc pause.
   function helmKey(ev) {
     if (!$("ov-grav").hidden) { if (ev.key === "Enter") $("btn-grav-go").click(); return; }
@@ -1333,6 +1338,10 @@
     else if (kl === "a") h.stepOrder("port", -1);
     else if (kl === "p") h.stepOrder("stbd", 1);
     else if (kl === "l") h.stepOrder("stbd", -1);
+    else if (kl === "w") h.trimEngine("port", 1);
+    else if (kl === "s") h.trimEngine("port", -1);
+    else if (kl === "o") h.trimEngine("stbd", 1);
+    else if (kl === "k") h.trimEngine("stbd", -1);
     else if (k === "+" || k === "=") h.nudgeG(1);
     else if (k === "-" || k === "_") h.nudgeG(-1);
     else if (kl === "t" && !ev.repeat) h.setAuto(!h.auto);
@@ -1356,6 +1365,7 @@
     $("hm-mid").addEventListener("click", function () { if (turretActive()) sim.helm.midships(); this.blur(); });
     $("hm-tele").addEventListener("click", function (ev) { var b = ev.target.closest("button[data-ord]"); if (b && turretActive()) sim.helm.setOrder(b.dataset.side, b.dataset.ord); if (b) b.blur(); });
     $("hm-gup").addEventListener("click", function () { if (turretActive()) sim.helm.nudgeG(1); this.blur(); });
+    $("hm-trim").addEventListener("click", function (ev) { var b = ev.target.closest("button[data-trim]"); if (b && turretActive()) sim.helm.trimEngine(b.dataset.trim, +b.dataset.dir); if (b) b.blur(); });
     $("hm-gdown").addEventListener("click", function () { if (turretActive()) sim.helm.nudgeG(-1); this.blur(); });
     $("hm-auto").addEventListener("click", function () { if (turretActive()) sim.helm.setAuto(!sim.helm.auto); this.blur(); });
     $("hm-warn").addEventListener("click", function () { if (turretActive()) sim.helm.warn(); this.blur(); });

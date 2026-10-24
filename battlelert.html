@@ -6,7 +6,7 @@
 <meta name="copyright" content="© 2011–2026 Tom Bont. All rights reserved.">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Battlelert</title>
-<link rel="stylesheet" href="css/style.css?b=a0861856">
+<link rel="stylesheet" href="css/style.css?b=21cad6d9">
 </head>
 <body>
 
@@ -302,6 +302,8 @@
       <div class="hm-tele-txt" id="hm-tele-txt"></div>
       <div class="hm-tele" id="hm-tele"></div>
       <div class="hm-g"><button id="hm-gdown">− 1 G</button><span id="hm-gval"></span><button id="hm-gup">+ 1 G</button></div>
+      <div class="hm-trim" id="hm-trim"><button data-trim="port" data-dir="-1">P −</button><button data-trim="port" data-dir="1">P +</button><span>TRIM ¼ G</span><button data-trim="stbd" data-dir="-1">S −</button><button data-trim="stbd" data-dir="1">S +</button></div>
+      <div class="hm-engdmg" id="hm-engdmg" hidden></div>
       <div class="row-label"><span>THRUST</span><span id="hm-thrust"></span></div>
       <div class="hbar"><div id="hm-thrust-fill" class="hbar-fill eng-fill"></div></div>
       <div class="row-label"><span id="hm-rx-title">REACTOR</span><span class="hm-rx-key">▲ load · ▼ heat</span></div>
@@ -499,6 +501,8 @@
       <tr><td>Q / A</td><td>Port engine one order up / down</td></tr>
       <tr><td>P / L</td><td>Starboard engine one order up / down</td></tr>
       <tr><td>+ / −</td><td>Both engines one G more or less ("all ahead 3 G")</td></tr>
+      <tr><td>W / S</td><td>Trim the port engine ¼ G up / down (to match a damaged engine)</td></tr>
+      <tr><td>O / K</td><td>Trim the starboard engine ¼ G up / down</td></tr>
       <tr><td>T</td><td>Autopilot on or off (it holds the heading you're on)</td></tr>
       <tr><td>[ ]</td><td>Course 1° to port or starboard on autopilot (like the ▼ ▲ nudge buttons on the strip)</td></tr>
       <tr><td>E</td><td>Warn engineering that a burn is coming</td></tr>
@@ -555,6 +559,7 @@
       <li><b>Launch.</b> A gunboat starts each sortie in the carrier's launch tube. Launch when ready (Space or LAUNCH); the catapult throws you out at flank, and once clear the coxswain orders all ahead standard: set both engines within 5 s (an order like any other; tap the order panel to set it). Waiting costs fight time, and after a while the carrier launches you anyway.</li>
       <li><b>Steer with the wheel.</b> Drag it, or use ← →. It stays where you leave it, so the ship keeps turning until you center it (0). The ship answers a moment late, and its turn builds and dies away slowly; bigger ships are slower at both. The white tick on the compass and on the ring is where the bow will stop if you center the wheel now.</li>
       <li><b>Engine orders.</b> Each engine takes its own order on the telegraph: stop, dead slow, cruise, standard, full, flank, or dead slow, half or full astern. + and − give an exact thrust ("all ahead 3 G"). Thrust draws reactor power, so a hard burn leaves less for the shields and guns; warn engineering (E) before one. Flank is over the engines' rating: hold it too long and a thruster can burn out.</li>
+      <li><b>Engine damage.</b> A thruster hit damages one engine, port or starboard: it gives less thrust at every speed (each hit about 15%), so the stronger engine pushes the bow toward the damaged side and the ship drifts. The panel shows it ("⚠ Engine damage: Port 85%", with what each engine is giving). Steer against it, or trim the engines with the P −/+ and S −/+ buttons (W S, O K): a quarter G at a time, ease the strong engine back or push the weak one up until both give the same thrust and the drift stops. The autopilot holds the heading with the rudder alone: a few degrees off, its turns slow against the drift and fast with it, and a fast one can go past the safe rate. In warp space damage control repairs half of it.</li>
       <li><b>Split engines.</b> Port ahead and starboard astern turns the ship to starboard faster than the wheel alone (and the other way round). Turning faster than the safe rate (the mark on the TURN bar) fills the hull stress bar; a full bar is a structural hit to the hull. Damage control reports the stress and the captain orders you to ease off, unless he ordered the hard turn himself (a break).</li>
       <li><b>The captain's orders.</b> Only the captain (the coxswain on a gunboat) gives the helm orders; the crew report to the captain. He orders a heading and an engine order a few seconds ahead. The order panel shows it at a glance (when, heading, engines: "In 5s / Left 255 / All ahead Standard"; tap it to fly the heading on autopilot), and the amber mark on the compass shows the heading. Be on it, at that order, when the time comes, and hold it: you have 2 s of grace after NOW, then must be on both the heading (±10°) and the engine order for 70% of the rest. The panel ticks each part (✔ right, ✗ wrong while the order is under way), and if you miss, the captain says which part. Orders he gives on the spot (a gunner's call, the main gun, the jump heading) come with at least 6 s notice. Between orders you're free to fight the ship: point the bow at a frigate and your gunner fires the torpedoes.</li>
       <li><b>Minefields</b> (bigger ships). A steering test: the captain gives no course orders there. The mines sit still and the ship moves through them: they stream past from ahead as you go (from astern going astern), faster and more often the harder you burn, and not at all while you're stopped. Turning swings the whole field around you. Steer between them: one that touches the shield hits hard, and holding course through the field will usually cost you the ship. The mines are small, so your gun crew only picks off some.</li>
@@ -572,12 +577,12 @@
 
 <script src="version.js?b=d4f1726e"></script>
 <script src="update-banner.js?b=ec7860dd"></script>
-<script src="js/data.js?b=8756cc6e"></script>
-<script src="js/sim.js?b=4ac2a752"></script>
+<script src="js/data.js?b=8b903e07"></script>
+<script src="js/sim.js?b=f8dcac52"></script>
 <script src="js/agents.js?b=3b5a60c4"></script>
 <script src="js/gunnery.js?b=685ea271"></script>
 <script src="js/ring.js?b=9e7070be"></script>
-<script src="js/helm.js?b=3aa73232"></script>
+<script src="js/helm.js?b=2741cf31"></script>
 <script src="js/art.js?b=b839fb3f"></script>
 <script src="js/turretview.js?b=960c39ae"></script>
 <script src="js/ringview.js?b=0ceb0d8b"></script>
@@ -586,6 +591,6 @@
 <script src="js/career.js?b=b8876d13"></script>
 <script src="js/speech.js?b=f9e428ef"></script>
 <script src="js/audio.js?b=273e5325"></script>
-<script src="js/ui.js?b=8b1fc44e"></script>
+<script src="js/ui.js?b=3c5c9299"></script>
 </body>
 </html>

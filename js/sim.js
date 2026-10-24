@@ -109,7 +109,8 @@
       g: d.cruiseG, gTarget: d.cruiseG, engineMW: d.cruiseG * d.engineMWperG, maxG: d.maxG,
       turnLoss: 0,                      // share of the top turn rate lost to thruster damage (the helm feels it)
       crippled: false, lifeLowSaid: false,
-      fresh: { hull: 0, g: 0, turn: 0 }, // damage taken since the last warp space repair
+      fresh: { hull: 0, g: 0, turn: 0, port: 0, stbd: 0 }, // damage taken since the last warp space repair
+      thrust: { port: 1, stbd: 1 },     // at the helm: each engine's share of its thrust left (engine damage)
       systems: d.systems.map(function (s) {
         return {
           id: s.id, name: s.name, short: s.short, kind: s.kind, gunner: s.gunner || 0,
@@ -665,7 +666,14 @@
 
   // Thruster damage: top speed down 1 G, and the ship turns 15% slower (the helm feels that).
   Mission.prototype.damageThrusters = function () {
-    var ship = this.ship, add = Math.min(BL.HELM.turnLoss, 0.6 - ship.turnLoss);
+    var ship = this.ship;
+    // At the helm a hit takes one engine's thrust, port or starboard: the ship drifts toward it.
+    if (this.helm) {
+      var H = BL.HELM, side = this.rng.chance(0.5) ? "port" : "stbd", loss = Math.max(0, Math.min(H.engineHit, ship.thrust[side] - H.engineMin));
+      ship.thrust[side] -= loss; ship.fresh[side] += loss;
+      return (side === "port" ? "port" : "starboard") + " engine damaged, " + Math.round(ship.thrust[side] * 100) + "% thrust";
+    }
+    var add = Math.min(BL.HELM.turnLoss, 0.6 - ship.turnLoss);
     if (ship.maxG > 1) { ship.maxG -= 1; ship.fresh.g += 1; }
     ship.turnLoss += add; ship.fresh.turn += add;
     return "thrusters damaged, top speed now " + ship.maxG + " G" + (this.helm ? ", turning " + Math.round(ship.turnLoss * 100) + "% slower" : "");
@@ -707,7 +715,10 @@
     });
     if (f.g > 0) { ship.maxG += f.g / 2; done.push("thrusters top speed now " + ship.maxG + " G"); }
     if (f.turn > 0) { ship.turnLoss = Math.max(0, ship.turnLoss - f.turn / 2); if (this.helm) done.push("thrusters turning " + (ship.turnLoss > 0.005 ? Math.round(ship.turnLoss * 100) + "% slower" : "at full rate")); }
-    ship.fresh = { hull: 0, g: 0, turn: 0 };
+    ["port", "stbd"].forEach(function (k) {
+      if (f[k] > 0) { ship.thrust[k] = Math.min(1, ship.thrust[k] + f[k] / 2); done.push((k === "port" ? "port" : "starboard") + " engine " + (ship.thrust[k] < 0.995 ? Math.round(ship.thrust[k] * 100) + "% thrust" : "at full thrust")); }
+    });
+    ship.fresh = { hull: 0, g: 0, turn: 0, port: 0, stbd: 0 };
     this.lastRepairs = done;
     if (done.length) this.say("Damage control: repairs complete. Half the damage is fixed; the rest needs a shipyard.", "good");
     return done;

@@ -114,6 +114,14 @@
     } else i = clamp(i + dir, 0, list.length - 1);
     return this.setOrder(side, list[i].id);
   };
+  // Trim one engine (`side` "port" or "stbd") a BL.HELM.trim G step up or down: to match a damaged engine.
+  Helm.prototype.trimEngine = function (side, dir) {
+    if (this.locked()) return false;
+    var full = this.full(), g = Math.round((this[side].g + dir * this.H.trim) * 100) / 100;
+    this[side] = { g: clamp(g, -full * 0.5, full * 1.1), ord: null };
+    this.m.cue("tick");
+    return true;
+  };
   // A G order for both engines: "all ahead 3 G". From the order they have, one whole G up or down.
   Helm.prototype.nudgeG = function (dir) {
     if (this.locked()) return false;
@@ -438,16 +446,25 @@
   Helm.prototype.onJumpHeading = function () { return this.jumpHdg === null || Math.abs(norm(this.jumpHdg - this.compass())) <= this.H.order.heading; };
   // Inside the jump corridor (BL.HELM.corridor.jump either side of the jump heading): no jump without it.
   Helm.prototype.inJumpCorridor = function () { return this.jumpHdg === null || Math.abs(norm(this.jumpHdg - this.compass())) <= this.H.corridor.jump; };
-  // Drive full, window open, bow still off the jump heading for 20 s: the captain takes the
+  // Drive full, window open, bow still outside the jump corridor for 20 s: the captain takes the
   // conn and has the autopilot bring her round (the jump is late).
   Helm.prototype.runConn = function (dt) {
     var m = this.m, d = m.sys("drive");
-    if (this.jumpHdg === null || this.conTaken || !d || m.t < m.windowAt() || d.mj < d.maxMJ - 0.5 || this.onJumpHeading()) { this.conT = 0; return; }
+    if (this.conTaken) { this.matchEngines(); return; }          // his conn: engines kept matched
+    if (this.jumpHdg === null || !d || m.t < m.windowAt() || d.mj < d.maxMJ - 0.5 || this.inJumpCorridor()) { this.conT = 0; return; }
     this.conT += dt;
     if (this.conT < 20) return;
     this.conTaken = true;
     this.setAuto(true, this.jumpHdg);
+    this.matchEngines();                // (a damaged engine would hold her off the jump heading)
     m.chat("takeConn", { hdg: BL.hdgText(this.jumpHdg) }, "bad");
+  };
+  // Ease the stronger engine back so both give the same thrust (no drift from a damaged engine).
+  Helm.prototype.matchEngines = function () {
+    var th = this.m.ship.thrust, p = this.port.g * th.port, s = this.stbd.g * th.stbd;
+    if (Math.abs(p - s) < 0.01) return;
+    if (p > s) this.port = { g: Math.round(s / th.port * 100) / 100, ord: null };
+    else this.stbd = { g: Math.round(p / th.stbd * 100) / 100, ord: null };
   };
   // Lining up for the jump, off the heading: the captain orders it (again, if the bow wanders off).
   Helm.prototype.runJumpOrder = function () {
@@ -488,13 +505,16 @@
     this.hist.push([m.totalT, this.wheel, this.port.g, this.stbd.g]);
     var lag = this.lagged();
     var k = 1 - Math.exp(-dt / (H.engineTau + H.engineLagTau * C.lag));     // big ships' engines spool slower too
-    this.out.port += (lag[2] - this.out.port) * k;
-    this.out.stbd += (lag[3] - this.out.stbd) * k;
+    var th = ship.thrust || { port: 1, stbd: 1 };           // a damaged engine gives only its share
+    this.out.port += (lag[2] * th.port - this.out.port) * k;
+    this.out.stbd += (lag[3] * th.stbd - this.out.stbd) * k;
     this.speed += ((this.out.port + this.out.stbd) / 2 - this.speed) * (1 - Math.exp(-dt / H.speedTau));
-    // The turn: the wheel asks for a share of the top rate, split engines add more; the ship
-    // gets there (and back) at its build rate.
+    // The turn: the wheel asks for a share of the top rate; engines giving different thrust add
+    // more (split on purpose, or one engine damaged: the bow drifts toward the weak one), up to
+    // H.split of the top rate. The ship gets there (and back) at its build rate.
     var top = this.topTurn(), full = this.full();
-    var want = lag[1] * top + (this.out.port - this.out.stbd) / (2 * full) * H.split * top;
+    var split = clamp((this.out.port - this.out.stbd) * H.yaw * this.C.safe, -H.split * top, H.split * top);
+    var want = lag[1] * top + split;
     this.want = want = clamp(want, -top * 1.6, top * 1.6);
     var b = C.build * this.turnFactor() * (ship.crippled ? 0.7 : 1);
     this.omega += clamp(want - this.omega, -b * dt, b * dt);

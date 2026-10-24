@@ -548,3 +548,7 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
   .cap-read { font-size: 11px; }
   .left, .right { gap: 7px; }
 }
+.hm-trim { display: grid; grid-template-columns: auto auto 1fr auto auto; gap: 4px; align-items: center; margin-top: 4px; }
+.hm-trim button { padding: 3px 7px; font-size: 12px; touch-action: manipulation; }
+.hm-trim span { text-align: center; font: 11px var(--mono); color: var(--muted); }
+.hm-engdmg { margin-top: 4px; font: 12px var(--mono); color: var(--bad, #e0604a); }
