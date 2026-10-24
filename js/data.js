@@ -734,10 +734,10 @@
     // gun, the jump heading) comes with `warn` s notice (time to hear it) plus time to swing, held `callHold` s
     // The corridor (Oct 23, 2026, TexasBont): the captain's course stands between orders, and the
     // pilot may swing `width` degrees either side of it (to dodge); from `jumpLead` s before the
-    // jump window he says "Steady as she goes" and the corridor narrows to `jump` degrees on the
+    // jump window, once the drive holds `drive` of its charge (Oct 24, 2026), he says "Steady as she goes" and the corridor narrows to `jump` degrees on the
     // jump heading. Out of it, the captain says so (at most every `say` s); outside a course order
     // that's disobeying. While turning onto a new order, mid-break or in a minefield there's none.
-    corridor: { width: 30, jump: 5, jumpLead: 10, say: 6, rejoin: 10 },   // rejoin: s after a break to come back inside
+    corridor: { width: 30, jump: 5, jumpLead: 10, drive: 0.95, say: 6, rejoin: 10 },   // rejoin: s after a break to come back inside
     order: { heading: 10, held: 0.7, minGap: 12, turn: [30, 100], warn: 6, grace: 2, callHold: 6, verdict: 3 },   // verdict: s the result shows on the panel
     autopilotRep: 0.75,    // autopilot time earns this share of the helm's reputation
     launch: { nagAfter: 8, autoAfter: 20, clear: 2.5, setIn: 5 },     // the gunboat in the carrier's tube; setIn: s to set the coxswain's standard

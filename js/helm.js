@@ -244,10 +244,13 @@
   Helm.prototype.setVerdict = function (met, part) {
     this.verdict = { met: met, text: met ? "Order met" : part ? "Missed: " + part : "Order missed", until: this.m.t + this.H.order.verdict };
   };
-  // "Steady as she goes": lined up for the jump, from BL.HELM.corridor.jumpLead s before the window.
+  // "Steady as she goes": lined up for the jump, from BL.HELM.corridor.jumpLead s before the window,
+  // once the drive is nearly full (BL.HELM.corridor.drive): no jump until it's full, so until then the
+  // pilot keeps his 30 degrees to dodge in. A drive strike that drops it below lifts the steady again.
   Helm.prototype.runSteady = function () {
-    var m = this.m, K = this.H.corridor;
-    if (this.steady || this.jumpHdg === null || this.conTaken || m.t < m.windowAt() - K.jumpLead || !this.onJumpHeading() || this.curOrder || this.inBreak()) return;
+    var m = this.m, K = this.H.corridor, dr = m.sys("drive"), ready = !dr || dr.mj >= dr.maxMJ * K.drive;
+    if (this.steady && !ready) { this.steady = false; this.steadyHdg = null; return; }
+    if (this.steady || !ready || this.jumpHdg === null || this.conTaken || m.t < m.windowAt() - K.jumpLead || !this.onJumpHeading() || this.curOrder || this.inBreak()) return;
     this.steady = true; this.steadyHdg = this.jumpHdg; this.course = this.jumpHdg;
     m.chat("jumpSteady", { who: this.who }, "info");
   };
