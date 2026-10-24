@@ -436,6 +436,8 @@
 
   /* ---------------------------------------------------------- Jump heading */
   Helm.prototype.onJumpHeading = function () { return this.jumpHdg === null || Math.abs(norm(this.jumpHdg - this.compass())) <= this.H.order.heading; };
+  // Inside the jump corridor (BL.HELM.corridor.jump either side of the jump heading): no jump without it.
+  Helm.prototype.inJumpCorridor = function () { return this.jumpHdg === null || Math.abs(norm(this.jumpHdg - this.compass())) <= this.H.corridor.jump; };
   // Drive full, window open, bow still off the jump heading for 20 s: the captain takes the
   // conn and has the autopilot bring her round (the jump is late).
   Helm.prototype.runConn = function (dt) {

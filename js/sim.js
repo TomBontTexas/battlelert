@@ -1038,8 +1038,10 @@
         full = false;
       }
     }
-    // At the helm the bow must be on the jump heading too.
-    if (full && this.helm && !this.helm.onJumpHeading()) {
+    // At the helm the bow must be inside the jump corridor too (5 degrees either side of the jump
+    // heading), through the countdown as well: off it, the jump waits.
+    if (full && this.helm && !this.helm.inJumpCorridor()) {
+      if (this.phase === "countdown") { this.phase = "engage"; this.helm.jumpSaid = false; }
       if (t >= this.windowAt() && !this.helm.jumpSaid) { this.helm.jumpSaid = true; this.chat("jumpHeading", { hdg: BL.hdgText(this.helm.jumpHdg) }, "warn"); this.cue("warn"); }
       full = false;
     }
