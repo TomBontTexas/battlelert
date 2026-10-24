@@ -203,8 +203,11 @@
     levels: function (classId) { return classId === "gunboat" ? [4] : [5, 6, 7]; },
     base: function (classId) { return classId === "gunboat" ? 4 : 6; },
     clamp: function (classId, tl) { var L = BL.TECH.levels(classId); return Math.max(L[0], Math.min(L[L.length - 1], Math.round(+tl) || BL.TECH.base(classId))); },
-    // Strength against the class numbers: the gunboat's one level is its numbers; TL5 0.9, TL6 1.0, TL7 1.1.
+    // Strength against the class numbers: the gunboat's one level is its numbers; TL5 0.9 (its reactor 0.95), TL6 1.0, TL7 1.1.
     factor: function (tl, classId) { return classId === "gunboat" ? 1 : 1 + 0.1 * (BL.TECH.clamp(classId, tl) - 6); },
+    // The reactor's own output: as factor, except TL5's is 95% (Oct 24, 2026: its engines and life
+    // support draw what a TL6 ship's do, and at 90% the engine room had too little to spare).
+    reactor: function (tl, classId) { return BL.TECH.clamp(classId, tl) === 5 ? 0.95 : BL.TECH.factor(tl, classId); },
     forceStep: 0.15,         // enemy force x (1 + forceStep x (tl - 6)) for our tech level (Mission.force)
     repMult: function (tl) { return 1 + 0.25 * (7 - Math.max(4, Math.min(7, tl))); }   // TL4 x1.75 ... TL7 x1.0
   };
@@ -245,7 +248,7 @@
     var c = BL.classById(classId); tl = BL.TECH.clamp(c.id, tl); var f = BL.TECH.factor(tl, c.id), mkD = BL.MK.dmg(c.n), mkC = BL.MK.charge(c.n);
     function r(v) { return Math.round(v); }
     var reactors = (c.reactors || [{ name: "", mw: c.reactorMW, aux: c.aux }]).map(function (x) {
-      return { name: x.name, mw: r(x.mw * f), aux: { capacity: r(x.aux.capacity * f), rateMW: r(x.aux.rateMW * f) } };
+      return { name: x.name, mw: r(x.mw * BL.TECH.reactor(tl, c.id)), aux: { capacity: r(x.aux.capacity * f), rateMW: r(x.aux.rateMW * f) } };
     });
     return {
       classId: c.id, className: c.name, n: c.n, tl: tl, reactors: reactors,
