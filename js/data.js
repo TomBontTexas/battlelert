@@ -331,24 +331,25 @@
   // the same standard as the gun and the helm (BL.CREW_GUNS; part-destroyed waves fire less).
   // FORCE_ENC: an encounter's own force on a class, so each kind of fight is even, not just the
   // class's average (a minefield's force is how thick the field is: mines per second x force).
-  // Oct 25, 2026 (TexasBont: thin the story missions that were close to unwinnable): from the
-  // destroyer escort up, forces x0.93 (destroyer escort, cruiser, battleship), x0.95 (heavy cruiser)
-  // and x0.9 (dreadnought), so the AI crews at the three stations together win about half.
+  // Oct 25, 2026 (TexasBont): the floor rule. Each class's forces are set so the station that wins
+  // least there (AI crews: engineer, test gunner, test pilot on that station's story missions; the
+  // pilot bot leaves out minefields, it doesn't steer round mines) wins about half; the other two
+  // win more. As a weak station's own model improves, its class's enemies go back up.
   BL.FORCE_ENC = {
-    gunboat:         { raiders: 4.28, interceptors: 2.39, frigate: 1.51, minefield: 3.5 },   // interceptors a notch under the AI's even (TexasBont at the gun)
-    picket:          { raiders: 3.99, interceptors: 2.69, frigate: 1.35 },
-    destroyerEscort: { raiders: 4.86, interceptors: 4.33, frigate: 1.74, hunters: 0.5 },
-    destroyer:       { interceptors: 5.25, siege: 5.42, frigate: 2.83, cruiserA: 1.77, hunters: 0.5 },
-    lightCruiser:    { raiders: 9.38, siege: 7.85, frigate: 3.82, cruiserA: 2.47, hunters: 0.5 },
-    cruiser:         { raiders: 13.23, interceptors: 9.39, frigate: 4.98, cruiserA: 3.78, hunters: 0.5 },
-    heavyCruiser:    { interceptors: 11.62, frigate: 6.28, cruiserA: 4.85, battleshipA: 2.96 },
-    battleship:      { siege: 13.78, frigate: 6.51, cruiserA: 5.07, battleshipA: 3.41 },
-    dreadnought:     { siege: 15.63, frigate: 7.36, cruiserA: 5.83, battleshipA: 3.85 }
+    gunboat:         { raiders: 3.6, interceptors: 2.01, frigate: 1.27, minefield: 3.5 },   // interceptors a notch under the AI's even (TexasBont at the gun)
+    picket:          { raiders: 3.39, interceptors: 2.29, frigate: 1.15 },
+    destroyerEscort: { raiders: 4.37, interceptors: 3.9, frigate: 1.57, hunters: 0.5 },
+    destroyer:       { interceptors: 5.04, siege: 5.2, frigate: 2.72, cruiserA: 1.7, hunters: 0.5 },
+    lightCruiser:    { raiders: 8.72, siege: 7.3, frigate: 3.55, cruiserA: 2.3, hunters: 0.5 },
+    cruiser:         { raiders: 12.7, interceptors: 9.01, frigate: 4.78, cruiserA: 3.63, hunters: 0.5 },
+    heavyCruiser:    { interceptors: 10.81, frigate: 5.84, cruiserA: 4.51, battleshipA: 2.75 },
+    battleship:      { siege: 12.4, frigate: 5.86, cruiserA: 4.56, battleshipA: 3.07 },
+    dreadnought:     { siege: 13.75, frigate: 6.48, cruiserA: 5.13, battleshipA: 3.39 }
     // (drive hunters can't sink a ship, they drain its drive. They meet the destroyer escort and up,
     // which all carry a CIWS: on the destroyer escort to the cruiser a pack comes half the times one
     // is due; the class's force from the heavy cruiser up)
   };
-  BL.FORCE = { gunboat: 2.84, picket: 2.84, destroyerEscort: 3.39, destroyer: 2.65, lightCruiser: 2.88, cruiser: 3.96, heavyCruiser: 5.13, battleship: 3.44, dreadnought: 4.19 };
+  BL.FORCE = { gunboat: 2.39, picket: 2.41, destroyerEscort: 3.05, destroyer: 2.54, lightCruiser: 2.68, cruiser: 3.8, heavyCruiser: 4.77, battleship: 3.1, dreadnought: 3.69 };
 
   /* --------------------------------------------------------- Encounters
      Each encounter is a load pattern. Ranges [a, b] are rolled from the mission seed.
