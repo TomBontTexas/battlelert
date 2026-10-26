@@ -513,8 +513,7 @@
     // more (split on purpose, or one engine damaged: the bow drifts toward the weak one), up to
     // H.split of the top rate. The ship gets there (and back) at its build rate.
     var top = this.topTurn(), full = this.full();
-    var split = clamp((this.out.port - this.out.stbd) * H.yaw * this.C.safe, -H.split * top, H.split * top);
-    var want = lag[1] * top + split;
+    var want = lag[1] * top + this.splitTurn();
     this.want = want = clamp(want, -top * 1.6, top * 1.6);
     var b = C.build * this.turnFactor() * (ship.crippled ? 0.7 : 1);
     this.omega += clamp(want - this.omega, -b * dt, b * dt);
@@ -552,6 +551,11 @@
     if (wait >= L.nagAfter && this.tubeSaid < 1) { this.tubeSaid = 1; m.chat("helmNag", null, "warn"); m.cue("warn"); }
     if (wait >= L.autoAfter) { m.chat("helmAuto", null, "bad"); this.launch(); }
   };
+  // The turn the engines add when they give different thrust (deg/s, + to starboard).
+  Helm.prototype.splitTurn = function () {
+    var H = this.H, top = this.topTurn();
+    return clamp((this.out.port - this.out.stbd) * H.yaw * this.C.safe, -H.split * top, H.split * top);
+  };
   Helm.prototype.autopilot = function () {
     var C = this.C, top = this.topTurn(), b = C.build * this.turnFactor() * 0.8;
     var err = norm(this.autoHdg - this.compass()), pred = err - this.omega * C.lag;
@@ -561,7 +565,8 @@
     var gain = Math.min(2, 1 / (3 * (C.lag + 0.05)));
     var want = (pred < 0 ? -1 : 1) * Math.min(vmax, Math.sqrt(2 * b * Math.abs(pred)), gain * Math.abs(pred));
     if (Math.abs(err) < 0.3 && Math.abs(this.omega) < 0.5) want = 0;
-    this.wheel = clamp(want / top, -1, 1);
+    // A damaged engine pulls the bow toward it: the wheel takes that off, so she still turns under the safe rate.
+    this.wheel = clamp((want - this.splitTurn()) / top, -1, 1);
   };
   // Turning past the safe rate fills the stress bar; a full bar is a structural hit.
   Helm.prototype.runStress = function (dt) {
