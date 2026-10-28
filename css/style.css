@@ -630,4 +630,6 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 .plot-warn div.bad { color: var(--bad); }
 .plot-warn div.ok { color: var(--good); }
 .plot-btns { display: flex; gap: 6px; flex-wrap: wrap; }
+#ov-plot button:disabled, .cp-orders button:disabled { opacity: .45; cursor: default; }
+#pl-go:disabled { background: var(--panel-2); border-color: var(--line); color: var(--muted); }
 @media (max-width: 760px) { .plot-main { grid-template-columns: 1fr; } .plot-mapbox { max-height: 48vh; max-width: 48vh; } }

@@ -172,27 +172,34 @@
     // so after a break or a course of his own she comes back onto the line, not across a field.
     var a = pts[k], L = dist(a, wp), u = L ? segNear(a, wp, this.pos).u : 1, ahead = Math.min(1, u + BL.COMMAND.lookahead * this.map().D / Math.max(1, L));
     var aim = { x: a.x + (wp.x - a.x) * ahead, y: a.y + (wp.y - a.y) * ahead };
-    var steer = last && this.inZone() ? this.info.jumpHdg : Math.round(bearing(this.pos, ahead >= 1 ? wp : aim)) % 360;
+    var steer = (last || this.jumpOrdered) && this.inZone() ? this.info.jumpHdg : Math.round(bearing(this.pos, ahead >= 1 ? wp : aim)) % 360;
     var spd = Math.max(0.1, this.m.helm.speed) * BL.COMMAND.scale, d = dist(this.pos, wp);
     var next = last ? null : { hdg: this.info.legs[k + 1].hdg, in: d / spd };
     return { leg: k + 1, legs: pts.length - 1, steer: steer, eng: plot.eng[k], wp: wp, last: last, next: next, toZone: Math.max(0, dist(this.pos, this.map().jump) - this.map().jump.r), d: d };
   };
-  Captain.prototype.inZone = function () { var j = this.map().jump; return dist(this.pos, j) <= j.r; };
+  // In the jump zone (k: times its radius, for an ordered jump that's coasting to a stop).
+  Captain.prototype.inZone = function (k) { var j = this.map().jump; return dist(this.pos, j) <= j.r * (k || 1); };
   // What the helm is to do now: the captain's own course and engines, else the plot's.
   Captain.prototype.helmView = function () {
     var nv = this.navView(), j = this.map().jump, hd = (this.info.jumpHdg || 0) * RAD;
     // Holding in the zone: dead slow up to the jump point, stopped once she's past it.
     var past = (this.pos.x - j.x) * Math.sin(hd) + (this.pos.y - j.y) * Math.cos(hd) > 0;
     var hold = past ? "stop" : "deadSlow";
+    // The jump ordered: the pilot lines up on the jump heading and holds her in the zone until she goes.
+    // (Stopped at once; she may coast a little past the zone's edge: an ordered jump allows
+    // BL.COMMAND.zoneHold x its radius. Farther out, he brings her back in at dead slow first.)
+    if (this.jumpOrdered) return this.inZone(BL.COMMAND.zoneHold) ? { hdg: this.info.jumpHdg, eng: "stop", own: false, nav: nv, holding: true }
+      : { hdg: Math.round(bearing(this.pos, j)) % 360, eng: "deadSlow", own: false, nav: nv, holding: false };
     return { hdg: this.hdgOrder !== null ? this.hdgOrder : nv.steer, eng: this.engOrder || (this.holding ? hold : nv.eng), own: this.hdgOrder !== null || !!this.engOrder, nav: nv, holding: this.holding };
   };
 
   /* ------------------------------------------------------------- Orders */
   Captain.prototype.orderCourse = function (hdg) {
+    this.jumpOrdered = false;                         // (a course of his own calls off the jump)
     this.hdgOrder = Math.round(to360(hdg)) % 360;
     this.m.cue("tick");
   };
-  Captain.prototype.orderEngines = function (id) { if (!this.m.helm.preset(id)) return; this.engOrder = id; this.m.cue("tick"); };
+  Captain.prototype.orderEngines = function (id) { if (!this.m.helm.preset(id)) return; this.jumpOrdered = false; this.engOrder = id; this.m.cue("tick"); };
   // Back to the plot: the navigation computer steers for the next waypoint.
   Captain.prototype.resumePlot = function () { this.hdgOrder = null; this.engOrder = null; this.m.cue("tick"); };
   Captain.prototype.setStance = function (id) { if (!BL.COMMAND.stances[id]) return; this.stance = id; this.applyStance(); this.m.cue("tick"); };
@@ -250,21 +257,24 @@
     return side > 0 ? 1 : -1;
   };
   Captain.prototype.warn = function () { return this.m.helm.warn(); };
-  // Ready to jump: drive full (and the buster, the squadron home: Mission.runJump), window open,
-  // in the jump zone, on the jump heading.
+  // Ready to order the jump: drive full (and the buster, the squadron home: Mission.runJump),
+  // window open, in the jump zone. Once ordered, the pilot swings onto the jump heading and holds
+  // her in the zone (the captain's own course and engines are cancelled); `wait` says what the
+  // ordered jump is still waiting for.
   Captain.prototype.jumpView = function () {
     var m = this.m, d = m.sys("drive"), h = m.helm;
-    var why = !d ? null : d.mj < d.maxMJ - 0.5 ? "Drive " + Math.floor(d.mj / d.maxMJ * 100) + "%" : m.t < m.windowAt() ? "Window in " + Math.ceil(m.windowAt() - m.t) + "s" :
-      !this.inZone() ? "Outside the zone" : !h.inJumpCorridor() ? "Off jump heading" : null;
-    return { ready: !why, why: why, ordered: this.jumpOrdered };
+    var drive = !d ? null : d.mj < d.maxMJ - 0.5 ? "Drive " + Math.floor(d.mj / d.maxMJ * 100) + "%" : null;
+    var why = drive || (m.t < m.windowAt() ? "Window in " + Math.ceil(m.windowAt() - m.t) + "s" : !this.inZone() ? "Outside the zone" : null);
+    var wait = !this.jumpOrdered ? null : drive || (!this.inZone(BL.COMMAND.zoneHold) ? "BACK TO THE ZONE" : !h.inJumpCorridor() ? "LINING UP " + BL.hdgText(this.info.jumpHdg) : null);
+    return { ready: !why, why: why, ordered: this.jumpOrdered, wait: wait };
   };
   Captain.prototype.orderJump = function () {
     if (!this.jumpView().ready || this.jumpOrdered) return false;
-    this.jumpOrdered = true; this.m.cue("tick");
+    this.jumpOrdered = true; this.hdgOrder = null; this.engOrder = null; this.m.cue("tick");
     return true;
   };
   // Mission.runJump asks: may the countdown run?
-  Captain.prototype.mayJump = function () { return this.jumpOrdered && this.inZone(); };
+  Captain.prototype.mayJump = function () { return this.jumpOrdered && this.inZone(BL.COMMAND.zoneHold); };
 
   /* ------------------------------------------------------------- The tick */
   Captain.prototype.step = function (dt) {
@@ -283,8 +293,7 @@
     var zone = this.inZone();
     if (zone && this.cur.zoneAt === null) this.cur.zoneAt = m.t;
     // In the zone on the last leg, the pilot holds her there (dead slow, then stopped) for the jump.
-    this.holding = zone && this.leg >= pts.length - 2;
-    if (this.jumpOrdered && !zone) this.jumpOrdered = false;
+    this.holding = zone && (this.leg >= pts.length - 2 || this.jumpOrdered);
     // Asteroids: inside a field, a hit every `rockEvery` s.
     var rock = map.rocks.some(function (o) { return dist(o, this.pos) < o.r; }, this);
     if (rock && m.t >= this.rockNext && (m.phase === "engage" || m.phase === "countdown" || m.phase === "arrival")) { this.rockNext = m.t + K.rockEvery; this.rockHit(); }

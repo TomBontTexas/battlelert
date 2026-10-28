@@ -801,12 +801,13 @@
      how close counts as passing a waypoint; dogleg: the navigator's sidestep to make a third leg;
      lookahead: how far ahead on the leg the NPC pilot steers for.
      An asteroid field hits like a mine (rockMJ, shields first), every rockEvery s inside it.
-     Navigation scores full marks in the zone by the window + zoneGrace s. */
+     Navigation scores full marks in the zone by the window + zoneGrace s. An ordered jump allows
+     zoneHold x the zone's radius (the ship coasting to a stop). */
   BL.COMMAND = {
     scale: 1, reach: 0.7, jumpOff: [0, 50], zone: 0.08,
     rocks: [1, 4], rockR: [0.06, 0.11], clusters: [0, 2], clusterR: [0.08, 0.12], margin: 0.07,
     legs: [3, 8], maxTurn: 100, early: 5, capture: 0.05, dogleg: 0.08, lookahead: 0.1,
-    rockMJ: 90, rockEvery: 4, zoneGrace: 5,
+    rockMJ: 90, rockEvery: 4, zoneGrace: 5, zoneHold: 1.5,
     // Standing orders at the start of a mission (the captain changes them on the bridge).
     standing: { guns: "auto", stance: "balanced" },
     stances: { shields: { name: "Shields first", short: "SHIELDS" }, balanced: { name: "Balanced", short: "BALANCED" }, guns: { name: "Guns first", short: "GUNS" } },

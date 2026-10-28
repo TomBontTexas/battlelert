@@ -1446,7 +1446,7 @@
     var jb = $("cp-jump");
     jb.disabled = !live || !jv.ready || jv.ordered || sim.phase === "countdown";
     jb.classList.toggle("ready", jv.ready && !jv.ordered);
-    setHtml(jb, jv.ordered || sim.phase === "countdown" ? "JUMPING" : jv.ready ? "JUMP <small>(J)</small>" : esc(jv.why || "JUMP"));
+    setHtml(jb, sim.phase === "countdown" ? "JUMPING" : jv.ordered ? esc(jv.wait || "JUMPING") : jv.ready ? "JUMP <small>(J)</small>" : esc(jv.why || "JUMP"));
     // SHIP
     setText($("tu-hull-val"), Math.max(0, Math.round(ship.hull)) + " / " + ship.hullMax);
     $("tu-hull").style.width = pct(ship.hull / ship.hullMax);
@@ -1558,6 +1558,7 @@
     if (!warn.length) warn.push(["ok", "✔ Clear course, on time"]);
     $("pl-warn").innerHTML = warn.map(function (x) { return '<div class="' + x[0] + '">' + x[1] + "</div>"; }).join("");
     $("pl-go").disabled = info.count < K.legs[0] || info.count > K.legs[1];
+    setHtml($("pl-go"), info.count < K.legs[0] ? "Needs " + K.legs[0] + "+ legs (" + info.count + " now)" : "Accept <small>(Enter)</small>");
     $("pl-undo").disabled = e.plot.pts.length <= 2;
   }
   function plotAdd(p) {
