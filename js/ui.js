@@ -2059,7 +2059,7 @@
     var sh = one("shield"); if (sh) rows.push(["Shields", cap(sh)]);
     rows.push(["Engines", "cruise " + d.cruiseG + " G, full " + d.maxG + " G"]);
     if (helm) rows.push(["Turn", "up to " + helm.top + "°/s, safe to " + helm.safe + "°/s"]);
-    var mg = one("main"); if (mg) rows.push(["Main gun", cap(mg) + " · fires off the bow"]);
+    var mg = one("main");   // listed with the guns below
     var pd = one("pd"); if (pd) rows.push(["CIWS", cap(pd) + " · " + ((BL.ART.OURS[e.classId] || {}).pd || []).length + " mounts"]);
     var hg = one("hangar"); if (hg) rows.push(["Hangar", cap(hg) + " · a gunboat squadron"]);
     if (d.torpedoes) rows.push(["Torpedoes", d.torpedoes + ", reloaded by the carrier every sortie"]);
@@ -2069,14 +2069,18 @@
     var ring = BL.GUNNERY.ring.classes[e.classId], load = BL.GUNNERY.loadout[e.classId] || [];
     // Each gun with its ratings at this mark: what a shot costs, how fast it fires, how many shots a
     // full capacitor holds and what it draws firing nonstop. The guns share one capacitor size, given
-    // in a line underneath (a column only if they ever differ).
+    // in a line underneath (a column only if they ever differ). The main gun leads: each shot spends
+    // its whole capacitor, and it fires again once that's full, so its rate is set by the charge.
     var guns = sysOf("gun"), same = guns.every(function (g) { return g.maxMJ === guns[0].maxMJ && g.maxMW === guns[0].maxMW; });
-    $("card-guns").innerHTML = "<tr><th>#</th><th>Type</th><th>Mount</th><th>Arc</th><th>Per shot</th><th>Rate</th><th>Shots</th><th>Draw</th>" + (same ? "" : "<th>Capacitor</th>") + "</tr>" + guns.map(function (g, i) {
+    var mainRow = !mg ? "" : "<tr><td>M</td><td>Main gun (spinal)</td><td>on the centerline</td><td>dead ahead</td><td>" + mg.maxMJ + " MJ</td><td>every " +
+      (Math.round(mg.maxMJ / mg.maxMW * 10) / 10) + " s</td><td>1</td><td>" + mg.maxMW + " MJ/s</td>" + (same ? "" : "<td>" + cap(mg) + "</td>") + "</tr>";
+    $("card-guns").innerHTML = "<tr><th>#</th><th>Type</th><th>Mount</th><th>Arc</th><th>Per shot</th><th>Rate</th><th>Shots</th><th>Draw</th>" + (same ? "" : "<th>Capacitor</th>") + "</tr>" + mainRow + guns.map(function (g, i) {
       var a = ring.arcs[i] || [0, 180, 0], W = BL.WEAPONS[load[i]] || { name: "", shotMJ: 0, interval: 1 }, shot = W.shotMJ * (d.mkCharge || 1), per = 1 / W.interval;
       return "<tr><td>" + (i + 1) + "</td><td>" + W.name + " Mk " + d.mk + "</td><td>" + (ring.arcNames[i] || "") + "</td><td>" + (a[1] >= 180 ? "all round" : 2 * a[1] + "°") + "</td><td>" +
         Math.round(shot) + " MJ</td><td>" + per + "/s</td><td>" + (shot ? Math.floor(g.maxMJ / shot) : "–") + "</td><td>" + Math.round(shot * per) + " MJ/s</td>" + (same ? "" : "<td>" + cap(g) + "</td>") + "</tr>";
     }).join("");
-    $("card-gun-cap").textContent = same && guns.length ? (guns.length > 1 ? "Each gun: " : "Gun: ") + cap(guns[0]) + ". Shots = shots from a full capacitor; Draw = power used firing nonstop." : "";
+    $("card-gun-cap").textContent = same && guns.length ? (guns.length > 1 ? "Each gun: " : "Gun: ") + cap(guns[0]) + (mg ? "; main gun: " + cap(mg) : "") +
+      ". Shots = shots from a full capacitor; Draw = power used firing nonstop." : "";
     var ms = rec ? rec.missions.slice().reverse() : [];
     $("card-service").innerHTML = "<tr><th>Date</th><th>Mission</th><th>Systems</th><th>Outcome</th><th>Score</th><th>Ships destroyed</th><th>Hull lost</th></tr>" +
       (ms.length ? ms.map(function (m) {
