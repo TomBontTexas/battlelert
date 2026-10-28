@@ -2079,8 +2079,10 @@
       return "<tr><td>" + (i + 1) + "</td><td>" + W.name + " Mk " + d.mk + "</td><td>" + (ring.arcNames[i] || "") + "</td><td>" + (a[1] >= 180 ? "all round" : 2 * a[1] + "°") + "</td><td>" +
         Math.round(shot) + " MJ</td><td>" + per + "/s</td><td>" + (shot ? Math.floor(g.maxMJ / shot) : "–") + "</td><td>" + Math.round(shot * per) + " MJ/s</td>" + (same ? "" : "<td>" + cap(g) + "</td>") + "</tr>";
     }).join("");
-    $("card-gun-cap").textContent = same && guns.length ? (guns.length > 1 ? "Each gun: " : "Gun: ") + cap(guns[0]) + (mg ? "; main gun: " + cap(mg) : "") +
-      ". Shots = shots from a full capacitor; Draw = power used firing nonstop." : "";
+    // Short pieces that never break inside, so a line only wraps between them.
+    var nw = function (t) { return '<span class="nw">' + t + "</span>"; };
+    $("card-gun-cap").innerHTML = same && guns.length ? "<div>" + nw((guns.length > 1 ? "Each gun: " : "Gun: ") + cap(guns[0])) + (mg ? " · " + nw("Main gun: " + cap(mg)) : "") + "</div>" +
+      "<div>" + nw("Shots: from a full capacitor") + " · " + nw("Draw: power used firing nonstop") + "</div>" : "";
     var ms = rec ? rec.missions.slice().reverse() : [];
     $("card-service").innerHTML = "<tr><th>Date</th><th>Mission</th><th>Systems</th><th>Outcome</th><th>Score</th><th>Ships destroyed</th><th>Hull lost</th></tr>" +
       (ms.length ? ms.map(function (m) {
