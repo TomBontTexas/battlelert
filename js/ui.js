@@ -84,6 +84,14 @@
     var seed = parseInt($("seed-input").value, 10);
     startBriefing(helmJob(seed > 0 ? seed : BL.randomSeed()));
   };
+  // The captain bridge test: a destroyer; you on the bridge, plotting each system's course in warp
+  // space and giving the orders; an NPC crew (pilot, gun crew, engineer) carries them out.
+  function captainJob(seed) { return { test: true, station: "captain", classId: "destroyer", n: 4, tl: BL.TECH.base("destroyer"), ship: "Destroyer", seed: seed, helm: true, captain: true }; }
+  $("btn-captain").onclick = function () {
+    BL.audio.init(); click();
+    var seed = parseInt($("seed-input").value, 10);
+    startBriefing(captainJob(seed > 0 ? seed : BL.randomSeed()));
+  };
   function gunnerJob(seed) { return { test: true, station: "gunner", classId: "gunboat", n: 1, tl: 4, ship: "Gunboat", seed: seed, weapon: settings.gunPick || "pulse" }; }
   $("gun-pick").value = BL.WEAPONS[settings.gunPick] ? settings.gunPick : "pulse";
   $("gun-pick").onchange = function () { settings.gunPick = this.value; saveSettings(); };
@@ -106,7 +114,7 @@
     // Every class with a ring layout fights in the ring view (the turret test: its one gun is the one picked).
     if (guns && rc) { guns.ring = true; guns.arcs = rc.arcs; guns.arcNames = rc.arcNames; if (!guns.weapons) guns.weapons = [guns.weapon]; delete guns.weapon; }
     var story = j.story && BL.storyMission(j.story);
-    sim = new BL.Mission({ seed: j.seed, classId: j.classId, tl: j.tl, gunner: guns, helm: !!j.helm, sweep: j.test && j.classId === "gunboat" && !!guns,
+    sim = new BL.Mission({ seed: j.seed, classId: j.classId, tl: j.tl, gunner: guns, helm: !!j.helm, captain: !!j.captain, sweep: j.test && j.classId === "gunboat" && !!guns,
       route: story ? story.systems : null, reports: story ? story.reports.map(storyText) : null });
     if (j.test) $("seed-input").value = j.seed;
     var d = sim.data, cls = BL.classById(j.classId);
@@ -149,9 +157,10 @@
     $("brief-buster").hidden = !sim.sys("buster");
     var gunner = !!sim.turret;
     $("brief-eng").hidden = gunner; $("brief-gun").hidden = !gunner;
-    $("brief-station").textContent = sim.helm ? "Your station: the helm (the " + sim.helm.who.toLowerCase() + " gives the orders; the engineer runs the power)" :
+    $("brief-station").textContent = sim.captain ? "Your post: the bridge (you plot the course and give the orders; your crew carry them out)" : sim.helm ? "Your station: the helm (the " + sim.helm.who.toLowerCase() + " gives the orders; the engineer runs the power)" :
       gunner ? "Your station: Gun 1 (the engineer runs the power)" : "Your station: Main Engineering";
-    $("brief-helm").hidden = !sim.helm;
+    $("brief-helm").hidden = !sim.helm || !!sim.captain;
+    $("brief-captain").hidden = !sim.captain;
     $("brief-sweep").hidden = sim.route.indexOf("sweep") < 0;
     if (gunner) {
       var en = sim.turret.engineer;
@@ -190,6 +199,7 @@
     else { buildConsole(); show("scr-console"); }
     gravShown = false; doneShown = false; paused = false; looking = false;
     lastLogKey = ""; lastDamageLen = -1; lastSpoken = 0; selected = 0; acc = 0;
+    if (sim.captain) { openPlot(); return; }     // the bridge: plot the first system's course, then drop out of warp space
     sim.beginJump();
     running = true;
     speakNew();     // say the first line inside this tap: iPad Safari only wakes its voices for a real line spoken from a tap
@@ -444,7 +454,8 @@
       if (ev.key === "Escape") { overlay("ov-options", false); overlay("ov-how", false); }
       return;
     }
-    if (inTurret() && sim && ev.target.tagName !== "INPUT" && ev.target.tagName !== "SELECT") { if (sim.helm) helmKey(ev); else turretKey(ev, true); return; }
+    if (!$("ov-plot").hidden) { plotKey(ev); return; }
+    if (inTurret() && sim && ev.target.tagName !== "INPUT" && ev.target.tagName !== "SELECT") { if (sim.captain) bridgeKey(ev); else if (sim.helm) helmKey(ev); else turretKey(ev, true); return; }
     if (!inConsole() || !sim || ev.target.tagName === "INPUT") return;
     if (!$("ov-grav").hidden) { if (ev.key === "Enter") $("btn-grav-go").click(); return; }
     var k = ev.key;
@@ -775,6 +786,7 @@
     $("tu-mainrow").hidden = !(helm && sim.turret.firesMain);
     $("tu-gunside").hidden = helm; $("tu-helm").hidden = !helm; $("hm-wheel").hidden = !helm; $("hm-strip").hidden = !helm;
     $("scr-turret").classList.toggle("helm", helm);
+    $("cp-side").hidden = $("cp-mapbox").hidden = $("cp-orders").hidden = true; $("scr-turret").classList.remove("captain");
     $("btn-tu-call").hidden = $("btn-tu-fire").hidden = helm;
     $("hm-launch").hidden = true;
     if (helm) {
@@ -782,6 +794,7 @@
       $("tu-station").textContent = (sim.training ? "Pilot training · " : "Helm · ") + (job.test ? sim.data.className : BL.shipLabel(job.classId, job.ship, job.hull) + " (" + sim.data.className + ")") + " · tech level " + sim.data.tl;
       $("tu-keys").textContent = "← → wheel · 0 midships · ↑ ↓ both engines · Q A port · P L starboard · + − 1 G · T autopilot · [ ] course 1° · E warn engineering · Space launch · Esc pause · Drag the wheel · Tap the telegraph · Tap the compass for autopilot · Right strip: course on autopilot, wheel by hand";
       buildHelm();
+      if (sim.captain) buildBridge();
     }
   }
   /* On-screen switches: clicking a gun on the view takes it (off by default, so a stray click
@@ -852,6 +865,7 @@
 
   var lastJolt = 0;
   function renderTurret(ts) {
+    if (sim.captain) { renderBridge(ts); return; }
     if (sim.helm) { renderHelm(ts); return; }
     var tu = sim.turret, ship = sim.ship, gun = tu.gun(), w = tu.w, enc = sim.encounter() || {};
     // A hull hit shakes the whole station, not just the view.
@@ -1145,7 +1159,7 @@
     $("hm-nudge-dn").addEventListener("click", function () { if (sim && sim.helm && turretActive()) { sim.helm.nudgeCourse(-1); click(); } });
     function mouseUp(ev) {
       if (compassDrag && compassDrag.id === ev.pointerId) {
-        if (!compassDrag.moved && sim && sim.helm && turretActive()) sim.helm.setAuto(true, compassDrag.tap);
+        if (!compassDrag.moved && sim && sim.helm && turretActive()) { if (sim.captain) sim.captain.orderCourse(compassDrag.tap); else sim.helm.setAuto(true, compassDrag.tap); }
         compassDrag = null;
       }
       if (ev.pointerType === "mouse") { if (sim && sim.turret && !keysHeld.fire) { sim.turret.trigger(false); setFireBtn(false); } } else endDrag(ev);
@@ -1345,6 +1359,296 @@
         "<span>Rating</span><b>" + trr.name + (sim.trainer.total() ? " " + trr.pct + "%" : "") + "</b>");
     }
   }
+  /* ------------------------------------------------------------ The bridge
+     The captain (command.js): the ring view as at the helm, to watch (tap its compass to order
+     a course); the BRIDGE panel at the left, three short lines per station; the map over the
+     SHIP panel at the right (tap it to steer for a point); the orders along the bottom. Before
+     each system, in warp space with the clock stopped, the plotting screen. */
+  var BRIDGE_ENG = ["stop", "deadSlow", "cruise", "standard", "full", "flank"];
+  function buildBridge() {
+    var h = sim.helm, G = BL.GUNNERY, K = BL.COMMAND;
+    $("tu-helm").hidden = $("hm-wheel").hidden = $("hm-strip").hidden = true;
+    $("scr-turret").classList.remove("helm"); $("scr-turret").classList.add("captain");
+    $("cp-side").hidden = $("cp-mapbox").hidden = $("cp-orders").hidden = false;
+    $("tu-station").textContent = "Bridge · " + (job.test ? sim.data.className : BL.shipLabel(job.classId, job.ship, job.hull) + " (" + sim.data.className + ")") + " · tech level " + sim.data.tl;
+    $("tu-keys").textContent = "← → course 10° (Shift 1°) · R resume plot · ↑ ↓ engines · Z break port · X take it · C break starboard · G gunners · S engineer · E warn engineering · J jump · Esc pause · Tap the compass or the map to steer";
+    $("cp-tele").innerHTML = BRIDGE_ENG.map(function (id) { var p = h.preset(id); return '<button data-eng="' + id + '" title="All ' + p.name.toLowerCase() + '">' + p.short + "</button>"; }).join("");
+    $("cp-gunord").innerHTML = ["auto"].concat(G.orderList).map(function (id) { var o = G.orders[id]; return '<button data-gun="' + id + '" title="' + o.name + '">' + (o.key || "AUTO") + "</button>"; }).join("");
+    $("cp-stance").innerHTML = K.stanceList.map(function (id) { return '<button data-stance="' + id + '" title="' + K.stances[id].name + '">' + K.stances[id].short + "</button>"; }).join("");
+    $("tu-mainrow").hidden = true;
+    lastBridgeBox = {};
+  }
+  var lastBridgeBox = {};
+  // A BRIDGE box: its title and exactly three lines (a box never changes height).
+  function cpBox(id, title, lines, cls) {
+    var el = $(id), html = '<div class="hd">' + title + "</div>" + [0, 1, 2].map(function (k) { return '<div class="ln">' + (lines[k] || "&nbsp;") + "</div>"; }).join("");
+    setCls(el, "cp-box" + (cls ? " " + cls : ""));
+    if (lastBridgeBox[id] !== html) { lastBridgeBox[id] = html; el.innerHTML = html; fitLines(el); }
+  }
+  var cpMapCtx = null, cpMapW = 0, cpMapH = 0;
+  function drawBridgeMap(hv) {
+    var box = $("cp-mapbox"), cv = $("cp-map"), dpr = window.devicePixelRatio || 1, w = box.clientWidth, hh = box.clientHeight, c = sim.captain;
+    if (!w || !hh) return;
+    if (w !== cpMapW || hh !== cpMapH || !cpMapCtx) { cpMapW = w; cpMapH = hh; cv.width = Math.round(w * dpr); cv.height = Math.round(hh * dpr); cpMapCtx = cv.getContext("2d"); cpMapCtx.setTransform(dpr, 0, 0, dpr, 0, 0); }
+    var map = c.map(), plot = c.plotFor(sim.jumpIndex);
+    BL.drawNavMap(cpMapCtx, w, hh, map, plot, { small: true, frame: BL.navFrame(map, null, w, hh, 10), pos: c.pos, hdg: sim.helm.compass(), leg: c.leg, info: c.info, steer: hv ? hv.hdg : null });
+  }
+  function hdg3(v) { return BL.hdgText(v); }
+  function renderBridge(ts) {
+    var tu = sim.turret, h = sim.helm, c = sim.captain, ship = sim.ship, enc = sim.encounter() || {}, K = BL.COMMAND;
+    $("btn-tu-exit").hidden = true;
+    tu.effects.forEach(function (f) {
+      if (f.type === "hullHit" && f.at > lastJolt) {
+        lastJolt = f.at; var el = $("scr-turret");
+        el.classList.remove("jolt"); void el.offsetWidth; el.classList.add("jolt");
+        if (navigator.vibrate) try { navigator.vibrate([60, 40, 90]); } catch (e) {}
+      }
+    });
+    sizeTurret();
+    BL.drawRing(tuCtx, { w: tuW, h: tuH, wide: false }, sim, tu, ts);
+    $("tu-jump").innerHTML = "Jump <b>" + (sim.jumpIndex + 1) + "</b> of " + sim.cfg.jumps + " · <b>" + (enc.name || "") + "</b>";
+    setText($("tu-phase"), sim.phase === "arrival" ? "Engagement in " + Math.ceil(sim.cfg.arrivalSeconds - sim.t) + " s" :
+      sim.phase === "countdown" ? "JUMPING IN " + Math.max(1, Math.ceil(sim.jumpAt - sim.t)) : sim.phase === "engage" ? "T+" + mmss(sim.t) : "IN WARP SPACE");
+    renderComms();
+    if (!c.pos) { drawBridgeMap(null); return; }
+    var hv = c.helmView(), nv = hv.nav, jv = c.jumpView(), cv = c.callView(), ev = h.evadeView(), spd = Math.max(0.05, h.speed) * K.scale;
+    drawBridgeMap(hv);
+    // HELM: what she's steering (the captain's own course, or the plot's), her heading and speed, the telegraph.
+    cpBox("cp-helm", "HELM", ["Steer <b>" + hdg3(hv.hdg) + "</b> · " + (hv.own ? "yours" : "plot"), "Heading " + hdg3(h.compass()) + " · " + fmtG(h.speed) + " G", h.telegraph()], hv.own ? "on" : "");
+    // NAVIGATION: the leg and the next course change, or holding in the jump zone; the window.
+    var wi = sim.windowIn(), win = wi > 0 ? "Window in " + mmss(wi) : "Window open";
+    cpBox("cp-nav", "NAVIGATION", c.inRock ? ["⚠ <b>ASTEROIDS</b>", "Leg " + nv.leg + " of " + nv.legs, win]
+      : hv.holding ? ["<b>IN THE ZONE</b>", "Jump heading <b>" + hdg3(c.info.jumpHdg) + "</b>", win]
+      : ["Leg <b>" + nv.leg + "</b> of " + nv.legs, nv.next ? "Next <b>" + hdg3(nv.next.hdg) + "</b> in " + Math.ceil(nv.next.in) + "s" : "Zone in " + (h.speed > 0.2 ? Math.ceil(nv.toZone / spd) + "s" : "–"), win],
+      c.inRock ? "alert" : hv.holding ? "on" : "");
+    // TORPEDOES: the burst waiting for the captain's call, or the break under way.
+    cpBox("cp-torp", "TORPEDOES", ev && ev.left > 0 ? ["<b>BREAK " + (ev.dir > 0 ? "STBD" : "PORT") + "</b>", ev.left.toFixed(1) + " s · " + Math.round(ev.off) + "° of " + BL.HELM.dodge.turn + "°"]
+      : cv ? ["<b>" + cv.n + "</b> inbound · " + cv.in.toFixed(1) + " s", cv.canBreak ? "Break or take it?" : "Too late to break"]
+      : ["None inbound", "Standing: take it"], ev && ev.left > 0 ? "on" : cv ? "alert" : "");
+    // ENGINE ROOM: the engineer's stance, the hottest reactor, the shields and the drive.
+    var heat = 0; ship.reactors.forEach(function (rx) { heat = Math.max(heat, rx.heat); });
+    var sh = sim.sys("shield"), dr = sim.sys("drive");
+    cpBox("cp-eng", "ENGINE ROOM", ["Stance <b>" + K.stances[c.stance].short + "</b>", "Heat " + Math.round(heat) + "% · shields " + Math.round(sh.mj / sh.maxMJ * 100) + "%", dr ? "Drive " + Math.floor(dr.mj / dr.maxMJ * 100) + "%" : ""],
+      heat >= BL.PHYSICS.alarmHeat ? "alert" : "");
+    var g = tu.cur || {};
+    cpBox("cp-guns", "GUNS", ["Order <b>" + BL.GUNNERY.orders[c.guns].short + "</b>", "Kills " + (g.kills || 0) + "/" + (g.ships || 0) + " · down " + (g.downed || 0) + "/" + (g.torps || 0), ship.crippled ? "✖ Crew crippled" : ""]);
+    // The order bar
+    var live = turretActive();
+    Array.prototype.forEach.call($("cp-tele").children, function (b) { b.classList.toggle("on", b.dataset.eng === hv.eng); b.disabled = !live; });
+    Array.prototype.forEach.call($("cp-gunord").children, function (b) { b.classList.toggle("on", b.dataset.gun === c.guns); b.disabled = !live; });
+    Array.prototype.forEach.call($("cp-stance").children, function (b) { b.classList.toggle("on", b.dataset.stance === c.stance); b.disabled = !live; });
+    $("cp-resume").disabled = !live || !hv.own;
+    var tg = $("cp-orders").querySelector(".cp-torps");
+    tg.classList.toggle("live", !!cv);
+    setText($("cp-torp-lbl"), cv ? "TORPEDOES · " + cv.in.toFixed(1) + " s" : "TORPEDOES");
+    Array.prototype.forEach.call(tg.querySelectorAll("button"), function (b) { b.disabled = !live || !cv || (+b.dataset.brk !== 0 && !cv.canBreak); });
+    $("cp-warn").disabled = !live || sim.totalT < h.warnReadyAt;
+    var jb = $("cp-jump");
+    jb.disabled = !live || !jv.ready || jv.ordered || sim.phase === "countdown";
+    jb.classList.toggle("ready", jv.ready && !jv.ordered);
+    setHtml(jb, jv.ordered || sim.phase === "countdown" ? "JUMPING" : jv.ready ? "JUMP <small>(J)</small>" : esc(jv.why || "JUMP"));
+    // SHIP
+    setText($("tu-hull-val"), Math.max(0, Math.round(ship.hull)) + " / " + ship.hullMax);
+    $("tu-hull").style.width = pct(ship.hull / ship.hullMax);
+    $("tu-hull").classList.toggle("low", ship.hull < ship.hullMax * 0.35);
+    setText($("tu-shield-val"), Math.round(sh.mj) + " / " + sh.maxMJ + " MJ");
+    $("tu-shield").style.width = pct(sh.mj / sh.maxMJ);
+    if (dr) { setText($("tu-rec-val"), (wi > 0 ? "in " + Math.ceil(wi) + " s · " : "open · ") + Math.floor(dr.mj / dr.maxMJ * 100) + "%"); $("tu-rec").style.width = pct(dr.mj / dr.maxMJ); }
+    var dl = sim.stats.damageReports;
+    if (dl.length !== lastTuDamage) {
+      lastTuDamage = dl.length;
+      $("tu-damage").innerHTML = dl.length ? dl.slice(-4).reverse().map(function (d) { return "<li>" + esc(d.what) + "</li>"; }).join("") : '<li class="muted">None</li>';
+    }
+    var hc = h.cur || {}, cs = c.cur || {};
+    setHtml($("tu-tally"), "<span>Breaks made</span><b>" + (hc.evasiveMet || 0) + " / " + (hc.evasive || 0) + "</b>" +
+      "<span>Ships destroyed</span><b>" + (g.kills || 0) + " / " + (g.ships || 0) + "</b><span>Torpedoes shot down</span><b>" + (g.downed || 0) + " / " + (g.torps || 0) + "</b>" +
+      (cs.rockHits ? '<span class="bad">Asteroid hits</span><b>' + cs.rockHits + "</b>" : ""));
+  }
+  // The captain's course, `d` degrees from the course he has ordered (or the heading she's on).
+  function courseBy(d) { var c = sim.captain; c.orderCourse((c.hdgOrder !== null ? c.hdgOrder : Math.round(sim.helm.compass())) + d); }
+  function engineStep(dir) {
+    var c = sim.captain, i = BRIDGE_ENG.indexOf(c.helmView().eng);
+    i = clampN((i < 0 ? 2 : i) + dir, 0, BRIDGE_ENG.length - 1);
+    c.orderEngines(BRIDGE_ENG[i]);
+  }
+  function cycle(list, cur, dir) { return list[(list.indexOf(cur) + dir + list.length) % list.length]; }
+  // Keys on the bridge: ← → course 10° (Shift 1°), R resume plot, ↑ ↓ engines, Z X C break port /
+  // take it / break starboard, G gunners' order, S engineer's stance, E warn engineering, J jump, Esc pause.
+  function bridgeKey(ev) {
+    if (!$("ov-grav").hidden) { if (ev.key === "Enter") $("btn-grav-go").click(); return; }
+    var k = ev.key, kl = k.length === 1 ? k.toLowerCase() : k, c = sim.captain;
+    if (k === "Escape") { ev.preventDefault(); if (paused) resume(); else pause(); return; }
+    if (paused) { if (k === " ") { ev.preventDefault(); resume(); } return; }
+    if (!turretActive() || !c.pos) return;
+    if (k === "ArrowLeft") courseBy(ev.shiftKey ? -1 : -10);
+    else if (k === "ArrowRight") courseBy(ev.shiftKey ? 1 : 10);
+    else if (kl === "r") c.resumePlot();
+    else if (k === "ArrowUp") engineStep(1);
+    else if (k === "ArrowDown") engineStep(-1);
+    else if (kl === "z" && !ev.repeat) c.answer(-1);
+    else if (kl === "x" && !ev.repeat) c.answer(0);
+    else if (kl === "c" && !ev.repeat) c.answer(1);
+    else if (kl === "g" && !ev.repeat) c.setGuns(cycle(["auto"].concat(BL.GUNNERY.orderList), c.guns, 1));
+    else if (kl === "s" && !ev.repeat) c.setStance(cycle(BL.COMMAND.stanceList, c.stance, 1));
+    else if (kl === "e" && !ev.repeat) c.warn();
+    else if (kl === "j" && !ev.repeat) c.orderJump();
+    else if (kl === "h") { toggleHints(); }
+    else return;
+    ev.preventDefault();
+  }
+  (function wireBridge() {
+    $("cp-orders").addEventListener("click", function (ev) {
+      var b = ev.target.closest("button"), c = sim && sim.captain;
+      if (!b) return;
+      b.blur();
+      if (!c || !c.pos || !turretActive()) return;
+      if (b.dataset.turn) courseBy(+b.dataset.turn);
+      else if (b.id === "cp-resume") c.resumePlot();
+      else if (b.dataset.eng) c.orderEngines(b.dataset.eng);
+      else if (b.dataset.brk !== undefined) c.answer(+b.dataset.brk);
+      else if (b.dataset.gun) c.setGuns(b.dataset.gun);
+      else if (b.dataset.stance) c.setStance(b.dataset.stance);
+      else if (b.id === "cp-warn") c.warn();
+      else if (b.id === "cp-jump") c.orderJump();
+    });
+    // Tap the map: steer for that point (a course of the captain's own).
+    $("cp-map").addEventListener("pointerdown", function (ev) {
+      var c = sim && sim.captain; if (!c || !c.pos || !turretActive()) return;
+      var r = this.getBoundingClientRect(), f = BL.navFrame(c.map(), null, r.width, r.height, 10), p = f.toMap(ev.clientX - r.left, ev.clientY - r.top);
+      c.orderCourse(BL.navBearing(c.pos, p)); ev.preventDefault();
+    });
+  })();
+
+  /* ------------------------------------------------------ The plotting screen
+     In warp space before each system, the clock stopped: the system's map; tap to lay waypoints
+     (3 to 8 legs to the jump zone), tap one to remove it; each leg's engine order; when it
+     arrives against the jump window; what's wrong with it. Navigator's plot fills in a safe one. */
+  var plotEd = null, plCtx = null, plW = 0, plH = 0;
+  function openPlot() {
+    var c = sim.captain, i = sim.jumpIndex, map = c.maps[i], old = c.plots[i];
+    plotEd = { i: i, map: map, plot: old ? { pts: old.pts.map(function (p) { return { x: p.x, y: p.y }; }), eng: old.eng.slice() }
+      : { pts: [{ x: map.start.x, y: map.start.y }, { x: map.jump.x, y: map.jump.y }], eng: ["cruise"] } };
+    $("pl-title").textContent = "Plot the course · system " + (i + 1) + " of " + sim.cfg.jumps + " · " + BL.ENCOUNTERS[sim.route[i]].name;
+    overlay("ov-plot", true);
+    plW = 0; drawPlot();
+  }
+  function plotGOf(id) { return sim.helm.gOf(id); }
+  function drawPlot() {
+    if (!plotEd) return;
+    var box = $("pl-mapbox"), cv = $("pl-map"), dpr = window.devicePixelRatio || 1, w = box.clientWidth, hh = box.clientHeight, e = plotEd, K = BL.COMMAND;
+    if (w && hh && (w !== plW || hh !== plH || !plCtx)) { plW = w; plH = hh; cv.width = Math.round(w * dpr); cv.height = Math.round(hh * dpr); plCtx = cv.getContext("2d"); plCtx.setTransform(dpr, 0, 0, dpr, 0, 0); }
+    var info = BL.plotInfo(e.map, e.plot, plotGOf);
+    if (plCtx) BL.drawNavMap(plCtx, plW, plH, e.map, e.plot, { frame: BL.navFrame(e.map, null, plW, plH, 18), info: info });
+    // The legs: heading, time, engine order (tap to change).
+    $("pl-legs").innerHTML = info.legs.map(function (l, k) {
+      var t = l.len / Math.max(0.1, plotGOf(l.eng) * K.scale);
+      return '<div class="plot-leg' + (l.rocks ? " bad" : l.clusters || Math.abs(l.turn) > K.maxTurn ? " warn" : "") + '"><span>Leg ' + (k + 1) + " · <b>" + hdg3(l.hdg) + "</b> · " + mmss(t) + "</span>" +
+        '<button data-leg="' + k + '">' + sim.helm.preset(l.eng).name + "</button></div>";
+    }).join("");
+    // When it arrives, against the window.
+    var span = e.map.window * 1.3;
+    $("pl-time").innerHTML = "Arrives " + mmss(info.eta) + " · window " + mmss(e.map.window) + (info.late ? ' <span style="color:var(--bad)">LATE</span>' : " ✔") +
+      '<div class="bar"><i class="' + (info.late ? "late" : "") + '" style="width:' + pct(info.eta / span) + '"></i><em style="left:' + pct(e.map.window / span) + '"></em></div>';
+    var warn = [];
+    if (info.count < K.legs[0]) warn.push(["bad", "Needs " + K.legs[0] + " to " + K.legs[1] + " legs (" + info.count + " now)"]);
+    if (info.rocks) warn.push(["bad", "Crosses an asteroid field"]);
+    if (info.late) warn.push(["bad", "Arrives after the window: more speed or fewer legs"]);
+    if (info.clusters) warn.push(["", "Runs through an enemy cluster"]);
+    if (info.sharp) warn.push(["", "Turn of more than " + K.maxTurn + "° at a waypoint"]);
+    if (!warn.length) warn.push(["ok", "✔ Clear course, on time"]);
+    $("pl-warn").innerHTML = warn.map(function (x) { return '<div class="' + x[0] + '">' + x[1] + "</div>"; }).join("");
+    $("pl-go").disabled = info.count < K.legs[0] || info.count > K.legs[1];
+    $("pl-undo").disabled = e.plot.pts.length <= 2;
+  }
+  function plotAdd(p) {
+    var pl = plotEd.plot, n = pl.pts.length;
+    if (n - 1 >= BL.COMMAND.legs[1]) { click(); return; }
+    pl.pts.splice(n - 1, 0, p); pl.eng.splice(pl.eng.length - 1, 0, pl.eng[pl.eng.length - 1] || "cruise");
+    BL.audio.play("tick"); drawPlot();
+  }
+  function plotRemove(k) { var pl = plotEd.plot; pl.pts.splice(k, 1); pl.eng.splice(k, 1); BL.audio.play("tick"); drawPlot(); }
+  function plotUndo() { var pl = plotEd.plot; if (pl.pts.length > 2) plotRemove(pl.pts.length - 2); }
+  function plotNav() { var p = BL.navPlot(plotEd.map, plotGOf); plotEd.plot = { pts: p.pts, eng: p.eng }; click(); drawPlot(); }
+  function plotClear() { var m = plotEd.map; plotEd.plot = { pts: [{ x: m.start.x, y: m.start.y }, { x: m.jump.x, y: m.jump.y }], eng: ["cruise"] }; click(); drawPlot(); }
+  function plotAccept() {
+    if (!plotEd || $("pl-go").disabled) return;
+    sim.captain.setPlot(plotEd.i, plotEd.plot); plotEd = null;
+    overlay("ov-plot", false); click();
+    BL.speech.unlock(); sim.beginJump(); running = true; speakNew();
+  }
+  function plotKey(ev) {
+    var kl = ev.key.length === 1 ? ev.key.toLowerCase() : ev.key;
+    if (kl === "n") plotNav(); else if (kl === "u" || kl === "Backspace") plotUndo(); else if (kl === "Enter") plotAccept(); else return;
+    ev.preventDefault();
+  }
+  (function wirePlot() {
+    $("pl-map").addEventListener("pointerdown", function (ev) {
+      if (!plotEd) return;
+      var r = this.getBoundingClientRect(), x = ev.clientX - r.left, y = ev.clientY - r.top, f = BL.navFrame(plotEd.map, null, r.width, r.height, 18), pts = plotEd.plot.pts;
+      for (var k = 1; k < pts.length - 1; k++) { var q = f.toPx(pts[k]); if (Math.hypot(q.x - x, q.y - y) < 16) { plotRemove(k); ev.preventDefault(); return; } }
+      plotAdd(f.toMap(x, y)); ev.preventDefault();
+    });
+    $("pl-legs").addEventListener("click", function (ev) {
+      var b = ev.target.closest("button[data-leg]"); if (!b || !plotEd) return;
+      var k = +b.dataset.leg; plotEd.plot.eng[k] = cycle(["cruise", "standard", "full"], plotEd.plot.eng[k], 1); BL.audio.play("tick"); drawPlot();
+    });
+    $("pl-nav").onclick = function () { if (plotEd) plotNav(); this.blur(); };
+    $("pl-undo").onclick = function () { if (plotEd) plotUndo(); this.blur(); };
+    $("pl-clear").onclick = function () { if (plotEd) plotClear(); this.blur(); };
+    $("pl-go").onclick = function () { plotAccept(); };
+    window.addEventListener("resize", function () { if (plotEd) { plW = 0; drawPlot(); } });
+  })();
+  // The warp space report on the bridge.
+  function gravCaptain(js, dmg, next, n) {
+    var cs = sim.captain.stats.systems[n - 1] || {}, hc = sim.helm.jumps[n - 1] || {}, g = sim.turret.jumps[n - 1] || {}, K = BL.COMMAND;
+    var zone = cs.zoneAt === null || cs.zoneAt === undefined ? "never reached" : "reached at " + mmss(cs.zoneAt) + (cs.zoneAt <= cs.window + K.zoneGrace ? " (on time)" : " (late; window " + mmss(cs.window) + ")");
+    return "<p>Fighting has stopped." + (next ? " The ship is in warp space." : "") + "</p><ul class='grav-list'>" +
+      "<li>Jump zone: " + zone + "</li>" +
+      (cs.rockHits ? "<li>Asteroid hits: " + cs.rockHits + "</li>" : "") +
+      "<li>Breaks you ordered: " + (hc.evasiveMet || 0) + " made of " + (hc.evasive || 0) + "</li>" +
+      "<li>Enemy ships destroyed by your crew: " + g.kills + " of " + g.ships + "</li>" +
+      "<li>Torpedoes shot down: " + g.downed + " of " + g.torps + "</li>" +
+      "<li>Torpedoes stopped by shields: " + js.shielded + " of " + js.salvos + "</li>" +
+      "<li>Hull damage taken: " + js.hullLost + "</li>" +
+      (dmg.length ? "<li>Damage: " + dmg.map(function (d) { return d.what; }).join("; ") + "</li>" : "") + "</ul>" +
+      (next ? "<h2>Next: " + next.name + "</h2><p>" + next.what + ". The drive will be empty again on arrival. Plot its course next; the clock is stopped.</p>" : "");
+  }
+  function debriefCaptain(r) {
+    var cp = r.captain, d = r.detail, K = BL.COMMAND, good = [];
+    if (r.outcome === "success") good.push("The ship made all its jumps.");
+    if (!cp.rockHits) good.push("No asteroid hits.");
+    var onTime = cp.systems.filter(function (s) { return s.zoneAt !== null && s.zoneAt <= s.window + K.zoneGrace; }).length;
+    if (onTime === cp.systems.length && cp.systems.length) good.push("In the jump zone on time every time.");
+    if (cp.breaks && cp.breaksMade === cp.breaks) good.push("Every break you ordered was made.");
+    if (!good.length) good.push("You kept the ship in the fight.");
+    $("db-good").textContent = good.join(" ");
+    $("db-worst").textContent = cp.rockHits ? "The ship hit asteroids " + cp.rockHits + (cp.rockHits === 1 ? " time." : " times.") :
+      onTime < cp.systems.length ? "The ship reached the jump zone late in " + (cp.systems.length - onTime) + " of " + cp.systems.length + " systems." :
+      cp.unanswered ? cp.unanswered + " torpedo bursts came and went with no call from you (taken on the shields)." : "Nothing went badly wrong.";
+    $("db-jumps").innerHTML = "<tr><th>Jump</th><th>Encounter</th><th>Legs</th><th>In the zone</th><th>Asteroid hits</th><th>Breaks made</th><th>Shielded</th><th>Hull lost</th><th>Seconds</th></tr>" +
+      r.jumps.map(function (j, i) {
+        var s = cp.systems[i] || {}, t = sim.helm.jumps[i] || {};
+        return "<tr><td>" + (i + 1) + "</td><td>" + BL.ENCOUNTERS[j.encounter].name + "</td><td>" + (s.legs || "") + "</td><td>" + (s.zoneAt === null || s.zoneAt === undefined ? "never" : mmss(s.zoneAt) + " / " + mmss(s.window)) + "</td><td>" + (s.rockHits || 0) +
+          "</td><td>" + (t.evasiveMet || 0) + " / " + (t.evasive || 0) + "</td><td>" + j.shielded + " / " + j.salvos + "</td><td>" + j.hullLost + "</td><td>" + j.seconds + "</td></tr>";
+      }).join("");
+    var en = sim.turret.engineer, crew = sim.turret.bats.map(function (b) { return b.crew; }).filter(Boolean);
+    var rows = [
+      ["Engineer", esc(en.name) + ", " + en.label + " (skill " + Math.round(en.skill * 100) + ")"],
+      ["Gun crew", crew.map(function (c) { return esc(c.name) + ", " + c.label + " (" + Math.round(c.skill * 100) + ")"; }).join(" · ")],
+      ["Torpedo bursts", cp.calls + ": " + cp.breaks + " breaks ordered (" + cp.breaksMade + " made), " + cp.taken + " taken on the shields, " + cp.unanswered + " with no call"],
+      ["Asteroid hits", cp.rockHits],
+      ["Enemy ships destroyed by your crew", cp.kills + " / " + cp.ships],
+      ["Torpedoes shot down", cp.downed],
+      ["Hull lost", d.hullLost],
+      ["Failsafe trips (the engineer's reactor)", d.trips],
+      ["Damage reports", r.damage.length]
+    ];
+    $("db-detail").innerHTML = rows.map(function (x) { return "<div><span>" + x[0] + ":</span> " + x[1] + "</div>"; }).join("");
+    $("db-career").hidden = !report;
+    if (report) renderCareerReport(r);
+    $("btn-db-hub").hidden = !!job.test;
+    $("btn-db-again").hidden = $("btn-db-new").hidden = $("btn-db-title").hidden = !job.test;
+  }
   function fmtG(v) { var r = Math.round(v * 10) / 10; return r % 1 ? r.toFixed(1) : String(r); }
   // Keys at the helm: ← → wheel, 0 midships, ↑ ↓ both engines, Q A port, P L starboard, W S / O K trim port / starboard,
   // + − one G, T autopilot, [ ] course 1° (autopilot), E warn engineering, Space launch, Esc pause.
@@ -1483,8 +1787,8 @@
     var dmg = sim.stats.damageReports.filter(function (d) { return d.jump === n; });
     $("grav-title").textContent = final ? (sim.hasDrive ? "Jump " + n + " of " + sim.cfg.jumps + " complete" + (sim.sys("buster") ? ": planet buster away" : "") : "Sortie " + n + " of " + sim.cfg.jumps + " complete: back aboard the carrier")
       : sim.hasDrive ? "In warp space: jump " + n + " of " + sim.cfg.jumps + " complete" : "Aboard the carrier: sortie " + n + " of " + sim.cfg.jumps + " complete";
-    $("btn-grav-go").textContent = final ? "Mission debriefing" : sim.hasDrive ? "Drop out of warp space" : "Launch";
-    if (sim.turret) { $("grav-body").innerHTML = sim.helm ? gravHelm(js, dmg, next, n) : gravGunner(js, dmg, next, n); overlay("ov-grav", true); return; }
+    $("btn-grav-go").textContent = final ? "Mission debriefing" : sim.captain ? "Plot the next course" : sim.hasDrive ? "Drop out of warp space" : "Launch";
+    if (sim.turret) { $("grav-body").innerHTML = sim.captain ? gravCaptain(js, dmg, next, n) : sim.helm ? gravHelm(js, dmg, next, n) : gravGunner(js, dmg, next, n); overlay("ov-grav", true); return; }
     $("grav-body").innerHTML =
       "<p>Fighting has stopped." + (final ? "" : (sim.hasDrive ? "" : " The carrier has you on deck and is carrying you through warp space.") + (sim.hasAux() ? " The aux bank is refilled." : "")) + "</p>" +
       "<ul class='grav-list'>" +
@@ -1555,6 +1859,7 @@
   $("btn-grav-go").onclick = function () {
     click(); overlay("ov-grav", false);
     if (gravFinal) { gravFinal = false; showDebrief(); return; }
+    if (sim.captain) { openPlot(); return; }     // the bridge: plot the next system first
     BL.speech.unlock(); sim.beginJump(); speakNew();
   };
 
@@ -1575,12 +1880,14 @@
       (r.looks ? " · looked at the paused console " + r.looks + (r.looks === 1 ? " time" : " times") + " (−" + (100 - Math.round(100 * r.score / Math.max(1, r.raw))) + "%)" : "");
     $("db-score").textContent = r.score;
     $("db-jumps-title").textContent = r.hasDrive ? "Jump by jump" : "Sortie by sortie";
-    var names = r.station === "pilot" ? { objective: "Objective", condition: "Ship condition", orders: "Orders met", handling: "Ship handling" }
+    var names = r.station === "captain" ? { objective: "Objective", condition: "Ship condition", navigation: "Navigation", command: "Command" }
+      : r.station === "pilot" ? { objective: "Objective", condition: "Ship condition", orders: "Orders met", handling: "Ship handling" }
       : r.station === "gunner" ? { objective: "Objective", condition: "Ship condition", accuracy: "Accuracy", threats: "Threats stopped" }
       : { objective: "Objective", condition: "Ship condition", efficiency: "Efficiency", demands: "Demands met" };
     $("db-parts").innerHTML = Object.keys(names).map(function (k) {
       return '<div class="part"><span>' + names[k] + '</span><div class="hbar"><div class="hbar-fill" style="width:' + (r.parts[k] * 4) + '%"></div></div><b>' + r.parts[k] + " / 25</b></div>";
     }).join("");
+    if (r.station === "captain") { debriefCaptain(r); return; }
     $("db-good").textContent = r.station === "pilot" ? wentWellHelm(r) : r.station === "gunner" ? wentWellGunner(r) : wentWell(r);
     $("db-worst").textContent = r.station === "pilot" ? worstHelm(r) : r.station === "gunner" ? worstGunner(r) : worstMoment(r);
     if (r.station === "pilot") { debriefHelm(r); return; }

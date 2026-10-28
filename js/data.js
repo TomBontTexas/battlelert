@@ -791,6 +791,28 @@
             "auxEmpty", "auxEmptyR", "heat", "heatR", "trip", "reclose"]
   };
 
+  /* ----------------------------------------------------------- Command
+     The captain's bridge (command.js; approved Oct 28, 2026). Each system's map from the seed:
+     the jump point lies as far as cruise covers in `reach` of the time to the window (scale: map
+     units per second at 1 G), up to `jumpOff` degrees off the arrival heading; the jump zone's
+     radius, asteroid fields and enemy clusters (counts, radius) are shares of that distance; the
+     navigator keeps `margin` clear of them. legs: what a plot may have; maxTurn: the sharpest
+     turn at a waypoint; early: s a plot must reach the jump point before the window; capture:
+     how close counts as passing a waypoint; dogleg: the navigator's sidestep to make a third leg;
+     lookahead: how far ahead on the leg the NPC pilot steers for.
+     An asteroid field hits like a mine (rockMJ, shields first), every rockEvery s inside it.
+     Navigation scores full marks in the zone by the window + zoneGrace s. */
+  BL.COMMAND = {
+    scale: 1, reach: 0.7, jumpOff: [0, 50], zone: 0.08,
+    rocks: [1, 4], rockR: [0.06, 0.11], clusters: [0, 2], clusterR: [0.08, 0.12], margin: 0.07,
+    legs: [3, 8], maxTurn: 100, early: 5, capture: 0.05, dogleg: 0.08, lookahead: 0.1,
+    rockMJ: 90, rockEvery: 4, zoneGrace: 5,
+    // Standing orders at the start of a mission (the captain changes them on the bridge).
+    standing: { guns: "auto", stance: "balanced" },
+    stances: { shields: { name: "Shields first", short: "SHIELDS" }, balanced: { name: "Balanced", short: "BALANCED" }, guns: { name: "Guns first", short: "GUNS" } },
+    stanceList: ["shields", "balanced", "guns"]
+  };
+
   /* ------------------------------------------------------------ Chatter
      Several lines per event; {placeholders} are filled in by the simulation. Only the captain
      gives orders or chases a station; Bridge only announces (jump in 5, out of warp space). */

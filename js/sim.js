@@ -66,6 +66,8 @@
     this.turret = !opts.gunner ? null : opts.gunner.ring ? new BL.RingTurret(this, opts.gunner) : new BL.Turret(this, opts.gunner);
     // Pilot station: the player at the helm (opts.helm), the gun crew on every gun; see helm.js.
     this.helm = opts.helm && this.turret && this.turret.ring ? new BL.Helm(this) : null;
+    // Command (opts.captain): the player is the captain; an NPC pilot flies the helm; see command.js.
+    this.captain = opts.captain && this.helm ? new BL.Captain(this) : null;
     this.trainer = null;                    // made on arrival (the helm's heading is set then)
     this.stats = {
       heatSum: 0, heatTime: 0,
@@ -248,6 +250,7 @@
     this.cue("arrive");
     if (this.turret) this.turret.reset();
     if (this.helm) this.helm.reset();
+    if (this.captain) this.captain.reset();
     if (this.training) { this.trainer = new BL.Trainer(this); this.reportAt = Infinity; this.gunSaid = false; this.spawnedHere = 0; return; }
     this.chat(this.hasDrive ? "arrival" : "launch", { hdg: this.helm && this.helm.jumpHdg !== null ? BL.hdgText(this.helm.jumpHdg) : "" }, "info");
     this.chat(enc.chat || "briefing", { enemies: BL.plural(enc.enemy), what: enc.what }, "info");
@@ -304,7 +307,7 @@
   Mission.prototype.finish = function (outcome) {
     this.phase = "done";
     this.closeOverloadRun();
-    this.result = this.helm ? BL.scoreHelm(this, outcome) : this.turret ? BL.scoreGunner(this, outcome) : BL.score(this, outcome);
+    this.result = this.captain ? BL.scoreCaptain(this, outcome) : this.helm ? BL.scoreHelm(this, outcome) : this.turret ? BL.scoreGunner(this, outcome) : BL.score(this, outcome);
     this.cue(outcome === "success" ? "win" : "lose");
   };
 
@@ -432,6 +435,7 @@
     if (this.phase === "arrival" && this.t >= this.cfg.arrivalSeconds && !(this.helm && this.helm.inTube)) this.phase = "engage";
     if (this.phase !== "arrival") this.schedule();
     if (this.turret) this.turret.step(dt);       // before events: a torpedo shot down never lands
+    if (this.captain) this.captain.step(dt);
     this.runEvents();
     this.runGunners(dt);
     this.runCalls(dt);
@@ -1072,6 +1076,12 @@
     if (full && this.helm && !this.helm.inJumpCorridor()) {
       if (this.phase === "countdown") { this.phase = "engage"; this.helm.jumpSaid = false; }
       if (t >= this.windowAt() && !this.helm.jumpSaid) { this.helm.jumpSaid = true; this.chat("jumpHeading", { hdg: BL.hdgText(this.helm.jumpHdg) }, "warn"); this.cue("warn"); }
+      full = false;
+    }
+    // On the bridge the captain orders the jump, and the ship must be in the jump zone.
+    if (full && this.captain && !this.captain.mayJump()) {
+      if (this.phase === "countdown") this.phase = "engage";
+      if (this.driveFullAt === null) this.driveFullAt = t;
       full = false;
     }
     if (full && this.driveFullAt === null) this.driveFullAt = t;

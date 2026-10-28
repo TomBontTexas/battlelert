@@ -576,3 +576,58 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 #card-guns td:first-child, #card-guns td:nth-child(n+4), #card-service td:first-child { white-space: nowrap; }
 .nw { white-space: nowrap; }
 .reg-ship .nw { display: block; }   /* registry: name on the first line, hull number on the second, always */
+
+/* ---------------------------------------------------------- The captain's bridge (command.js)
+   The gun/helm screen with the BRIDGE panel at the left, the map over the SHIP panel at the
+   right and the order bar along the bottom. */
+#scr-turret.captain { grid-template-rows: auto 1fr auto auto; }
+#scr-turret.captain .tu-main { grid-template-columns: minmax(180px, 240px) minmax(0, 1fr) minmax(200px, 270px); }
+#scr-turret.captain .tu-side { overflow-y: auto; }
+.cp-side { gap: 6px; }
+.cp-box { flex-shrink: 0; background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px 5px; }
+.cp-box .hd { font-size: 11px; letter-spacing: .08em; color: var(--muted); }
+.cp-box .ln { font-family: var(--mono); font-size: 15px; font-weight: 600; line-height: 1.3; white-space: nowrap; overflow: hidden; color: var(--text); }
+.cp-box .ln b { color: var(--warn); font-weight: 600; }
+.cp-box .ok { color: var(--good); }
+.cp-box .no { color: var(--bad); }
+.cp-box.alert { border-color: var(--bad); }
+.cp-box.alert .hd, .cp-box.alert .ln b { color: var(--bad); }
+.cp-box.on { border-color: var(--warn); }
+.cp-map { flex-shrink: 0; width: 100%; aspect-ratio: 1 / 1; max-height: 27vh; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; cursor: crosshair; }
+.cp-map canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.cp-map[hidden], .cp-side[hidden] { display: none !important; }
+.cp-orders { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: flex-end; justify-content: center; padding: 2px 4px; }
+.cp-orders[hidden] { display: none; }
+.cp-grp { display: flex; flex-direction: column; gap: 2px; }
+.cp-lbl { font-size: 11px; letter-spacing: .08em; color: var(--muted); white-space: nowrap; }
+.cp-row { display: flex; gap: 4px; }
+.cp-row button { padding: 6px 8px; font-size: 13px; min-height: 40px; white-space: nowrap; }
+.cp-row button small { color: var(--muted); font-weight: 400; }
+.cp-row button.on { border-color: var(--warn); color: var(--warn); }
+.cp-torps.live .cp-lbl { color: var(--bad); }
+.cp-torps.live button:not(:disabled) { border-color: var(--bad); color: #ffd0c8; }
+.cp-jump { min-width: 150px; }
+.cp-jump.ready { border-color: var(--good); color: var(--good); box-shadow: 0 0 10px rgba(99,212,143,.35); }
+
+/* The plotting screen (warp space, clock stopped) */
+.plot-card { max-width: 1100px; width: calc(100vw - 32px); }
+.plot-main { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 14px; align-items: start; }
+.plot-mapbox { aspect-ratio: 1 / 1; max-height: 70vh; max-width: 70vh; width: 100%; justify-self: center; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.plot-mapbox canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
+.plot-side { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.plot-legs { display: flex; flex-direction: column; gap: 4px; max-height: 32vh; overflow-y: auto; }
+.plot-leg { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 6px; font-family: var(--mono); font-size: 14px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; }
+.plot-leg b { color: var(--warn); font-weight: 600; }
+.plot-leg.bad { border-color: var(--bad); }
+.plot-leg.warn { border-color: var(--warn); }
+.plot-leg button { padding: 4px 8px; font-size: 12px; min-width: 96px; }
+.plot-time { font-family: var(--mono); font-size: 15px; }
+.plot-time .bar { position: relative; height: 10px; background: rgba(255,255,255,.08); border-radius: 5px; margin-top: 4px; overflow: hidden; }
+.plot-time .bar i { position: absolute; top: 0; bottom: 0; left: 0; background: var(--drive); }
+.plot-time .bar i.late { background: var(--bad); }
+.plot-time .bar em { position: absolute; top: 0; bottom: 0; width: 3px; background: var(--good); }
+.plot-warn div { font-size: 13px; color: var(--warn); }
+.plot-warn div.bad { color: var(--bad); }
+.plot-warn div.ok { color: var(--good); }
+.plot-btns { display: flex; gap: 6px; flex-wrap: wrap; }
+@media (max-width: 760px) { .plot-main { grid-template-columns: 1fr; } .plot-mapbox { max-height: 48vh; max-width: 48vh; } }

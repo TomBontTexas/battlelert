@@ -198,7 +198,7 @@
   // The captain's orders, on the bridge's burn schedule (Mission.schedule calls this at the helm).
   Helm.prototype.schedule = function (t) {
     var m = this.m, enc = m.encounter(), b = enc.burns, H = this.H, r = this.rng;
-    if (!b || enc.mines) return;                          // (in a minefield the pilot steers through it: no course orders)
+    if (!b || enc.mines || m.captain) return;             // (on the bridge the captain plots the course; in a minefield the pilot steers through it: no course orders)
     if (this.jumpNear()) return;                          // time to make the jump heading
     // Bigger ships get more warning: time to swing at a safe rate, plus the lag.
     var C = this.C, turn = this.nextTurn, lead = b.warning + Math.max(0, this.turnTime(turn) - 2);
@@ -257,6 +257,7 @@
   // pilot keeps his 30 degrees to dodge in. A drive strike that drops it below lifts the steady again.
   Helm.prototype.runSteady = function () {
     var m = this.m, K = this.H.corridor, dr = m.sys("drive"), ready = !dr || dr.mj >= dr.maxMJ * K.drive;
+    if (m.captain) return;
     if (this.steady && !ready) { this.steady = false; this.steadyHdg = null; return; }
     if (this.steady || !ready || this.jumpHdg === null || this.conTaken || m.t < m.windowAt() - K.jumpLead || !this.onJumpHeading() || this.curOrder || this.inBreak()) return;
     this.steady = true; this.steadyHdg = this.jumpHdg; this.course = this.jumpHdg;
@@ -281,7 +282,7 @@
   // it's disobeying, once per time out.
   Helm.prototype.runCorridor = function () {
     var m = this.m, c = this.corridorView();
-    if (!c || (m.phase !== "engage" && m.phase !== "countdown")) { this.corrOut = false; return; }
+    if (!c || m.captain || (m.phase !== "engage" && m.phase !== "countdown")) { this.corrOut = false; return; }
     // After a break the pilot has `rejoin` s to bring her back inside before it counts.
     var ev = this.evade, out0 = Math.abs(norm(c.hdg - this.compass())) > c.width;
     if (ev && !ev.rejoined) { if (!out0) ev.rejoined = true; else if (m.t < ev.until + this.H.corridor.rejoin) { this.corrOut = out0; return; } }
@@ -345,6 +346,7 @@
   Helm.prototype.torpedoLaunched = function (e, s) {
     var m = this.m, E = this.H.evade, now = m.t, bu = this.burst, travel = BL.GUNNERY.torpedo.travel;
     e.snap = this.aimSnap();                                            // what the enemy aimed for
+    if (m.captain) { m.captain.torpedoLaunched(e, s); return; }        // on the bridge: the player's call
     if (bu && now - bu.at < E.burst) {                                  // the same burst: the same order
       if (bu.evade && !bu.evade.judged) this.cover(e, bu.evade); else e.hold = bu.hold;
       return;
@@ -360,11 +362,11 @@
   };
   // The break covers torpedo f: it lands no sooner than the break allows.
   Helm.prototype.cover = function (f, ev) { f.evade = ev; f.hold = false; this.landBy(f, ev.until); };
-  // The captain orders a break covering `fish`, cutting in.
-  Helm.prototype.orderBreak = function (fish, s) {
+  // The captain orders a break covering `fish`, cutting in (dir: -1 left, 1 right, if he names it).
+  Helm.prototype.orderBreak = function (fish, s, side) {
     var m = this.m, E = this.H.evade, now = m.t, self = this;
     // Against the turn the ship is making (that throws the aim off fastest), else away from the torpedo.
-    var dir = Math.abs(this.omega) > 3 ? (this.omega > 0 ? -1 : 1) : s && norm(s.bearing) < 0 ? 1 : -1;
+    var dir = side ? side : Math.abs(this.omega) > 3 ? (this.omega > 0 ? -1 : 1) : s && norm(s.bearing) < 0 ? 1 : -1;
     this.lastBreak = now;
     var ev = this.evade = { at: now, until: now + E.orderTime + BL.GUNNERY.torpedo.travel, dir: dir, snap: this.aimSnap(), judged: false };
     if (this.burst && now - this.burst.at < E.burst) this.burst.evade = ev;
@@ -376,7 +378,7 @@
   // The captain keeps watching the fish he said to take: once the shields can't take them, break.
   Helm.prototype.recheck = function () {
     var m = this.m, E = this.H.evade, ev = this.evade;
-    if ((ev && m.t <= ev.until) || m.t - this.lastBreak < E.gap || this.busy() || !this.canBreak(BL.GUNNERY.torpedo.travel)) return;
+    if (m.captain || (ev && m.t <= ev.until) || m.t - this.lastBreak < E.gap || this.busy() || !this.canBreak(BL.GUNNERY.torpedo.travel)) return;
     var fish = this.fishInAir().filter(function (f) { return f.hold && f.at - m.t >= E.lateMin; });
     if (!fish.length) return;
     var mj = 0; fish.forEach(function (f) { mj += f.mj; });
@@ -415,12 +417,13 @@
     var m = this.m, rel = norm(ship.bearing);
     b.reqReady = m.totalT + this.H.request.cooldown;
     m.chat("helmReq", { n: b.gunNo, side: Math.abs(rel) > 150 ? "astern" : Math.abs(rel) < 30 ? "ahead" : rel < 0 ? "to port" : "to starboard" }, "info");
-    if (this.inBreak() || this.busy()) return;
+    if (this.inBreak() || this.busy() || m.captain) return;     // (on the bridge the call goes to the player)
     this.orderCourse(this.compass() + turn, this.H.order.callHold);
   };
   // The main gun is charged: the captain puts the bow on the biggest ship out there.
   Helm.prototype.runMainGun = function () {
     var m = this.m, tu = m.turret, ms = tu.mainState();
+    if (m.captain) return;
     if (!ms || !ms.ready) { this.mainOrdered = false; return; }
     if (this.mainOrdered || this.busy() || this.jumpNear() || this.inBreak()) return;
     var big = null;
@@ -450,6 +453,7 @@
   // conn and has the autopilot bring her round (the jump is late).
   Helm.prototype.runConn = function (dt) {
     var m = this.m, d = m.sys("drive");
+    if (m.captain) return;                                     // (on the bridge the player has the conn)
     if (this.conTaken) { this.matchEngines(); return; }          // his conn: engines kept matched
     if (this.jumpHdg === null || !d || m.t < m.windowAt() || d.mj < d.maxMJ - 0.5 || this.inJumpCorridor()) { this.conT = 0; return; }
     this.conT += dt;
@@ -469,7 +473,7 @@
   // Lining up for the jump, off the heading: the captain orders it (again, if the bow wanders off).
   Helm.prototype.runJumpOrder = function () {
     var m = this.m;
-    if (this.jumpHdg === null || !this.jumpNear() || this.conTaken || this.onJumpHeading() || this.curOrder || this.orderView() || this.inBreak() || this.locked()) return;
+    if (m.captain || this.jumpHdg === null || !this.jumpNear() || this.conTaken || this.onJumpHeading() || this.curOrder || this.orderView() || this.inBreak() || this.locked()) return;
     if (m.t - this.jumpOrderAt < this.H.order.callHold + this.H.order.warn + 4) return;
     this.jumpOrderAt = m.t;
     this.orderCourse(this.jumpHdg, this.H.order.callHold);
