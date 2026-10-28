@@ -2051,23 +2051,25 @@
       (rec && rec.lost ? '<span class="lost-note">Lost in action ' + rec.lost + "</span>" : rec ? "In service" : "In service; you haven't served aboard her");
     $("card-art").innerHTML = e.classId === "gunboat" ? BL.ART.gunboat(e.ship) : BL.ART.warship(e.classId, e.hull);
     var rows = [], rx = d.reactors, helm = BL.HELM.classes[e.classId];
+    // A capacitor at a glance: what it holds and the fastest it charges.
+    var cap = function (s) { return s.maxMJ + " MJ, charge " + s.maxMW + " MJ/s"; };
     rows.push(["Hull", d.hull]);
-    rows.push(["Reactor", rx.length > 1 ? rx.length + " reactors (" + rx.map(function (r) { return r.name; }).join(", ") + "), " + rx[0].mw + " MW each, " + d.reactorMW + " MW in all" : d.reactorMW + " MW"]);
-    if (rx[0].aux.capacity) rows.push(["Aux bank", rx.length > 1 ? rx.length + " banks of " + rx[0].aux.capacity + " MJ, up to " + rx[0].aux.rateMW + " MW each" : rx[0].aux.capacity + " MJ, up to " + rx[0].aux.rateMW + " MW"]);
-    var sh = one("shield"); if (sh) rows.push(["Shields", sh.maxMJ + " MJ, charging at up to " + sh.maxMW + " MW"]);
+    rows.push(["Reactor", rx.length > 1 ? rx.length + " reactors (" + rx.map(function (r) { return r.name; }).join(", ") + "), " + rx[0].mw + " MJ/s each, " + d.reactorMW + " MJ/s in all" : d.reactorMW + " MJ/s"]);
+    if (rx[0].aux.capacity) rows.push(["Aux bank", rx.length > 1 ? rx.length + " banks of " + rx[0].aux.capacity + " MJ, feed " + rx[0].aux.rateMW + " MJ/s each" : rx[0].aux.capacity + " MJ, feed " + rx[0].aux.rateMW + " MJ/s"]);
+    var sh = one("shield"); if (sh) rows.push(["Shields", cap(sh)]);
     rows.push(["Engines", "cruise " + d.cruiseG + " G, full " + d.maxG + " G"]);
     if (helm) rows.push(["Turn", "up to " + helm.top + "°/s, safe to " + helm.safe + "°/s"]);
-    var mg = one("main"); if (mg) rows.push(["Main gun", "spinal, fires off the bow, " + mg.maxMJ + " MJ"]);
-    var pd = one("pd"); if (pd) rows.push(["CIWS", ((BL.ART.OURS[e.classId] || {}).pd || []).length + " mounts, " + pd.maxMJ + " MJ"]);
-    var hg = one("hangar"); if (hg) rows.push(["Hangar", "a gunboat squadron, " + hg.maxMJ + " MJ launchers"]);
+    var mg = one("main"); if (mg) rows.push(["Main gun", cap(mg) + " · fires off the bow"]);
+    var pd = one("pd"); if (pd) rows.push(["CIWS", cap(pd) + " · " + ((BL.ART.OURS[e.classId] || {}).pd || []).length + " mounts"]);
+    var hg = one("hangar"); if (hg) rows.push(["Hangar", cap(hg) + " · a gunboat squadron"]);
     if (d.torpedoes) rows.push(["Torpedoes", d.torpedoes + ", reloaded by the carrier every sortie"]);
-    var dr = one("drive"); rows.push(["Warp drive", dr ? dr.maxMJ + " MJ" : "none (launched from a carrier)"]);
-    var bu = one("buster"); if (bu) rows.push(["Planet buster", bu.maxMJ + " MJ"]);
+    var dr = one("drive"); rows.push(["Warp drive", dr ? cap(dr) : "none (launched from a carrier)"]);
+    var bu = one("buster"); if (bu) rows.push(["Planet buster", cap(bu)]);
     $("card-stats").innerHTML = rows.map(function (r) { return "<tr><td>" + r[0] + "</td><td>" + r[1] + "</td></tr>"; }).join("");
     var ring = BL.GUNNERY.ring.classes[e.classId], load = BL.GUNNERY.loadout[e.classId] || [];
     $("card-guns").innerHTML = "<tr><th>#</th><th>Type</th><th>Mount</th><th>Arc</th><th>Capacitor</th></tr>" + sysOf("gun").map(function (g, i) {
       var a = ring.arcs[i] || [0, 180, 0], w = BL.WEAPONS[load[i]] || { name: "" };
-      return "<tr><td>" + (i + 1) + "</td><td>" + w.name + " Mk " + d.mk + "</td><td>" + (ring.arcNames[i] || "") + "</td><td>" + (a[1] >= 180 ? "all round" : 2 * a[1] + "°") + "</td><td>" + g.maxMJ + " MJ</td></tr>";
+      return "<tr><td>" + (i + 1) + "</td><td>" + w.name + " Mk " + d.mk + "</td><td>" + (ring.arcNames[i] || "") + "</td><td>" + (a[1] >= 180 ? "all round" : 2 * a[1] + "°") + "</td><td>" + cap(g) + "</td></tr>";
     }).join("");
     var ms = rec ? rec.missions.slice().reverse() : [];
     $("card-service").innerHTML = "<tr><th>Date</th><th>Mission</th><th>Systems</th><th>Outcome</th><th>Score</th><th>Ships destroyed</th><th>Hull lost</th></tr>" +
