@@ -575,3 +575,4 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 .card-stats td, #card-guns th, #card-guns td, #card-service th, #card-service td { text-align: left; }
 #card-guns td:first-child, #card-guns td:nth-child(n+4), #card-service td:first-child { white-space: nowrap; }
 .nw { white-space: nowrap; }
+.reg-ship .nw { display: block; }   /* registry: name on the first line, hull number on the second, always */
