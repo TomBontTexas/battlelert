@@ -94,10 +94,17 @@
 
   // A ship for a job: one of the twelve named ships of that class and tech level, or for a
   // gunboat a fresh hull number PT-101 ... PT-199.
-  BL.shipName = function (rng, classId, tl) {
-    if (classId === "gunboat") return "PT-1" + ("0" + rng.int([1, 99])).slice(-2);
+  // used: names already taken ({ name: true }); a name is picked from the rest while any are left.
+  BL.shipName = function (rng, classId, tl, used) {
+    used = used || {};
+    if (classId === "gunboat") {
+      for (var i = 0, pt; i < 200; i++) { pt = "PT-1" + ("0" + rng.int([1, 99])).slice(-2); if (!used[pt]) return pt; }
+      return pt;
+    }
     var list = BL.SHIP_NAMES[classId];
     var k = 2 * (BL.TECH.clamp(classId, tl) - 5);
-    return BL.SHIP_PREFIX + rng.pick(list[k].concat(list[k + 1]));
+    var pool = list[k].concat(list[k + 1]).map(function (n) { return BL.SHIP_PREFIX + n; });
+    var free = pool.filter(function (n) { return !used[n]; });
+    return rng.pick(free.length ? free : pool);
   };
 })(typeof window !== "undefined" ? window : globalThis);

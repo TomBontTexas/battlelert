@@ -103,6 +103,7 @@
       if (!PLAYABLE[s]) return;
       if (!Array.isArray(c.offersBy[s]) || !c.offersBy[s].length) generateOffers(c, s);
       ensureStepUp(c, s);
+      uniqueShips(c.offersBy[s], BL.rng(c.offerSeed + 11));    // (offers saved before names were kept unique)
     });
     return c;
   }
@@ -183,6 +184,15 @@
     return out;
   }
   function offers(c, station) { return c.offersBy[station] || []; }
+  // Every ship in a list of jobs is a different ship: a repeat gets a new name of its class and tech level.
+  function uniqueShips(list, rng) {
+    var used = {};
+    list.forEach(function (j) {
+      if (used[j.ship]) { j.ship = BL.shipName(rng, j.classId, j.tl, used); j.hull = BL.hullNumber(j.classId, j.ship); }
+      used[j.ship] = true;
+    });
+    return list;
+  }
   function generateOffers(c, station) {
     station = station || "engineer";
     var rng = BL.rng(c.offerSeed = (c.offerSeed * 48271 + 11) % 2147483647 || 1);
@@ -190,7 +200,7 @@
     if (hasStory(station)) {
       offers = storyOffers(c, station, rng);
       offers.sort(function (a, b) { return b.n - a.n || (a.story || "").localeCompare(b.story || "") || a.tl - b.tl; });
-      c.offersBy[station] = offers;
+      c.offersBy[station] = uniqueShips(offers, rng);
       return offers;
     }
     var current = Math.max(1, q);
@@ -210,7 +220,7 @@
       } else c.stepUps[station] = (c.stepUps[station] || 0) + 1;
     }
     offers.sort(function (a, b) { return b.n - a.n || a.tl - b.tl; });
-    c.offersBy[station] = offers;
+    c.offersBy[station] = uniqueShips(offers, rng);
     return offers;
   }
   // Tech levels for a class (BL.TECH.levels): the lowest, and any one at random.
@@ -224,6 +234,7 @@
     if (!has) {
       list.push(makeJob(BL.rng(c.offerSeed + 3), station, next.n, lowTL(next.n)));
       list.sort(function (a, b) { return b.n - a.n || a.tl - b.tl; });
+      uniqueShips(list, BL.rng(c.offerSeed + 5));
     }
   }
 
@@ -238,7 +249,7 @@
       if (hasStory(station)) { storyLeft(c, station, n).forEach(function (m) { out.push(makeJob(rng, station, n, anyTL(rng, n), false, m)); }); continue; }
       BL.TECH.levels(BL.classByN(n).id).forEach(function (tl) { out.push(makeJob(rng, station, n, tl, false)); });
     }
-    return out;
+    return uniqueShips(out, rng);
   }
   var REQUAL_REP = 0.5;
   function repFor(job, scorePct) {
