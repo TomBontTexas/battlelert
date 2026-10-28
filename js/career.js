@@ -39,6 +39,7 @@
       profiles: {},                     // one reputation profile per station
       history: [], offersBy: {}, stepUps: {}, offerSeed: BL.randomSeed(),
       ships: {}, namesVersion: NAMES_VERSION, tlVersion: TL_VERSION,
+      hulls: {}, nextHull: {},          // hull numbers of ships that replace ones lost in action
       storyDone: {}, storyVersion: STORY_VERSION      // story missions completed: id -> date
     };
     STATIONS.forEach(function (s) { c.stations[s] = { qualified: 0, rep: 0, failures: {}, realUntil: 0 }; c.profiles[s] = blankProfile(); c.stepUps[s] = 0; });
@@ -78,6 +79,8 @@
     if (!Array.isArray(c.signoffsUsed)) c.signoffsUsed = [];
     c.name = cleanName(c.name) || "Recruit";
     if (!c.ships || typeof c.ships !== "object") c.ships = {};
+    if (!c.hulls || typeof c.hulls !== "object") c.hulls = {};
+    if (!c.nextHull || typeof c.nextHull !== "object") c.nextHull = {};
     // Careers from before tech levels 4 to 7: old levels 1-2 become 5, 3-4 become 6, 5-6 become 7
     // (a gunboat is always 4), TFS ships become INS, and the offers are drawn again.
     if (oldTL && !oldNames) {
@@ -103,7 +106,7 @@
       if (!PLAYABLE[s]) return;
       if (!Array.isArray(c.offersBy[s]) || !c.offersBy[s].length) generateOffers(c, s);
       ensureStepUp(c, s);
-      uniqueShips(c.offersBy[s], BL.rng(c.offerSeed + 11));    // (offers saved before names were kept unique)
+      uniqueShips(c.offersBy[s], BL.rng(c.offerSeed + 11), c);    // (offers saved before names were kept unique)
     });
     return c;
   }
@@ -185,13 +188,29 @@
   }
   function offers(c, station) { return c.offersBy[station] || []; }
   // Every ship in a list of jobs is a different ship: a repeat gets a new name of its class and tech level.
-  function uniqueShips(list, rng) {
+  // A lost gunboat's PT number is never drawn again; a named ship lost in action comes back as a new
+  // ship of the same name and tech level under a new hull number (see retireShip).
+  function uniqueShips(list, rng, c) {
     var used = {};
+    if (c) Object.keys(c.ships).forEach(function (k) { if (c.ships[k].lost && c.ships[k].classId === "gunboat") used[k] = true; });
     list.forEach(function (j) {
-      if (used[j.ship]) { j.ship = BL.shipName(rng, j.classId, j.tl, used); j.hull = BL.hullNumber(j.classId, j.ship); }
+      if (used[j.ship]) j.ship = BL.shipName(rng, j.classId, j.tl, used);
+      j.hull = hullOf(c, j);
       used[j.ship] = true;
     });
     return list;
+  }
+  function hullOf(c, j) { return (c && c.hulls && c.hulls[j.ship]) || BL.hullNumber(j.classId, j.ship); }
+  // A ship destroyed or abandoned is gone: its service record is marked lost, and the next ship of
+  // that name gets the class's next new hull number (137 up, past the 36 on the name lists).
+  function retireShip(c, entry) {
+    var rec = c.ships[recKey(entry)];
+    if (rec) rec.lost = entry.date;
+    if (entry.classId === "gunboat") return;
+    var k = c.nextHull[entry.classId] || 137;
+    c.nextHull[entry.classId] = k + 1;
+    c.hulls[entry.ship] = BL.HULL_CODES[entry.classId] + "-" + k;
+    Object.keys(c.offersBy).forEach(function (s) { (c.offersBy[s] || []).forEach(function (j) { j.hull = hullOf(c, j); }); });
   }
   function generateOffers(c, station) {
     station = station || "engineer";
@@ -200,7 +219,7 @@
     if (hasStory(station)) {
       offers = storyOffers(c, station, rng);
       offers.sort(function (a, b) { return b.n - a.n || (a.story || "").localeCompare(b.story || "") || a.tl - b.tl; });
-      c.offersBy[station] = uniqueShips(offers, rng);
+      c.offersBy[station] = uniqueShips(offers, rng, c);
       return offers;
     }
     var current = Math.max(1, q);
@@ -220,7 +239,7 @@
       } else c.stepUps[station] = (c.stepUps[station] || 0) + 1;
     }
     offers.sort(function (a, b) { return b.n - a.n || a.tl - b.tl; });
-    c.offersBy[station] = uniqueShips(offers, rng);
+    c.offersBy[station] = uniqueShips(offers, rng, c);
     return offers;
   }
   // Tech levels for a class (BL.TECH.levels): the lowest, and any one at random.
@@ -234,7 +253,7 @@
     if (!has) {
       list.push(makeJob(BL.rng(c.offerSeed + 3), station, next.n, lowTL(next.n)));
       list.sort(function (a, b) { return b.n - a.n || a.tl - b.tl; });
-      uniqueShips(list, BL.rng(c.offerSeed + 5));
+      uniqueShips(list, BL.rng(c.offerSeed + 5), c);
     }
   }
 
@@ -249,7 +268,7 @@
       if (hasStory(station)) { storyLeft(c, station, n).forEach(function (m) { out.push(makeJob(rng, station, n, anyTL(rng, n), false, m)); }); continue; }
       BL.TECH.levels(BL.classByN(n).id).forEach(function (tl) { out.push(makeJob(rng, station, n, tl, false)); });
     }
-    return uniqueShips(out, rng);
+    return uniqueShips(out, rng, c);
   }
   var REQUAL_REP = 0.5;
   function repFor(job, scorePct) {
@@ -308,11 +327,12 @@
     p.missions = n + 1;
     if (success) p.wins++; else p.losses++;
     report.profileAfter = profile(c, job.station);
-    var entry = { date: today(), station: job.station, classId: job.classId, n: job.n, tl: job.tl, ship: job.ship, hull: BL.hullNumber(job.classId, job.ship),
+    var entry = { date: today(), station: job.station, classId: job.classId, n: job.n, tl: job.tl, ship: job.ship, hull: job.hull || hullOf(c, job),
       seed: job.seed, outcome: r.outcome, score: r.score, rep: report.rep, serious: job.serious, story: job.story, title: job.title };
     c.history.unshift(entry);
     if (c.history.length > 200) c.history.length = 200;
     logService(c, entry, r);
+    if (r.outcome === "destroyed" || r.outcome === "abandoned") { retireShip(c, entry); report.shipLost = true; }
     generateOffers(c, job.station);
     return report;
   }
@@ -342,9 +362,11 @@
 
   /* Service records: one per ship, kept for the whole career (never trimmed). Each mission
      aboard adds an entry: who served, at which station, how it went and what the ship took. */
+  // Keyed by name; a later ship of the same name (new hull number) adds its hull number to the key.
+  function recKey(h) { return h.ship + (h.hull && h.hull !== BL.hullNumber(h.classId, h.ship) ? " " + h.hull : ""); }
   function logService(c, h, r) {
-    var rec = c.ships[h.ship];
-    if (!rec) rec = c.ships[h.ship] = { name: h.ship, classId: h.classId, n: h.n, tl: h.tl, firstServed: h.date, missions: [] };
+    var key = recKey(h), rec = c.ships[key];
+    if (!rec) rec = c.ships[key] = { name: h.ship, hull: h.hull || "", classId: h.classId, n: h.n, tl: h.tl, firstServed: h.date, missions: [] };
     var d = r.detail || {};
     rec.missions.push({ date: h.date, hero: c.name, station: h.station, seed: h.seed, outcome: h.outcome, score: h.score,
       rep: h.rep, serious: h.serious, kills: d.kills, hullLost: d.hullLost, jumpsOnTime: d.jumpsOnTime,

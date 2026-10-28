@@ -90,7 +90,8 @@
     return "";
   };
   // "INS Bartolomeo Colleoni CL-125"; a gunboat is just "PT-117".
-  BL.shipLabel = function (classId, ship) { var h = BL.hullNumber(classId, ship); return ship + (h ? " " + h : ""); };
+  // hull: the job's own hull number (a ship that replaces one lost in action has a new one).
+  BL.shipLabel = function (classId, ship, hull) { var h = hull || BL.hullNumber(classId, ship); return ship + (h ? " " + h : ""); };
 
   // A ship for a job: one of the twelve named ships of that class and tech level, or for a
   // gunboat a fresh hull number PT-101 ... PT-199.
