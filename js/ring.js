@@ -61,11 +61,14 @@
     return { x: R.cx + R.rx * s, y: R.cy - R.ry * c, nx: nx / l, ny: ny / l };
   };
   // The warp drive, in the stern (drive strikes aim here), and the CIWS mounts on the hull.
-  // The ship is drawn about 0.37 times as wide as it is long.
+  // The mounts sit on the CIWS domes drawn on each class's hull (art.js); without art, the generic
+  // mounts, for a ship drawn about 0.37 times as wide as it is long.
   RingTurret.prototype.drivePoint = function () { var R = this.R; return { x: R.cx, y: R.cy + R.shipH * 0.4 }; };
   RingTurret.prototype.ciwsMounts = function () {
-    var R = this.R, w = R.shipH * 0.37;
-    return this.m.sys("pd") ? this.G.ring.ciws.mounts.map(function (q) { return { x: R.cx + q[0] * w, y: R.cy + q[1] * R.shipH }; }) : [];
+    var R = this.R, w = R.shipH * 0.37, art = BL.ART && BL.ART.ciwsMounts && BL.ART.ciwsMounts(this.m.data.classId);
+    if (!this.m.sys("pd")) return [];
+    if (art) return art.map(function (q) { return { x: R.cx + q[0] * R.shipH, y: R.cy + q[1] * R.shipH }; });
+    return this.G.ring.ciws.mounts.map(function (q) { return { x: R.cx + q[0] * w, y: R.cy + q[1] * R.shipH }; });
   };
   RingTurret.prototype.bearingOf = function (x, y) { return Math.atan2(x - this.R.cx, -(y - this.R.cy)) / RAD; };
   RingTurret.prototype.placeBattery = function (b) {

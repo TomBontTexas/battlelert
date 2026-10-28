@@ -127,124 +127,154 @@
       '<circle cx="0" cy="16" r="16" fill="url(#' + p + 'g)"/><circle cx="0" cy="14" r="5" fill="#fff6d8"/>');
   };
 
-  /* H1 Our gunboat, seen from above, nose up: naval grey, one dorsal turret, hull number. */
-  ART.gunboat = function (hull) {
-    var p = "g" + (n++);
-    var d = '<defs>' +
-      '<linearGradient id="' + p + 'h" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#c3ccd4"/><stop offset=".5" stop-color="#8794a0"/><stop offset="1" stop-color="#4a5560"/></linearGradient>' +
-      '<linearGradient id="' + p + 'd" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7c8895"/><stop offset="1" stop-color="#36404a"/></linearGradient>' +
-      '<radialGradient id="' + p + 'g"><stop offset="0" stop-color="#ffffff"/><stop offset=".3" stop-color="#8fd3ff"/><stop offset="1" stop-color="#4cc3ee" stop-opacity="0"/></radialGradient>' +
-      '<radialGradient id="' + p + 'c" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#ffffff"/><stop offset=".3" stop-color="#7fd7ff"/><stop offset="1" stop-color="#0a2230"/></radialGradient></defs>';
-    var side = '<path d="M-14 40 L-40 62 L-44 84 L-16 74 Z" fill="url(#' + p + 'd)" stroke="#1d242b" stroke-width="1.5"/>' +
-      '<path d="M-36 66 L-42 80" stroke="#f0b54a" stroke-width="3"/>' +
-      '<ellipse cx="-11" cy="96" rx="9" ry="14" fill="url(#' + p + 'g)"/><rect x="-17" y="80" width="12" height="10" rx="2" fill="#2a323a" stroke="#6b7884"/>' +
-      // torpedo tube along each side, warhead showing at the front
-      '<rect x="-27" y="-44" width="9" height="60" rx="4.5" fill="url(#' + p + 'd)" stroke="#1d242b" stroke-width="1.2"/>' +
-      '<rect x="-27" y="-36" width="9" height="4" fill="#f0b54a"/><circle cx="-22.5" cy="-42" r="3" fill="#ff6b5a"/>';
-    var body = '<path d="M0 -96 L14 -50 L18 20 L16 84 L-16 84 L-18 20 L-14 -50 Z" fill="url(#' + p + 'h)" stroke="#1d242b" stroke-width="1.8"/>' +
-      '<path d="M0 -96 L14 -50 L18 20 L16 84 L0 84 Z" fill="#000" opacity=".16"/>' +
-      '<path d="M-16 -40 L16 -40 M-18 0 L18 0 M-18 40 L18 40 M-17 62 L17 62" stroke="#3a454f" stroke-width="1" opacity=".8"/>' +
-      '<path d="M0 -80 L6 -62 L-6 -62 Z" fill="url(#' + p + 'c)" stroke="#1d242b"/>' +
-      '<path d="M-12 -30 L-4 -24 L-12 -18 M12 -30 L4 -24 L12 -18" stroke="#f0b54a" stroke-width="2.5" fill="none"/>' +
-      '<circle cx="0" cy="-2" r="11" fill="url(#' + p + 'd)" stroke="#1d242b" stroke-width="1.5"/>' +
-      '<rect x="-2.5" y="-34" width="5" height="30" rx="1" fill="#2a323a" stroke="#1d242b"/>' +
-      '<circle cx="0" cy="-2" r="4" fill="#4cc3ee"/>' +
-      '<text x="0" y="30" transform="rotate(-90 0 30)" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-weight="700" font-size="9" fill="#1d242b" letter-spacing="1">' + (hull || "PT-117") + '</text>';
-    return svg("-50 -102 100 216", d + both(side) + body);
+  /* H1-S9 Our ships from above, nose up, from TexasBont's outlines (Oct 28, 2026): the gunboat a slim
+     capsule; the picket, destroyer escort and destroyer finned rockets (the destroyer with forward
+     prongs); the light cruiser up a round bow dome on a wide block, the cruiser adding a stern hangar
+     block, the heavy cruiser two wing blocks, the battleship two reactor pods, the dreadnought four
+     lobes round the planet buster. Every hull is drawn bow at y -100, stern at y 100.
+     Each class lists its turrets in gun-number order: [x, y, kind, aft?] (aft = barrels start astern),
+     and its CIWS mounts (pd), which the battle view lights up. */
+  function ell(cx, cy, rx, ry) { return "M" + (cx - rx) + " " + cy + " A" + rx + " " + ry + " 0 1 0 " + (cx + rx) + " " + cy + " A" + rx + " " + ry + " 0 1 0 " + (cx - rx) + " " + cy + " Z"; }
+  // A hull symmetric about x = 0 from its right half: segments from the bow (0, top) round to the
+  // stern's center line; each is [x, y] (a line) or [x1, y1, x, y] (a curve) or [x1, y1, x2, y2, x, y].
+  function sym(top, segs) {
+    var pts = [[0, top]], d = "M0 " + top;
+    segs.forEach(function (s) { d += (s.length === 2 ? " L" : s.length === 4 ? " Q" : " C") + s.join(" "); pts.push([s[s.length - 2], s[s.length - 1]]); });
+    for (var i = segs.length - 1; i >= 0; i--) {
+      var s = segs[i], to = pts[i];
+      if (s.length === 2) d += " L" + (-to[0]) + " " + to[1];
+      else if (s.length === 4) d += " Q" + (-s[0]) + " " + s[1] + " " + (-to[0]) + " " + to[1];
+      else d += " C" + (-s[2]) + " " + s[3] + " " + (-s[0]) + " " + s[1] + " " + (-to[0]) + " " + to[1];
+    }
+    return d + " Z";
+  }
+  var DOME = [[16, -100, 28, -86, 28, -66]];   // the round bow of the light cruiser and up
+  var OURS = {
+    gunboat: { code: "PT", rel: 1.0, beam: 34,
+      hull: [sym(-100, [[18, -100, 31, -60, 32, -20], [33, 20, 31, 70, 28, 100], [0, 100]])],
+      guns: [[0, -24, "pulse"]], engines: [[0, 100, 16]], canopy: -64, tubes: true },
+    picket: { code: "DL", rel: 1.4, beam: 52,
+      hull: [sym(-100, [[17, -100, 28, -70, 28, -35], [28, 12], [42, 24, 50, 40, 49, 56], [48, 76, 42, 92, 38, 100], [30, 100], [30, 66, 18, 58], [18, 81], [0, 81]])],
+      guns: [[0, -40, "rail"]], engines: [[-9, 81, 10], [9, 81, 10]], bridge: [-6, 20, 14], mast: 24, warp: [0, 46, 11] },
+    destroyerEscort: { code: "DE", rel: 1.8, beam: 52,
+      hull: [sym(-100, [[17, -100, 28, -68, 28, -30], [28, 19], [42, 32, 50, 48, 49, 62], [49, 78, 42, 92, 38, 100], [29, 100], [29, 70, 17, 63], [17, 81], [0, 81]])],
+      guns: [[0, -42, "pulse"], [0, 44, "rail", true]], engines: [[-8, 81, 10], [8, 81, 10]], bridge: [-16, 22, 16], warp: [0, 18, 10],
+      pd: [[-42, 62], [42, 62]] },
+    destroyer: { code: "DD", rel: 2.2, beam: 56,
+      hull: [sym(-100, [[16, -100, 26, -75, 27, -48], [28, -34], [30, -58, 32, -70], [40, -70], [48, -55, 53, -40, 53, -21], [52, 0, 42, 12, 31, 20],
+        [42, 30, 49, 46, 48, 64], [47, 80, 42, 92, 37, 100], [29, 100], [29, 70, 18, 60], [15, 81], [0, 81]])],
+      guns: [[0, -56, "rail"], [0, 2, "pulse"], [0, 43, "rail", true]], engines: [[-33, 100, 9], [0, 81, 12], [33, 100, 9]], bridge: [-36, 22, 14], warp: [0, 24, 10], chev: -79,
+      pd: [[-36, -64], [36, -64]] },
+    lightCruiser: { code: "CL", rel: 2.8, beam: 62, main: -30,
+      hull: [sym(-100, DOME.concat([[28, -27], [57, 13], [61, 18, 61, 24], [61, 90], [61, 100, 51, 100], [0, 100]]))],
+      guns: [[-40, 8, "rail"], [40, 8, "rail"], [-40, 64, "pulse"], [40, 64, "pulse"]], engines: [[-36, 100, 14], [0, 100, 14], [36, 100, 14]],
+      bridge: [-12, 30, 18], warp: [0, 48, 12], pd: [[-56, 36], [56, 36]] },
+    cruiser: { code: "C", rel: 3.3, beam: 62, main: -30, hangar: [83, 13],
+      hull: [sym(-100, DOME.concat([[28, -27], [58, 13], [61, 17, 61, 23], [61, 72], [61, 81, 52, 81], [28, 81], [28, 92], [28, 100, 20, 100], [0, 100]]))],
+      guns: [[-42, 6, "rail"], [42, 6, "rail"], [0, 28, "rail"], [-42, 58, "pulse"], [42, 58, "pulse"]],
+      engines: [[-52, 81, 11], [-38, 81, 11], [38, 81, 11], [52, 81, 11]], bridge: [-14, 30, 16], warp: [0, 58, 12], pd: [[-56, 32], [56, 32]] },
+    heavyCruiser: { code: "CA", rel: 3.8, beam: 62, main: -54, hangar: [85, 12],
+      hull: [sym(-100, DOME.concat([[28, -50], [58, -33], [61, -31, 61, -26], [61, 0], [61, 7, 54, 7], [28, 7], [28, 25], [58, 42], [61, 44, 61, 49],
+        [61, 76], [61, 83, 54, 83], [28, 83], [28, 93], [28, 100, 21, 100], [0, 100]]))],
+      guns: [[-44, -13, "rail"], [44, -13, "rail"], [0, -36, "rail"], [0, 16, "ion", true], [-44, 63, "pulse"], [44, 63, "pulse"]],
+      engines: [[-52, 83, 11], [-38, 83, 11], [38, 83, 11], [52, 83, 11]], bridge: [-16, 24, 12], warp: [0, 46, 11],
+      pd: [[-56, -27], [56, -27], [-56, 78], [56, 78]] },
+    battleship: { code: "BB", rel: 4.6, beam: 62, main: -56, hangar: [82, 14],
+      hull: [sym(-100, DOME.concat([[28, 92], [28, 100, 20, 100], [0, 100]])), ell(-39, 12, 22, 65), ell(39, 12, 22, 65)],
+      guns: [[-40, -24, "rail"], [40, -24, "rail"], [0, -44, "rail"], [0, 36, "rail", true], [0, 10, "ion"], [-40, 54, "pulse"], [40, 54, "pulse"]],
+      engines: [[-14, 100, 11], [0, 100, 11], [14, 100, 11], [-39, 77, 12], [39, 77, 12]], bridge: [-24, 22, 14], warp: [0, 62, 8],
+      reactors: [[-41, 16], [41, 16]], pd: [[-57, -18], [57, -18], [-60, 18], [60, 18], [-53, 54], [53, 54]] },
+    dreadnought: { code: "DN", rel: 5.6, beam: 44, main: -68, hangar: [87, 11],
+      hull: [sym(-100, [[18, -100, 28, -88, 28, -70], [28, 92], [28, 100, 20, 100], [0, 100]]), ell(-25, -34, 17, 39), ell(25, -34, 17, 39), ell(-25, 51, 17, 40), ell(25, 51, 17, 40)],
+      guns: [[-28, -44, "rail"], [28, -44, "rail"], [0, -52, "rail"], [0, 50, "rail", true], [-28, 36, "ion"], [28, 36, "ion"], [-28, 70, "pulse"], [28, 70, "pulse"]],
+      engines: [[-20, 100, 9], [-7, 100, 9], [7, 100, 9], [20, 100, 9], [-27, 90, 10], [27, 90, 10]], bridge: [-34, 20, 10], warp: [0, 72, 7],
+      reactors: [[-22, -16], [22, -16], [0, -16]], buster: [0, 14], pd: [[-24, -86], [24, -86], [-40, -48], [40, -48], [-40, 30], [40, 30], [-38, 64], [38, 64]] }
   };
-
-  /* S2-S9 Our warships from above, nose up. One hull recipe, so the classes read as one navy;
-     each class shows what it actually carries: its guns (one turret per battery), the spinal
-     main gun, the hangar, point-defense domes, its reactors and the planet buster.
-     L = length, B = beam (viewBox units); rel = length relative to the gunboat. */
-  var CLASSES = {
-    picket:          { code: "DL", L: 150, B: 34, rel: 1.4, guns: [[0, -42]], gunR: 6, engines: 2, mast: true },
-    destroyerEscort: { code: "DE", L: 160, B: 40, rel: 1.8, guns: [[0, -40], [0, 34]], gunR: 6.5, engines: 2, pd: 2 },
-    destroyer:       { code: "DD", L: 172, B: 46, rel: 2.2, guns: [[0, -60], [0, 12], [0, 44]], gunR: 7, engines: 3, pd: 2 },
-    lightCruiser:    { code: "CL", L: 180, B: 54, rel: 2.8, guns: [[-13, -16], [13, -16], [-13, 40], [13, 40]], gunR: 6.5, engines: 3, main: true, pd: 2 },
-    cruiser:         { code: "C",  L: 186, B: 62, rel: 3.3, guns: [[-15, -18], [15, -18], [0, 22], [-10, 48], [10, 48]], gunR: 6.5, engines: 4, main: true, hangar: true, pd: 2 },
-    heavyCruiser:    { code: "CA", L: 190, B: 70, rel: 3.8, guns: [[-17, -20], [17, -20], [-24, 18], [24, 18], [-11, 50], [11, 50]], gunR: 7, engines: 4, main: true, hangar: true, pd: 4 },
-    battleship:      { code: "BB", L: 194, B: 80, rel: 4.6, guns: [[-20, -24], [20, -24], [-28, 12], [28, 12], [0, 34], [-16, 60], [16, 60]], gunR: 7.5, engines: 5, main: true, hangar: true, pd: 6, reactors: [[-16, 38], [16, 38]] },
-    dreadnought:     { code: "DN", L: 196, B: 92, rel: 5.6, guns: [[-22, -28], [22, -28], [-34, 2], [34, 2], [-31, 28], [31, 28], [-22, 66], [22, 66]], gunR: 7.5, engines: 6, main: true, hangar: true, pd: 8, reactors: [[-15, 50], [0, 52], [15, 50]], buster: true }
-  };
-  ART.CLASSES = CLASSES;
-  ART.warship = function (id, hullNo) {
-    var c = CLASSES[id], p = "k" + (n++), L = c.L, B = c.B, h = L / 2, b = B / 2;
+  var RXN = ["A", "B", "C"];
+  function ourTurret(p, x, y, kind, aft, r) {
+    var a = aft ? 180 : 0, out = '<g transform="translate(' + x + ' ' + y + ') rotate(' + a + ')">';
+    if (kind === "rail") out += '<rect x="-1.7" y="' + (-r * 2.5) + '" width="3.4" height="' + (r * 2.3) + '" fill="#2a323a" stroke="#1d242b" stroke-width=".8"/>';
+    else if (kind === "pulse") out += [-1, 1].map(function (sd) { return '<rect x="' + (sd * r * 0.38 - 1.4) + '" y="' + (-r * 1.75) + '" width="2.8" height="' + (r * 1.4) + '" fill="#2a323a" stroke="#1d242b" stroke-width=".8"/>'; }).join("");
+    else out += '<rect x="-2.4" y="' + (-r * 2.1) + '" width="4.8" height="' + (r * 1.9) + '" fill="#2a323a" stroke="#1d242b" stroke-width=".8"/><rect x="-2.8" y="' + (-r * 2.1) + '" width="5.6" height="2.4" fill="#4cc3ee"/>';
+    out += '<circle r="' + r + '" fill="url(#' + p + 'd)" stroke="#1d242b" stroke-width="1.2"/>' +
+      '<circle cx="' + (-r * 0.3) + '" cy="' + (-r * 0.3) + '" r="' + (r * 0.35) + '" fill="#ffffff" opacity=".25"/>';
+    if (kind === "ion") out += '<circle r="' + (r * 0.32) + '" fill="#4cc3ee"/>';
+    if (kind === "pulse") out += '<circle r="' + (r * 0.26) + '" fill="#f0b54a"/>';
+    return out + '</g>';
+  }
+  function ourShip(id, hullNo) {
+    var c = OURS[id], p = "k" + (n++), small = id === "gunboat";
+    var r = small ? 13 : c.guns.length > 5 ? 8.5 : 9.5;
     var d = '<defs>' +
-      '<linearGradient id="' + p + 'h" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#c3ccd4"/><stop offset=".5" stop-color="#8794a0"/><stop offset="1" stop-color="#4a5560"/></linearGradient>' +
+      '<linearGradient id="' + p + 'h" gradientUnits="userSpaceOnUse" x1="-60" y1="-100" x2="60" y2="100"><stop offset="0" stop-color="#c3ccd4"/><stop offset=".5" stop-color="#8794a0"/><stop offset="1" stop-color="#4a5560"/></linearGradient>' +
       '<linearGradient id="' + p + 'd" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9aa6b2"/><stop offset="1" stop-color="#3e4852"/></linearGradient>' +
       '<radialGradient id="' + p + 'g"><stop offset="0" stop-color="#ffffff"/><stop offset=".3" stop-color="#8fd3ff"/><stop offset="1" stop-color="#4cc3ee" stop-opacity="0"/></radialGradient>' +
       '<radialGradient id="' + p + 'c" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#ffffff"/><stop offset=".3" stop-color="#7fd7ff"/><stop offset="1" stop-color="#0a2230"/></radialGradient>' +
       '<radialGradient id="' + p + 'r"><stop offset="0" stop-color="#ffffff"/><stop offset=".4" stop-color="#4cc3ee"/><stop offset="1" stop-color="#1d4a5c"/></radialGradient>' +
-      '<radialGradient id="' + p + 'x" cx=".4" cy=".35"><stop offset="0" stop-color="#ffd0c8"/><stop offset=".35" stop-color="#ff6b5a"/><stop offset="1" stop-color="#4a0d08"/></radialGradient></defs>';
+      '<radialGradient id="' + p + 'x" cx=".4" cy=".35"><stop offset="0" stop-color="#ffd0c8"/><stop offset=".35" stop-color="#ff6b5a"/><stop offset="1" stop-color="#4a0d08"/></radialGradient>' +
+      '<clipPath id="' + p + 'k">' + c.hull.map(function (h) { return '<path d="' + h + '"/>'; }).join("") + '</clipPath></defs>';
     var out = [];
-    // engine glow behind the stern
-    var ne = c.engines, span = B * 0.62;
-    for (var i = 0; i < ne; i++) {
-      var ex = ne === 1 ? 0 : -span / 2 + span * i / (ne - 1);
-      out.push('<ellipse cx="' + ex + '" cy="' + (h + 10) + '" rx="' + (B / ne * 0.32 + 3) + '" ry="12" fill="url(#' + p + 'g)"/>');
-      out.push('<rect x="' + (ex - 4.5) + '" y="' + (h - 2) + '" width="9" height="8" rx="2" fill="#2a323a" stroke="#6b7884"/>');
-    }
-    // hull
-    var bow = L * 0.3;
-    var hull = "M0 " + (-h) + " L" + (b * 0.55) + " " + (-h + bow * 0.55) + " L" + b + " " + (-h + bow) + " L" + b + " " + (h - 16) + " L" + (b - 7) + " " + h +
-      " L" + (-b + 7) + " " + h + " L" + (-b) + " " + (h - 16) + " L" + (-b) + " " + (-h + bow) + " L" + (-b * 0.55) + " " + (-h + bow * 0.55) + " Z";
-    out.push('<path d="' + hull + '" fill="url(#' + p + 'h)" stroke="#1d242b" stroke-width="1.8"/>');
-    out.push('<path d="M0 ' + (-h) + ' L' + (b * 0.55) + ' ' + (-h + bow * 0.55) + ' L' + b + ' ' + (-h + bow) + ' L' + b + ' ' + (h - 16) + ' L' + (b - 7) + ' ' + h + ' L0 ' + h + ' Z" fill="#000" opacity=".15"/>');
-    for (var y = -h + bow; y < h - 10; y += 24) out.push('<path d="M' + (-b + 2) + ' ' + y + ' L' + (b - 2) + ' ' + y + '" stroke="#3a454f" stroke-width="1" opacity=".7"/>');
-    out.push('<path d="M0 ' + (-h + 6) + ' L0 ' + (h - 4) + '" stroke="#3a454f" stroke-width=".8" opacity=".5"/>');
-    // warp drive ring near the stern
-    out.push('<circle cx="0" cy="' + (h - 22) + '" r="' + Math.min(14, b * 0.55) + '" fill="none" stroke="#6aa8ff" stroke-width="3" opacity=".85"/>');
-    // hangar bays aft, both sides
-    if (c.hangar) [-1, 1].forEach(function (sd) {
-      var hx = sd * (b - 9), w = 10, hh = 34, hy = h - 60;
-      out.push('<rect x="' + (hx - w / 2) + '" y="' + hy + '" width="' + w + '" height="' + hh + '" fill="#141a20" stroke="#1d242b"/>');
-      out.push('<rect x="' + (hx - w / 2) + '" y="' + hy + '" width="' + w + '" height="4" fill="#f0b54a"/>');
+    // engine glow behind the nozzles
+    c.engines.forEach(function (e) { out.push('<ellipse cx="' + e[0] + '" cy="' + (e[1] + 9) + '" rx="' + (e[2] * 0.6 + 2) + '" ry="12" fill="url(#' + p + 'g)"/>'); });
+    // hull: every piece outlined first, then filled, so the pieces read as one hull
+    c.hull.forEach(function (h) { out.push('<path d="' + h + '" fill="#1d242b" stroke="#1d242b" stroke-width="3.6" stroke-linejoin="round"/>'); });
+    c.hull.forEach(function (h) { out.push('<path d="' + h + '" fill="url(#' + p + 'h)"/>'); });
+    // shade the starboard half (light from the upper left), plate seams, center line
+    var seams = [];
+    for (var y = -70; y < 100; y += 22) seams.push("M-70 " + y + " L70 " + y);
+    out.push('<g clip-path="url(#' + p + 'k)"><rect x="0" y="-110" width="80" height="220" fill="#000" opacity=".15"/>' +
+      '<path d="' + seams.join(" ") + '" stroke="#3a454f" stroke-width="1" opacity=".6"/><path d="M0 -94 L0 96" stroke="#3a454f" stroke-width=".8" opacity=".5"/></g>');
+    c.engines.forEach(function (e) { out.push('<rect x="' + (e[0] - e[2] / 2) + '" y="' + (e[1] - 4) + '" width="' + e[2] + '" height="6" rx="2" fill="#2a323a" stroke="#6b7884"/>'); });
+    if (c.tubes) [-1, 1].forEach(function (sd) {   // the gunboat's two torpedo tubes, warheads forward
+      out.push('<rect x="' + (sd * 22 - 4.5) + '" y="-40" width="9" height="56" rx="4.5" fill="url(#' + p + 'd)" stroke="#1d242b" stroke-width="1.2"/>' +
+        '<rect x="' + (sd * 22 - 4.5) + '" y="-32" width="9" height="4" fill="#f0b54a"/><circle cx="' + (sd * 22) + '" cy="-38" r="3" fill="#ff6b5a"/>');
     });
-    // bridge superstructure
-    var bw = Math.max(14, B * 0.32), by = -h + bow + 6;
-    out.push('<rect x="' + (-bw / 2) + '" y="' + by + '" width="' + bw + '" height="' + (L * 0.12) + '" rx="3" fill="url(#' + p + 'd)" stroke="#1d242b" stroke-width="1.2"/>');
-    out.push('<rect x="' + (-bw / 2 + 3) + '" y="' + (by + 3) + '" width="' + (bw - 6) + '" height="3.5" rx="1" fill="url(#' + p + 'c)"/>');
-    if (c.mast) out.push('<circle cx="0" cy="' + (by + L * 0.06 + 2) + '" r="6" fill="#d6dee5" stroke="#1d242b"/><path d="M-6 ' + (by + L * 0.06 + 2) + ' L6 ' + (by + L * 0.06 + 2) + '" stroke="#1d242b" stroke-width="1.5"/>');
-    // spinal main gun: a long barrel from the bridge to the bow
-    if (c.main) {
-      out.push('<rect x="-3.2" y="' + (-h + 4) + '" width="6.4" height="' + (bow + 6) + '" fill="#2a323a" stroke="#1d242b"/>');
-      out.push('<rect x="-5" y="' + (-h + bow * 0.5) + '" width="10" height="5" fill="#b0763a" stroke="#1d242b"/>');
-      out.push('<rect x="-5" y="' + (-h + bow * 0.75) + '" width="10" height="5" fill="#b0763a" stroke="#1d242b"/>');
+    if (c.canopy) out.push('<path d="M0 ' + (c.canopy - 18) + ' L8 ' + c.canopy + ' L-8 ' + c.canopy + ' Z" fill="url(#' + p + 'c)" stroke="#1d242b"/>');
+    // spinal main gun: a long barrel out through the bow dome, its breech on the deck behind
+    if (c.main != null) {
+      out.push('<rect x="-3.4" y="-104" width="6.8" height="' + (c.main + 104) + '" fill="#2a323a" stroke="#1d242b"/>');
+      out.push('<rect x="-8" y="' + (c.main - 6) + '" width="16" height="12" rx="2" fill="url(#' + p + 'd)" stroke="#1d242b" stroke-width="1.2"/>');
+      [0.3, 0.55].forEach(function (f) { out.push('<rect x="-5" y="' + (-100 + (c.main + 100) * f) + '" width="10" height="4" fill="#b0763a" stroke="#1d242b"/>'); });
     }
-    // reactors
-    if (c.reactors) {
-      var names = ["A", "B", "C"];
-      for (var k = 0; k < c.reactors.length; k++) {
-        var rx = c.reactors[k][0], ry = c.reactors[k][1];
-        out.push('<circle cx="' + rx + '" cy="' + ry + '" r="6" fill="url(#' + p + 'r)" stroke="#1d242b"/>');
-        out.push('<text x="' + rx + '" y="' + (ry + 0.5) + '" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-weight="700" font-size="7" fill="#0b1016">' + names[k] + '</text>');
-      }
+    // amber chevrons on the bow
+    var cy = c.chev || (small ? -46 : c.main != null ? -78 : -66);
+    out.push('<path d="M-14 ' + (cy + 6) + ' L-7 ' + cy + ' L-14 ' + (cy - 6) + ' M14 ' + (cy + 6) + ' L7 ' + cy + ' L14 ' + (cy - 6) + '" stroke="#f0b54a" stroke-width="2.4" fill="none"/>');
+    if (c.warp) out.push('<circle cx="' + c.warp[0] + '" cy="' + c.warp[1] + '" r="' + c.warp[2] + '" fill="#1a2630" stroke="#6aa8ff" stroke-width="3" opacity=".9"/><circle cx="' + c.warp[0] + '" cy="' + c.warp[1] + '" r="' + (c.warp[2] * 0.45) + '" fill="#6aa8ff" opacity=".5"/>');
+    if (c.hangar) {   // the hangar in the stern block: a dark bay behind amber-striped doors
+      var hy = c.hangar[0], hh = c.hangar[1];
+      out.push('<rect x="-17" y="' + hy + '" width="34" height="' + hh + '" rx="2" fill="#141a20" stroke="#1d242b"/>');
+      for (var sx = -15; sx < 15; sx += 6) out.push('<path d="M' + sx + ' ' + (hy + hh) + ' L' + (sx + 4) + ' ' + hy + '" stroke="#f0b54a" stroke-width="1.6"/>');
     }
-    // planet buster: a big ringed dome amidships
-    if (c.buster) {
-      out.push('<circle cx="0" cy="18" r="17" fill="url(#' + p + 'x)" stroke="#1d242b" stroke-width="1.5"/>');
-      out.push('<circle cx="0" cy="18" r="21" fill="none" stroke="#f0b54a" stroke-width="2.5" stroke-dasharray="6 4"/>');
+    if (c.buster) {   // the planet buster amidships, ringed in amber
+      var bx = c.buster[0], by = c.buster[1];
+      out.push('<circle cx="' + bx + '" cy="' + by + '" r="23" fill="none" stroke="#f0b54a" stroke-width="2.6" stroke-dasharray="6 4"/>');
+      out.push('<circle cx="' + bx + '" cy="' + by + '" r="18" fill="url(#' + p + 'x)" stroke="#1d242b" stroke-width="1.5"/>');
     }
-    // gun turrets, barrels forward
-    c.guns.forEach(function (g) {
-      var r = c.gunR, gx = g[0], gy = g[1], twin = r >= 7;
-      if (twin) { out.push('<rect x="' + (gx - 3.5) + '" y="' + (gy - r * 2.4) + '" width="2.6" height="' + (r * 2) + '" fill="#2a323a" stroke="#1d242b" stroke-width=".8"/>'); out.push('<rect x="' + (gx + 0.9) + '" y="' + (gy - r * 2.4) + '" width="2.6" height="' + (r * 2) + '" fill="#2a323a" stroke="#1d242b" stroke-width=".8"/>'); }
-      else out.push('<rect x="' + (gx - 1.6) + '" y="' + (gy - r * 2.3) + '" width="3.2" height="' + (r * 2) + '" fill="#2a323a" stroke="#1d242b" stroke-width=".8"/>');
-      out.push('<circle cx="' + gx + '" cy="' + gy + '" r="' + r + '" fill="url(#' + p + 'd)" stroke="#1d242b" stroke-width="1.2"/>');
-      out.push('<circle cx="' + (gx - r * 0.3) + '" cy="' + (gy - r * 0.3) + '" r="' + (r * 0.35) + '" fill="#ffffff" opacity=".25"/>');
+    if (c.reactors) c.reactors.forEach(function (q, k) {
+      out.push('<circle cx="' + q[0] + '" cy="' + q[1] + '" r="9" fill="url(#' + p + 'r)" stroke="#1d242b" stroke-width="1.2"/>');
+      out.push('<text x="' + q[0] + '" y="' + (q[1] + 0.5) + '" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-weight="700" font-size="10" fill="#0b1016">' + RXN[k] + '</text>');
     });
-    // point-defense domes along the edges
-    if (c.pd) for (var q = 0; q < c.pd; q++) {
-      var side = q % 2 ? 1 : -1, row = Math.floor(q / 2), rows = Math.ceil(c.pd / 2);
-      var py = -h + bow + 10 + (L - bow - 40) * (row + 0.5) / rows, px = side * (b - 4);
-      out.push('<circle cx="' + px + '" cy="' + py + '" r="3.2" fill="#d6dee5" stroke="#1d242b"/><rect x="' + (px - 0.6) + '" y="' + (py - 6) + '" width="1.2" height="4" fill="#1d242b"/>');
+    if (c.bridge) {   // bridge block with its window band; the picket's sensor mast on top
+      var b = c.bridge, bw = b[1], bh = b[2];
+      out.push('<rect x="' + (-bw / 2) + '" y="' + (b[0] - bh / 2) + '" width="' + bw + '" height="' + bh + '" rx="3" fill="url(#' + p + 'd)" stroke="#1d242b" stroke-width="1.2"/>');
+      out.push('<rect x="' + (-bw / 2 + 3) + '" y="' + (b[0] - bh / 2 + 2.5) + '" width="' + (bw - 6) + '" height="3.5" rx="1" fill="url(#' + p + 'c)"/>');
+      if (c.mast) out.push('<path d="M-' + (c.mast / 2) + ' ' + (b[0] + 3) + ' L' + (c.mast / 2) + ' ' + (b[0] + 3) + '" stroke="#1d242b" stroke-width="2"/><circle cx="0" cy="' + (b[0] + 3) + '" r="4.5" fill="#d6dee5" stroke="#1d242b"/>');
     }
-    // deck chevrons and hull classification letters
-    out.push('<path d="M' + (-b * 0.5) + ' ' + (-h + bow + 2) + ' L' + (-b * 0.25) + ' ' + (-h + bow - 4) + ' M' + (b * 0.5) + ' ' + (-h + bow + 2) + ' L' + (b * 0.25) + ' ' + (-h + bow - 4) + '" stroke="#f0b54a" stroke-width="2.2"/>');
-    out.push('<text x="0" y="' + (h - 6) + '" text-anchor="middle" font-family="Arial, sans-serif" font-weight="700" font-size="8" fill="#1d242b" letter-spacing="1">' + (hullNo || c.code) + '</text>');
-    var padX = 16, padTop = 8, padBottom = 26;
-    return svg((-b - padX) + " " + (-h - padTop) + " " + (B + padX * 2) + " " + (L + padTop + padBottom), d + out.join(""));
+    c.guns.forEach(function (g) { out.push(ourTurret(p, g[0], g[1], g[2], g[3], r)); });
+    if (c.pd) c.pd.forEach(function (q) { out.push('<circle cx="' + q[0] + '" cy="' + q[1] + '" r="3.6" fill="#d6dee5" stroke="#1d242b"/><circle cx="' + (q[0] - 1) + '" cy="' + (q[1] - 1) + '" r="1.2" fill="#fff"/>'); });
+    // hull number near the stern (the gunboat's runs along its aft deck)
+    if (small) out.push('<text x="0" y="62" transform="rotate(-90 0 62)" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-weight="700" font-size="11" fill="#1d242b" letter-spacing="1">' + (hullNo || "PT-117") + '</text>');
+    else { var ty = c.hangar ? c.hangar[0] - 3 : Math.min.apply(null, c.engines.map(function (e) { return e[1]; })) - 7; out.push('<text x="0" y="' + ty + '" text-anchor="middle" font-family="Arial, sans-serif" font-weight="700" font-size="8" fill="#1d242b" letter-spacing="1">' + (hullNo || c.code) + '</text>'); }
+    var half = c.beam + 6;
+    return svg((-half) + " -108 " + (half * 2) + " 234", d + out.join(""));
+  }
+  ART.OURS = OURS;
+  ART.gunboat = function (hull) { return ourShip("gunboat", hull); };
+  ART.warship = function (id, hullNo) { return ourShip(id, hullNo); };
+  // CIWS mount positions as shares of the drawn ship's height, from its center (for the battle view).
+  ART.ciwsMounts = function (id) {
+    var c = OURS[id]; if (!c || !c.pd) return null;
+    return c.pd.map(function (q) { return [q[0] / 234, (q[1] - 9) / 234]; });
   };
 
   /* A1-A5 Azurian capital ships. Same violet hull as the small types, with a pale lilac
