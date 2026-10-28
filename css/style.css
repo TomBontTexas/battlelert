@@ -572,5 +572,5 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 .card-stats { flex: 1 1 280px; width: auto; }
 .card-stats td:first-child { color: var(--muted); }
 .lost-note { color: var(--bad); font-weight: 700; }
-.card-stats td, #card-guns th, #card-guns td, #card-service th, #card-service td, #card-rates th, #card-rates td { text-align: left; }
-#card-guns td:first-child, #card-guns td:nth-child(4), #card-guns td:nth-child(5), #card-service td:first-child { white-space: nowrap; }
+.card-stats td, #card-guns th, #card-guns td, #card-service th, #card-service td { text-align: left; }
+#card-guns td:first-child, #card-guns td:nth-child(n+4), #card-service td:first-child { white-space: nowrap; }

@@ -2067,19 +2067,16 @@
     var bu = one("buster"); if (bu) rows.push(["Planet buster", cap(bu)]);
     $("card-stats").innerHTML = rows.map(function (r) { return "<tr><td>" + r[0] + "</td><td>" + r[1] + "</td></tr>"; }).join("");
     var ring = BL.GUNNERY.ring.classes[e.classId], load = BL.GUNNERY.loadout[e.classId] || [];
-    $("card-guns").innerHTML = "<tr><th>#</th><th>Type</th><th>Mount</th><th>Arc</th><th>Capacitor</th></tr>" + sysOf("gun").map(function (g, i) {
-      var a = ring.arcs[i] || [0, 180, 0], w = BL.WEAPONS[load[i]] || { name: "" };
-      return "<tr><td>" + (i + 1) + "</td><td>" + w.name + " Mk " + d.mk + "</td><td>" + (ring.arcNames[i] || "") + "</td><td>" + (a[1] >= 180 ? "all round" : 2 * a[1] + "°") + "</td><td>" + cap(g) + "</td></tr>";
+    // Each gun with its ratings at this mark: what a shot costs, how fast it fires, how many shots a
+    // full capacitor holds and what it draws firing nonstop. The guns share one capacitor size, given
+    // in a line underneath (a column only if they ever differ).
+    var guns = sysOf("gun"), same = guns.every(function (g) { return g.maxMJ === guns[0].maxMJ && g.maxMW === guns[0].maxMW; });
+    $("card-guns").innerHTML = "<tr><th>#</th><th>Type</th><th>Mount</th><th>Arc</th><th>Per shot</th><th>Rate</th><th>Shots</th><th>Draw</th>" + (same ? "" : "<th>Capacitor</th>") + "</tr>" + guns.map(function (g, i) {
+      var a = ring.arcs[i] || [0, 180, 0], W = BL.WEAPONS[load[i]] || { name: "", shotMJ: 0, interval: 1 }, shot = W.shotMJ * (d.mkCharge || 1), per = 1 / W.interval;
+      return "<tr><td>" + (i + 1) + "</td><td>" + W.name + " Mk " + d.mk + "</td><td>" + (ring.arcNames[i] || "") + "</td><td>" + (a[1] >= 180 ? "all round" : 2 * a[1] + "°") + "</td><td>" +
+        Math.round(shot) + " MJ</td><td>" + per + "/s</td><td>" + (shot ? Math.floor(g.maxMJ / shot) : "–") + "</td><td>" + Math.round(shot * per) + " MJ/s</td>" + (same ? "" : "<td>" + cap(g) + "</td>") + "</tr>";
     }).join("");
-    // Each gun type aboard: what a shot costs at this mark, how fast it fires, how many shots a full
-    // capacitor holds and what it draws firing nonstop (against the charge rate above).
-    var types = [], guns = sysOf("gun");
-    load.forEach(function (id, i) { if (guns[i] && types.every(function (t) { return t.id !== id; })) types.push({ id: id, g: guns[i] }); });
-    $("card-rates").innerHTML = "<tr><th>Type</th><th>Each shot</th><th>Fire rate</th><th>Shots from full</th><th>Draw firing nonstop</th></tr>" + types.map(function (t) {
-      var W = BL.WEAPONS[t.id], shot = W.shotMJ * (d.mkCharge || 1), per = 1 / W.interval;
-      return "<tr><td>" + W.name + "</td><td>" + Math.round(shot) + " MJ</td><td>" + per + " a second</td><td>" + Math.floor(t.g.maxMJ / shot) + " (" + t.g.maxMJ + " MJ)</td><td>" +
-        Math.round(shot * per) + " MJ/s (charge " + t.g.maxMW + ")</td></tr>";
-    }).join("");
+    $("card-gun-cap").textContent = same && guns.length ? (guns.length > 1 ? "Each gun: " : "Gun: ") + cap(guns[0]) + ". Shots = shots from a full capacitor; Draw = power used firing nonstop." : "";
     var ms = rec ? rec.missions.slice().reverse() : [];
     $("card-service").innerHTML = "<tr><th>Date</th><th>Mission</th><th>Systems</th><th>Outcome</th><th>Score</th><th>Ships destroyed</th><th>Hull lost</th></tr>" +
       (ms.length ? ms.map(function (m) {
