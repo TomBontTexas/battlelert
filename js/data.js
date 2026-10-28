@@ -335,6 +335,8 @@
   // least there (AI crews: engineer, test gunner, test pilot on that station's story missions; the
   // pilot bot leaves out minefields, it doesn't steer round mines) wins about half; the other two
   // win more. As a weak station's own model improves, its class's enemies go back up.
+  // Oct 27, 2026: the shields draw from every reactor; the engineer improved, so battleship x1.03 and
+  // dreadnought x1.1 (TexasBont, after playing the battleship).
   BL.FORCE_ENC = {
     gunboat:         { raiders: 3.6, interceptors: 2.01, frigate: 1.27, minefield: 3.5 },   // interceptors a notch under the AI's even (TexasBont at the gun)
     picket:          { raiders: 3.39, interceptors: 2.29, frigate: 1.15 },
@@ -343,13 +345,13 @@
     lightCruiser:    { raiders: 8.72, siege: 7.3, frigate: 3.55, cruiserA: 2.3, hunters: 0.5 },
     cruiser:         { raiders: 12.7, interceptors: 9.01, frigate: 4.78, cruiserA: 3.63, hunters: 0.5 },
     heavyCruiser:    { interceptors: 10.81, frigate: 5.84, cruiserA: 4.51, battleshipA: 2.75 },
-    battleship:      { siege: 12.4, frigate: 5.86, cruiserA: 4.56, battleshipA: 3.07 },
-    dreadnought:     { siege: 13.75, frigate: 6.48, cruiserA: 5.13, battleshipA: 3.39 }
+    battleship:      { siege: 12.77, frigate: 6.04, cruiserA: 4.7, battleshipA: 3.16 },
+    dreadnought:     { siege: 15.13, frigate: 7.13, cruiserA: 5.64, battleshipA: 3.73 }
     // (drive hunters can't sink a ship, they drain its drive. They meet the destroyer escort and up,
     // which all carry a CIWS: on the destroyer escort to the cruiser a pack comes half the times one
     // is due; the class's force from the heavy cruiser up)
   };
-  BL.FORCE = { gunboat: 2.39, picket: 2.41, destroyerEscort: 3.05, destroyer: 2.54, lightCruiser: 2.68, cruiser: 3.8, heavyCruiser: 4.77, battleship: 3.1, dreadnought: 3.69 };
+  BL.FORCE = { gunboat: 2.39, picket: 2.41, destroyerEscort: 3.05, destroyer: 2.54, lightCruiser: 2.68, cruiser: 3.8, heavyCruiser: 4.77, battleship: 3.19, dreadnought: 4.06 };
 
   /* --------------------------------------------------------- Encounters
      Each encounter is a load pattern. Ranges [a, b] are rolled from the mission seed.
