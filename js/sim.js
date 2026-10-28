@@ -122,7 +122,8 @@
           mj: s.startMJ, set: s.startSet, rate: 0, auxRate: 0, drainMW: s.drainMW || 0,
           tripped: false, tripUntil: 0, aux: false, freshMW: 0, reactor: s.reactor || 0, switchUntil: 0,
           // Several reactors (Oct 27, 2026, TexasBont): the shields draw evenly from all of them, like
-          // the engines, so turning them up can't overload one reactor on its own. (Aux: the first bank.)
+          // the engines, so turning them up can't overload one reactor on its own; switched to aux, they
+          // take an even share from every reactor's bank too.
           split: s.kind === "shield" && d.reactors.length > 1,
           // gunner state; tdmg = turret damage (share lost: slide, rate, reach), tfresh = since the last repair
           nextShot: 0, request: null, call: null,
@@ -157,7 +158,12 @@
     s.set = clamp(Math.round(mw * 2) / 2, 0, s.baseMW);
   };
   Mission.prototype.hasAux = function () { return this.ship.reactors.some(function (r) { return r.aux.cap > 0; }); };
-  Mission.prototype.auxFor = function (s) { return this.ship.reactors[s.reactor].aux; };
+  // The aux bank behind capacitor s (split shields: all the banks together, as one).
+  Mission.prototype.auxFor = function (s) {
+    var R = this.ship.reactors;
+    if (!s.split) return R[s.reactor].aux;
+    return R.reduce(function (a, r) { a.mj += r.aux.mj; a.cap += r.aux.cap; a.rateMW += r.aux.rateMW; return a; }, { mj: 0, cap: 0, rateMW: 0 });
+  };
   // What capacitor s draws from reactor k (MW): all of it from its own, or an even share of each when split.
   Mission.prototype.drawOn = function (s, k) { return s.split ? s.rate / this.ship.reactors.length : s.reactor === k ? s.rate : 0; };
   // Rewire a capacitor to the next reactor. It draws nothing for 2 s while it switches.
@@ -930,7 +936,7 @@
     // Each aux bank splits its output across the switched capacitors on its reactor that have room.
     var takers = R.map(function () { return 0; }), share = [];
     function feeding(s) { return s.aux && s.mj < s.maxMJ && t >= s.switchUntil; }
-    for (var i = 0; i < list.length; i++) if (feeding(list[i])) takers[list[i].reactor]++;
+    for (var i = 0; i < list.length; i++) if (feeding(list[i])) { if (list[i].split) takers = takers.map(function (n) { return n + 1; }); else takers[list[i].reactor]++; }
     for (var k = 0; k < R.length; k++) {
       var a = R[k].aux; a.out = 0;
       share[k] = takers[k] && a.mj > 0 ? Math.min(a.rateMW, a.mj / dt) / takers[k] : 0;
@@ -949,16 +955,16 @@
       if (target > s.rate) s.rate += Math.min((target - s.rate) * upK + 0.02, P.rampUpSlew * dt, target - s.rate);
       else s.rate += (target - s.rate) * downK;
       if (s.rate < 0.01) s.rate = 0;
-      var aux = R[s.reactor].aux;
-      s.auxRate = feeding(s) ? share[s.reactor] : 0;
+      var banks = s.split ? R.map(function (r, k) { return k; }) : [s.reactor];
+      s.auxRate = feeding(s) ? banks.reduce(function (a, k) { return a + share[k]; }, 0) : 0;
       var room = s.maxMJ - s.mj + dr * dt;
       var fromAux = Math.min(s.auxRate * dt, Math.max(0, room));
       var fromReactor = Math.min(s.rate * dt, Math.max(0, room - fromAux));
       var bleed = s.mj * this.bleedOf(s) * dt;
       s.mj = clamp(s.mj + fromAux + fromReactor - s.drainMW * dt - bleed, 0, s.maxMJ);
       this.stats.bleedMJ += bleed;
-      aux.mj = Math.max(0, aux.mj - fromAux);
-      aux.out += fromAux / dt;
+      // each bank gives its share of what was taken
+      if (fromAux > 0) banks.forEach(function (k) { var b = R[k].aux, part = fromAux * share[k] / s.auxRate; b.mj = Math.max(0, b.mj - part); b.out += part / dt; });
       this.stats.deliveredMJ += fromReactor;
     }
     for (k = 0; k < R.length; k++) {
