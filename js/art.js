@@ -230,7 +230,7 @@
         '<rect x="' + (sd * 22 - 4.5) + '" y="-32" width="9" height="4" fill="#f0b54a"/><circle cx="' + (sd * 22) + '" cy="-38" r="3" fill="#ff6b5a"/>');
     });
     if (c.canopy) out.push('<path d="M0 ' + (c.canopy - 18) + ' L8 ' + c.canopy + ' L-8 ' + c.canopy + ' Z" fill="url(#' + p + 'c)" stroke="#1d242b"/>');
-    // spinal main gun: a long barrel out through the bow dome, its breech on the deck behind
+    // main gun: a long barrel out through the bow dome, its breech on the deck behind
     if (c.main != null) {
       out.push('<rect x="-3.4" y="-104" width="6.8" height="' + (c.main + 104) + '" fill="#2a323a" stroke="#1d242b"/>');
       out.push('<rect x="-8" y="' + (c.main - 6) + '" width="16" height="12" rx="2" fill="url(#' + p + 'd)" stroke="#1d242b" stroke-width="1.2"/>');

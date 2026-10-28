@@ -2072,7 +2072,7 @@
     // in a line underneath (a column only if they ever differ). The main gun leads: each shot spends
     // its whole capacitor, and it fires again once that's full, so its rate is set by the charge.
     var guns = sysOf("gun"), same = guns.every(function (g) { return g.maxMJ === guns[0].maxMJ && g.maxMW === guns[0].maxMW; });
-    var mainRow = !mg ? "" : "<tr><td>M</td><td>Main gun (spinal)</td><td>on the centerline</td><td>dead ahead</td><td>" + mg.maxMJ + " MJ</td><td>every " +
+    var mainRow = !mg ? "" : "<tr><td>M</td><td>Main gun</td><td>on the centerline</td><td>points forward</td><td>" + mg.maxMJ + " MJ</td><td>every " +
       (Math.round(mg.maxMJ / mg.maxMW * 10) / 10) + " s</td><td>1</td><td>" + mg.maxMW + " MJ/s</td>" + (same ? "" : "<td>" + cap(mg) + "</td>") + "</tr>";
     $("card-guns").innerHTML = "<tr><th>#</th><th>Type</th><th>Mount</th><th>Arc</th><th>Per shot</th><th>Rate</th><th>Shots</th><th>Draw</th>" + (same ? "" : "<th>Capacitor</th>") + "</tr>" + mainRow + guns.map(function (g, i) {
       var a = ring.arcs[i] || [0, 180, 0], W = BL.WEAPONS[load[i]] || { name: "", shotMJ: 0, interval: 1 }, shot = W.shotMJ * (d.mkCharge || 1), per = 1 / W.interval;
