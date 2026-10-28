@@ -2071,6 +2071,15 @@
       var a = ring.arcs[i] || [0, 180, 0], w = BL.WEAPONS[load[i]] || { name: "" };
       return "<tr><td>" + (i + 1) + "</td><td>" + w.name + " Mk " + d.mk + "</td><td>" + (ring.arcNames[i] || "") + "</td><td>" + (a[1] >= 180 ? "all round" : 2 * a[1] + "°") + "</td><td>" + cap(g) + "</td></tr>";
     }).join("");
+    // Each gun type aboard: what a shot costs at this mark, how fast it fires, how many shots a full
+    // capacitor holds and what it draws firing nonstop (against the charge rate above).
+    var types = [], guns = sysOf("gun");
+    load.forEach(function (id, i) { if (guns[i] && types.every(function (t) { return t.id !== id; })) types.push({ id: id, g: guns[i] }); });
+    $("card-rates").innerHTML = "<tr><th>Type</th><th>Each shot</th><th>Fire rate</th><th>Shots from full</th><th>Draw firing nonstop</th></tr>" + types.map(function (t) {
+      var W = BL.WEAPONS[t.id], shot = W.shotMJ * (d.mkCharge || 1), per = 1 / W.interval;
+      return "<tr><td>" + W.name + "</td><td>" + Math.round(shot) + " MJ</td><td>" + per + " a second</td><td>" + Math.floor(t.g.maxMJ / shot) + " (" + t.g.maxMJ + " MJ)</td><td>" +
+        Math.round(shot * per) + " MJ/s (charge " + t.g.maxMW + ")</td></tr>";
+    }).join("");
     var ms = rec ? rec.missions.slice().reverse() : [];
     $("card-service").innerHTML = "<tr><th>Date</th><th>Mission</th><th>Systems</th><th>Outcome</th><th>Score</th><th>Ships destroyed</th><th>Hull lost</th></tr>" +
       (ms.length ? ms.map(function (m) {
