@@ -6,7 +6,7 @@
 <meta name="copyright" content="© 2011–2026 Tom Bont. All rights reserved.">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Battlelert</title>
-<link rel="stylesheet" href="css/style.css?b=ab282f8a">
+<link rel="stylesheet" href="css/style.css?b=7d0e885c">
 </head>
 <body>
 
@@ -84,6 +84,7 @@
       <button id="btn-hub-train" class="big">Pilot training</button>
       <button id="btn-hub-signoffs">Rapid sign-offs</button>
       <button id="btn-hub-record">Service record</button>
+      <button id="btn-hub-registry">Naval registry</button>
       <button id="btn-hub-export">Export career</button>
       <button id="btn-hub-options">Options</button>
       <button id="btn-hub-title">Title screen</button>
@@ -112,6 +113,31 @@
     <h2>Mission history</h2>
     <div class="table-wrap"><table id="rec-history" class="db-table"></table></div>
     <div class="actions"><button id="btn-record-back">Career hub</button></div>
+  </div>
+</section>
+
+<!-- ===================================================== Naval registry -->
+<section id="scr-registry" class="screen page" hidden>
+  <div class="sheet">
+    <h1>Naval registry</h1>
+    <p class="lede">Every ship in the navy, by class and tech level. Tap a ship for its card: its statistics and its service career.</p>
+    <label class="reg-filter"><input type="checkbox" id="reg-served"> Only ships I've served on</label>
+    <div id="reg-list"></div>
+    <div class="actions"><button id="btn-registry-back">Career hub</button></div>
+  </div>
+</section>
+
+<!-- ========================================================= Ship card -->
+<section id="scr-shipcard" class="screen page" hidden>
+  <div class="sheet">
+    <h1 id="card-title"></h1>
+    <p id="card-lede" class="lede"></p>
+    <div class="card-top"><div id="card-art" class="card-art"></div><table id="card-stats" class="db-table card-stats"></table></div>
+    <h2>Guns</h2>
+    <div class="table-wrap"><table id="card-guns" class="db-table"></table></div>
+    <h2>Service career</h2>
+    <div class="table-wrap"><table id="card-service" class="db-table"></table></div>
+    <div class="actions"><button id="btn-card-back">Naval registry</button></div>
   </div>
 </section>
 
@@ -538,7 +564,7 @@
 <section id="ov-how" class="overlay" hidden>
   <div class="ov-card wide">
     <h1>How to play</h1>
-    <p>A career aboard the warships carrying humanity's planet buster. Take jobs as engineer, gunner or pilot from the gunboat up to the dreadnought. Each station has its own storyline of the war: three story missions per ship class, in any order, each offered until you complete it, and the dreadnought's three are versions of the storyline's finale (winning one completes it). Story missions you skip show under Requalifying jobs at half reputation; a successful mission qualifies you on that class, and offers from bigger ships follow your reputation. Every ship is named after a real warship and keeps a service record in your career file. A ship destroyed or abandoned is lost: its record is closed, and the next ship of that name is a new one with a new hull number (a lost gunboat's PT number never comes back).</p>
+    <p>A career aboard the warships carrying humanity's planet buster. Take jobs as engineer, gunner or pilot from the gunboat up to the dreadnought. Each station has its own storyline of the war: three story missions per ship class, in any order, each offered until you complete it, and the dreadnought's three are versions of the storyline's finale (winning one completes it). Story missions you skip show under Requalifying jobs at half reputation; a successful mission qualifies you on that class, and offers from bigger ships follow your reputation. Every ship is named after a real warship and keeps a service record in your career file. A ship destroyed or abandoned is lost: its record is closed, and the next ship of that name is a new one with a new hull number (a lost gunboat's PT number never comes back). The career hub's <b>Naval registry</b> lists every ship by class and tech level; tap one for its card: its picture, its statistics and its service career.</p>
     <h2>The engine room</h2>
     <p>The reactor can't feed everything at once, so you decide where the power goes, second by second.</p>
     <ol class="tight">
@@ -613,6 +639,6 @@
 <script src="js/career.js?b=34474452"></script>
 <script src="js/speech.js?b=f9e428ef"></script>
 <script src="js/audio.js?b=273e5325"></script>
-<script src="js/ui.js?b=5d9f132c"></script>
+<script src="js/ui.js?b=30019cbb"></script>
 </body>
 </html>

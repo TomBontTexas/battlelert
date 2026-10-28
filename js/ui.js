@@ -42,7 +42,7 @@
   }
 
   /* ------------------------------------------------------------- Screens */
-  var SCREENS = ["scr-title", "scr-enlist", "scr-hub", "scr-offers", "scr-record", "scr-briefing", "scr-console", "scr-turret", "scr-debrief"];
+  var SCREENS = ["scr-title", "scr-enlist", "scr-hub", "scr-offers", "scr-record", "scr-registry", "scr-shipcard", "scr-briefing", "scr-console", "scr-turret", "scr-debrief"];
   function show(id) { SCREENS.forEach(function (s) { $(s).hidden = s !== id; }); }
   function overlay(id, on) { $(id).hidden = !on; }
   function inConsole() { return !$("scr-console").hidden; }
@@ -1978,6 +1978,107 @@
     show("scr-record");
   }
   $("btn-record-back").onclick = function () { click(); showHub(); };
+
+  /* ------------------------------------------------------ Naval registry
+     Every named ship by class and tech level (each name's past ships, lost in action, then the one
+     in service now under its current hull number), and the gunboats you've served on. Each opens
+     a card: the ship's picture, its statistics at its tech level and its service career. */
+  var regOpen = {}, regShown = [];
+  function regShips(c, cls) {
+    var out = [];
+    if (cls.id === "gunboat") {
+      Object.keys(c.ships).filter(function (k) { return c.ships[k].classId === "gunboat"; }).sort().forEach(function (k) {
+        out.push({ classId: "gunboat", tl: c.ships[k].tl || 4, ship: k, hull: "", rec: c.ships[k] });
+      });
+      return out;
+    }
+    var list = BL.SHIP_NAMES[cls.id];
+    BL.TECH.levels(cls.id).forEach(function (tl) {
+      var k = 2 * (tl - 5);
+      list[k].concat(list[k + 1]).forEach(function (n) {
+        var ship = BL.SHIP_PREFIX + n, base = BL.hullNumber(cls.id, ship), now = (c.hulls && c.hulls[ship]) || base;
+        // the lost ships of this name (records keyed name + hull number; the first by the name alone)
+        Object.keys(c.ships).forEach(function (key) {
+          var r = c.ships[key];
+          if (r.name !== ship || r.classId !== cls.id || !r.lost) return;
+          var h = r.hull || (key === ship ? base : key.slice(ship.length + 1));
+          if (h !== now) out.push({ classId: cls.id, tl: tl, ship: ship, hull: h, rec: r });
+        });
+        out.push({ classId: cls.id, tl: tl, ship: ship, hull: now, rec: c.ships[ship + (now !== base ? " " + now : "")] || null });
+      });
+    });
+    return out;
+  }
+  function regTag(e) {
+    if (e.rec && e.rec.lost) return '<span class="tag lost">Lost ' + e.rec.lost + "</span>";
+    if (e.rec) return '<span class="tag served">' + e.rec.missions.length + " mission" + (e.rec.missions.length === 1 ? "" : "s") + "</span>";
+    return '<span class="tag">Not served</span>';
+  }
+  function showRegistry() {
+    var c = career, only = $("reg-served").checked;
+    regShown = [];
+    $("reg-list").innerHTML = BL.CLASSES.map(function (cls) {
+      var all = regShips(c, cls), ships = only ? all.filter(function (e) { return e.rec; }) : all;
+      var served = all.filter(function (e) { return e.rec; }).length, body = "";
+      if (cls.id === "gunboat") body += '<p class="muted reg-tl">Gunboats carry numbers, not names: PT-101 to PT-199, a fresh one for every job. Only the ones you\'ve served on are listed.</p>';
+      BL.TECH.levels(cls.id).forEach(function (tl) {
+        var here = ships.filter(function (e) { return e.tl === tl; });
+        if (!here.length) return;
+        body += '<div class="reg-tl"><h3>Tech level ' + tl + '</h3><div class="reg-ships">' + here.map(function (e) {
+          regShown.push(e);
+          return '<button class="reg-ship" data-i="' + (regShown.length - 1) + '"><span>' + esc(BL.shipLabel(e.classId, e.ship, e.hull)) + "</span>" + regTag(e) + "</button>";
+        }).join("") + "</div></div>";
+      });
+      if (!ships.length) body += '<p class="muted reg-tl">' + (cls.id === "gunboat" ? "No gunboats yet." : "None yet.") + "</p>";
+      return '<details class="reg-class" data-cls="' + cls.id + '"' + (regOpen[cls.id] ? " open" : "") + "><summary>" + cls.n + ". " + cls.name +
+        ' <span class="muted">· ' + (cls.id === "gunboat" ? served + " served on" : all.length + " ships, " + served + " served on") + "</span></summary>" + body + "</details>";
+    }).join("");
+    show("scr-registry");
+  }
+  $("btn-hub-registry").onclick = function () { click(); showRegistry(); };
+  $("reg-served").onchange = function () { showRegistry(); };
+  $("reg-list").addEventListener("toggle", function (ev) { var d = ev.target; if (d.dataset && d.dataset.cls) regOpen[d.dataset.cls] = d.open; }, true);
+  $("reg-list").addEventListener("click", function (ev) { var b = ev.target.closest("button[data-i]"); if (b) { click(); showShipCard(regShown[+b.dataset.i]); } });
+  $("btn-registry-back").onclick = function () { click(); showHub(); };
+  $("btn-card-back").onclick = function () { click(); showRegistry(); };
+
+  var OUTCOME_NAME = { success: "Success", destroyed: "Destroyed", abandoned: "Abandoned ship", timeout: "Out of time" };
+  function showShipCard(e) {
+    var c = career, d = BL.shipFor(e.classId, e.tl), cls = BL.classById(e.classId), rec = e.rec;
+    var sysOf = function (kind) { return d.systems.filter(function (s) { return s.kind === kind; }); }, one = function (k) { return sysOf(k)[0]; };
+    $("card-title").textContent = BL.shipLabel(e.classId, e.ship, e.hull);
+    $("card-lede").innerHTML = cls.name + " · tech level " + e.tl + " · " +
+      (rec && rec.lost ? '<span class="lost-note">Lost in action ' + rec.lost + "</span>" : rec ? "In service" : "In service; you haven't served aboard her");
+    $("card-art").innerHTML = e.classId === "gunboat" ? BL.ART.gunboat(e.ship) : BL.ART.warship(e.classId, e.hull);
+    var rows = [], rx = d.reactors, helm = BL.HELM.classes[e.classId];
+    rows.push(["Hull", d.hull]);
+    rows.push(["Reactor", rx.length > 1 ? rx.length + " reactors (" + rx.map(function (r) { return r.name; }).join(", ") + "), " + rx[0].mw + " MW each, " + d.reactorMW + " MW in all" : d.reactorMW + " MW"]);
+    if (rx[0].aux.capacity) rows.push(["Aux bank", rx.length > 1 ? rx.length + " banks of " + rx[0].aux.capacity + " MJ, up to " + rx[0].aux.rateMW + " MW each" : rx[0].aux.capacity + " MJ, up to " + rx[0].aux.rateMW + " MW"]);
+    var sh = one("shield"); if (sh) rows.push(["Shields", sh.maxMJ + " MJ, charging at up to " + sh.maxMW + " MW"]);
+    rows.push(["Engines", "cruise " + d.cruiseG + " G, full " + d.maxG + " G"]);
+    if (helm) rows.push(["Turn", "up to " + helm.top + "°/s, safe to " + helm.safe + "°/s"]);
+    var mg = one("main"); if (mg) rows.push(["Main gun", "spinal, fires off the bow, " + mg.maxMJ + " MJ"]);
+    var pd = one("pd"); if (pd) rows.push(["CIWS", ((BL.ART.OURS[e.classId] || {}).pd || []).length + " mounts, " + pd.maxMJ + " MJ"]);
+    var hg = one("hangar"); if (hg) rows.push(["Hangar", "a gunboat squadron, " + hg.maxMJ + " MJ launchers"]);
+    if (d.torpedoes) rows.push(["Torpedoes", d.torpedoes + ", reloaded by the carrier every sortie"]);
+    var dr = one("drive"); rows.push(["Warp drive", dr ? dr.maxMJ + " MJ" : "none (launched from a carrier)"]);
+    var bu = one("buster"); if (bu) rows.push(["Planet buster", bu.maxMJ + " MJ"]);
+    $("card-stats").innerHTML = rows.map(function (r) { return "<tr><td>" + r[0] + "</td><td>" + r[1] + "</td></tr>"; }).join("");
+    var ring = BL.GUNNERY.ring.classes[e.classId], load = BL.GUNNERY.loadout[e.classId] || [];
+    $("card-guns").innerHTML = "<tr><th>#</th><th>Type</th><th>Mount</th><th>Arc</th><th>Capacitor</th></tr>" + sysOf("gun").map(function (g, i) {
+      var a = ring.arcs[i] || [0, 180, 0], w = BL.WEAPONS[load[i]] || { name: "" };
+      return "<tr><td>" + (i + 1) + "</td><td>" + w.name + " Mk " + d.mk + "</td><td>" + (ring.arcNames[i] || "") + "</td><td>" + (a[1] >= 180 ? "all round" : 2 * a[1] + "°") + "</td><td>" + g.maxMJ + " MJ</td></tr>";
+    }).join("");
+    var ms = rec ? rec.missions.slice().reverse() : [];
+    $("card-service").innerHTML = "<tr><th>Date</th><th>Mission</th><th>Systems</th><th>Outcome</th><th>Score</th><th>Ships destroyed</th><th>Hull lost</th></tr>" +
+      (ms.length ? ms.map(function (m) {
+        var h = c.history.filter(function (x) { return x.seed === m.seed && x.ship === e.ship; })[0];
+        var sys = (m.encounters || []).map(function (id) { return (BL.ENCOUNTERS[id] || { name: id }).name; }).join(", ");
+        return "<tr><td>" + m.date + "</td><td>" + (h && h.title ? esc(h.title) : m.serious === false ? "Requalifying" : "Patrol") + "</td><td>" + (sys || "–") + "</td><td>" + (OUTCOME_NAME[m.outcome] || m.outcome) +
+          "</td><td>" + (m.score != null ? m.score : "–") + "</td><td>" + (m.kills != null ? m.kills : "–") + "</td><td>" + (m.hullLost != null ? Math.round(m.hullLost) : "–") + "</td></tr>";
+      }).join("") : '<tr><td colspan="7" class="muted">No missions on record.</td></tr>');
+    show("scr-shipcard"); window.scrollTo(0, 0);
+  }
 
   /* ---------------------------------------------------------------- Boot */
   document.querySelectorAll(".app-version").forEach(function (el) { el.textContent = window.APP_VERSION || ""; });
