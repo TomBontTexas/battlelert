@@ -1373,7 +1373,7 @@
     $("tu-station").textContent = "Bridge · " + (job.test ? sim.data.className : BL.shipLabel(job.classId, job.ship, job.hull) + " (" + sim.data.className + ")") + " · tech level " + sim.data.tl;
     $("tu-keys").textContent = "← → course 10° (Shift 1°) · R resume plot · ↑ ↓ engines · Z break port · X take it · C break starboard · G gunners · S engineer · E warn engineering · J jump · Esc pause · Tap the compass or the map to steer";
     $("cp-tele").innerHTML = BRIDGE_ENG.map(function (id) { var p = h.preset(id); return '<button data-eng="' + id + '" title="All ' + p.name.toLowerCase() + '">' + p.short + "</button>"; }).join("");
-    $("cp-gunord").innerHTML = ["auto"].concat(G.orderList).map(function (id) { var o = G.orders[id]; return '<button data-gun="' + id + '" title="' + o.name + '">' + (o.key || "AUTO") + "</button>"; }).join("");
+    $("cp-gunord").innerHTML = ["auto"].concat(G.orderList).map(function (id) { var o = G.orders[id]; return '<button data-gun="' + id + '" title="' + o.name + '">' + K.gunShort[id] + "</button>"; }).join("");
     $("cp-stance").innerHTML = K.stanceList.map(function (id) { return '<button data-stance="' + id + '" title="' + K.stances[id].name + '">' + K.stances[id].short + "</button>"; }).join("");
     $("tu-mainrow").hidden = true;
     lastBridgeBox = {};
@@ -1431,7 +1431,7 @@
     cpBox("cp-eng", "ENGINE ROOM", ["Stance <b>" + K.stances[c.stance].short + "</b>", "Heat " + Math.round(heat) + "% · shields " + Math.round(sh.mj / sh.maxMJ * 100) + "%", dr ? "Drive " + Math.floor(dr.mj / dr.maxMJ * 100) + "%" : ""],
       heat >= BL.PHYSICS.alarmHeat ? "alert" : "");
     var g = tu.cur || {};
-    cpBox("cp-guns", "GUNS", ["Order <b>" + BL.GUNNERY.orders[c.guns].short + "</b>", "Kills " + (g.kills || 0) + "/" + (g.ships || 0) + " · down " + (g.downed || 0) + "/" + (g.torps || 0), ship.crippled ? "✖ Crew crippled" : ""]);
+    cpBox("cp-guns", "GUNS", ["Order <b>" + K.gunShort[c.guns] + "</b>", "Kills " + (g.kills || 0) + "/" + (g.ships || 0) + " · down " + (g.downed || 0) + "/" + (g.torps || 0), ship.crippled ? "✖ Crew crippled" : ""]);
     // The order bar
     var live = turretActive();
     Array.prototype.forEach.call($("cp-tele").children, function (b) { b.classList.toggle("on", b.dataset.eng === hv.eng); b.disabled = !live; });

@@ -810,7 +810,9 @@
     // Standing orders at the start of a mission (the captain changes them on the bridge).
     standing: { guns: "auto", stance: "balanced" },
     stances: { shields: { name: "Shields first", short: "SHIELDS" }, balanced: { name: "Balanced", short: "BALANCED" }, guns: { name: "Guns first", short: "GUNS" } },
-    stanceList: ["shields", "balanced", "guns"]
+    stanceList: ["shields", "balanced", "guns"],
+    // The gunners' order buttons on the bridge: what the guns go after (BL.GUNNERY.orders underneath).
+    gunShort: { auto: "SUGGESTED", defend: "TORPEDOES", stop: "LAUNCHERS", hunt: "HUNT", free: "FREE FIRE" }
   };
 
   /* ------------------------------------------------------------ Chatter
