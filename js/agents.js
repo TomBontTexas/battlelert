@@ -108,9 +108,12 @@
       var full = s.mj >= s.maxMJ - 0.5;
       var w = Math.min(want[id] || 0, s.maxMW);
       var draw = full ? Math.min(w, m.holdMW(s)) : w;
-      var give = Math.max(0, Math.min(w, left[s.reactor] + (full ? w : 0)));
+      // (shields split over several reactors: an even share of each, so the tightest one sets the limit)
+      var room = s.split ? n * Math.min.apply(null, left) : left[s.reactor];
+      var give = Math.max(0, Math.min(w, room + (full ? w : 0)));
       m.setSetpoint(id, give);
-      left[s.reactor] -= Math.min(draw, give);
+      if (s.split) for (var k = 0; k < n; k++) left[k] -= Math.min(draw, give) / n;
+      else left[s.reactor] -= Math.min(draw, give);
     });
     if (drive) {
       var behind = m.windowIn() < (drive.maxMJ - drive.mj) / Math.max(1, drive.maxMW) + 5;

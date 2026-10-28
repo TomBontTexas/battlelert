@@ -340,6 +340,8 @@
   }
   function multiRx() { return sim.ship.reactors.length > 1; }
   function moveRx(id) { if (canControl() && sim.moveReactor(id)) BL.audio.play("toggle"); }
+  // The reactor letter on a capacitor ("A+B" for the shields, which draw from them all).
+  function rxName(s) { var R = sim.ship.reactors; return s.split ? R.map(function (r) { return r.name; }).join("+") : R[s.reactor].name; }
   // Battleship and up: one small panel per reactor (load, heat, aux bank) instead of the gauge.
   function buildReactors() {
     var multi = multiRx(), box = $("rx-multi");
@@ -568,7 +570,7 @@
     var feeding = ship.systems.filter(function (s) { return s.aux; }).map(function (s) { return s.short; });
     setText($("aux-out"), feeding.length ? "Switched to " + feeding.join(", ") + (ship.aux.out > 0.1 ? " · " + Math.round(ship.aux.out) + " MW" : "") : "Not switched on");
     var trip = sim.priority.slice().reverse().map(function (id) {
-      var s = sim.sys(id); return '<li class="' + (s.tripped ? "tripped" : "") + '">' + (multiRx() ? s.short + " (" + ship.reactors[s.reactor].name + ")" : s.name) + (s.tripped ? " ✖" : "") + "</li>";
+      var s = sim.sys(id); return '<li class="' + (s.tripped ? "tripped" : "") + '">' + (multiRx() ? s.short + " (" + rxName(s) + ")" : s.name) + (s.tripped ? " ✖" : "") + "</li>";
     }).join("");
     if ($("trip-order").innerHTML !== trip) $("trip-order").innerHTML = trip;
 
@@ -577,7 +579,7 @@
       var s = sim.sys(id), r = capEls[id];
       setCls(r.root, "cap" + (i === selected ? " sel" : "") + (s.tripped ? " tripped" : ""));
       setText(r.nmLong, s.name); setText(r.nmShort, s.short);
-      if (r.rxBtn) { setText(r.rxBtn, ship.reactors[s.reactor].name); if (r.root.dataset.rx !== String(s.reactor)) r.root.dataset.rx = s.reactor; }
+      if (r.rxBtn) { setText(r.rxBtn, rxName(s)); var rk = s.split ? "all" : String(s.reactor); if (r.root.dataset.rx !== rk) r.root.dataset.rx = rk; }
       setText(r.prio, "P" + (sim.priority.indexOf(id) + 1));
       var st = "", stc = "cap-state";
       var full = s.mj >= s.maxMJ - 0.5;

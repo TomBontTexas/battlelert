@@ -199,6 +199,7 @@ h2 { font-size: 17px; margin: 18px 0 6px; color: var(--charge); }
 .cap[data-rx="0"] { border-top: 3px solid #4fc3f7; }
 .cap[data-rx="1"] { border-top: 3px solid #ffb74d; }
 .cap[data-rx="2"] { border-top: 3px solid #ba68c8; }
+.cap[data-rx="all"] { border-top: 3px solid #e0e0e0; }
 .rx-multi { display: grid; gap: 8px; }
 .rx-box { border-left: 3px solid var(--line); padding-left: 6px; display: grid; gap: 2px; }
 .rx-box[data-rx="0"] { border-color: #4fc3f7; } .rx-box[data-rx="1"] { border-color: #ffb74d; } .rx-box[data-rx="2"] { border-color: #ba68c8; }

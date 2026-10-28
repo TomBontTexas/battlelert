@@ -121,6 +121,9 @@
           baseMJ: s.maxMJ, maxMJ: s.maxMJ, baseMW: s.maxMW, maxMW: s.maxMW,
           mj: s.startMJ, set: s.startSet, rate: 0, auxRate: 0, drainMW: s.drainMW || 0,
           tripped: false, tripUntil: 0, aux: false, freshMW: 0, reactor: s.reactor || 0, switchUntil: 0,
+          // Several reactors (Oct 27, 2026, TexasBont): the shields draw evenly from all of them, like
+          // the engines, so turning them up can't overload one reactor on its own. (Aux: the first bank.)
+          split: s.kind === "shield" && d.reactors.length > 1,
           // gunner state; tdmg = turret damage (share lost: slide, rate, reach), tfresh = since the last repair
           nextShot: 0, request: null, call: null,
           tdmg: { slide: 0, rate: 0, reach: 0 }, tfresh: { slide: 0, rate: 0, reach: 0 }, turretHits: 0
@@ -155,11 +158,13 @@
   };
   Mission.prototype.hasAux = function () { return this.ship.reactors.some(function (r) { return r.aux.cap > 0; }); };
   Mission.prototype.auxFor = function (s) { return this.ship.reactors[s.reactor].aux; };
+  // What capacitor s draws from reactor k (MW): all of it from its own, or an even share of each when split.
+  Mission.prototype.drawOn = function (s, k) { return s.split ? s.rate / this.ship.reactors.length : s.reactor === k ? s.rate : 0; };
   // Rewire a capacitor to the next reactor. It draws nothing for 2 s while it switches.
   // Aux banks can't be moved: each feeds only the capacitors on its own reactor.
   Mission.prototype.moveReactor = function (id, to) {
     var n = this.ship.reactors.length, s = this.sys(id);
-    if (n < 2 || !s) return false;
+    if (n < 2 || !s || s.split) return false;
     s.reactor = to === undefined ? (s.reactor + 1) % n : clamp(to, 0, n - 1);
     s.switchUntil = this.t + this.phys.switchSeconds; s.rate = 0;
     return true;
@@ -819,7 +824,7 @@
     if (enc.mines) {
       // In a minefield the engines get what the capacitors leave of the reactor's safe output.
       var R = ship.reactors, charging = R.map(function () { return 0; });
-      for (var i = 0; i < ship.systems.length; i++) charging[ship.systems[i].reactor] += ship.systems[i].rate;
+      for (var k = 0; k < R.length; k++) for (var i = 0; i < ship.systems.length; i++) charging[k] += this.drawOn(ship.systems[i], k);
       var avail = Infinity;
       for (var k = 0; k < R.length; k++) avail = Math.min(avail, Math.max(0, R[k].max - charging[k]) * R.length);
       if (ship.gWant * perG > avail) ship.g = avail / perG;
@@ -968,7 +973,7 @@
     var over = false;
     for (var k = 0; k < R.length; k++) {
       var rx = R[k], load = ship.engineMW / R.length;      // engines draw evenly from every reactor
-      for (var i = 0; i < list.length; i++) if (list[i].reactor === k) load += list[i].rate;
+      for (var i = 0; i < list.length; i++) load += this.drawOn(list[i], k);
       rx.load = load;
       rx.loadPct = load / rx.max * 100;
       if (rx.loadPct > 100) {
@@ -984,7 +989,7 @@
         var victim = null;
         for (var j = this.priority.length - 1; j >= 0 && !victim; j--) {
           var s = this.sys(this.priority[j]);
-          if (s.reactor === k && !s.tripped && s.rate > 0.5) victim = s;
+          if ((s.reactor === k || s.split) && !s.tripped && s.rate > 0.5) victim = s;
         }
         if (victim) {
           victim.tripped = true; victim.tripUntil = t + P.tripSeconds; victim.rate = 0;
