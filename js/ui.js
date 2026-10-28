@@ -732,6 +732,8 @@
       return '<div class="' + l.kind + '"><span class="t">' + mmss(l.t) + "</span>" + icon[l.kind] + esc(l.text) + "</div>";
     }).join("");
   }
+  // A ship's name and hull number as HTML; the hull number never breaks, so a long name wraps it whole.
+  function shipHtml(classId, ship, hull) { var h = hull || BL.hullNumber(classId, ship); return esc(ship) + (h ? ' <span class="nw">' + h + "</span>" : ""); }
   function esc(s) { return String(s).replace(/[&<>]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]; }); }
 
   /* ------------------------------------------------------- Gunner turret */
@@ -1924,7 +1926,7 @@
     var arms = j.station === "gunner" || pilot ? (j.weapons || BL.GUNNERY.loadout[j.classId] || ["pulse"]).map(function (id, k) { return "Gun " + (k + 1) + " " + BL.WEAPONS[id].name.toLowerCase() + " Mk" + j.n; })
       .concat(BL.classById(j.classId).mainGun ? ["Main gun"] : [], j.classId === "gunboat" ? ["Two torpedoes"] : []) : [];
     function sec(title, rows) { return rows.length ? '<div class="offer-sec"><div class="offer-sec-h">' + title + "</div>" + rows.map(function (x) { return "<div>" + x + "</div>"; }).join("") + "</div>" : ""; }
-    return '<div class="offer' + (up ? " stepup" : "") + '"><h3>' + esc(BL.shipLabel(j.classId, j.ship, j.hull)) + " (TL" + j.tl + ")" + tag + "</h3>" +
+    return '<div class="offer' + (up ? " stepup" : "") + '"><h3>' + shipHtml(j.classId, j.ship, j.hull) + " (TL" + j.tl + ")" + tag + "</h3>" +
       '<button class="primary" data-i="' + i + '">Accept</button>' +
       (j.story ? '<div class="offer-story"><b>' + esc(j.title) + "</b> · " + cls.name + " chapter: " + esc(j.chapter) + "</div>" : "") +
       '<div class="meta">Reputation ×' + +(BL.TECH.repMult(j.tl) * (j.serious === false ? BL.career.REQUAL_REP : 1)).toFixed(3) + (j.serious === false ? " (half: requalifying)" : "") + ", max " + BL.career.repFor(j, 100) +
@@ -2026,7 +2028,7 @@
         if (!here.length) return;
         body += '<div class="reg-tl"><h3>Tech level ' + tl + '</h3><div class="reg-ships">' + here.map(function (e) {
           regShown.push(e);
-          return '<button class="reg-ship" data-i="' + (regShown.length - 1) + '"><span>' + esc(BL.shipLabel(e.classId, e.ship, e.hull)) + "</span>" + regTag(e) + "</button>";
+          return '<button class="reg-ship" data-i="' + (regShown.length - 1) + '"><span>' + shipHtml(e.classId, e.ship, e.hull) + "</span>" + regTag(e) + "</button>";
         }).join("") + "</div></div>";
       });
       if (!ships.length) body += '<p class="muted reg-tl">' + (cls.id === "gunboat" ? "No gunboats yet." : "None yet.") + "</p>";
@@ -2046,7 +2048,7 @@
   function showShipCard(e) {
     var c = career, d = BL.shipFor(e.classId, e.tl), cls = BL.classById(e.classId), rec = e.rec;
     var sysOf = function (kind) { return d.systems.filter(function (s) { return s.kind === kind; }); }, one = function (k) { return sysOf(k)[0]; };
-    $("card-title").textContent = BL.shipLabel(e.classId, e.ship, e.hull);
+    $("card-title").innerHTML = shipHtml(e.classId, e.ship, e.hull);
     $("card-lede").innerHTML = cls.name + " · tech level " + e.tl + " · " +
       (rec && rec.lost ? '<span class="lost-note">Lost in action ' + rec.lost + "</span>" : rec ? "In service" : "In service; you haven't served aboard her");
     $("card-art").innerHTML = e.classId === "gunboat" ? BL.ART.gunboat(e.ship) : BL.ART.warship(e.classId, e.hull);
