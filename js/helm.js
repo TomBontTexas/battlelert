@@ -405,7 +405,7 @@
     if (!ev || ev.judged || m.t < ev.until) return;
     ev.judged = true;
     if (this.dodged(ev.snap)) { this.stats.evasiveMet++; if (this.cur) this.cur.evasiveMet++; }
-    else if (!ev.own) m.chat("evadeMissed", { who: this.who }, "bad");
+    else if (!ev.own && !m.captain) m.chat("evadeMissed", { who: this.who }, "bad");     // (on the bridge the player is the captain: no rebuke in his name)
   };
   Helm.prototype.evadeView = function () {
     var ev = this.evade, m = this.m;
@@ -502,9 +502,12 @@
     if (this.inTube) { this.tube(); return; }
     if (this.clearAt && m.totalT >= this.clearAt) {
       this.clearAt = 0;
-      this.engOrder = { eng: "standard", until: m.t + H.launch.setIn };
-      this.course = Math.round(this.compass()) % 360;          // the coxswain's course: the way she came out
-      m.chat("helmClear", null, "warn");
+      // (on the bridge the player is the coxswain: no order of the station's own, and no "mind your orders")
+      if (!m.captain) {
+        this.engOrder = { eng: "standard", until: m.t + H.launch.setIn };
+        this.course = Math.round(this.compass()) % 360;          // the coxswain's course: the way she came out
+        m.chat("helmClear", null, "warn");
+      }
     }
     // Presets follow the class's top G (thruster damage lowers it).
     if (this.port.ord) this.port.g = this.gOf(this.port.ord);
@@ -583,7 +586,7 @@
     else this.stress = Math.max(0, this.stress - S.drain * dt);
     if (!this.stressSaid && this.stress >= S.warnAt) {
       this.stressSaid = true; m.chat("stressWarn", null, "warn"); m.cue("warn");
-      if (!this.inBreak()) m.chat("easeOff", { who: this.who }, "warn");
+      if (!this.inBreak() && !m.captain) m.chat("easeOff", { who: this.who }, "warn");
     }
     if (this.stress < 0.3) this.stressSaid = false;
     if (this.stress < 1) return;

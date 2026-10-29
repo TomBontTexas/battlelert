@@ -564,7 +564,7 @@
         s.nextShot = Math.min(s.nextShot, this.t);
       }
     } else if (e.type === "jump") {
-      if (this.hasDrive && this.phase !== "countdown") this.chat("jumpOpen", null, "warn");
+      if (this.hasDrive && this.phase !== "countdown") this.chat(this.captain ? "jumpOpenNav" : "jumpOpen", null, "warn");     // (on the bridge no "where's my drive" in the player's name)
     }
   };
 

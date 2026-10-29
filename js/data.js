@@ -885,6 +885,7 @@
     lifeBack:    ["Medical: air's back. Crew recovering."],
     jumpNotice:  ["Navigation: jump window in {t} s. Drive must be full.", "Bridge: jump window opens in {t} seconds."],
     jumpOpen:    ["Navigation: jump window open. Waiting on the drive.", "Captain: window's open. Where's my drive, Engineering?"],
+    jumpOpenNav: ["Navigation: jump window open. Waiting on the drive."],      // the bridge: Navigation's line only
     jumpGo:      ["Bridge: drive full. Jumping in {t}.", "Bridge: all hands, jump in {t}."],
     damaged:     ["Damage control: {what}."],
     killedOther: ["Tactical: {enemy} destroyed.", "Tactical: {enemy} breaking up."],
