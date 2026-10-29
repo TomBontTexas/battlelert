@@ -1051,7 +1051,8 @@
   Mission.prototype.runJump = function () {
     var drive = this.sys("drive"), t = this.t;
     if (!drive) {                       // gunboat: the carrier recovers it when the sortie timer runs out
-      if (this.phase === "engage" && t >= this.windowAt()) this.doJump();
+      // (on the bridge the coxswain orders the recovery, in the recovery zone on its heading)
+      if (this.phase === "engage" && t >= this.windowAt() && (!this.captain || (this.captain.mayJump() && this.helm.inJumpCorridor()))) this.doJump();
       return;
     }
     var full = drive.mj >= drive.maxMJ - 0.5;

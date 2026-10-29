@@ -39,7 +39,7 @@
     // The jump heading (to the nearest 5 degrees) and the approach point on the line leading in to it.
     var jh = Math.round(to360(jb + r.range([0, K.jumpTurn]) * (r.chance(0.5) ? 1 : -1)) / 5) * 5 % 360;
     var app = along(jump, jh + 180, K.approach * D);
-    var map = { D: D, start: start, jump: { x: jump.x, y: jump.y, r: K.zone * D }, jumpHdg: jh, approach: app, rocks: [], clusters: [], window: opts.window };
+    var map = { D: D, start: start, jump: { x: jump.x, y: jump.y, r: K.zone * D }, jumpHdg: jh, approach: app, rocks: [], clusters: [], window: opts.window, recovery: opts.hasDrive === false };     // (recovery: a gunboat's carrier pickup)
     // Room for an area: every lobe clear of the start, the jump zone and its approach lane, and a
     // lane (K.lane margins) from every lobe already placed, so there's always a way between them.
     var lobesNow = function () { return [].concat.apply([], map.rocks.concat(map.clusters).map(function (o) { return o.lobes; })); };
@@ -411,6 +411,7 @@
   };
   CaptainPilot.prototype.think = function (m, c) {
     var h = m.helm;
+    if (h.inTube && m.t >= 1) h.launch();             // a gunboat: out of the carrier's tube at once
     if (h.locked()) return;
     c.pilotCall();
     var ev = h.evadeView();

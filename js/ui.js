@@ -84,9 +84,20 @@
     var seed = parseInt($("seed-input").value, 10);
     startBriefing(helmJob(seed > 0 ? seed : BL.randomSeed()));
   };
-  // The captain bridge test: a destroyer; you on the bridge, plotting each system's course in warp
-  // space and giving the orders; an NPC crew (pilot, gun crew, engineer) carries them out.
-  function captainJob(seed) { return { test: true, station: "captain", classId: "destroyer", n: 4, tl: BL.TECH.base("destroyer"), ship: "Destroyer", seed: seed, helm: true, captain: true }; }
+  // The captain bridge test: the ship picked on the title screen (gunboat, picket, destroyer escort
+  // or destroyer); you on the bridge, plotting each system's course in warp space and giving the
+  // orders; an NPC crew (pilot, gun crew, engineer) carries them out. On a gunboat you're the
+  // coxswain: three sorties from the carrier, each ending at its recovery point.
+  var CAPTAIN_SHIPS = ["gunboat", "picket", "destroyerEscort", "destroyer"];
+  CAPTAIN_SHIPS.forEach(function (id) {
+    var o = document.createElement("option"); o.value = id; o.textContent = BL.classById(id).name; $("cap-pick").appendChild(o);
+  });
+  $("cap-pick").value = CAPTAIN_SHIPS.indexOf(settings.capPick) >= 0 ? settings.capPick : "destroyer";
+  $("cap-pick").onchange = function () { settings.capPick = this.value; saveSettings(); };
+  function captainJob(seed) {
+    var id = $("cap-pick").value, c = BL.classById(id);
+    return { test: true, station: "captain", classId: id, n: c.n, tl: BL.TECH.base(id), ship: c.name, seed: seed, helm: true, captain: true };
+  }
   $("btn-captain").onclick = function () {
     BL.audio.init(); click();
     var seed = parseInt($("seed-input").value, 10);
@@ -1376,9 +1387,10 @@
     $("tu-keys").textContent = "← → course 10° (Shift 1°) · R resume plot · ↑ ↓ engines · Z break port · X take it · C break starboard · G gunners · S engineer · E warn engineering · J jump · V swap map · + − F zoom · Esc pause · Tap the compass or the map to steer";
     $("cp-tele").innerHTML = BRIDGE_ENG.map(function (id) { var p = h.preset(id); return '<button data-eng="' + id + '" title="All ' + p.name.toLowerCase() + '">' + p.short + "</button>"; }).join("");
     $("cp-gunord").innerHTML = ["auto"].concat(G.orderList).map(function (id) { var o = G.orders[id]; return '<button data-gun="' + id + '" title="' + o.name + '">' + K.gunShort[id] + "</button>"; }).join("");
-    $("cp-stance").innerHTML = K.stanceList.map(function (id) { return '<button data-stance="' + id + '" title="' + K.stances[id].name + '">' + K.stances[id].short + "</button>"; }).join("");
+    $("cp-stance").innerHTML = K.stanceList.filter(function (id) { return id !== "drive" || sim.hasDrive; }).map(function (id) { return '<button data-stance="' + id + '" title="' + K.stances[id].name + '">' + K.stances[id].short + "</button>"; }).join("");
     $("tu-mainrow").hidden = true;
     lastBridgeBox = {};
+    bridgeSwap(true);               // the map in the middle, the battle in the box at the right (SWAP for the other way)
   }
   var lastBridgeBox = {};
   // A BRIDGE box: its title and exactly three lines (a box never changes height).
@@ -1486,7 +1498,8 @@
     var jb = $("cp-jump");
     jb.disabled = !live || !jv.ready || jv.ordered || sim.phase === "countdown";
     jb.classList.toggle("ready", jv.ready && !jv.ordered);
-    setHtml(jb, sim.phase === "countdown" ? "JUMPING" : jv.ordered ? esc(jv.wait || "JUMPING") : jv.ready ? "JUMP <small>(J)</small>" : esc(jv.why || "JUMP"));
+    var jw = sim.hasDrive ? "JUMP" : "RECOVER";        // a gunboat: the carrier's recovery
+    setHtml(jb, sim.phase === "countdown" ? "JUMPING" : jv.ordered ? esc(jv.wait || (sim.hasDrive ? "JUMPING" : "RECOVERING")) : jv.ready ? jw + " <small>(J)</small>" : esc(jv.why || jw));
     // SHIP
     setText($("tu-hull-val"), Math.max(0, Math.round(ship.hull)) + " / " + ship.hullMax);
     $("tu-hull").style.width = pct(ship.hull / ship.hullMax);
@@ -1709,10 +1722,10 @@
     if (cp.breaks + cp.pilotBreaks && cp.breaksMade === cp.breaks + cp.pilotBreaks) good.push("Every break was made.");
     if (!good.length) good.push("You kept the ship in the fight.");
     $("db-good").textContent = good.join(" ");
-    $("db-worst").textContent = cp.rockHits ? "The ship hit asteroids " + cp.rockHits + (cp.rockHits === 1 ? " time." : " times.") :
+    $("db-worst").textContent = r.outcome === "destroyed" ? "The ship was destroyed." : cp.rockHits ? "The ship hit asteroids " + cp.rockHits + (cp.rockHits === 1 ? " time." : " times.") :
       onTime < cp.systems.length ? "The ship reached the jump zone late in " + (cp.systems.length - onTime) + " of " + cp.systems.length + " systems." :
       cp.unanswered ? cp.unanswered + " torpedo bursts came and went with no call from you (taken on the shields)." : "Nothing went badly wrong.";
-    $("db-jumps").innerHTML = "<tr><th>Jump</th><th>Encounter</th><th>Legs</th><th>In the zone</th><th>Asteroid hits</th><th>Breaks made</th><th>Shielded</th><th>Hull lost</th><th>Seconds</th></tr>" +
+    $("db-jumps").innerHTML = "<tr><th>" + (sim.hasDrive ? "Jump" : "Sortie") + "</th><th>Encounter</th><th>Legs</th><th>In the zone</th><th>Asteroid hits</th><th>Breaks made</th><th>Shielded</th><th>Hull lost</th><th>Seconds</th></tr>" +
       r.jumps.map(function (j, i) {
         var s = cp.systems[i] || {}, t = sim.helm.jumps[i] || {};
         return "<tr><td>" + (i + 1) + "</td><td>" + BL.ENCOUNTERS[j.encounter].name + "</td><td>" + (s.legs || "") + "</td><td>" + (s.zoneAt === null || s.zoneAt === undefined ? "never" : mmss(s.zoneAt) + " / " + mmss(s.window)) + "</td><td>" + (s.rockHits || 0) +

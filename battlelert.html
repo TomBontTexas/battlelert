@@ -41,7 +41,11 @@
         <label for="ship-pick">ship</label>
         <select id="ship-pick"></select>
       </div>
-      <div class="seed-row"><button id="btn-captain" class="small">Captain bridge test (Destroyer)</button></div>
+      <div class="seed-row">
+        <button id="btn-captain" class="small">Captain bridge test</button>
+        <label for="cap-pick">ship</label>
+        <select id="cap-pick"></select>
+      </div>
       <div class="seed-row">
         <label for="seed-input">seed</label>
         <input id="seed-input" type="number" min="1" max="999999" inputmode="numeric">
@@ -616,7 +620,7 @@
       <tr><td>S</td><td>Engineer's stance: shields first, balanced, guns first, drive first</td></tr>
       <tr><td>E</td><td>Warn engineering that a burn is coming</td></tr>
       <tr><td>J</td><td>Order the jump (once it's ready)</td></tr>
-      <tr><td>V</td><td>Swap the map and the battle view (the map in the middle, the battle in the box at the right)</td></tr>
+      <tr><td>V</td><td>Swap the map and the battle view (the map starts in the middle, the battle in the box at the right)</td></tr>
       <tr><td>+ − / F</td><td>Zoom the map in or out / the whole map again</td></tr>
       <tr><td>Esc</td><td>Pause and resume</td></tr>
       <tr><td>N / U / Enter</td><td>Plotting screen: navigator's plot / undo the last waypoint / accept</td></tr>
@@ -682,11 +686,11 @@
       <li><b>Autopilot.</b> T turns it on and holds the heading; tap the compass across the top to fly to that heading, or tap the captain's order to fly there. On autopilot the strip at the far right of the screen (clear of the battle) is the course set: drag it up and down (headings rise upward, blue box in the middle; the strip's whole height is 360°, so one sweep of the thumb reaches any heading) or tap a heading on it, and the autopilot speeds up and slows the turn to bring her onto it. For the last degree or two, the thin ▲ +1° and ▼ −1° buttons at the ends of the strip (or ] and [) nudge the course one degree; by hand they put her on autopilot one degree off the heading she's on. The compass across the top always shows the ship's actual heading. By hand (autopilot off) the strip is a wheel that slides up and down instead, with no numbers: the farther you slide it from the middle, the harder she turns (down for starboard, up for port), and it stays where you leave it; bringing her onto the heading is up to you. It flies carefully (never past the safe rate, even with a damaged engine; never with split engines) and earns less reputation than steering by hand.</li>
     </ol>
     <h2>On the bridge</h2>
-    <p>The captain plots the course and gives the orders; his crew carry them out. For now the bridge is a test on the title screen (<b>Captain bridge test</b>, a destroyer), with no career effect.</p>
+    <p>The captain plots the course and gives the orders; his crew carry them out. For now the bridge is a test on the title screen (<b>Captain bridge test</b>, with the ship picked beside it: gunboat, picket ship, destroyer escort or destroyer), with no career effect. On a gunboat you're the coxswain: the pilot launches from the carrier's tube at once, and each of the three sorties ends at the carrier's recovery zone instead of a jump: be in it, on its heading, once the sortie timer runs out, and order <b>RECOVER</b> (J). A gunboat has no warp drive, so the engineer has no DRIVE stance.</p>
     <ol class="tight">
       <li><b>Plot the course.</b> In warp space before each system, with the clock stopped, the plotting screen shows the system's map: where you come out of warp space, the jump zone (green), asteroid fields (grey) and enemy areas (red), in all shapes, with one always across the straight way to the jump. Each system's jump heading is set for you: the green arrow through the zone, with a dashed approach line leading in. Tap the map to lay waypoints: 1 to 8 legs to the jump zone, the last one along the jump heading (within 10°; Accept stays off until it is). A new plot starts on the approach line, and waypoints you lay go in before it. Tap a waypoint to remove it, and a leg's engine order (cruise, standard, full) to change it. The time line shows when the course reaches the jump zone against the jump window (the navigator aims a little before it). A leg through an enemy area shows red, and Accept stays off until the course goes round them. A leg through an asteroid field shows amber ("Through asteroids"): you may take it, but there are rocks to dodge and shoot. <b>Navigator's plot</b> fills in a safe course to accept or edit. The last leg's heading is the jump heading.</li>
-      <li><b>The pilot flies it.</b> He steers for the plotted legs and gives the engines each leg's order. NAVIGATION on the BRIDGE panel shows the leg, the next course change and the jump window; the map at the right shows the ship on the plot. In the jump zone he holds her there, dead slow and then stopped, for the jump.</li>
-      <li><b>The map.</b> Its top line counts down to the jump zone at her speed now, along the rest of the plot: faster and it drops, slower and it climbs. The next line counts down to when the jump can go: the window open and the drive full, at the rate the drive is charging now (whichever is later: WINDOW or DRIVE; or DRIVE NOT CHARGING). Against that the top line says <b>EARLY</b> (slow down, or she waits in the zone), <b>ON TIME</b> or <b>LATE</b> (more speed). Drag it to pan, pinch or use + − to zoom, FIT for the whole map. <b>⇄ SWAP</b> (V) puts the map in the middle and the battle view in its box; swap again to go back.</li>
+      <li><b>The pilot flies it.</b> He steers for the plotted legs and gives the engines each leg's order. NAVIGATION on the BRIDGE panel shows the leg, the next course change and the jump window; the map in the middle shows the ship on the plot. In the jump zone he holds her there, dead slow and then stopped, for the jump.</li>
+      <li><b>The map.</b> Its top line counts down to the jump zone at her speed now, along the rest of the plot: faster and it drops, slower and it climbs. The next line counts down to when the jump can go: the window open and the drive full, at the rate the drive is charging now (whichever is later: WINDOW or DRIVE; or DRIVE NOT CHARGING). Against that the top line says <b>EARLY</b> (slow down, or she waits in the zone), <b>ON TIME</b> or <b>LATE</b> (more speed). Drag it to pan, pinch or use + − to zoom, FIT for the whole map. The map starts in the middle with the battle view in the box at the upper right; <b>⇄ SWAP</b> (V) trades them, and again to go back.</li>
       <li><b>A course of your own.</b> ← → (or ◀ 10° and 10° ▶), a tap on the compass, or a tap on the map gives the helm a course of your own, and the engine buttons an engine order. HELM shows "yours" until you tap <b>RESUME PLOT</b> (R); then the pilot comes back onto the plotted line, never cutting across a field.</li>
       <li><b>Torpedoes.</b> On every burst at you, the call is yours: <b>BREAK PORT</b>, <b>TAKE IT</b> or <b>BREAK STBD</b> (Z X C) before they land. A break the pilot makes in time makes them miss. Your standing order is to take them on the shields, so a burst you don't answer is taken. If the shields can't take it, about half the time the pilot breaks on his own at the last moment, away from asteroid fields; don't count on him. Break away from asteroid fields: the map shows where they are.</li>
       <li><b>The crew.</b> The gunners' order (G) goes to every gun: SUGGESTED (each fight's suggestion), TORPEDOES (point defense: torpedoes about to land first), LAUNCHERS (ships charging to fire first), HUNT (the ships each gun is best against) or FREE FIRE (each gunner picks his own). The engineer's stance (S) is his priority order: shields first, balanced, guns first, or <b>drive first</b>. Normally the drive gets only the power left over after the shields and guns; on DRIVE it comes first after life support, charged fast enough to be full just before the window (flat out once the window is near or open), and the shields and guns share what's left. Use it when the READY line on the map says DRIVE, and go back when it says WINDOW: the shields run lower on DRIVE. Warn engineering (E) before a hard burn.</li>
@@ -704,22 +708,22 @@
 <script src="version.js?b=98573ab3"></script>
 <script src="update-banner.js?b=ec7860dd"></script>
 <script src="js/data.js?b=7ad53834"></script>
-<script src="js/sim.js?b=53184a3d"></script>
+<script src="js/sim.js?b=156575fb"></script>
 <script src="js/agents.js?b=0a43c68f"></script>
 <script src="js/gunnery.js?b=685ea271"></script>
 <script src="js/ring.js?b=d1094769"></script>
 <script src="js/helm.js?b=c77d0bec"></script>
-<script src="js/command.js?b=ab696979"></script>
+<script src="js/command.js?b=32a051e6"></script>
 <script src="js/training.js?b=48646f29"></script>
 <script src="js/art.js?b=ac37cac5"></script>
 <script src="js/turretview.js?b=960c39ae"></script>
 <script src="js/ringview.js?b=0f4f90ed"></script>
-<script src="js/bridgeview.js?b=deef2822"></script>
+<script src="js/bridgeview.js?b=d43187ac"></script>
 <script src="js/names.js?b=08410f0b"></script>
 <script src="js/story.js?b=6ce99bc9"></script>
 <script src="js/career.js?b=34474452"></script>
 <script src="js/speech.js?b=f9e428ef"></script>
 <script src="js/audio.js?b=273e5325"></script>
-<script src="js/ui.js?b=8559b2c6"></script>
+<script src="js/ui.js?b=d664836a"></script>
 </body>
 </html>
