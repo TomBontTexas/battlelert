@@ -1715,15 +1715,15 @@
   }
   function debriefCaptain(r) {
     var cp = r.captain, d = r.detail, K = BL.COMMAND, good = [];
-    if (r.outcome === "success") good.push("The ship made all its jumps.");
+    if (r.outcome === "success") good.push(sim.hasDrive ? "The ship made all its jumps." : "The carrier recovered her after every sortie.");
     if (!cp.rockHits) good.push("No asteroid hits.");
     var onTime = cp.systems.filter(function (s) { return s.zoneAt !== null && s.zoneAt <= s.window + K.zoneGrace; }).length;
-    if (onTime === cp.systems.length && cp.systems.length) good.push("In the jump zone on time every time.");
+    if (onTime === cp.systems.length && cp.systems.length) good.push(sim.hasDrive ? "In the jump zone on time every time." : "In the recovery zone on time every time.");
     if (cp.breaks + cp.pilotBreaks && cp.breaksMade === cp.breaks + cp.pilotBreaks) good.push("Every break was made.");
     if (!good.length) good.push("You kept the ship in the fight.");
     $("db-good").textContent = good.join(" ");
     $("db-worst").textContent = r.outcome === "destroyed" ? "The ship was destroyed." : cp.rockHits ? "The ship hit asteroids " + cp.rockHits + (cp.rockHits === 1 ? " time." : " times.") :
-      onTime < cp.systems.length ? "The ship reached the jump zone late in " + (cp.systems.length - onTime) + " of " + cp.systems.length + " systems." :
+      onTime < cp.systems.length ? "The ship reached the " + (sim.hasDrive ? "jump" : "recovery") + " zone late in " + (cp.systems.length - onTime) + " of " + cp.systems.length + (sim.hasDrive ? " systems." : " sorties.") :
       cp.unanswered ? cp.unanswered + " torpedo bursts came and went with no call from you (taken on the shields)." : "Nothing went badly wrong.";
     $("db-jumps").innerHTML = "<tr><th>" + (sim.hasDrive ? "Jump" : "Sortie") + "</th><th>Encounter</th><th>Legs</th><th>In the zone</th><th>Asteroid hits</th><th>Breaks made</th><th>Shielded</th><th>Hull lost</th><th>Seconds</th></tr>" +
       r.jumps.map(function (j, i) {
