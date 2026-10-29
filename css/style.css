@@ -59,9 +59,6 @@ h2 { font-size: 17px; margin: 18px 0 6px; color: var(--charge); }
 .phase-note { margin: 22px 0; }
 .menu { display: flex; flex-direction: column; gap: 10px; align-items: center; margin-top: 16px; }
 .menu button { min-width: 260px; }
-.seed-row { margin-top: 28px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center; font-size: 14px; }
-.seed-row input { width: 110px; font: 15px var(--mono); padding: 5px 8px; background: var(--panel-2); color: var(--text); border: 1px solid var(--line); border-radius: 5px; }
-.seed-row .muted { flex-basis: 100%; }
 .version-line { margin-top: 36px; color: var(--muted); font: 13px var(--mono); }
 .copyright { margin-top: 6px; color: var(--muted); font-size: 12px; }
 .sheet { max-width: 860px; margin: 0 auto; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 22px 26px 26px; }
@@ -352,9 +349,11 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 .gate-q { margin-top: 22px; padding: 10px 14px; border-left: 4px solid var(--warn); background: var(--panel-2); }
 
 /* -------------------------------------------------------- Gunner turret */
-.test-rows { margin-top: 28px; }
-.test-rows .seed-row { margin-top: 8px; }
-.seed-row select { font: 14px var(--font); padding: 5px 8px; background: var(--panel-2); color: var(--text); border: 1px solid var(--line); border-radius: 5px; }
+.test-grid { display: grid; grid-template-columns: auto auto minmax(0, 1fr); gap: 8px 12px; align-items: center; margin: 14px 0; }
+.test-grid button { width: 100%; text-align: left; white-space: nowrap; }
+.test-grid select, .test-seed input { width: 100%; font: 14px var(--font); padding: 5px 8px; background: var(--panel-2); color: var(--text); border: 1px solid var(--line); border-radius: 5px; }
+.test-seed { display: grid; grid-template-columns: auto 1fr auto; gap: 8px 12px; align-items: center; }
+.test-seed input { font-family: var(--mono); }
 #scr-turret {
   display: grid; grid-template-rows: auto 1fr auto; gap: 6px; padding: 6px;
   user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;

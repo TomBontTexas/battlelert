@@ -112,12 +112,15 @@
     var seed = parseInt($("seed-input").value, 10);
     startBriefing(gunnerJob(seed > 0 ? seed : BL.randomSeed()));
   };
+  // The Tests pop-up (title screen): every station's test, the ship or gun to use, and the seed.
+  $("btn-tests").onclick = function () { BL.audio.init(); click(); overlay("ov-tests", true); };
+  $("btn-tests-close").onclick = function () { click(); overlay("ov-tests", false); };
   $("btn-how").onclick = function () { BL.audio.init(); click(); overlay("ov-how", true); };
   $("btn-how-close").onclick = function () { click(); overlay("ov-how", false); };
 
   /* ------------------------------------------------------------ Briefing */
   function startBriefing(j) {
-    job = j;
+    job = j; overlay("ov-tests", false);
     // The turret test fires the gun picked on the title screen; a real gunner job, the ship's own guns.
     var guns = j.helm ? { weapons: BL.GUNNERY.loadout[j.classId] || ["pulse"], helm: true } : j.station !== "gunner" ? null : j.weapons ? { weapons: j.weapons } : j.weapon && j.test ? { weapon: j.weapon } : { weapons: BL.GUNNERY.loadout[j.classId] || ["pulse"] };
     // Standing orders for the AI gunners, remembered per gun number between missions.
@@ -466,6 +469,7 @@
       if (ev.key === "Escape") { overlay("ov-options", false); overlay("ov-how", false); }
       return;
     }
+    if (!$("ov-tests").hidden) { if (ev.key === "Escape") overlay("ov-tests", false); return; }
     if (!$("ov-plot").hidden) { plotKey(ev); return; }
     if (inTurret() && sim && ev.target.tagName !== "INPUT" && ev.target.tagName !== "SELECT") { if (sim.captain) bridgeKey(ev); else if (sim.helm) helmKey(ev); else turretKey(ev, true); return; }
     if (!inConsole() || !sim || ev.target.tagName === "INPUT") return;

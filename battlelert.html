@@ -6,7 +6,7 @@
 <meta name="copyright" content="© 2011–2026 Tom Bont. All rights reserved.">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Battlelert</title>
-<link rel="stylesheet" href="css/style.css?b=c7435bcf">
+<link rel="stylesheet" href="css/style.css?b=d2aaf0e3">
 </head>
 <body>
 
@@ -22,36 +22,8 @@
       <button id="btn-import">Import career</button>
       <button id="btn-how">How to play</button>
       <button id="btn-options-title">Options</button>
+      <button id="btn-tests">Tests</button>
       <input id="import-file" type="file" accept=".json,application/json" hidden>
-    </div>
-    <div class="test-rows">
-      <div class="seed-row"><button id="btn-start" class="small">Engine-room test (Destroyer)</button></div>
-      <div class="seed-row">
-        <button id="btn-gunner" class="small">Gunner turret test (Gunboat)</button>
-        <label for="gun-pick">gun</label>
-        <select id="gun-pick">
-          <option value="pulse">Pulse cannon</option>
-          <option value="rail">Rail gun</option>
-          <option value="ion">Ion gun</option>
-        </select>
-      </div>
-      <div class="seed-row"><button id="btn-ring" class="small">Gunner ring test (Destroyer)</button></div>
-      <div class="seed-row">
-        <button id="btn-helm" class="small">Pilot helm test</button>
-        <label for="ship-pick">ship</label>
-        <select id="ship-pick"></select>
-      </div>
-      <div class="seed-row">
-        <button id="btn-captain" class="small">Captain bridge test</button>
-        <label for="cap-pick">ship</label>
-        <select id="cap-pick"></select>
-      </div>
-      <div class="seed-row">
-        <label for="seed-input">seed</label>
-        <input id="seed-input" type="number" min="1" max="999999" inputmode="numeric">
-        <button id="btn-seed-new" class="small" title="Roll a new seed">New</button>
-        <span class="muted">Same seed, same mission. Share it to compare runs.</span>
-      </div>
     </div>
     <div class="version-line">v<span class="app-version"></span></div>
     <div class="copyright">Battlelert © 2011–2026 Tom Bont. All rights reserved. Free to play; the code, art and sounds may not be copied without permission.</div>
@@ -541,6 +513,33 @@
   </div>
 </section>
 
+<!-- ============================================================= Tests -->
+<section id="ov-tests" class="overlay" hidden>
+  <div class="ov-card">
+    <h1>Tests</h1>
+    <p class="muted small-text">Fly any station without a career. Nothing is saved to your record.</p>
+    <div class="test-grid">
+      <button id="btn-start" class="small">Engine room</button><span class="muted">Destroyer</span><span></span>
+      <button id="btn-gunner" class="small">Gunner turret</button><span class="muted">Gunboat</span>
+      <select id="gun-pick" aria-label="gun">
+        <option value="pulse">Pulse cannon</option>
+        <option value="rail">Rail gun</option>
+        <option value="ion">Ion gun</option>
+      </select>
+      <button id="btn-ring" class="small">Gunner ring</button><span class="muted">Destroyer</span><span></span>
+      <button id="btn-helm" class="small">Pilot helm</button><span class="muted">ship</span><select id="ship-pick" aria-label="ship"></select>
+      <button id="btn-captain" class="small">Captain bridge</button><span class="muted">ship</span><select id="cap-pick" aria-label="ship"></select>
+    </div>
+    <div class="test-seed">
+      <label for="seed-input">Seed</label>
+      <input id="seed-input" type="number" min="1" max="999999" inputmode="numeric">
+      <button id="btn-seed-new" class="small" title="Roll a new seed">New</button>
+    </div>
+    <p class="muted small-text">Same seed, same mission. Share it to compare runs.</p>
+    <div class="menu"><button id="btn-tests-close">Close</button></div>
+  </div>
+</section>
+
 <!-- =========================================================== Options -->
 <section id="ov-options" class="overlay" hidden>
   <div class="ov-card">
@@ -672,7 +671,7 @@
       <li><b>Views and switches.</b> W switches to wide view: the side panels give way to an overlay and the battle fills the screen, bow to the right. Switches on the left panel let you take a gun by clicking it on the view, or turn click-to-aim off.</li>
     </ol>
     <h2>At the helm</h2>
-    <p>The pilot flies the ship in the same view the gunner uses: your ship stays in the middle, bow up, and turning swings the battle around it. Your gun crew fires the guns and the engineer runs the power. Pilot jobs (career hub) run from the gunboat to the dreadnought, and each names the engineer and the gun crew; the helm test on the title screen tries any ship without touching your career. Your pilot profile tracks aggression (hard turns and flank), following orders, dodging (the breaks you're ordered and make), guns on target (enemy ships your crew destroys) and ship condition.</p>
+    <p>The pilot flies the ship in the same view the gunner uses: your ship stays in the middle, bow up, and turning swings the battle around it. Your gun crew fires the guns and the engineer runs the power. Pilot jobs (career hub) run from the gunboat to the dreadnought, and each names the engineer and the gun crew; the Pilot helm test (title screen, <b>Tests</b>) tries any ship without touching your career. Your pilot profile tracks aggression (hard turns and flank), following orders, dodging (the breaks you're ordered and make), guns on target (enemy ships your crew destroys) and ship condition.</p>
     <ol class="tight">
       <li><b>Launch.</b> A gunboat starts each sortie in the carrier's launch tube. Launch when ready (Space or LAUNCH); the catapult throws you out at flank, and once clear the coxswain orders all ahead standard: set both engines within 5 s (an order like any other; tap the order panel to set it). Waiting costs fight time, and after a while the carrier launches you anyway.</li>
       <li><b>Steer with the wheel.</b> Drag it, or use ← →. It stays where you leave it, so the ship keeps turning until you center it (0). The ship answers a moment late, and its turn builds and dies away slowly; bigger ships are slower at both. The white tick on the compass and on the ring is where the bow will stop if you center the wheel now.</li>
@@ -689,7 +688,7 @@
       <li><b>Autopilot.</b> T turns it on and holds the heading; tap the compass across the top to fly to that heading, or tap the captain's order to fly there. On autopilot the strip at the far right of the screen (clear of the battle) is the course set: drag it up and down (headings rise upward, blue box in the middle; the strip's whole height is 360°, so one sweep of the thumb reaches any heading) or tap a heading on it, and the autopilot speeds up and slows the turn to bring her onto it. For the last degree or two, the thin ▲ +1° and ▼ −1° buttons at the ends of the strip (or ] and [) nudge the course one degree; by hand they put her on autopilot one degree off the heading she's on. The compass across the top always shows the ship's actual heading. By hand (autopilot off) the strip is a wheel that slides up and down instead, with no numbers: the farther you slide it from the middle, the harder she turns (down for starboard, up for port), and it stays where you leave it; bringing her onto the heading is up to you. It flies carefully (never past the safe rate, even with a damaged engine; never with split engines) and earns less reputation than steering by hand.</li>
     </ol>
     <h2>On the bridge</h2>
-    <p>The captain plots the course and gives the orders; his crew carry them out. For now the bridge is a test on the title screen (<b>Captain bridge test</b>, with the ship picked beside it: gunboat, picket ship, destroyer escort or destroyer), with no career effect. On a gunboat you're the coxswain: the pilot launches from the carrier's tube at once, and each of the three sorties ends at the carrier's recovery zone instead of a jump: be in it, on its heading, once the sortie timer runs out, and order <b>RECOVER</b> (J). A gunboat has no warp drive, so the engineer has no DRIVE stance. On a gunboat the pilot leaves the tube at the course's speed, not flat out.</p>
+    <p>The captain plots the course and gives the orders; his crew carry them out. For now the bridge is a test: title screen, <b>Tests</b>, <b>Captain bridge</b>, with the ship picked beside it (gunboat, gunboat escort, picket ship, destroyer escort or destroyer), with no career effect. On a gunboat you're the coxswain: the pilot launches from the carrier's tube at once, and each of the three sorties ends at the carrier's recovery zone instead of a jump: be in it, on its heading, once the sortie timer runs out, and order <b>RECOVER</b> (J). A gunboat has no warp drive, so the engineer has no DRIVE stance. On a gunboat the pilot leaves the tube at the course's speed, not flat out.</p>
     <p><b>Gunboat escort</b> (pick it beside the bridge test): each sortie, the gunboat screens the carrier. She sails her own course to the recovery zone (the blue ship on the map and in the battle view, with her hull bar); there's no plotting screen. The pilot keeps your station on her (the dashed ring on the map: green when you're on it): <b>AHEAD</b>, <b>PORT</b>, <b>STBD</b> or <b>ASTERN</b> (1 to 4); a course or engine order of your own takes you off it until <b>RESUME STATION</b> (R). Half the enemy's torpedoes go at her. The gun crew shoots down the ones they can reach, so stay close. When a burst is coming at her, the TORPEDOES box says so: <b>COVER</b> (Q) puts the gunboat in its way and your shields take it instead, but only when you're close to her ("Too far to cover" otherwise), and a gunboat's shield is small. Once she reaches the recovery zone the pilot brings you in on its heading; order RECOVER as usual. If her hull runs out, she's lost and so is the mission. Score: the objective is her hull at the end; navigation is the share of each fight you spent on station.</p>
     <ol class="tight">
       <li><b>Plot the course.</b> In warp space before each system, with the clock stopped, the plotting screen shows the system's map: where you come out of warp space, the jump zone (green), asteroid fields (grey) and enemy areas (red), in all shapes, with one always across the straight way to the jump. Each system's jump heading is set for you: the green arrow through the zone, with a dashed approach line leading in. Tap the map to lay waypoints: 1 to 8 legs to the jump zone, the last one along the jump heading (within 10°; Accept stays off until it is). A new plot starts on the approach line, and waypoints you lay go in before it. Tap a waypoint to remove it, and a leg's engine order (cruise, standard, full) to change it. The time line shows when the course reaches the jump zone against the jump window (the navigator aims a little before it). A leg through an enemy area shows red, and Accept stays off until the course goes round them. A leg through an asteroid field shows amber ("Through asteroids"): you may take it, but there are rocks to dodge and shoot. <b>Navigator's plot</b> fills in a safe course to accept or edit. The last leg's heading is the jump heading.</li>
@@ -709,7 +708,7 @@
   </div>
 </section>
 
-<script src="version.js?b=f93f347b"></script>
+<script src="version.js?b=670e308c"></script>
 <script src="update-banner.js?b=ec7860dd"></script>
 <script src="js/data.js?b=fe38aa8e"></script>
 <script src="js/sim.js?b=d9a791cd"></script>
@@ -728,6 +727,6 @@
 <script src="js/career.js?b=34474452"></script>
 <script src="js/speech.js?b=f9e428ef"></script>
 <script src="js/audio.js?b=273e5325"></script>
-<script src="js/ui.js?b=803c93ad"></script>
+<script src="js/ui.js?b=fae51e8a"></script>
 </body>
 </html>
