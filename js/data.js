@@ -809,6 +809,10 @@
     // (oblong and lumpy), placed rockAlong of the way to the jump point and up to rockSide off it.
     rocks: [4, 7], rockR: [0.028, 0.062], rockLobes: [3, 6], rockAlong: [0.15, 0.85], rockSide: [0, 0.42],
     clusters: [0, 2], clusterR: [0.08, 0.12], margin: 0.07,
+    // The jump heading: set by the program, up to jumpTurn off the line from the start; the plot's
+    // last leg must be within jumpTol of it, and the approach lane (approach x the distance, back
+    // from the jump point) is kept clear.
+    jumpTurn: 60, jumpTol: 10, approach: 0.3,
     legs: [1, 8], maxTurn: 100, early: 5, capture: 0.05, dogleg: 0.08, lookahead: 0.1,
     rockMJ: 90, rockEvery: 4, zoneGrace: 5, zoneHold: 1.5,
     // Standing orders at the start of a mission (the captain changes them on the bridge).

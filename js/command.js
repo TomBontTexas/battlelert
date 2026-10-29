@@ -5,7 +5,8 @@
    1 to 8 legs to the jump zone (or takes the navigator's plot); in the system an NPC pilot flies
    them on the helm model (helm.js), and the captain gives the orders: a course or engines of his
    own, a break or "take it" on each torpedo burst, the gunners' priority, the engineer's stance,
-   warn engineering, and the jump. The enemy is the same as at every station. Map units: what the
+   warn engineering, and the jump. Each system's jump heading is set by the program: the plot's
+   last leg must run along it, and in the zone she must be on it to jump. The enemy is the same as at every station. Map units: what the
    ship covers in a second at 1 G (BL.COMMAND.scale); x runs east, y north, headings clockwise
    from north as on the compass. */
 (function (root) {
@@ -35,10 +36,14 @@
     var start = { x: 0, y: 0, hdg: 10 * Math.floor(r.next() * 36) };
     var jb = to360(start.hdg + r.range(K.jumpOff) * (r.chance(0.5) ? 1 : -1));
     var jump = along(start, jb, D);
-    var map = { D: D, start: start, jump: { x: jump.x, y: jump.y, r: K.zone * D }, rocks: [], clusters: [], window: opts.window };
-    // Room for it: clear of the start and the jump zone, and a lane (two margins) from the others.
+    // The jump heading (to the nearest 5 degrees) and the approach point on the line leading in to it.
+    var jh = Math.round(to360(jb + r.range([0, K.jumpTurn]) * (r.chance(0.5) ? 1 : -1)) / 5) * 5 % 360;
+    var app = along(jump, jh + 180, K.approach * D);
+    var map = { D: D, start: start, jump: { x: jump.x, y: jump.y, r: K.zone * D }, jumpHdg: jh, approach: app, rocks: [], clusters: [], window: opts.window };
+    // Room for it: clear of the start, the jump zone and its approach lane, and a lane (two margins) from the others.
     var clear = function (c, rad) {
       if (dist(c, start) < rad + K.zone * D * 1.5 || dist(c, jump) < rad + K.zone * D * 1.5) return false;
+      if (segNear(along(app, jh + 180, K.margin * D), jump, c).d < rad + 1.5 * K.margin * D) return false;
       return map.rocks.concat(map.clusters).every(function (o) { return dist(o, c) > o.r + rad + 1.7 * K.margin * D; });
     };
     function place(list, n, make, fr, off) {
@@ -82,8 +87,8 @@
   }
 
   /* ------------------------------------------------------------------ A plot
-     { pts: [start, wp1, ..., jump point], eng: [one engine order per leg] }. The last leg's
-     heading is the jump heading. */
+     { pts: [start, wp1, ..., jump point], eng: [one engine order per leg] }. The last leg must
+     run along the map's jump heading (within BL.COMMAND.jumpTol). */
   BL.plotInfo = function (map, plot, gOf) {
     var K = BL.COMMAND, legs = [], eta = 0, rocks = false, clusters = false, sharp = 0, pts = plot.pts, lobes = rockLobes(map);
     for (var k = 0; k < pts.length - 1; k++) {
@@ -95,14 +100,16 @@
       eta += L / (g * K.scale);
       legs.push({ hdg: Math.round(hdg) % 360, len: L, turn: turn, eng: plot.eng[k] || "cruise", rocks: rk, clusters: cl, eta: eta });
     }
-    var n = legs.length, late = eta > map.window - K.early;
-    return { legs: legs, eta: eta, late: late, rocks: rocks, clusters: clusters, sharp: sharp, count: n, ok: n >= K.legs[0] && n <= K.legs[1] && !late && !rocks,
-      jumpHdg: n ? legs[n - 1].hdg : null };
+    var n = legs.length, late = eta > map.window - K.early, lastHdg = n ? legs[n - 1].hdg : null;
+    var offJump = lastHdg === null || Math.abs(norm(lastHdg - map.jumpHdg)) > K.jumpTol;
+    return { legs: legs, eta: eta, late: late, rocks: rocks, clusters: clusters, sharp: sharp, count: n, offJump: offJump, lastHdg: lastHdg,
+      ok: n >= K.legs[0] && n <= K.legs[1] && !late && !rocks && !offJump, jumpHdg: map.jumpHdg };
   };
   // The navigator's plot: the shortest way round every obstacle (corners of an octagon drawn
-  // round each one, so a leg between them stays clear), 1 to 8 legs, engines set to arrive in time.
+  // round each one, so a leg between them stays clear) to the approach point, then in along the
+  // jump heading; 1 to 8 legs, engines set to arrive in time.
   BL.navPlot = function (map, gOf) {
-    var K = BL.COMMAND, obs = obstacles(map), start = { x: map.start.x, y: map.start.y }, goal = { x: map.jump.x, y: map.jump.y };
+    var K = BL.COMMAND, obs = obstacles(map), start = { x: map.start.x, y: map.start.y }, goal = { x: map.approach.x, y: map.approach.y }, jp = { x: map.jump.x, y: map.jump.y };
     var nodes = [start, goal];
     obs.forEach(function (o) {
       var R = o.r * 1.04 / Math.cos(Math.PI / 8);
@@ -128,9 +135,12 @@
     var pts = [];
     if (prev[1] < 0) pts = [start, goal];                 // (no clear way: straight on, through it)
     else for (var c = 1; c >= 0; c = prev[c]) pts.unshift({ x: nodes[c].x, y: nodes[c].y });
-    // A corner is dropped while the leg between its neighbours stays clear (no needless jogs).
+    pts.push(jp);
+    // A corner is dropped while the leg between its neighbours stays clear (no needless jogs); the
+    // approach point only when the leg past it still runs along the jump heading.
     for (var k = 1; k < pts.length - 1;) {
-      if (pts.length - 1 > K.legs[0] && !blocked(map, pts[k - 1], pts[k + 1], obs)) pts.splice(k, 1);
+      var lastOk = k < pts.length - 2 || Math.abs(norm(bearing(pts[k - 1], pts[k + 1]) - map.jumpHdg)) < 2;
+      if (pts.length - 1 > K.legs[0] && lastOk && !blocked(map, pts[k - 1], pts[k + 1], obs)) pts.splice(k, 1);
       else k++;
     }
     // At least K.legs[0] legs: split the longest leg with a small dogleg (whichever side is clear).
@@ -216,21 +226,15 @@
     // Holding in the zone: dead slow up to the jump point, stopped once she's past it.
     var past = (this.pos.x - j.x) * Math.sin(hd) + (this.pos.y - j.y) * Math.cos(hd) > 0;
     var hold = past ? "stop" : "deadSlow";
-    // The jump ordered: the pilot lines up on the jump heading and holds her in the zone until she goes.
-    // (Stopped at once; she may coast a little past the zone's edge: an ordered jump allows
-    // BL.COMMAND.zoneHold x its radius. Farther out, he brings her back in at dead slow first.)
-    if (this.jumpOrdered) return this.inZone(BL.COMMAND.zoneHold) ? { hdg: this.info.jumpHdg, eng: "stop", own: false, nav: nv, holding: true }
-      : { hdg: Math.round(bearing(this.pos, j)) % 360, eng: "deadSlow", own: false, nav: nv, holding: false };
     return { hdg: this.hdgOrder !== null ? this.hdgOrder : nv.steer, eng: this.engOrder || (this.holding ? hold : nv.eng), own: this.hdgOrder !== null || !!this.engOrder, nav: nv, holding: this.holding };
   };
 
   /* ------------------------------------------------------------- Orders */
   Captain.prototype.orderCourse = function (hdg) {
-    this.jumpOrdered = false;                         // (a course of his own calls off the jump)
     this.hdgOrder = Math.round(to360(hdg)) % 360;
     this.m.cue("tick");
   };
-  Captain.prototype.orderEngines = function (id) { if (!this.m.helm.preset(id)) return; this.jumpOrdered = false; this.engOrder = id; this.m.cue("tick"); };
+  Captain.prototype.orderEngines = function (id) { if (!this.m.helm.preset(id)) return; this.engOrder = id; this.m.cue("tick"); };
   // Back to the plot: the navigation computer steers for the next waypoint.
   Captain.prototype.resumePlot = function () { this.hdgOrder = null; this.engOrder = null; this.m.cue("tick"); };
   Captain.prototype.setStance = function (id) { if (!BL.COMMAND.stances[id]) return; this.stance = id; this.applyStance(); this.m.cue("tick"); };
@@ -289,19 +293,20 @@
   };
   Captain.prototype.warn = function () { return this.m.helm.warn(); };
   // Ready to order the jump: drive full (and the buster, the squadron home: Mission.runJump),
-  // window open, in the jump zone. Once ordered, the pilot swings onto the jump heading and holds
-  // her in the zone (the captain's own course and engines are cancelled); `wait` says what the
-  // ordered jump is still waiting for.
+  // window open, in the jump zone, and on the jump heading (BL.HELM.corridor.jump either side):
+  // keeping her on it is the captain's job (on the plot the pilot flies the last leg along it).
+  // Once ordered, it goes when she's in the zone and on the heading; `wait` says what it's waiting for.
   Captain.prototype.jumpView = function () {
     var m = this.m, d = m.sys("drive"), h = m.helm;
     var drive = !d ? null : d.mj < d.maxMJ - 0.5 ? "Drive " + Math.floor(d.mj / d.maxMJ * 100) + "%" : null;
-    var why = drive || (m.t < m.windowAt() ? "Window in " + Math.ceil(m.windowAt() - m.t) + "s" : !this.inZone() ? "Outside the zone" : null);
-    var wait = !this.jumpOrdered ? null : drive || (!this.inZone(BL.COMMAND.zoneHold) ? "BACK TO THE ZONE" : !h.inJumpCorridor() ? "LINING UP " + BL.hdgText(this.info.jumpHdg) : null);
+    var steer = "Steer " + BL.hdgText(this.info.jumpHdg);
+    var why = drive || (m.t < m.windowAt() ? "Window in " + Math.ceil(m.windowAt() - m.t) + "s" : !this.inZone() ? "Outside the zone" : !h.inJumpCorridor() ? steer : null);
+    var wait = !this.jumpOrdered ? null : drive || (!this.inZone(BL.COMMAND.zoneHold) ? "BACK TO THE ZONE" : !h.inJumpCorridor() ? steer.toUpperCase() : null);
     return { ready: !why, why: why, ordered: this.jumpOrdered, wait: wait };
   };
   Captain.prototype.orderJump = function () {
     if (!this.jumpView().ready || this.jumpOrdered) return false;
-    this.jumpOrdered = true; this.hdgOrder = null; this.engOrder = null; this.m.cue("tick");
+    this.jumpOrdered = true; this.m.cue("tick");
     return true;
   };
   // Mission.runJump asks: may the countdown run?

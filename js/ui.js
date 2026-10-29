@@ -1605,12 +1605,14 @@
   function openPlot() {
     var c = sim.captain, i = sim.jumpIndex, map = c.maps[i], old = c.plots[i];
     plotEd = { i: i, map: map, plot: old ? { pts: old.pts.map(function (p) { return { x: p.x, y: p.y }; }), eng: old.eng.slice() }
-      : { pts: [{ x: map.start.x, y: map.start.y }, { x: map.jump.x, y: map.jump.y }], eng: ["cruise"] } };
+      : blankPlot(map) };
     $("pl-title").textContent = "Plot the course · system " + (i + 1) + " of " + sim.cfg.jumps + " · " + BL.ENCOUNTERS[sim.route[i]].name;
     overlay("ov-plot", true);
     plW = 0; drawPlot();
   }
   function plotGOf(id) { return sim.helm.gOf(id); }
+  // A new plot: straight to the approach point, then in along the jump heading.
+  function blankPlot(m) { return { pts: [{ x: m.start.x, y: m.start.y }, { x: m.approach.x, y: m.approach.y }, { x: m.jump.x, y: m.jump.y }], eng: ["cruise", "cruise"] }; }
   function drawPlot() {
     if (!plotEd) return;
     var box = $("pl-mapbox"), cv = $("pl-map"), dpr = window.devicePixelRatio || 1, w = box.clientWidth, hh = box.clientHeight, e = plotEd, K = BL.COMMAND;
@@ -1620,7 +1622,7 @@
     // The legs: heading, time, engine order (tap to change).
     $("pl-legs").innerHTML = info.legs.map(function (l, k) {
       var t = l.len / Math.max(0.1, plotGOf(l.eng) * K.scale);
-      return '<div class="plot-leg' + (l.rocks ? " bad" : l.clusters || Math.abs(l.turn) > K.maxTurn ? " warn" : "") + '"><span>Leg ' + (k + 1) + " · <b>" + hdg3(l.hdg) + "</b> · " + mmss(t) + "</span>" +
+      return '<div class="plot-leg' + (l.rocks || (k === info.legs.length - 1 && info.offJump) ? " bad" : l.clusters || Math.abs(l.turn) > K.maxTurn ? " warn" : "") + '"><span>Leg ' + (k + 1) + " · <b>" + hdg3(l.hdg) + "</b> · " + mmss(t) + "</span>" +
         '<button data-leg="' + k + '">' + sim.helm.preset(l.eng).name + "</button></div>";
     }).join("");
     // When it arrives, against the window.
@@ -1629,26 +1631,29 @@
       '<div class="bar"><i class="' + (info.late ? "late" : "") + '" style="width:' + pct(info.eta / span) + '"></i><em style="left:' + pct(e.map.window / span) + '"></em></div>';
     var warn = [];
     if (info.count < K.legs[0]) warn.push(["bad", "Needs " + K.legs[0] + " to " + K.legs[1] + " legs (" + info.count + " now)"]);
+    if (info.offJump) warn.push(["bad", "Last leg must be " + hdg3(e.map.jumpHdg) + " ±" + K.jumpTol + "° (now " + hdg3(info.lastHdg) + ")"]);
     if (info.rocks) warn.push(["bad", "Crosses an asteroid field"]);
     if (info.late) warn.push(["bad", "Arrives after the window: more speed or fewer legs"]);
     if (info.clusters) warn.push(["", "Runs through an enemy cluster"]);
     if (info.sharp) warn.push(["", "Turn of more than " + K.maxTurn + "° at a waypoint"]);
     if (!warn.length) warn.push(["ok", "✔ Clear course, on time"]);
     $("pl-warn").innerHTML = warn.map(function (x) { return '<div class="' + x[0] + '">' + x[1] + "</div>"; }).join("");
-    $("pl-go").disabled = info.count < K.legs[0] || info.count > K.legs[1];
-    setHtml($("pl-go"), info.count < K.legs[0] ? "Needs " + K.legs[0] + "+ legs (" + info.count + " now)" : "Accept <small>(Enter)</small>");
+    $("pl-go").disabled = info.count < K.legs[0] || info.count > K.legs[1] || info.offJump;
+    setHtml($("pl-go"), info.count < K.legs[0] ? "Needs " + K.legs[0] + "+ legs (" + info.count + " now)" : info.offJump ? "Last leg " + hdg3(e.map.jumpHdg) + " ±" + K.jumpTol + "°" : "Accept <small>(Enter)</small>");
     $("pl-undo").disabled = e.plot.pts.length <= 2;
   }
   function plotAdd(p) {
     var pl = plotEd.plot, n = pl.pts.length;
     if (n - 1 >= BL.COMMAND.legs[1]) { click(); return; }
-    pl.pts.splice(n - 1, 0, p); pl.eng.splice(pl.eng.length - 1, 0, pl.eng[pl.eng.length - 1] || "cruise");
+    // (before the approach point while the plot still has it, so the last leg stays on the jump heading)
+    var ap = plotEd.map.approach, at = n > 2 && Math.hypot(pl.pts[n - 2].x - ap.x, pl.pts[n - 2].y - ap.y) < 1e-6 ? n - 2 : n - 1;
+    pl.pts.splice(at, 0, p); pl.eng.splice(at - 1, 0, pl.eng[at - 1] || "cruise");
     BL.audio.play("tick"); drawPlot();
   }
   function plotRemove(k) { var pl = plotEd.plot; pl.pts.splice(k, 1); pl.eng.splice(k, 1); BL.audio.play("tick"); drawPlot(); }
   function plotUndo() { var pl = plotEd.plot; if (pl.pts.length > 2) plotRemove(pl.pts.length - 2); }
   function plotNav() { var p = BL.navPlot(plotEd.map, plotGOf); plotEd.plot = { pts: p.pts, eng: p.eng }; click(); drawPlot(); }
-  function plotClear() { var m = plotEd.map; plotEd.plot = { pts: [{ x: m.start.x, y: m.start.y }, { x: m.jump.x, y: m.jump.y }], eng: ["cruise"] }; click(); drawPlot(); }
+  function plotClear() { plotEd.plot = blankPlot(plotEd.map); click(); drawPlot(); }
   function plotAccept() {
     if (!plotEd || $("pl-go").disabled) return;
     sim.captain.setPlot(plotEd.i, plotEd.plot); plotEd = null;

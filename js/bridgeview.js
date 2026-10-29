@@ -72,6 +72,17 @@
     ctx.strokeStyle = "rgba(61,255,122,.85)"; ctx.fillStyle = "rgba(61,255,122,.12)"; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.arc(jc.x, jc.y, map.jump.r * s, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
     if (!small) { ctx.fillStyle = "rgba(61,255,122,.95)"; ctx.textAlign = "center"; ctx.textBaseline = "top"; ctx.fillText("JUMP ZONE", jc.x, jc.y + map.jump.r * s + 3); }
+    // The jump heading: the approach line leading in (dashed) and an arrow through the zone.
+    if (map.approach) {
+      var ap = P(map.approach), ja = map.jumpHdg * RAD, ux = Math.sin(ja), uy = -Math.cos(ja), tip = { x: jc.x + ux * map.jump.r * s * 1.6, y: jc.y + uy * map.jump.r * s * 1.6 };
+      ctx.strokeStyle = "rgba(61,255,122,.7)"; ctx.lineWidth = 1.5; ctx.setLineDash([6, 4]);
+      ctx.beginPath(); ctx.moveTo(ap.x, ap.y); ctx.lineTo(jc.x, jc.y); ctx.stroke(); ctx.setLineDash([]);
+      ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(jc.x, jc.y); ctx.lineTo(tip.x, tip.y); ctx.stroke();
+      var hl = small ? 6 : 9, px = -uy, py = ux;
+      ctx.fillStyle = "rgba(61,255,122,.95)"; ctx.beginPath(); ctx.moveTo(tip.x + ux * hl, tip.y + uy * hl);
+      ctx.lineTo(tip.x + px * hl * 0.6, tip.y + py * hl * 0.6); ctx.lineTo(tip.x - px * hl * 0.6, tip.y - py * hl * 0.6); ctx.closePath(); ctx.fill();
+      if (!small) { ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("JUMP " + BL.hdgText(map.jumpHdg), tip.x + ux * 28, tip.y + uy * 22); }
+    }
     // The plotted legs: done ones dim, the rest bright; red through a field, amber through a cluster.
     var pts = plot ? plot.pts : [], info = opts.info;
     for (var k2 = 0; k2 < pts.length - 1; k2++) {
