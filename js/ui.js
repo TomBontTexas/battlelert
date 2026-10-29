@@ -1535,6 +1535,7 @@
     setText($("tu-shield-val"), Math.round(sh.mj) + " / " + sh.maxMJ + " MJ");
     $("tu-shield").style.width = pct(sh.mj / sh.maxMJ);
     if (dr) { setText($("tu-rec-val"), (wi > 0 ? "in " + Math.ceil(wi) + " s · " : "open · ") + Math.floor(dr.mj / dr.maxMJ * 100) + "%"); $("tu-rec").style.width = pct(dr.mj / dr.maxMJ); }
+    else { setText($("tu-rec-val"), wi > 0 ? "in " + Math.ceil(wi) + " s" : "open"); $("tu-rec").style.width = pct(Math.min(1, sim.t / Math.max(1, sim.windowAt()))); }     // a gunboat: the sortie timer to the recovery
     var dl = sim.stats.damageReports;
     if (dl.length !== lastTuDamage) {
       lastTuDamage = dl.length;
