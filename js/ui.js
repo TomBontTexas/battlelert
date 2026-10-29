@@ -1419,11 +1419,13 @@
     var map = c.map(), plot = c.plots[c.at === undefined ? sim.jumpIndex : c.at] || null, ctx = cpMapCtx;      // (only a course that has been plotted)
     BL.drawNavMap(ctx, w, hh, map, plot, { small: !big, frame: mapFrame(w, hh), pos: c.pos, hdg: sim.helm.compass(), leg: c.leg, info: c.info, steer: hv ? hv.hdg : null });
     if (!c.pos) return;
-    // When she reaches the jump zone at her speed now, against the window: EARLY (slow down, or
-    // she waits there), LATE (more speed), else on time.
-    var eta = c.zoneEta(), wi = sim.windowIn(), fs = big ? 15 : 12;
-    var l1 = eta === 0 ? "IN THE ZONE" : eta === null ? "ZONE IN –" : "ZONE IN " + mmss(Math.ceil(eta)), l2 = wi > 0 ? "WINDOW IN " + mmss(Math.ceil(wi)) : "WINDOW OPEN";
-    var tag = eta === null || eta === 0 ? "" : eta < wi - 10 ? " · EARLY" : eta > wi + BL.COMMAND.zoneGrace ? " · LATE" : " · ON TIME";
+    // When she reaches the jump zone at her speed now, against when the jump can go (the window
+    // open and the drive full at the rate it's charging now, whichever is later): EARLY (slow
+    // down, or she waits there), LATE (more speed), else on time.
+    var eta = c.zoneEta(), rd = c.readyEta(), fs = big ? 15 : 12;
+    var l1 = eta === 0 ? "IN THE ZONE" : eta === null ? "ZONE IN –" : "ZONE IN " + mmss(Math.ceil(eta));
+    var l2 = rd.at === 0 ? "JUMP READY" : rd.at === null ? "DRIVE NOT CHARGING" : "READY IN " + mmss(Math.ceil(rd.at)) + " · " + rd.by.toUpperCase();
+    var tag = eta === null || eta === 0 || rd.at === null ? "" : eta < rd.at - 10 ? " · EARLY" : eta > rd.at + BL.COMMAND.zoneGrace ? " · LATE" : " · ON TIME";
     var col = tag === " · EARLY" ? "#ffd666" : tag === " · LATE" ? "#ff6b6b" : "#3dff7a";
     ctx.font = "600 " + fs + "px ui-monospace, Menlo, Consolas, monospace"; ctx.textAlign = "left"; ctx.textBaseline = "top";
     var tw = Math.max(ctx.measureText(l1 + tag).width, ctx.measureText(l2).width);
@@ -1627,8 +1629,8 @@
     }).join("");
     // When it arrives, against the window.
     var span = e.map.window * 1.3;
-    $("pl-time").innerHTML = "Arrives " + mmss(info.eta) + " · window " + mmss(e.map.window) + (info.late ? ' <span style="color:var(--bad)">LATE</span>' : " ✔") +
-      '<div class="bar"><i class="' + (info.late ? "late" : "") + '" style="width:' + pct(info.eta / span) + '"></i><em style="left:' + pct(e.map.window / span) + '"></em></div>';
+    $("pl-time").innerHTML = "In the zone " + mmss(info.zoneEta) + " · window " + mmss(e.map.window) + (info.late ? ' <span style="color:var(--bad)">LATE</span>' : " ✔") +
+      '<div class="bar"><i class="' + (info.late ? "late" : "") + '" style="width:' + pct(info.zoneEta / span) + '"></i><em style="left:' + pct(e.map.window / span) + '"></em></div>';
     var warn = [];
     if (info.count < K.legs[0]) warn.push(["bad", "Needs " + K.legs[0] + " to " + K.legs[1] + " legs (" + info.count + " now)"]);
     if (info.offJump) warn.push(["bad", "Last leg must be " + hdg3(e.map.jumpHdg) + " ±" + K.jumpTol + "° (now " + hdg3(info.lastHdg) + ")"]);

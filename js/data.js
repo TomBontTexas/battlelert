@@ -804,7 +804,7 @@
      Navigation scores full marks in the zone by the window + zoneGrace s. An ordered jump allows
      zoneHold x the zone's radius (the ship coasting to a stop). */
   BL.COMMAND = {
-    scale: 1, reach: 0.7, jumpOff: [0, 50], zone: 0.08,
+    scale: 1, reach: 0.9, driveTau: 5, jumpOff: [0, 50], zone: 0.08,
     // Asteroid fields and enemy areas: each overlapping lobes (rockR / clusterR) along a bent line,
     // oblong and lumpy, placed `along` of the way to the jump point and up to `side` off that line,
     // a lane (lane x margin) apart. blockers of them sit across the straight way to the jump.
@@ -814,7 +814,7 @@
     // last leg must be within jumpTol of it, and the approach lane (approach x the distance, back
     // from the jump point) is kept clear.
     jumpTurn: 60, jumpTol: 10, approach: 0.3,
-    legs: [1, 8], legCost: 0.04, maxTurn: 100, early: 5, capture: 0.05, dogleg: 0.08, lookahead: 0.1,
+    legs: [1, 8], legCost: 0.04, maxTurn: 100, early: 12, capture: 0.05, dogleg: 0.08, lookahead: 0.1,
     rockMJ: 90, rockEvery: 4, zoneGrace: 5, zoneHold: 1.5,
     // Standing orders at the start of a mission (the captain changes them on the bridge).
     standing: { guns: "auto", stance: "balanced" },

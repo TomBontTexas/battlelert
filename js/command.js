@@ -118,9 +118,12 @@
       eta += L / (g * K.scale);
       legs.push({ hdg: Math.round(hdg) % 360, len: L, turn: turn, eng: plot.eng[k] || "cruise", rocks: rk, clusters: cl, eta: eta });
     }
-    var n = legs.length, late = eta > map.window - K.early, lastHdg = n ? legs[n - 1].hdg : null;
+    // When she reaches the zone's edge (the last leg's last stretch is inside it): that's what's
+    // timed against the window.
+    var n = legs.length, last = legs[n - 1], zoneEta = n ? eta - Math.min(last.len, map.jump.r) / (Math.max(0.1, gOf(last.eng)) * K.scale) : eta;
+    var late = zoneEta > map.window - K.early, lastHdg = n ? last.hdg : null;
     var offJump = lastHdg === null || Math.abs(norm(lastHdg - map.jumpHdg)) > K.jumpTol;
-    return { legs: legs, eta: eta, late: late, rocks: rocks, clusters: clusters, sharp: sharp, count: n, offJump: offJump, lastHdg: lastHdg,
+    return { legs: legs, eta: eta, zoneEta: zoneEta, late: late, rocks: rocks, clusters: clusters, sharp: sharp, count: n, offJump: offJump, lastHdg: lastHdg,
       ok: n >= K.legs[0] && n <= K.legs[1] && !late && !rocks && !clusters && !offJump, jumpHdg: map.jumpHdg };
   };
   // The navigator's plot: the shortest way round every obstacle (corners of an octagon drawn
@@ -211,7 +214,7 @@
     h.base = to360(map.start.hdg - (m.turret ? m.turret.heading : 0));
     h.jumpHdg = info.jumpHdg; h.jumpShown = h.jumpHdg !== null; h.course = null;
     this.info = info; this.leg = 0; this.hdgOrder = null; this.engOrder = null; this.jumpOrdered = false;
-    this.inRock = false; this.rockNext = 0; this.zoneAt = null; this.holding = false; this.call = null;
+    this.inRock = false; this.rockNext = 0; this.zoneAt = null; this.holding = false; this.call = null; this.drRate = null; this.drLast = null;
     this.cur = { rockHits: 0, zoneAt: null, window: m.windowAt(), legs: info.count };
     this.stats.systems[m.jumpIndex] = this.cur;
     this.applyStance(); this.applyGuns(true);
@@ -237,6 +240,15 @@
     var d = dist(this.pos, pts[k + 1]);
     for (var i = k + 1; i < pts.length - 1; i++) d += dist(pts[i], pts[i + 1]);
     return Math.max(0, d - j.r) / v;
+  };
+  // When the jump can go: the window open and the drive full, the drive at the rate it's charging
+  // now (BL.COMMAND.driveTau s average). { at: s from now (null: the drive isn't charging), by:
+  // "window" | "drive", win, drive }.
+  Captain.prototype.readyEta = function () {
+    var m = this.m, d = m.sys("drive"), win = Math.max(0, m.windowAt() - m.t), drv = 0;
+    if (d && d.mj < d.maxMJ - 0.5) drv = this.drRate > 0.05 ? (d.maxMJ - d.mj) / this.drRate : null;
+    var at = drv === null ? null : Math.max(win, drv);
+    return { at: at, by: drv === null || drv > win ? "drive" : "window", win: win, drive: drv };
   };
   // In the jump zone (k: times its radius, for an ordered jump that's coasting to a stop).
   Captain.prototype.inZone = function (k) { var j = this.map().jump; return dist(this.pos, j) <= j.r * (k || 1); };
@@ -339,6 +351,12 @@
     // The ship moves on the map at her speed, on her compass heading.
     var hdg = h.compass(), v = h.speed * K.scale;
     this.pos.x += Math.sin(hdg * RAD) * v * dt; this.pos.y += Math.cos(hdg * RAD) * v * dt;
+    // The drive's charge rate, MJ/s, averaged over the last few seconds.
+    var dr = m.sys("drive");
+    if (dr && dt > 0) {
+      if (this.drLast !== null) { var rate = (dr.mj - this.drLast) / dt, a = Math.min(1, dt / K.driveTau); this.drRate = this.drRate === null ? rate : this.drRate + (rate - this.drRate) * a; }
+      this.drLast = dr.mj;
+    }
     // Waypoints: passed once she's close, or abeam of it.
     var plot = this.plotFor(this.at), pts = plot.pts;
     while (this.leg < pts.length - 2) {
