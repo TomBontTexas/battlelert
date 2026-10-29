@@ -42,21 +42,22 @@
     ctx.fillStyle = "rgba(200,215,230,.55)"; ctx.font = (small ? 10 : 12) + "px ui-monospace, Menlo, Consolas, monospace"; ctx.textAlign = "right"; ctx.textBaseline = "top";
     ctx.fillText("N ↑", w - 6, 5);
     // Enemy clusters and asteroid fields.
-    map.clusters.forEach(function (o) {
-      var c = P(o);
-      ctx.fillStyle = "rgba(255,77,77,.13)"; ctx.strokeStyle = "rgba(255,77,77,.7)"; ctx.setLineDash([4, 3]); ctx.lineWidth = 1.2;
-      ctx.beginPath(); ctx.arc(c.x, c.y, o.r * s, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.setLineDash([]);
-      if (!small) { ctx.fillStyle = "rgba(255,120,120,.9)"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("ENEMY", c.x, c.y); }
-    });
-    // Each field is overlapping lobes: its outline is the lobes a little larger in the edge colour,
+    // Each area is overlapping lobes: its outline is the lobes a little larger in the edge colour,
     // then the lobes on top in the (solid) fill colour, so only the outer edge shows.
-    map.rocks.forEach(function (o, i) {
-      var lobes = o.lobes || [o];
-      [[1.2, "#747577"], [0, "#25272a"]].forEach(function (ring) {
+    function blob(lobes, edge, fill) {
+      [[1.2, edge], [0, fill]].forEach(function (ring) {
         ctx.fillStyle = ring[1]; ctx.beginPath();
         lobes.forEach(function (l) { var c = P(l); ctx.moveTo(c.x + l.r * s + ring[0], c.y); ctx.arc(c.x, c.y, l.r * s + ring[0], 0, Math.PI * 2); });
         ctx.fill();
       });
+    }
+    map.clusters.forEach(function (o) {
+      blob(o.lobes || [o], "#b43839", "#2a1214");
+      if (!small) { var c = P(o); ctx.fillStyle = "rgba(255,120,120,.9)"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("ENEMY", c.x, c.y); }
+    });
+    map.rocks.forEach(function (o, i) {
+      var lobes = o.lobes || [o];
+      blob(lobes, "#747577", "#25272a");
       // a few rocks inside each lobe, the same each time
       ctx.fillStyle = "rgba(200,200,200,.55)";
       lobes.forEach(function (l, j) {
@@ -87,7 +88,7 @@
     var pts = plot ? plot.pts : [], info = opts.info;
     for (var k2 = 0; k2 < pts.length - 1; k2++) {
       var a2 = P(pts[k2]), b2 = P(pts[k2 + 1]), lg = info && info.legs[k2];
-      ctx.strokeStyle = lg && lg.rocks ? "#ff4d4d" : lg && lg.clusters ? "#f0b54a" : opts.leg !== undefined && k2 < opts.leg ? "rgba(127,184,255,.35)" : "#7fb8ff";
+      ctx.strokeStyle = lg && (lg.rocks || lg.clusters) ? "#ff4d4d" : opts.leg !== undefined && k2 < opts.leg ? "rgba(127,184,255,.35)" : "#7fb8ff";
       ctx.lineWidth = small ? 1.5 : 2; ctx.beginPath(); ctx.moveTo(a2.x, a2.y); ctx.lineTo(b2.x, b2.y); ctx.stroke();
       if (!small && lg) {     // the leg's heading beside its middle
         var mx = (a2.x + b2.x) / 2, my = (a2.y + b2.y) / 2, nx = -(b2.y - a2.y), ny = b2.x - a2.x, nl = Math.hypot(nx, ny) || 1;

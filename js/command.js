@@ -40,26 +40,33 @@
     var jh = Math.round(to360(jb + r.range([0, K.jumpTurn]) * (r.chance(0.5) ? 1 : -1)) / 5) * 5 % 360;
     var app = along(jump, jh + 180, K.approach * D);
     var map = { D: D, start: start, jump: { x: jump.x, y: jump.y, r: K.zone * D }, jumpHdg: jh, approach: app, rocks: [], clusters: [], window: opts.window };
-    // Room for it: clear of the start, the jump zone and its approach lane, and a lane (two margins) from the others.
-    var clear = function (c, rad) {
-      if (dist(c, start) < rad + K.zone * D * 1.5 || dist(c, jump) < rad + K.zone * D * 1.5) return false;
-      if (segNear(along(app, jh + 180, K.margin * D), jump, c).d < rad + 1.5 * K.margin * D) return false;
-      return map.rocks.concat(map.clusters).every(function (o) { return dist(o, c) > o.r + rad + 1.7 * K.margin * D; });
+    // Room for an area: every lobe clear of the start, the jump zone and its approach lane, and a
+    // lane (K.lane margins) from every lobe already placed, so there's always a way between them.
+    var lobesNow = function () { return [].concat.apply([], map.rocks.concat(map.clusters).map(function (o) { return o.lobes; })); };
+    var clear = function (o) {
+      var have = lobesNow(), lane = K.lane * K.margin * D;
+      return o.lobes.every(function (l) {
+        if (dist(l, start) < l.r + K.zone * D * 1.5 || dist(l, jump) < l.r + K.zone * D * 1.5) return false;
+        if (segNear(along(app, jh + 180, K.margin * D), jump, l).d < l.r + 1.5 * K.margin * D) return false;
+        return have.every(function (e) { return dist(e, l) > e.r + l.r + lane; });
+      });
     };
-    function place(list, n, make, fr, off) {
-      for (var k = 0, tries = 0; k < n && tries < 150; tries++) {
-        var f = r.range(fr), side = r.range(off) * (r.chance(0.5) ? 1 : -1);
-        var c = along(along(start, jb, f * D), jb + 90, side * D), o = make(c);
-        if (!clear(c, o.r)) continue;
+    // n areas into list, centred `along` of the way from a to b and up to `side` off that line.
+    function place(list, n, make, a, b, fr, off) {
+      var L = dist(a, b), hb = bearing(a, b);
+      for (var k = 0, tries = 0; k < n && tries < 200; tries++) {
+        var f = r.range(fr), sd = r.range(off) * (r.chance(0.5) ? 1 : -1);
+        var o = make(along(along(a, hb, f * L), hb + 90, sd * D));
+        if (!clear(o)) continue;
         list.push(o); k++;
       }
     }
-    // An asteroid field: overlapping lobes along a bent line, sometimes with a knob on the side,
-    // so it's oblong and lumpy. { x, y, r (a circle round all of it), lobes: [{ x, y, r }] }.
-    function field(c) {
-      var n = r.int(K.rockLobes), dir = r.next() * 360, bend = r.range([-50, 50]), lobes = [], p = { x: 0, y: 0 }, pr = 0;
+    // An area (asteroid field or enemy area): overlapping lobes along a bent line, sometimes with a
+    // knob on the side, so it's oblong and lumpy. { x, y, r (a circle round all of it), lobes: [{ x, y, r }] }.
+    function field(c, R, N) {
+      var n = r.int(N), dir = r.next() * 360, bend = r.range([-50, 50]), lobes = [], p = { x: 0, y: 0 }, pr = 0;
       for (var k = 0; k < n; k++) {
-        var rad = r.range(K.rockR) * D;
+        var rad = r.range(R) * D;
         if (k) { p = along(p, dir, (pr + rad) * r.range([0.45, 0.7])); dir += bend * r.range([0.4, 1.2]); }
         lobes.push({ x: p.x, y: p.y, r: rad }); pr = rad;
       }
@@ -70,15 +77,26 @@
       lobes = lobes.map(function (l) { var o = { x: c.x + l.x - mx, y: c.y + l.y - my, r: l.r }; R = Math.max(R, dist(o, c) + l.r); return o; });
       return { x: c.x, y: c.y, r: R, lobes: lobes };
     }
-    place(map.rocks, r.int(K.rocks), field, K.rockAlong, K.rockSide);
-    place(map.clusters, r.int(K.clusters), function (c) { return { x: c.x, y: c.y, r: r.range(K.clusterR) * D }; }, [0.25, 0.8], [0.15, 0.35]);
+    var rock = function (c) { return field(c, K.rockR, K.rockLobes); }, enemy = function (c) { return field(c, K.clusterR, K.clusterLobes); };
+    // First the blockers, across the straight way to the approach point (so the course has to go
+    // round), the first an asteroid field, then an enemy area;
+    var nb = r.int(K.blockers);
+    place(map.rocks, 1, rock, start, app, [0.3, 0.7], [0, 0.03]);
+    if (nb > 1) place(map.clusters, 1, enemy, start, app, [0.25, 0.75], [0, 0.04]);
+    // then the rest, a field and an enemy area in turn, while there's room.
+    var nr = r.int(K.rocks), ne = r.int(K.clusters);
+    for (var turn = 0; turn < 12 && (map.rocks.length < nr || map.clusters.length < ne); turn++) {
+      if (map.rocks.length < nr) place(map.rocks, 1, rock, start, jump, K.along, K.side);
+      if (map.clusters.length < ne) place(map.clusters, 1, enemy, start, jump, K.along, K.side);
+    }
     return map;
   };
-  // The circles that make up the map's obstacles: each field's lobes, and the enemy clusters.
+  // The circles that make up the map's obstacles: each area's lobes.
   function rockLobes(map) { return [].concat.apply([], map.rocks.map(function (o) { return o.lobes; })); }
+  function enemyLobes(map) { return [].concat.apply([], map.clusters.map(function (o) { return o.lobes || [o]; })); }
   BL.inField = function (map, p) { return rockLobes(map).some(function (l) { return dist(l, p) < l.r; }); };
   // Every obstacle on the map, with the margin the navigator keeps.
-  function obstacles(map) { var m = BL.COMMAND.margin * map.D; return rockLobes(map).concat(map.clusters).map(function (o) { return { x: o.x, y: o.y, r: o.r + m }; }); }
+  function obstacles(map) { var m = BL.COMMAND.margin * map.D; return rockLobes(map).concat(enemyLobes(map)).map(function (o) { return { x: o.x, y: o.y, r: o.r + m }; }); }
   // The first obstacle the segment a-b runs through (with its margin), or null.
   function blocked(map, a, b, obs) {
     var hit = null, best = 2;
@@ -90,11 +108,11 @@
      { pts: [start, wp1, ..., jump point], eng: [one engine order per leg] }. The last leg must
      run along the map's jump heading (within BL.COMMAND.jumpTol). */
   BL.plotInfo = function (map, plot, gOf) {
-    var K = BL.COMMAND, legs = [], eta = 0, rocks = false, clusters = false, sharp = 0, pts = plot.pts, lobes = rockLobes(map);
+    var K = BL.COMMAND, legs = [], eta = 0, rocks = false, clusters = false, sharp = 0, pts = plot.pts, lobes = rockLobes(map), elobes = enemyLobes(map);
     for (var k = 0; k < pts.length - 1; k++) {
       var a = pts[k], b = pts[k + 1], L = dist(a, b), hdg = bearing(a, b), g = Math.max(0.1, gOf(plot.eng[k] || "cruise"));
       var turn = k ? norm(hdg - legs[k - 1].hdg) : norm(hdg - map.start.hdg);
-      var rk = lobes.some(function (o) { return segNear(a, b, o).d < o.r; }), cl = map.clusters.some(function (o) { return segNear(a, b, o).d < o.r; });
+      var rk = lobes.some(function (o) { return segNear(a, b, o).d < o.r; }), cl = elobes.some(function (o) { return segNear(a, b, o).d < o.r; });
       rocks = rocks || rk; clusters = clusters || cl;
       if (Math.abs(turn) > K.maxTurn) sharp++;
       eta += L / (g * K.scale);
@@ -103,12 +121,12 @@
     var n = legs.length, late = eta > map.window - K.early, lastHdg = n ? legs[n - 1].hdg : null;
     var offJump = lastHdg === null || Math.abs(norm(lastHdg - map.jumpHdg)) > K.jumpTol;
     return { legs: legs, eta: eta, late: late, rocks: rocks, clusters: clusters, sharp: sharp, count: n, offJump: offJump, lastHdg: lastHdg,
-      ok: n >= K.legs[0] && n <= K.legs[1] && !late && !rocks && !offJump, jumpHdg: map.jumpHdg };
+      ok: n >= K.legs[0] && n <= K.legs[1] && !late && !rocks && !clusters && !offJump, jumpHdg: map.jumpHdg };
   };
   // The navigator's plot: the shortest way round every obstacle (corners of an octagon drawn
   // round each one, so a leg between them stays clear) to the approach point, then in along the
   // jump heading; 1 to 8 legs, engines set to arrive in time.
-  BL.navPlot = function (map, gOf) {
+  BL.navPlot = function (map, gOf, lc) {
     var K = BL.COMMAND, obs = obstacles(map), start = { x: map.start.x, y: map.start.y }, goal = { x: map.approach.x, y: map.approach.y }, jp = { x: map.jump.x, y: map.jump.y };
     var nodes = [start, goal];
     obs.forEach(function (o) {
@@ -120,7 +138,7 @@
     });
     // Dijkstra from the start over the clear legs between nodes.
     var n = nodes.length, best = nodes.map(function () { return Infinity; }), prev = nodes.map(function () { return -1; }), done = nodes.map(function () { return false; });
-    best[0] = 0;
+    lc = lc || K.legCost; best[0] = 0; var legCost = lc * map.D;
     for (var it = 0; it < n; it++) {
       var u = -1;
       for (var i = 0; i < n; i++) if (!done[i] && (u < 0 || best[i] < best[u])) u = i;
@@ -128,7 +146,7 @@
       done[u] = true;
       for (var v = 0; v < n; v++) {
         if (done[v]) continue;
-        var w = best[u] + dist(nodes[u], nodes[v]);
+        var w = best[u] + dist(nodes[u], nodes[v]) + legCost;      // (a little for each leg, so fewer of them)
         if (w < best[v] && !blocked(map, nodes[u], nodes[v], obs)) { best[v] = w; prev[v] = u; }
       }
     }
@@ -153,6 +171,8 @@
       });
       pts.splice(li + 1, 0, cand[0] || mid);
     }
+    // Too many legs: again, with each leg costing more.
+    if (pts.length - 1 > K.legs[1] && lc < 0.6) return BL.navPlot(map, gOf, lc * 2.5);
     var plot = { pts: pts, eng: pts.slice(1).map(function () { return "cruise"; }) };
     // Late at cruise: standard from the first leg on, then full, until it fits.
     ["standard", "full"].forEach(function (eng) {

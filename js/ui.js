@@ -1622,7 +1622,7 @@
     // The legs: heading, time, engine order (tap to change).
     $("pl-legs").innerHTML = info.legs.map(function (l, k) {
       var t = l.len / Math.max(0.1, plotGOf(l.eng) * K.scale);
-      return '<div class="plot-leg' + (l.rocks || (k === info.legs.length - 1 && info.offJump) ? " bad" : l.clusters || Math.abs(l.turn) > K.maxTurn ? " warn" : "") + '"><span>Leg ' + (k + 1) + " · <b>" + hdg3(l.hdg) + "</b> · " + mmss(t) + "</span>" +
+      return '<div class="plot-leg' + (l.rocks || l.clusters || (k === info.legs.length - 1 && info.offJump) ? " bad" : Math.abs(l.turn) > K.maxTurn ? " warn" : "") + '"><span>Leg ' + (k + 1) + " · <b>" + hdg3(l.hdg) + "</b> · " + mmss(t) + "</span>" +
         '<button data-leg="' + k + '">' + sim.helm.preset(l.eng).name + "</button></div>";
     }).join("");
     // When it arrives, against the window.
@@ -1634,12 +1634,13 @@
     if (info.offJump) warn.push(["bad", "Last leg must be " + hdg3(e.map.jumpHdg) + " ±" + K.jumpTol + "° (now " + hdg3(info.lastHdg) + ")"]);
     if (info.rocks) warn.push(["bad", "Crosses an asteroid field"]);
     if (info.late) warn.push(["bad", "Arrives after the window: more speed or fewer legs"]);
-    if (info.clusters) warn.push(["", "Runs through an enemy cluster"]);
+    if (info.clusters) warn.push(["bad", "Crosses an enemy area"]);
     if (info.sharp) warn.push(["", "Turn of more than " + K.maxTurn + "° at a waypoint"]);
     if (!warn.length) warn.push(["ok", "✔ Clear course, on time"]);
     $("pl-warn").innerHTML = warn.map(function (x) { return '<div class="' + x[0] + '">' + x[1] + "</div>"; }).join("");
-    $("pl-go").disabled = info.count < K.legs[0] || info.count > K.legs[1] || info.offJump;
-    setHtml($("pl-go"), info.count < K.legs[0] ? "Needs " + K.legs[0] + "+ legs (" + info.count + " now)" : info.offJump ? "Last leg " + hdg3(e.map.jumpHdg) + " ±" + K.jumpTol + "°" : "Accept <small>(Enter)</small>");
+    $("pl-go").disabled = info.count < K.legs[0] || info.count > K.legs[1] || info.offJump || info.rocks || info.clusters;
+    setHtml($("pl-go"), info.count < K.legs[0] ? "Needs " + K.legs[0] + "+ legs (" + info.count + " now)" : info.offJump ? "Last leg " + hdg3(e.map.jumpHdg) + " ±" + K.jumpTol + "°"
+      : info.rocks ? "Crosses asteroids" : info.clusters ? "Crosses enemies" : "Accept <small>(Enter)</small>");
     $("pl-undo").disabled = e.plot.pts.length <= 2;
   }
   function plotAdd(p) {
