@@ -800,7 +800,8 @@
      turn at a waypoint; early: s a plot must reach the jump point before the window; capture:
      how close counts as passing a waypoint; dogleg: the navigator's sidestep to make a third leg;
      lookahead: how far ahead on the leg the NPC pilot steers for.
-     An asteroid field hits like a mine (rockMJ, shields first), every rockEvery s inside it.
+     A plot may cross an asteroid field (with a warning); inside one the rocks come at her like a
+     minefield's mines (rockField), and at the enemy ships around her too.
      Navigation scores full marks in the zone by the window + zoneGrace s. An ordered jump allows
      zoneHold x the zone's radius (the ship coasting to a stop). */
   BL.COMMAND = {
@@ -815,7 +816,15 @@
     // from the jump point) is kept clear.
     jumpTurn: 60, jumpTol: 10, approach: 0.3,
     legs: [1, 8], legCost: 0.04, maxTurn: 100, early: 12, capture: 0.05, dogleg: 0.08, lookahead: 0.1,
-    rockMJ: 90, rockEvery: 4, zoneGrace: 5, zoneHold: 1.5,
+    zoneGrace: 5, zoneHold: 1.5,
+    // Inside an asteroid field the rocks stream through the battle view like a minefield's mines
+    // (ring.js dropRock): as fast and as often as she moves (`flow` fields/s and one per `every` s
+    // at standard, up to `maxFlow` x; none stopped), at that rate across `spread` x the shield's
+    // half-width either side of her track, and as thick across the whole view. One that touches
+    // the shield hits like a mine (mj); the gunners shoot the ones on a collision course (a crew
+    // bolt breaks one with crewHit x 3 / the number of guns); the pilot steers round them,
+    // `dodge` degrees off the course, from `look` s out. An enemy ship a rock touches takes `enemy` damage.
+    rockField: { every: [1.1, 1.6], flow: 0.12, spread: 2.6, maxFlow: 1, lagSlow: 2, mj: [90, 90], crewHit: 0.12, enemy: 15, dodge: 25, look: 4 },
     // A burst with no call from the captain that the shields can't take: the pilot breaks on his
     // own this share of the time (decided once per burst).
     pilotOwn: 0.5,

@@ -420,6 +420,7 @@
   RingTurret.prototype.dropMines = function () {
     var m = this.m, enc = m.encounter(), M = enc && enc.mines && enc.mines.gunner, R = this.R, r = this.rng;
     if (m.phase !== "engage" && m.phase !== "countdown") return;
+    if (m.captain && m.captain.inRock) this.dropRock();
     if (enc && enc.sweep) { this.dropFieldMine(enc.sweep, enc.sweep.mj); return; }      // the mine lane, either station
     if (!M) return;
     // The mines sit still and the ship moves through them, at the gun as at the helm (at the gun
@@ -448,12 +449,27 @@
     e.torp = tp; this.torps.push(tp);
     count(this, "mines");
   };
+  // The bridge, inside an asteroid field (BL.COMMAND.rockField): rocks come up like a field's mines,
+  // at the same rate across the whole view (so they cross the enemy ships' paths too).
+  RingTurret.prototype.dropRock = function () {
+    var m = this.m, r = this.rng, R = this.R, F = BL.COMMAND.rockField, v = this.fieldFlow(F), dt = 1 / BL.TICK_RATE, wide = 1.6 / (2 * F.spread * R.rx);
+    this.rockDue = (this.rockDue || 0) + wide * Math.abs(v) / F.flow * dt / r.range(F.every);
+    if (this.rockDue < 1) return;
+    this.rockDue -= 1;
+    var x = -0.3 + r.next() * 1.6, y = v >= 0 ? -0.3 : 1.3;
+    var e = { id: m.nextId++, type: "mine", rock: true, at: Infinity, mj: Math.round(r.range(F.mj)), announced: true, visible: true };
+    m.events.push(e);
+    var tp = { id: this.nextId++, ev: e, mine: true, field: true, rock: true, crewHit: F.crewHit * Math.min(1, 3 / this.bats.length), x0: x, y0: y, x1: x, y1: y, hitB: 0, t0: m.t, t1: m.t + 99, x: x, y: y,
+      spin: r.next() * 6, size: 0.8 + r.next() * 0.6 };
+    e.torp = tp; this.torps.push(tp); this.stats.rocks = (this.stats.rocks || 0) + 1;
+  };
   // The helm: move the field's mines with the ship; one touching the shield hits, one past the view is gone.
+  // A rock (the bridge's asteroid field) that touches an enemy ship hits it and breaks up.
   RingTurret.prototype.moveFieldMines = function (list) {
-    var m = this.m, R = this.R, self = this, enc = m.encounter(), H = enc && (enc.sweep || (enc.mines && enc.mines.helm));
-    var v = H ? this.fieldFlow(H) : 0, dt = 1 / BL.TICK_RATE;
+    var m = this.m, R = this.R, self = this, enc = m.encounter(), H = enc && (enc.sweep || (enc.mines && enc.mines.helm)), F = BL.COMMAND.rockField;
+    var vm = H ? this.fieldFlow(H) : 0, vr = m.captain ? this.fieldFlow(F) : 0, dt = 1 / BL.TICK_RATE;
     list.forEach(function (tp) {
-      var e = tp.ev;
+      var e = tp.ev, v = tp.rock ? vr : vm;
       if (e.done) {
         if (!e.downed && !e.passed) self.effects.push({ type: e.outcome === "hull" ? "hullHit" : "shieldHit", x: tp.x1, y: tp.y1, at: m.totalT, mj: e.mj });
         return;
@@ -462,8 +478,21 @@
       if (e.at <= m.t) { self.torps.push(tp); return; }               // touched: the simulation fires it
       tp.y += v * dt;
       var dx = (tp.x - R.cx) / R.rx, dy = (tp.y - R.cy) / R.ry;
-      if (dx * dx + dy * dy <= 1) { e.at = m.t; tp.x1 = tp.x; tp.y1 = tp.y; tp.t1 = m.t; self.torps.push(tp); return; }
+      if (dx * dx + dy * dy <= 1) { e.at = m.t; tp.x1 = tp.x; tp.y1 = tp.y; tp.t1 = m.t; self.torps.push(tp); if (tp.rock && m.captain) m.captain.rockStruck(); return; }
       if (tp.y > 1.35 || tp.y < -0.35 || tp.x < -0.35 || tp.x > 1.35) { e.done = true; e.passed = true; return; }
+      if (tp.rock) {
+        var hit = null;
+        self.ships.forEach(function (s) { if (!hit && !s.dead && s.state !== "leave" && self.touches(s, tp.x, tp.y)) hit = s; });
+        if (hit) {
+          e.done = true; e.passed = true;
+          self.effects.push({ type: "boom", x: tp.x, y: tp.y, at: m.totalT, size: 0.06 });
+          var all = self.crewAll; self.crewAll = false;                 // (not a kill for our gun crew)
+          self.damageShip(hit, F.enemy, 0, false);
+          self.crewAll = all;
+          self.stats.rockEnemy = (self.stats.rockEnemy || 0) + 1;
+          return;
+        }
+      }
       // Where and when it would touch the shield if the ship holds this course (for the warning ring
       // and the gunners); one that will pass by: when it's abeam (the gunners still shoot it, no ring).
       tp.pass = false;
@@ -472,7 +501,8 @@
         if ((yh - tp.y) * v > 0) { tp.x1 = tp.x; tp.y1 = yh; tp.t1 = m.t + (yh - tp.y) / v; self.torps.push(tp); return; }
       }
       tp.pass = true; tp.x1 = tp.x; tp.y1 = tp.y;
-      tp.t1 = v && (R.cy - tp.y) * v > 0 ? m.t + (R.cy - tp.y) / v : m.t + 99;
+      // (a rock that will pass by is left alone: the gunners only shoot the ones coming at us)
+      tp.t1 = v && !tp.rock && (R.cy - tp.y) * v > 0 ? m.t + (R.cy - tp.y) / v : m.t + 99;
       self.torps.push(tp);
     });
   };
@@ -482,9 +512,10 @@
     e.done = true; e.downed = true;
     this.torps = this.torps.filter(function (x) { return x !== tp; });
     if (b && b.mine) count(this, "minesDowned");
+    if (tp.rock) this.stats.rocksDown = (this.stats.rocksDown || 0) + 1;
     this.effects.push({ type: "boom", x: tp.x, y: tp.y, at: m.totalT, size: 0.07 });
     m.cue("torpDown");
-    if (this.rng.chance(0.25)) m.chat("mineDown", null, "good");
+    if (!tp.rock && this.rng.chance(0.25)) m.chat("mineDown", null, "good");
   };
 
   /* --------------------------------------------------------------- Enemies */

@@ -525,8 +525,23 @@
     if (tp.t1 - m.t < 1.4) { c.strokeStyle = Math.floor(t * 8) % 2 ? "rgba(51,203,187,0.95)" : "rgba(51,203,187,0.3)"; c.beginPath(); c.arc(tp.x1, tp.y1, 0.022, 0, Math.PI * 2); c.stroke(); }
   }
 
+  // A rock (the bridge's asteroid field): a lumpy grey stone, turning slowly; a blinking ring where
+  // it will hit the shield.
+  function drawRock(c, S, tp, t, m) {
+    var r = 0.019 * (tp.size || 1), sp = tp.spin + t * 0.5;
+    c.save(); c.translate(tp.x, tp.y); c.rotate(sp);
+    c.fillStyle = "#5b5d61"; c.strokeStyle = "#8d8f93"; c.lineWidth = 1.2 / S;
+    c.beginPath();
+    for (var k = 0; k < 7; k++) { var a = k * Math.PI * 2 / 7, q = r * (0.75 + 0.35 * Math.abs(Math.sin(tp.spin * 3 + k * 1.7))); if (k) c.lineTo(Math.cos(a) * q, Math.sin(a) * q); else c.moveTo(Math.cos(a) * q, Math.sin(a) * q); }
+    c.closePath(); c.fill(); c.stroke();
+    c.fillStyle = "rgba(0,0,0,0.25)"; c.beginPath(); c.arc(r * 0.25, r * 0.15, r * 0.3, 0, Math.PI * 2); c.fill();
+    c.restore();
+    c.lineWidth = 1.5 / S;
+    if (!tp.pass && tp.t1 - m.t < 1.2) { c.strokeStyle = Math.floor(t * 8) % 2 ? "rgba(255,90,70,0.9)" : "rgba(255,90,70,0.3)"; c.beginPath(); c.arc(tp.x1, tp.y1, 0.02, 0, Math.PI * 2); c.stroke(); }
+  }
   // A drifting mine: a dark spiked ball with a blinking light, its path a faint grey line.
   function drawMine(c, S, tp, t, m) {
+    if (tp.rock) { drawRock(c, S, tp, t, m); return; }
     c.strokeStyle = "rgba(180,190,200,0.18)"; c.setLineDash([0.006, 0.012]);
     c.beginPath(); c.moveTo(tp.x, tp.y); c.lineTo(tp.x1, tp.y1); c.stroke(); c.setLineDash([]);
     var r = 0.013, sp = tp.spin + t * 0.8;

@@ -88,7 +88,7 @@
     var pts = plot ? plot.pts : [], info = opts.info;
     for (var k2 = 0; k2 < pts.length - 1; k2++) {
       var a2 = P(pts[k2]), b2 = P(pts[k2 + 1]), lg = info && info.legs[k2];
-      ctx.strokeStyle = lg && (lg.rocks || lg.clusters) ? "#ff4d4d" : opts.leg !== undefined && k2 < opts.leg ? "rgba(127,184,255,.35)" : "#7fb8ff";
+      ctx.strokeStyle = lg && lg.clusters ? "#ff4d4d" : lg && lg.rocks ? "#f0b54a" : opts.leg !== undefined && k2 < opts.leg ? "rgba(127,184,255,.35)" : "#7fb8ff";
       ctx.lineWidth = small ? 1.5 : 2; ctx.beginPath(); ctx.moveTo(a2.x, a2.y); ctx.lineTo(b2.x, b2.y); ctx.stroke();
       if (!small && lg) {     // the leg's heading beside its middle
         var mx = (a2.x + b2.x) / 2, my = (a2.y + b2.y) / 2, nx = -(b2.y - a2.y), ny = b2.x - a2.x, nl = Math.hypot(nx, ny) || 1;

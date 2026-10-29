@@ -124,7 +124,7 @@
     var late = zoneEta > map.window - K.early, lastHdg = n ? last.hdg : null;
     var offJump = lastHdg === null || Math.abs(norm(lastHdg - map.jumpHdg)) > K.jumpTol;
     return { legs: legs, eta: eta, zoneEta: zoneEta, late: late, rocks: rocks, clusters: clusters, sharp: sharp, count: n, offJump: offJump, lastHdg: lastHdg,
-      ok: n >= K.legs[0] && n <= K.legs[1] && !late && !rocks && !clusters && !offJump, jumpHdg: map.jumpHdg };
+      ok: n >= K.legs[0] && n <= K.legs[1] && !late && !clusters && !offJump, jumpHdg: map.jumpHdg };     // (through asteroids is allowed, with a warning)
   };
   // The navigator's plot: the shortest way round every obstacle (corners of an octagon drawn
   // round each one, so a leg between them stays clear) to the approach point, then in along the
@@ -214,7 +214,7 @@
     h.base = to360(map.start.hdg - (m.turret ? m.turret.heading : 0));
     h.jumpHdg = info.jumpHdg; h.jumpShown = h.jumpHdg !== null; h.course = null;
     this.info = info; this.leg = 0; this.hdgOrder = null; this.engOrder = null; this.jumpOrdered = false;
-    this.inRock = false; this.rockNext = 0; this.zoneAt = null; this.holding = false; this.call = null; this.drRate = null; this.drLast = null;
+    this.inRock = false; this.zoneAt = null; this.holding = false; this.call = null; this.drRate = null; this.drLast = null;
     this.cur = { rockHits: 0, zoneAt: null, window: m.windowAt(), legs: info.count };
     this.stats.systems[m.jumpIndex] = this.cur;
     this.applyStance(); this.applyGuns(true);
@@ -383,32 +383,32 @@
     if (zone && this.cur.zoneAt === null) this.cur.zoneAt = m.t;
     // In the zone on the last leg, the pilot holds her there (dead slow, then stopped) for the jump.
     this.holding = zone && (this.leg >= pts.length - 2 || this.jumpOrdered);
-    // Asteroids: inside a field, a hit every `rockEvery` s.
-    var rock = BL.inField(map, this.pos);
-    if (rock && m.t >= this.rockNext && (m.phase === "engage" || m.phase === "countdown" || m.phase === "arrival")) { this.rockNext = m.t + K.rockEvery; this.rockHit(); }
-    this.inRock = rock;
+    // Asteroids: inside a field the rocks stream through the battle view (RingTurret.dropRock).
+    this.inRock = BL.inField(map, this.pos);
     if (m.phase !== "done") this.pilot.think(m, this);
   };
-  // An asteroid hit, like a mine: the shields take it first.
-  Captain.prototype.rockHit = function () {
-    var m = this.m, sh = m.sys("shield"), mj = BL.COMMAND.rockMJ, took = Math.min(sh.mj, mj);
-    sh.mj -= took; this.stats.rockHits++; this.cur.rockHits++;
-    var R = m.turret.R; m.turret.effects.push({ type: "hullHit", x: R.cx, y: R.cy - R.ry, at: m.totalT, mj: mj });
-    var dmg = Math.round((mj - took) * m.data.hullPerMJ);
-    if (dmg < 1) { m.cue("shieldHit"); m.cue("shieldBoom"); return; }
-    m.ship.hull -= dmg; m.ship.fresh.hull += dmg; m.stats.hullLost += dmg; m.jumpStats.hullLost += dmg;
-    m.cue("hullHit"); m.cue("breach");
-    m.chat("hit", { dmg: dmg }, "bad");
-    if (m.rng.chance(0.4)) m.damageSystem();
-  };
+  // A rock touched the shield (ring.js; it lands like a mine, shields first).
+  Captain.prototype.rockStruck = function () { this.stats.rockHits++; if (this.cur) this.cur.rockHits++; };
 
   /* ------------------------------------------------------------- The NPC pilot
      Flies what the captain wants (Captain.helmView) on autopilot, with the engines it says, and
      breaks hard when the captain orders a break, then comes back to the course. His standing
      order is to take torpedoes on the shields; only when the captain makes no call and the
      shields can't take the burst does he sometimes break on his own at the last moment (Captain.pilotCall). */
-  function CaptainPilot() { this.breaking = false; }
+  function CaptainPilot() { this.breaking = false; this.dodge = null; }
   BL.CaptainPilot = CaptainPilot;
+  // In an asteroid field: the nearest rock on a collision course within BL.COMMAND.rockField.look s,
+  // he swings `dodge` degrees away from its side and holds that until it's abeam. Degrees off the course.
+  CaptainPilot.prototype.rockDodge = function (m) {
+    var tu = m.turret, R = tu.R, F = BL.COMMAND.rockField, d = this.dodge;
+    if (d && (d.tp.ev.done || d.tp.y > R.cy)) d = this.dodge = null;
+    if (!d) {
+      var near = null;
+      tu.torps.forEach(function (tp) { if (tp.rock && !tp.pass && !tp.ev.done && tp.t1 - m.t < F.look && (!near || tp.t1 < near.t1)) near = tp; });
+      if (near) d = this.dodge = { tp: near, side: near.x < R.cx ? 1 : -1 };
+    }
+    return d ? d.side * F.dodge : 0;
+  };
   CaptainPilot.prototype.think = function (m, c) {
     var h = m.helm;
     if (h.locked()) return;
@@ -416,8 +416,8 @@
     var ev = h.evadeView();
     if (ev && ev.left > 0) { h.setWheel(ev.off >= BL.HELM.dodge.turn * 1.4 ? 0 : ev.dir * Math.min(1, h.C.safe / h.topTurn() * 0.98)); this.breaking = true; return; }
     this.breaking = false;
-    var hv = c.helmView();
-    if (!h.auto || Math.abs(norm(h.autoHdg - hv.hdg)) > 0.5) h.setAuto(true, hv.hdg);
+    var hv = c.helmView(), hdg = to360(hv.hdg + this.rockDodge(m)) % 360;
+    if (!h.auto || Math.abs(norm(h.autoHdg - hdg)) > 0.5) h.setAuto(true, hdg);
     if (h.port.ord !== hv.eng || h.stbd.ord !== hv.eng) h.setOrder("both", hv.eng);
   };
 
@@ -439,7 +439,8 @@
     r.score = Math.round(r.raw * Math.pow(1 - m.cfg.lookCostPct / 100, r.looks));
     r.captain = { rockHits: st.rockHits, calls: st.calls, breaks: st.breaks, pilotBreaks: st.pilotBreaks, breaksMade: hs.evasiveMet, taken: st.taken, unanswered: st.unanswered,
       systems: sys.map(function (s) { return { zoneAt: s.zoneAt === null ? null : Math.round(s.zoneAt), window: s.window, rockHits: s.rockHits, legs: s.legs }; }),
-      ships: tu.stats.ships, kills: tu.stats.kills, downed: tu.stats.downed };
+      ships: tu.stats.ships, kills: tu.stats.kills, downed: tu.stats.downed,
+      rocks: tu.stats.rocks || 0, rocksDown: tu.stats.rocksDown || 0, rockEnemy: tu.stats.rockEnemy || 0 };
     return r;
   };
 
