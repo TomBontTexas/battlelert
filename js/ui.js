@@ -786,6 +786,7 @@
     $("tu-mainrow").hidden = !(helm && sim.turret.firesMain);
     $("tu-gunside").hidden = helm; $("tu-helm").hidden = !helm; $("hm-wheel").hidden = !helm; $("hm-strip").hidden = !helm;
     $("scr-turret").classList.toggle("helm", helm);
+    bridgeSwap(false);
     $("cp-side").hidden = $("cp-mapbox").hidden = $("cp-orders").hidden = true; $("scr-turret").classList.remove("captain");
     $("btn-tu-call").hidden = $("btn-tu-fire").hidden = helm;
     $("hm-launch").hidden = true;
@@ -837,7 +838,7 @@
     var b = ev.target.closest("button[data-i]"); if (b && turretActive()) selectBattery(+b.dataset.i);
   });
   function sizeTurret() {
-    var box = $("tu-field"), cv = $("tu-canvas"), dpr = window.devicePixelRatio || 1;
+    var cv = $("tu-canvas"), box = cv.parentNode, dpr = window.devicePixelRatio || 1;      // (the field, or the bridge's map box when swapped)
     var side = Math.floor(Math.max(120, Math.min(box.clientWidth, box.clientHeight)));
     var w = wideOn() ? Math.floor(Math.max(120, box.clientWidth)) : side, h = wideOn() ? side : side;
     // At the helm the view fills its whole column, top to bottom (the battle stays centered).
@@ -1362,8 +1363,9 @@
   /* ------------------------------------------------------------ The bridge
      The captain (command.js): the ring view as at the helm, to watch (tap its compass to order
      a course); the BRIDGE panel at the left, three short lines per station; the map over the
-     SHIP panel at the right (tap it to steer for a point); the orders along the bottom. Before
-     each system, in warp space with the clock stopped, the plotting screen. */
+     SHIP panel at the right (tap it to steer for a point, drag to pan, + - FIT to zoom; SWAP
+     puts the map in the middle and the battle view in its box); the orders along the bottom.
+     Before each system, in warp space with the clock stopped, the plotting screen. */
   var BRIDGE_ENG = ["stop", "deadSlow", "cruise", "standard", "full", "flank"];
   function buildBridge() {
     var h = sim.helm, G = BL.GUNNERY, K = BL.COMMAND;
@@ -1371,7 +1373,7 @@
     $("scr-turret").classList.remove("helm"); $("scr-turret").classList.add("captain");
     $("cp-side").hidden = $("cp-mapbox").hidden = $("cp-orders").hidden = false;
     $("tu-station").textContent = "Bridge · " + (job.test ? sim.data.className : BL.shipLabel(job.classId, job.ship, job.hull) + " (" + sim.data.className + ")") + " · tech level " + sim.data.tl;
-    $("tu-keys").textContent = "← → course 10° (Shift 1°) · R resume plot · ↑ ↓ engines · Z break port · X take it · C break starboard · G gunners · S engineer · E warn engineering · J jump · Esc pause · Tap the compass or the map to steer";
+    $("tu-keys").textContent = "← → course 10° (Shift 1°) · R resume plot · ↑ ↓ engines · Z break port · X take it · C break starboard · G gunners · S engineer · E warn engineering · J jump · V swap map · + − F zoom · Esc pause · Tap the compass or the map to steer";
     $("cp-tele").innerHTML = BRIDGE_ENG.map(function (id) { var p = h.preset(id); return '<button data-eng="' + id + '" title="All ' + p.name.toLowerCase() + '">' + p.short + "</button>"; }).join("");
     $("cp-gunord").innerHTML = ["auto"].concat(G.orderList).map(function (id) { var o = G.orders[id]; return '<button data-gun="' + id + '" title="' + o.name + '">' + K.gunShort[id] + "</button>"; }).join("");
     $("cp-stance").innerHTML = K.stanceList.map(function (id) { return '<button data-stance="' + id + '" title="' + K.stances[id].name + '">' + K.stances[id].short + "</button>"; }).join("");
@@ -1385,13 +1387,49 @@
     setCls(el, "cp-box" + (cls ? " " + cls : ""));
     if (lastBridgeBox[id] !== html) { lastBridgeBox[id] = html; el.innerHTML = html; fitLines(el); }
   }
-  var cpMapCtx = null, cpMapW = 0, cpMapH = 0;
+  var cpMapCtx = null, cpMapW = 0, cpMapH = 0, cpSwapped = false, cpView = { i: -1, z: 1, dx: 0, dy: 0 };
+  // SWAP: the map (with its zoom buttons) in the middle and the battle view in the map's box, or back.
+  function bridgeSwap(on) {
+    if (on === cpSwapped) return;
+    cpSwapped = on;
+    var wrap = $("cp-mapwrap"), ring = $("tu-canvas");
+    if (on) { $("tu-field").insertBefore(wrap, $("tu-field").firstChild); $("cp-mapbox").insertBefore(ring, $("cp-swap")); }
+    else { $("tu-field").insertBefore(ring, $("tu-field").firstChild); $("cp-mapbox").insertBefore(wrap, $("cp-swap")); }
+    tuSize = 0; cpMapW = 0;
+  }
+  // The bridge map's zoom and pan (back to the whole map in each new system).
+  function mapView() { var i = sim.captain.at === undefined ? sim.jumpIndex : sim.captain.at; if (cpView.i !== i) cpView = { i: i, z: 1, dx: 0, dy: 0 }; return cpView; }
+  function mapFrame(w, h) { return BL.navFrame(sim.captain.map(), null, w, h, cpSwapped ? 18 : 10, mapView()); }
+  // Zoom by f about the point (px, py) on the map (its middle if none): that point stays put.
+  function mapZoom(f, px, py) {
+    var cv = $("cp-map"), w = cv.clientWidth, h = cv.clientHeight, v = mapView();
+    if (!w || !h) return;
+    if (px === undefined) { px = w / 2; py = h / 2; }
+    var z = clampN(v.z * f, 1, 8); if (z === v.z) return;
+    var p = mapFrame(w, h).toMap(px, py);
+    v.z = z; var q = mapFrame(w, h).toMap(px, py);
+    v.dx += p.x - q.x; v.dy += p.y - q.y;
+    if (z === 1) v.dx = v.dy = 0;
+  }
+  function mapFit() { var v = mapView(); v.z = 1; v.dx = v.dy = 0; }
   function drawBridgeMap(hv) {
-    var box = $("cp-mapbox"), cv = $("cp-map"), dpr = window.devicePixelRatio || 1, w = box.clientWidth, hh = box.clientHeight, c = sim.captain;
+    var cv = $("cp-map"), box = cv.parentNode, dpr = window.devicePixelRatio || 1, w = box.clientWidth, hh = box.clientHeight, c = sim.captain, big = cpSwapped;
     if (!w || !hh) return;
     if (w !== cpMapW || hh !== cpMapH || !cpMapCtx) { cpMapW = w; cpMapH = hh; cv.width = Math.round(w * dpr); cv.height = Math.round(hh * dpr); cpMapCtx = cv.getContext("2d"); cpMapCtx.setTransform(dpr, 0, 0, dpr, 0, 0); }
-    var map = c.map(), plot = c.plotFor(sim.jumpIndex);
-    BL.drawNavMap(cpMapCtx, w, hh, map, plot, { small: true, frame: BL.navFrame(map, null, w, hh, 10), pos: c.pos, hdg: sim.helm.compass(), leg: c.leg, info: c.info, steer: hv ? hv.hdg : null });
+    var map = c.map(), plot = c.plots[c.at === undefined ? sim.jumpIndex : c.at] || null, ctx = cpMapCtx;      // (only a course that has been plotted)
+    BL.drawNavMap(ctx, w, hh, map, plot, { small: !big, frame: mapFrame(w, hh), pos: c.pos, hdg: sim.helm.compass(), leg: c.leg, info: c.info, steer: hv ? hv.hdg : null });
+    if (!c.pos) return;
+    // When she reaches the jump zone at her speed now, against the window: EARLY (slow down, or
+    // she waits there), LATE (more speed), else on time.
+    var eta = c.zoneEta(), wi = sim.windowIn(), fs = big ? 15 : 12;
+    var l1 = eta === 0 ? "IN THE ZONE" : eta === null ? "ZONE IN –" : "ZONE IN " + mmss(Math.ceil(eta)), l2 = wi > 0 ? "WINDOW IN " + mmss(Math.ceil(wi)) : "WINDOW OPEN";
+    var tag = eta === null || eta === 0 ? "" : eta < wi - 10 ? " · EARLY" : eta > wi + BL.COMMAND.zoneGrace ? " · LATE" : " · ON TIME";
+    var col = tag === " · EARLY" ? "#ffd666" : tag === " · LATE" ? "#ff6b6b" : "#3dff7a";
+    ctx.font = "600 " + fs + "px ui-monospace, Menlo, Consolas, monospace"; ctx.textAlign = "left"; ctx.textBaseline = "top";
+    var tw = Math.max(ctx.measureText(l1 + tag).width, ctx.measureText(l2).width);
+    ctx.fillStyle = "rgba(5,8,12,.8)"; ctx.fillRect(3, 3, tw + 10, fs * 2 + 10);
+    ctx.fillStyle = col; ctx.fillText(l1 + tag, 8, 6);
+    ctx.fillStyle = "rgba(200,215,230,.85)"; ctx.fillText(l2, 8, 8 + fs);
   }
   function hdg3(v) { return BL.hdgText(v); }
   function renderBridge(ts) {
@@ -1473,7 +1511,8 @@
   }
   function cycle(list, cur, dir) { return list[(list.indexOf(cur) + dir + list.length) % list.length]; }
   // Keys on the bridge: ← → course 10° (Shift 1°), R resume plot, ↑ ↓ engines, Z X C break port /
-  // take it / break starboard, G gunners' order, S engineer's stance, E warn engineering, J jump, Esc pause.
+  // take it / break starboard, G gunners' order, S engineer's stance, E warn engineering, J jump,
+  // V swap the map and the battle view, + - zoom the map, F the whole map, Esc pause.
   function bridgeKey(ev) {
     if (!$("ov-grav").hidden) { if (ev.key === "Enter") $("btn-grav-go").click(); return; }
     var k = ev.key, kl = k.length === 1 ? k.toLowerCase() : k, c = sim.captain;
@@ -1492,6 +1531,10 @@
     else if (kl === "s" && !ev.repeat) c.setStance(cycle(BL.COMMAND.stanceList, c.stance, 1));
     else if (kl === "e" && !ev.repeat) c.warn();
     else if (kl === "j" && !ev.repeat) c.orderJump();
+    else if (kl === "v" && !ev.repeat) bridgeSwap(!cpSwapped);
+    else if (k === "+" || k === "=") mapZoom(1.5);
+    else if (k === "-" || k === "_") mapZoom(1 / 1.5);
+    else if (kl === "f" && !ev.repeat) mapFit();
     else if (kl === "h") { toggleHints(); }
     else return;
     ev.preventDefault();
@@ -1511,17 +1554,52 @@
       else if (b.id === "cp-warn") c.warn();
       else if (b.id === "cp-jump") c.orderJump();
     });
-    // Tap the map: steer for that point (a course of the captain's own).
-    $("cp-map").addEventListener("pointerdown", function (ev) {
-      var c = sim && sim.captain; if (!c || !c.pos || !turretActive()) return;
-      var r = this.getBoundingClientRect(), f = BL.navFrame(c.map(), null, r.width, r.height, 10), p = f.toMap(ev.clientX - r.left, ev.clientY - r.top);
-      c.orderCourse(BL.navBearing(c.pos, p)); ev.preventDefault();
+    // The map: a tap steers for that point (a course of the captain's own); a drag pans it, two
+    // fingers pinch to zoom, the mouse wheel zooms.
+    var mv = $("cp-map"), ptrs = {}, pinch = null;
+    function mapXY(ev) { var r = mv.getBoundingClientRect(); return { x: ev.clientX - r.left, y: ev.clientY - r.top }; }
+    mv.addEventListener("pointerdown", function (ev) {
+      if (!sim || !sim.captain) return;
+      ptrs[ev.pointerId] = { at: mapXY(ev), last: mapXY(ev), moved: false };
+      try { mv.setPointerCapture(ev.pointerId); } catch (e) {}
+      var ids = Object.keys(ptrs);
+      if (ids.length === 2) { var a = ptrs[ids[0]].last, b = ptrs[ids[1]].last; pinch = { d: Math.hypot(a.x - b.x, a.y - b.y) || 1 }; ptrs[ids[0]].moved = ptrs[ids[1]].moved = true; }
+      ev.preventDefault();
     });
+    mv.addEventListener("pointermove", function (ev) {
+      var p = ptrs[ev.pointerId]; if (!p || !sim || !sim.captain) return;
+      var q = mapXY(ev), ids = Object.keys(ptrs);
+      if (!p.moved && Math.hypot(q.x - p.at.x, q.y - p.at.y) > 6) p.moved = true;
+      if (pinch && ids.length === 2) {
+        p.last = q; var a = ptrs[ids[0]].last, b = ptrs[ids[1]].last, d = Math.hypot(a.x - b.x, a.y - b.y) || 1;
+        mapZoom(d / pinch.d, (a.x + b.x) / 2, (a.y + b.y) / 2); pinch.d = d;
+      } else if (p.moved) {
+        var f = mapFrame(mv.clientWidth, mv.clientHeight), v = mapView();
+        if (v.z > 1) { v.dx -= (q.x - p.last.x) / f.s; v.dy += (q.y - p.last.y) / f.s; }
+        p.last = q;
+      }
+    });
+    function mapUp(ev) {
+      var p = ptrs[ev.pointerId]; delete ptrs[ev.pointerId];
+      if (Object.keys(ptrs).length < 2) pinch = null;
+      var c = sim && sim.captain;
+      if (!p || p.moved || ev.type !== "pointerup" || !c || !c.pos || !turretActive()) return;
+      var t = mapFrame(mv.clientWidth, mv.clientHeight).toMap(p.at.x, p.at.y);
+      c.orderCourse(BL.navBearing(c.pos, t));
+    }
+    mv.addEventListener("pointerup", mapUp); mv.addEventListener("pointercancel", mapUp);
+    mv.addEventListener("wheel", function (ev) { if (!sim || !sim.captain) return; var q = mapXY(ev); mapZoom(ev.deltaY < 0 ? 1.25 : 0.8, q.x, q.y); ev.preventDefault(); }, { passive: false });
+    $("cp-mapwrap").querySelector(".cp-zoom").addEventListener("click", function (ev) {
+      var b = ev.target.closest("button"); if (!b || !sim || !sim.captain) return;
+      b.blur(); var z = +b.dataset.zoom;
+      if (z > 0) mapZoom(1.5); else if (z < 0) mapZoom(1 / 1.5); else mapFit();
+    });
+    $("cp-swap").addEventListener("click", function () { this.blur(); if (sim && sim.captain) bridgeSwap(!cpSwapped); });
   })();
 
   /* ------------------------------------------------------ The plotting screen
      In warp space before each system, the clock stopped: the system's map; tap to lay waypoints
-     (3 to 8 legs to the jump zone), tap one to remove it; each leg's engine order; when it
+     (1 to 8 legs to the jump zone), tap one to remove it; each leg's engine order; when it
      arrives against the jump window; what's wrong with it. Navigator's plot fills in a safe one. */
   var plotEd = null, plCtx = null, plW = 0, plH = 0;
   function openPlot() {

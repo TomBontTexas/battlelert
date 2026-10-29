@@ -6,7 +6,7 @@
 <meta name="copyright" content="© 2011–2026 Tom Bont. All rights reserved.">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Battlelert</title>
-<link rel="stylesheet" href="css/style.css?b=a2b2869c">
+<link rel="stylesheet" href="css/style.css?b=deeb956b">
 </head>
 <body>
 
@@ -385,7 +385,11 @@
       </div>
     </div>
     <aside class="panel tu-side">
-      <div class="cp-map" id="cp-mapbox" hidden><canvas id="cp-map" aria-label="System map: the plotted course; tap a point to steer for it"></canvas></div>
+      <div class="cp-map" id="cp-mapbox" hidden>
+        <div class="cp-mapwrap" id="cp-mapwrap"><canvas id="cp-map" aria-label="System map: the plotted course; tap a point to steer for it, drag to pan"></canvas>
+          <div class="cp-zoom"><button data-zoom="1" title="Zoom in (+)">+</button><button data-zoom="-1" title="Zoom out (−)">−</button><button data-zoom="0" title="The whole map (F)">FIT</button></div></div>
+        <button class="cp-swap" id="cp-swap" title="Swap the map and the battle view (V)">⇄ SWAP</button>
+      </div>
       <div class="panel-title">SHIP</div>
       <div class="row-label"><span>HULL</span><span id="tu-hull-val"></span></div>
       <div class="hbar tall"><div id="tu-hull" class="hbar-fill hull-fill"></div></div>
@@ -489,7 +493,7 @@
     <div class="plot-main">
       <div class="plot-mapbox" id="pl-mapbox"><canvas id="pl-map" aria-label="System map: tap to lay a waypoint, tap a waypoint to remove it"></canvas></div>
       <div class="plot-side">
-        <p class="muted small-text" id="pl-hint">Tap the map to lay waypoints (3 to 8 legs) to the jump zone. Tap a waypoint to remove it. Tap a leg's engine order to change it.</p>
+        <p class="muted small-text" id="pl-hint">Tap the map to lay waypoints (1 to 8 legs) to the jump zone. Tap a waypoint to remove it. Tap a leg's engine order to change it.</p>
         <div class="plot-legs" id="pl-legs"></div>
         <div class="plot-time" id="pl-time"></div>
         <div class="plot-warn" id="pl-warn"></div>
@@ -612,9 +616,11 @@
       <tr><td>S</td><td>Engineer's stance: shields first, balanced, guns first</td></tr>
       <tr><td>E</td><td>Warn engineering that a burn is coming</td></tr>
       <tr><td>J</td><td>Order the jump (once it's ready)</td></tr>
+      <tr><td>V</td><td>Swap the map and the battle view (the map in the middle, the battle in the box at the right)</td></tr>
+      <tr><td>+ − / F</td><td>Zoom the map in or out / the whole map again</td></tr>
       <tr><td>Esc</td><td>Pause and resume</td></tr>
       <tr><td>N / U / Enter</td><td>Plotting screen: navigator's plot / undo the last waypoint / accept</td></tr>
-      <tr><td>Mouse / touch</td><td>Tap the compass across the top, or a point on the map, to steer there; the order bar along the bottom has every order. Plotting: tap the map to lay a waypoint, tap a waypoint to remove it, tap a leg's engine order to change it</td></tr>
+      <tr><td>Mouse / touch</td><td>Tap the compass across the top, or a point on the map, to steer there; drag the map to pan it, pinch or use the mouse wheel (or + − FIT) to zoom; ⇄ SWAP swaps the map and the battle view; the order bar along the bottom has every order. Plotting: tap the map to lay a waypoint, tap a waypoint to remove it, tap a leg's engine order to change it</td></tr>
     </table>
     <div class="menu"><button id="btn-options-close" class="primary">Done</button></div>
   </div>
@@ -678,8 +684,9 @@
     <h2>On the bridge</h2>
     <p>The captain plots the course and gives the orders; his crew carry them out. For now the bridge is a test on the title screen (<b>Captain bridge test</b>, a destroyer), with no career effect.</p>
     <ol class="tight">
-      <li><b>Plot the course.</b> In warp space before each system, with the clock stopped, the plotting screen shows the system's map: where you come out of warp space, the jump zone (green), asteroid fields (grey) and enemy clusters (red). Tap the map to lay waypoints: 3 to 8 legs to the jump zone. Tap a waypoint to remove it, and a leg's engine order (cruise, standard, full) to change it. The time line shows when the course arrives against the jump window. A leg through an asteroid field shows red, one through an enemy cluster amber. <b>Navigator's plot</b> fills in a safe course to accept or edit. The last leg's heading is the jump heading.</li>
+      <li><b>Plot the course.</b> In warp space before each system, with the clock stopped, the plotting screen shows the system's map: where you come out of warp space, the jump zone (green), asteroid fields (grey, in all shapes) and enemy clusters (red). Tap the map to lay waypoints: 1 to 8 legs to the jump zone. Tap a waypoint to remove it, and a leg's engine order (cruise, standard, full) to change it. The time line shows when the course arrives against the jump window. A leg through an asteroid field shows red, one through an enemy cluster amber. <b>Navigator's plot</b> fills in a safe course to accept or edit. The last leg's heading is the jump heading.</li>
       <li><b>The pilot flies it.</b> He steers for the plotted legs and gives the engines each leg's order. NAVIGATION on the BRIDGE panel shows the leg, the next course change and the jump window; the map at the right shows the ship on the plot. In the jump zone he holds her there, dead slow and then stopped, for the jump.</li>
+      <li><b>The map.</b> Its top line counts down to the jump zone at her speed now, along the rest of the plot: faster and it drops, slower and it climbs. Against the window it says <b>EARLY</b> (slow down, or she waits in the zone), <b>ON TIME</b> or <b>LATE</b> (more speed). Drag it to pan, pinch or use + − to zoom, FIT for the whole map. <b>⇄ SWAP</b> (V) puts the map in the middle and the battle view in its box; swap again to go back.</li>
       <li><b>A course of your own.</b> ← → (or ◀ 10° and 10° ▶), a tap on the compass, or a tap on the map gives the helm a course of your own, and the engine buttons an engine order. HELM shows "yours" until you tap <b>RESUME PLOT</b> (R); then the pilot comes back onto the plotted line, never cutting across a field.</li>
       <li><b>Torpedoes.</b> On every burst at you, the call is yours: <b>BREAK PORT</b>, <b>TAKE IT</b> or <b>BREAK STBD</b> (Z X C) before they land. A break the pilot makes in time makes them miss. Your standing order is to take them on the shields, so a burst you don't answer is taken. Break away from asteroid fields: the map shows where they are.</li>
       <li><b>The crew.</b> The gunners' order (G) goes to every gun: SUGGESTED (each fight's suggestion), TORPEDOES (point defense: torpedoes about to land first), LAUNCHERS (ships charging to fire first), HUNT (the ships each gun is best against) or FREE FIRE (each gunner picks his own). The engineer's stance (S) is his priority order: shields first, balanced, or guns first. Warn engineering (E) before a hard burn.</li>
@@ -694,25 +701,25 @@
   </div>
 </section>
 
-<script src="version.js?b=9b97050e"></script>
+<script src="version.js?b=105e57c9"></script>
 <script src="update-banner.js?b=ec7860dd"></script>
-<script src="js/data.js?b=09a68422"></script>
+<script src="js/data.js?b=fbff7a54"></script>
 <script src="js/sim.js?b=53184a3d"></script>
 <script src="js/agents.js?b=a9187bf4"></script>
 <script src="js/gunnery.js?b=685ea271"></script>
 <script src="js/ring.js?b=d2bfd43d"></script>
 <script src="js/helm.js?b=94fbf21e"></script>
-<script src="js/command.js?b=3e349db7"></script>
+<script src="js/command.js?b=ccc13881"></script>
 <script src="js/training.js?b=48646f29"></script>
 <script src="js/art.js?b=ac37cac5"></script>
 <script src="js/turretview.js?b=960c39ae"></script>
 <script src="js/ringview.js?b=6a6b6741"></script>
-<script src="js/bridgeview.js?b=ca477832"></script>
+<script src="js/bridgeview.js?b=77b3fe03"></script>
 <script src="js/names.js?b=08410f0b"></script>
 <script src="js/story.js?b=6ce99bc9"></script>
 <script src="js/career.js?b=34474452"></script>
 <script src="js/speech.js?b=f9e428ef"></script>
 <script src="js/audio.js?b=273e5325"></script>
-<script src="js/ui.js?b=24e5291b"></script>
+<script src="js/ui.js?b=0fc32fe1"></script>
 </body>
 </html>

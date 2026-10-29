@@ -2,7 +2,7 @@
 /* Battlelert command: the captain's bridge (Phase 5, stage 1). Pure simulation, no screen code.
    Each system has a map from the mission seed: where the ship comes out of warp space, the jump
    point with its jump zone, asteroid fields and enemy clusters. In warp space the captain plots
-   3 to 8 legs to the jump zone (or takes the navigator's plot); in the system an NPC pilot flies
+   1 to 8 legs to the jump zone (or takes the navigator's plot); in the system an NPC pilot flies
    them on the helm model (helm.js), and the captain gives the orders: a course or engines of his
    own, a break or "take it" on each torpedo burst, the gunners' priority, the engineer's stance,
    warn engineering, and the jump. The enemy is the same as at every station. Map units: what the
@@ -36,24 +36,44 @@
     var jb = to360(start.hdg + r.range(K.jumpOff) * (r.chance(0.5) ? 1 : -1));
     var jump = along(start, jb, D);
     var map = { D: D, start: start, jump: { x: jump.x, y: jump.y, r: K.zone * D }, rocks: [], clusters: [], window: opts.window };
+    // Room for it: clear of the start and the jump zone, and a lane (two margins) from the others.
     var clear = function (c, rad) {
       if (dist(c, start) < rad + K.zone * D * 1.5 || dist(c, jump) < rad + K.zone * D * 1.5) return false;
-      return map.rocks.concat(map.clusters).every(function (o) { return dist(o, c) > o.r + rad + K.margin * D; });
+      return map.rocks.concat(map.clusters).every(function (o) { return dist(o, c) > o.r + rad + 1.7 * K.margin * D; });
     };
-    function place(list, n, R, off) {
-      for (var k = 0, tries = 0; k < n && tries < 60; tries++) {
-        var f = r.range([0.25, 0.8]), side = r.range(off) * (r.chance(0.5) ? 1 : -1), rad = r.range(R) * D;
-        var c = along(along(start, jb, f * D), jb + 90, side * D);
-        if (!clear(c, rad)) continue;
-        list.push({ x: c.x, y: c.y, r: rad }); k++;
+    function place(list, n, make, fr, off) {
+      for (var k = 0, tries = 0; k < n && tries < 150; tries++) {
+        var f = r.range(fr), side = r.range(off) * (r.chance(0.5) ? 1 : -1);
+        var c = along(along(start, jb, f * D), jb + 90, side * D), o = make(c);
+        if (!clear(c, o.r)) continue;
+        list.push(o); k++;
       }
     }
-    place(map.rocks, r.int(K.rocks), K.rockR, [0, 0.18]);
-    place(map.clusters, r.int(K.clusters), K.clusterR, [0.15, 0.35]);
+    // An asteroid field: overlapping lobes along a bent line, sometimes with a knob on the side,
+    // so it's oblong and lumpy. { x, y, r (a circle round all of it), lobes: [{ x, y, r }] }.
+    function field(c) {
+      var n = r.int(K.rockLobes), dir = r.next() * 360, bend = r.range([-50, 50]), lobes = [], p = { x: 0, y: 0 }, pr = 0;
+      for (var k = 0; k < n; k++) {
+        var rad = r.range(K.rockR) * D;
+        if (k) { p = along(p, dir, (pr + rad) * r.range([0.45, 0.7])); dir += bend * r.range([0.4, 1.2]); }
+        lobes.push({ x: p.x, y: p.y, r: rad }); pr = rad;
+      }
+      for (var kn = r.int([0, 2]); kn > 0; kn--) { var b = lobes[r.int([0, n - 1])], q = along(b, r.next() * 360, b.r * 0.85); lobes.push({ x: q.x, y: q.y, r: b.r * r.range([0.4, 0.65]) }); }
+      var x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+      lobes.forEach(function (l) { x0 = Math.min(x0, l.x - l.r); x1 = Math.max(x1, l.x + l.r); y0 = Math.min(y0, l.y - l.r); y1 = Math.max(y1, l.y + l.r); });
+      var mx = (x0 + x1) / 2, my = (y0 + y1) / 2, R = 0;
+      lobes = lobes.map(function (l) { var o = { x: c.x + l.x - mx, y: c.y + l.y - my, r: l.r }; R = Math.max(R, dist(o, c) + l.r); return o; });
+      return { x: c.x, y: c.y, r: R, lobes: lobes };
+    }
+    place(map.rocks, r.int(K.rocks), field, K.rockAlong, K.rockSide);
+    place(map.clusters, r.int(K.clusters), function (c) { return { x: c.x, y: c.y, r: r.range(K.clusterR) * D }; }, [0.25, 0.8], [0.15, 0.35]);
     return map;
   };
+  // The circles that make up the map's obstacles: each field's lobes, and the enemy clusters.
+  function rockLobes(map) { return [].concat.apply([], map.rocks.map(function (o) { return o.lobes; })); }
+  BL.inField = function (map, p) { return rockLobes(map).some(function (l) { return dist(l, p) < l.r; }); };
   // Every obstacle on the map, with the margin the navigator keeps.
-  function obstacles(map) { var m = BL.COMMAND.margin * map.D; return map.rocks.concat(map.clusters).map(function (o) { return { x: o.x, y: o.y, r: o.r + m }; }); }
+  function obstacles(map) { var m = BL.COMMAND.margin * map.D; return rockLobes(map).concat(map.clusters).map(function (o) { return { x: o.x, y: o.y, r: o.r + m }; }); }
   // The first obstacle the segment a-b runs through (with its margin), or null.
   function blocked(map, a, b, obs) {
     var hit = null, best = 2;
@@ -65,11 +85,11 @@
      { pts: [start, wp1, ..., jump point], eng: [one engine order per leg] }. The last leg's
      heading is the jump heading. */
   BL.plotInfo = function (map, plot, gOf) {
-    var K = BL.COMMAND, legs = [], eta = 0, rocks = false, clusters = false, sharp = 0, pts = plot.pts;
+    var K = BL.COMMAND, legs = [], eta = 0, rocks = false, clusters = false, sharp = 0, pts = plot.pts, lobes = rockLobes(map);
     for (var k = 0; k < pts.length - 1; k++) {
       var a = pts[k], b = pts[k + 1], L = dist(a, b), hdg = bearing(a, b), g = Math.max(0.1, gOf(plot.eng[k] || "cruise"));
       var turn = k ? norm(hdg - legs[k - 1].hdg) : norm(hdg - map.start.hdg);
-      var rk = map.rocks.some(function (o) { return segNear(a, b, o).d < o.r; }), cl = map.clusters.some(function (o) { return segNear(a, b, o).d < o.r; });
+      var rk = lobes.some(function (o) { return segNear(a, b, o).d < o.r; }), cl = map.clusters.some(function (o) { return segNear(a, b, o).d < o.r; });
       rocks = rocks || rk; clusters = clusters || cl;
       if (Math.abs(turn) > K.maxTurn) sharp++;
       eta += L / (g * K.scale);
@@ -80,7 +100,7 @@
       jumpHdg: n ? legs[n - 1].hdg : null };
   };
   // The navigator's plot: the shortest way round every obstacle (corners of an octagon drawn
-  // round each one, so a leg between them stays clear), 3 to 8 legs, engines set to arrive in time.
+  // round each one, so a leg between them stays clear), 1 to 8 legs, engines set to arrive in time.
   BL.navPlot = function (map, gOf) {
     var K = BL.COMMAND, obs = obstacles(map), start = { x: map.start.x, y: map.start.y }, goal = { x: map.jump.x, y: map.jump.y };
     var nodes = [start, goal];
@@ -108,12 +128,12 @@
     var pts = [];
     if (prev[1] < 0) pts = [start, goal];                 // (no clear way: straight on, through it)
     else for (var c = 1; c >= 0; c = prev[c]) pts.unshift({ x: nodes[c].x, y: nodes[c].y });
-    // Corners that barely turn are dropped while the leg between their neighbours stays clear.
+    // A corner is dropped while the leg between its neighbours stays clear (no needless jogs).
     for (var k = 1; k < pts.length - 1;) {
-      if (pts.length - 1 > K.legs[0] && !blocked(map, pts[k - 1], pts[k + 1], obs) && Math.abs(norm(bearing(pts[k], pts[k + 1]) - bearing(pts[k - 1], pts[k]))) < 8) pts.splice(k, 1);
+      if (pts.length - 1 > K.legs[0] && !blocked(map, pts[k - 1], pts[k + 1], obs)) pts.splice(k, 1);
       else k++;
     }
-    // At least three legs: split the longest leg with a small dogleg (whichever side is clear).
+    // At least K.legs[0] legs: split the longest leg with a small dogleg (whichever side is clear).
     for (var g2 = 0, side = 1; pts.length - 1 < K.legs[0] && g2 < 12; g2++, side = -side) {
       var li = 0, ll = 0;
       for (var j = 0; j < pts.length - 1; j++) { var L = dist(pts[j], pts[j + 1]); if (L > ll) { ll = L; li = j; } }
@@ -144,7 +164,8 @@
     this.pilot = new CaptainPilot();
   }
   BL.Captain = Captain;
-  Captain.prototype.map = function () { return this.maps[this.m.jumpIndex]; };
+  // The system she's in (set on arrival: after a jump the display still shows the last one until the next arrival).
+  Captain.prototype.map = function () { return this.maps[this.at === undefined ? this.m.jumpIndex : this.at]; };
   Captain.prototype.gOf = function (id) { return this.m.helm.gOf(id); };
   // The plot for system i (the display sets it in warp space; the navigator's if none).
   Captain.prototype.setPlot = function (i, plot) { this.plots[i] = { pts: plot.pts.map(function (p) { return { x: p.x, y: p.y }; }), eng: plot.eng.slice() }; };
@@ -154,7 +175,8 @@
   };
   // On arrival in a system (after the helm's reset): the ship at the map's start, on its heading.
   Captain.prototype.reset = function () {
-    var m = this.m, h = m.helm, map = this.map(), plot = this.plotFor(m.jumpIndex), info = BL.plotInfo(map, plot, this.gOf.bind(this));
+    this.at = this.m.jumpIndex;
+    var m = this.m, h = m.helm, map = this.map(), plot = this.plotFor(this.at), info = BL.plotInfo(map, plot, this.gOf.bind(this));
     this.pos = { x: map.start.x, y: map.start.y };
     h.base = to360(map.start.hdg - (m.turret ? m.turret.heading : 0));
     h.jumpHdg = info.jumpHdg; h.jumpShown = h.jumpHdg !== null; h.course = null;
@@ -167,7 +189,7 @@
   /* Where the plot says to go: the next waypoint's bearing; on the last leg the jump heading
      once she's at the jump point (she holds in the zone until the jump). */
   Captain.prototype.navView = function () {
-    var plot = this.plotFor(this.m.jumpIndex), pts = plot.pts, k = Math.min(this.leg, pts.length - 2), wp = pts[k + 1], last = k === pts.length - 2;
+    var plot = this.plotFor(this.at), pts = plot.pts, k = Math.min(this.leg, pts.length - 2), wp = pts[k + 1], last = k === pts.length - 2;
     // Steer for a point a little ahead on the plotted leg (the leg is clear of every obstacle),
     // so after a break or a course of his own she comes back onto the line, not across a field.
     var a = pts[k], L = dist(a, wp), u = L ? segNear(a, wp, this.pos).u : 1, ahead = Math.min(1, u + BL.COMMAND.lookahead * this.map().D / Math.max(1, L));
@@ -176,6 +198,15 @@
     var spd = Math.max(0.1, this.m.helm.speed) * BL.COMMAND.scale, d = dist(this.pos, wp);
     var next = last ? null : { hdg: this.info.legs[k + 1].hdg, in: d / spd };
     return { leg: k + 1, legs: pts.length - 1, steer: steer, eng: plot.eng[k], wp: wp, last: last, next: next, toZone: Math.max(0, dist(this.pos, this.map().jump) - this.map().jump.r), d: d };
+  };
+  // Seconds to the jump zone at her speed now, along what's left of the plot (0 in it; null stopped).
+  Captain.prototype.zoneEta = function () {
+    if (this.inZone()) return 0;
+    var pts = this.plotFor(this.at).pts, k = Math.min(this.leg, pts.length - 2), j = this.map().jump, v = this.m.helm.speed * BL.COMMAND.scale;
+    if (v < 0.05) return null;
+    var d = dist(this.pos, pts[k + 1]);
+    for (var i = k + 1; i < pts.length - 1; i++) d += dist(pts[i], pts[i + 1]);
+    return Math.max(0, d - j.r) / v;
   };
   // In the jump zone (k: times its radius, for an ordered jump that's coasting to a stop).
   Captain.prototype.inZone = function (k) { var j = this.map().jump; return dist(this.pos, j) <= j.r * (k || 1); };
@@ -251,7 +282,7 @@
   // The break side `dir`, unless an asteroid field lies close on that side: then the other way.
   Captain.prototype.awayFromRocks = function (dir) {
     var hdg = this.m.helm.compass() * RAD, pos = this.pos, D = this.map().D, near = null, nd = Infinity;
-    this.map().rocks.forEach(function (o) { var d = dist(o, pos) - o.r; if (d < nd) { nd = d; near = o; } });
+    rockLobes(this.map()).forEach(function (o) { var d = dist(o, pos) - o.r; if (d < nd) { nd = d; near = o; } });
     if (!near || nd > 0.15 * D) return dir;
     var side = Math.sin(hdg) * (near.y - pos.y) - Math.cos(hdg) * (near.x - pos.x);     // > 0: the field is to port
     return side > 0 ? 1 : -1;
@@ -284,7 +315,7 @@
     var hdg = h.compass(), v = h.speed * K.scale;
     this.pos.x += Math.sin(hdg * RAD) * v * dt; this.pos.y += Math.cos(hdg * RAD) * v * dt;
     // Waypoints: passed once she's close, or abeam of it.
-    var plot = this.plotFor(m.jumpIndex), pts = plot.pts;
+    var plot = this.plotFor(this.at), pts = plot.pts;
     while (this.leg < pts.length - 2) {
       var a = pts[this.leg], b = pts[this.leg + 1], n = segNear(a, b, this.pos);
       if (dist(this.pos, b) > K.capture * map.D && n.u < 0.999) break;
@@ -295,7 +326,7 @@
     // In the zone on the last leg, the pilot holds her there (dead slow, then stopped) for the jump.
     this.holding = zone && (this.leg >= pts.length - 2 || this.jumpOrdered);
     // Asteroids: inside a field, a hit every `rockEvery` s.
-    var rock = map.rocks.some(function (o) { return dist(o, this.pos) < o.r; }, this);
+    var rock = BL.inField(map, this.pos);
     if (rock && m.t >= this.rockNext && (m.phase === "engage" || m.phase === "countdown" || m.phase === "arrival")) { this.rockNext = m.t + K.rockEvery; this.rockHit(); }
     this.inRock = rock;
     if (m.phase !== "done") this.pilot.think(m, this);

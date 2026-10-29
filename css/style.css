@@ -593,8 +593,14 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 .cp-box.alert { border-color: var(--bad); }
 .cp-box.alert .hd, .cp-box.alert .ln b { color: var(--bad); }
 .cp-box.on { border-color: var(--warn); }
-.cp-map { flex-shrink: 0; width: 100%; aspect-ratio: 1 / 1; max-height: 27vh; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; cursor: crosshair; }
-.cp-map canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.cp-map { position: relative; flex-shrink: 0; width: 100%; aspect-ratio: 1 / 1; max-height: 27vh; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+/* The map and its zoom buttons: in the box at the right, or in the middle when swapped (⇄ SWAP) */
+.cp-mapwrap { position: absolute; inset: 0; cursor: crosshair; }
+.cp-mapwrap canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+#tu-field > .cp-mapwrap { inset: 1px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.cp-zoom { position: absolute; right: 4px; bottom: 4px; display: flex; gap: 3px; }
+.cp-zoom button, .cp-swap { padding: 2px 8px; font-size: 13px; min-height: 28px; min-width: 30px; background: rgba(10,16,24,.85); }
+.cp-swap { position: absolute; left: 4px; bottom: 4px; z-index: 2; }
 .cp-map[hidden], .cp-side[hidden] { display: none !important; }
 .cp-orders { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: flex-end; justify-content: center; padding: 2px 4px; }
 .cp-orders[hidden] { display: none; }

@@ -805,8 +805,11 @@
      zoneHold x the zone's radius (the ship coasting to a stop). */
   BL.COMMAND = {
     scale: 1, reach: 0.7, jumpOff: [0, 50], zone: 0.08,
-    rocks: [1, 4], rockR: [0.06, 0.11], clusters: [0, 2], clusterR: [0.08, 0.12], margin: 0.07,
-    legs: [3, 8], maxTurn: 100, early: 5, capture: 0.05, dogleg: 0.08, lookahead: 0.1,
+    // Asteroid fields: rocks fields, each rockLobes overlapping lobes of rockR along a bent line
+    // (oblong and lumpy), placed rockAlong of the way to the jump point and up to rockSide off it.
+    rocks: [4, 7], rockR: [0.028, 0.062], rockLobes: [3, 6], rockAlong: [0.15, 0.85], rockSide: [0, 0.42],
+    clusters: [0, 2], clusterR: [0.08, 0.12], margin: 0.07,
+    legs: [1, 8], maxTurn: 100, early: 5, capture: 0.05, dogleg: 0.08, lookahead: 0.1,
     rockMJ: 90, rockEvery: 4, zoneGrace: 5, zoneHold: 1.5,
     // Standing orders at the start of a mission (the captain changes them on the bridge).
     standing: { guns: "auto", stance: "balanced" },

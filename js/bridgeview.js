@@ -7,8 +7,9 @@
   var BL = root.BL = root.BL || {};
   var RAD = Math.PI / 180;
 
-  // The map's frame on a w x h canvas: { s, ox, oy, toPx(p), toMap(x, y) }.
-  BL.navFrame = function (map, plot, w, h, pad) {
+  // The map's frame on a w x h canvas: { s, toPx(p), toMap(x, y) }. view (zoom and pan, the
+  // bridge map): { z: times the whole-map scale, dx, dy: its centre moved, in map units }.
+  BL.navFrame = function (map, plot, w, h, pad, view) {
     pad = pad === undefined ? 18 : pad;
     var xs = [map.start.x, map.jump.x - map.jump.r, map.jump.x + map.jump.r], ys = [map.start.y, map.jump.y - map.jump.r, map.jump.y + map.jump.r];
     map.rocks.concat(map.clusters).forEach(function (o) { xs.push(o.x - o.r, o.x + o.r); ys.push(o.y - o.r, o.y + o.r); });
@@ -16,6 +17,7 @@
     var x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs), y0 = Math.min.apply(null, ys), y1 = Math.max.apply(null, ys);
     var span = Math.max(x1 - x0, y1 - y0, 1) * 1.08, s = Math.min(w - 2 * pad, h - 2 * pad) / span;
     var cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+    if (view) { s *= view.z; cx += view.dx; cy += view.dy; }
     return {
       s: s,
       toPx: function (p) { return { x: w / 2 + (p.x - cx) * s, y: h / 2 - (p.y - cy) * s }; },
@@ -46,16 +48,24 @@
       ctx.beginPath(); ctx.arc(c.x, c.y, o.r * s, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.setLineDash([]);
       if (!small) { ctx.fillStyle = "rgba(255,120,120,.9)"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("ENEMY", c.x, c.y); }
     });
+    // Each field is overlapping lobes: its outline is the lobes a little larger in the edge colour,
+    // then the lobes on top in the (solid) fill colour, so only the outer edge shows.
     map.rocks.forEach(function (o, i) {
-      var c = P(o), r = o.r * s;
-      ctx.fillStyle = "rgba(150,150,150,.22)"; ctx.strokeStyle = "rgba(190,190,190,.6)"; ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.arc(c.x, c.y, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-      // a few rocks inside, the same each time
+      var lobes = o.lobes || [o];
+      [[1.2, "#747577"], [0, "#25272a"]].forEach(function (ring) {
+        ctx.fillStyle = ring[1]; ctx.beginPath();
+        lobes.forEach(function (l) { var c = P(l); ctx.moveTo(c.x + l.r * s + ring[0], c.y); ctx.arc(c.x, c.y, l.r * s + ring[0], 0, Math.PI * 2); });
+        ctx.fill();
+      });
+      // a few rocks inside each lobe, the same each time
       ctx.fillStyle = "rgba(200,200,200,.55)";
-      for (var k = 0; k < 7; k++) {
-        var a = (i * 2.4 + k * 2.1) % (Math.PI * 2), d = r * (0.2 + ((k * 37 + i * 11) % 70) / 100);
-        ctx.beginPath(); ctx.arc(c.x + Math.cos(a) * d, c.y + Math.sin(a) * d, Math.max(1, r * 0.08 + (k % 3)), 0, Math.PI * 2); ctx.fill();
-      }
+      lobes.forEach(function (l, j) {
+        var c = P(l), r = l.r * s;
+        for (var k = 0; k < 5; k++) {
+          var a = (i * 2.4 + j * 1.3 + k * 2.1) % (Math.PI * 2), d = r * (0.15 + ((k * 37 + i * 11 + j * 23) % 65) / 100);
+          ctx.beginPath(); ctx.arc(c.x + Math.cos(a) * d, c.y + Math.sin(a) * d, Math.max(1, r * 0.1 + (k % 3) * 0.6), 0, Math.PI * 2); ctx.fill();
+        }
+      });
     });
     // The jump zone.
     var jc = P(map.jump);
