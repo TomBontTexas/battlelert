@@ -817,25 +817,34 @@
     jumpTurn: 60, jumpTol: 10, approach: 0.3,
     legs: [1, 8], legCost: 0.04, maxTurn: 100, early: 12, capture: 0.05, dogleg: 0.08, lookahead: 0.1,
     zoneGrace: 5, zoneHold: 1.5,
-    // Inside an asteroid field the rocks stream through the battle view like a minefield's mines
-    // (ring.js dropRock): as fast and as often as she moves (`flow` fields/s and one per `every` s
-    // at standard, up to `maxFlow` x; none stopped), at that rate across `spread` x the shield's
-    // half-width either side of her track, and as thick across the whole view. One that touches
-    // the shield hits like a mine (mj); the gunners shoot the ones on a collision course (a crew
-    // bolt breaks one with crewHit x 3 / the number of guns); the pilot steers round them,
-    // `dodge` degrees off the course, from `look` s out. An enemy ship a rock touches takes `enemy` damage.
-    rockField: { every: [1.1, 1.6], flow: 0.12, spread: 2.6, maxFlow: 1, lagSlow: 2, mj: [90, 90], crewHit: 0.12, enemy: 15, dodge: 25, look: 4 },
+    // Rocks and mines on the bridge have their places in their fields on the map (Captain.fieldObjs,
+    // ring.js mapFields). The battle view's scale: at standard the map streams past at `flow` view
+    // units/s (divided by 1 + lagSlow x the class's helm lag, as at the helm). An asteroid field is
+    // as thick as one rock per `every` s at standard across `spread` x the shield's half-width
+    // either side of her track. One that touches the shield hits like a mine (mj); the gunners
+    // shoot the ones on a collision course (a crew bolt breaks one with crewHit x 3 / the number of
+    // guns); the pilot steers round rocks and mines, `dodge` degrees off the course, from `look` s
+    // out. They show within `near` view units of her. An enemy ship a rock touches takes `enemy`
+    // damage, a mine mineEnemy.
+    rockField: { every: [2.2, 3.2], flow: 0.12, spread: 2.6, lagSlow: 2, mj: [90, 90], crewHit: 0.12, enemy: 15, dodge: 25, look: 4, near: 1.0 },
+    mineEnemy: 25,
+    // A mine scenario (the minefield, the gunboat's mine lane): one big minefield over most of the
+    // way, `lobes` lobes of radius `r` (x the map's size) scattered `along` of the line to the jump
+    // point and up to `wide` either side of it. Its mines are as thick as the encounter's own
+    // (enc.sweep or enc.mines.helm x its force) x `thick` (the NPC pilot steers round them well). A
+    // plot crosses it with a warning; nothing goes round it.
+    minefield: { r: [0.13, 0.2], lobes: [9, 12], along: [0.22, 0.78], wide: 0.32, thick: 1 },
     // A burst with no call from the captain that the shields can't take: the pilot breaks on his
     // own this share of the time (decided once per burst).
     pilotOwn: 0.5,
     // Gunboat escort (bridge test; command.js Escort): the carrier sails the plotted course to the
     // jump point in `arrive` of the time to the window; the gunboat's station is `station` x the
     // map's size off her (sides: ahead, port, starboard, astern), on it within `near`; the pilot
-    // aims `lead` s ahead of it. In the battle view she sits `view` units per map size from the
-    // gunboat. `share` of the enemy's torpedoes go at her; each that lands costs mj x perMJ of her
+    // aims `lead` s ahead of it. In the battle view she sits where she is from the
+    // gunboat (at Captain.kView). `share` of the enemy's torpedoes go at her; each that lands costs mj x perMJ of her
     // hull. COVER works within `cover` view units of her, the torpedoes landing in `coverTime` s or later.
     escort: { arrive: 0.9, station: 0.06, near: 0.025, lead: 3, sides: { ahead: 0, port: -90, stbd: 90, astern: 180 },
-              view: 5, share: 0.5, hull: 100, perMJ: 0.03, cover: 0.55, coverTime: 0.8 },
+              share: 0.5, hull: 100, perMJ: 0.03, cover: 0.55, coverTime: 0.8 },
     // Standing orders at the start of a mission (the captain changes them on the bridge).
     standing: { guns: "auto", stance: "balanced" },
     // (drive first: after life support the drive charges to be full by the window, the rest share what's left)

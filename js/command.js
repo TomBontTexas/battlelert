@@ -42,7 +42,7 @@
     var map = { D: D, start: start, jump: { x: jump.x, y: jump.y, r: K.zone * D }, jumpHdg: jh, approach: app, rocks: [], clusters: [], window: opts.window, recovery: opts.hasDrive === false };     // (recovery: a gunboat's carrier pickup)
     // Room for an area: every lobe clear of the start, the jump zone and its approach lane, and a
     // lane (K.lane margins) from every lobe already placed, so there's always a way between them.
-    var lobesNow = function () { return [].concat.apply([], map.rocks.concat(map.clusters).map(function (o) { return o.lobes; })); };
+    var lobesNow = function () { return [].concat.apply([], map.rocks.concat(map.clusters, map.mines ? [map.mines] : []).map(function (o) { return o.lobes; })); };
     var clear = function (o) {
       var have = lobesNow(), lane = K.lane * K.margin * D;
       return o.lobes.every(function (l) {
@@ -78,6 +78,16 @@
       return { x: c.x, y: c.y, r: R, lobes: lobes };
     }
     var rock = function (c) { return field(c, K.rockR, K.rockLobes); }, enemy = function (c) { return field(c, K.clusterR, K.clusterLobes); };
+    // A mine scenario: first the big minefield, lobes scattered over the middle of the way to the
+    // jump point (`along` of it) and `wide` either side, clear of the start and the jump zone.
+    if (opts.mines) {
+      var MF = K.minefield, mc = along(start, jb, (MF.along[0] + MF.along[1]) / 2 * D), n = r.int(MF.lobes), ml = [];
+      for (var q = 0, tries = 0; ml.length < n && tries < 80; tries++, q++) {
+        var lr = r.range(MF.r) * D, lc = along(along(start, jb, r.range(MF.along) * D), jb + 90, r.range([-MF.wide, MF.wide]) * D);
+        if (dist(lc, start) > lr + K.zone * D * 1.5 && dist(lc, jump) > lr + K.zone * D * 1.5) ml.push({ x: lc.x, y: lc.y, r: lr });
+      }
+      if (ml.length) map.mines = { x: mc.x, y: mc.y, r: Math.max.apply(null, ml.map(function (l) { return dist(l, mc) + l.r; })), lobes: ml, kind: opts.mines };
+    }
     // First the blockers, across the straight way to the approach point (so the course has to go
     // round), the first an asteroid field, then an enemy area;
     var nb = r.int(K.blockers);
@@ -95,6 +105,7 @@
   function rockLobes(map) { return [].concat.apply([], map.rocks.map(function (o) { return o.lobes; })); }
   function enemyLobes(map) { return [].concat.apply([], map.clusters.map(function (o) { return o.lobes || [o]; })); }
   BL.inField = function (map, p) { return rockLobes(map).some(function (l) { return dist(l, p) < l.r; }); };
+  BL.inMines = function (map, p) { return !!map.mines && map.mines.lobes.some(function (l) { return dist(l, p) < l.r; }); };
   // Every obstacle on the map, with the margin the navigator keeps.
   function obstacles(map) { var m = BL.COMMAND.margin * map.D; return rockLobes(map).concat(enemyLobes(map)).map(function (o) { return { x: o.x, y: o.y, r: o.r + m }; }); }
   // The first obstacle the segment a-b runs through (with its margin), or null.
@@ -108,22 +119,23 @@
      { pts: [start, wp1, ..., jump point], eng: [one engine order per leg] }. The last leg must
      run along the map's jump heading (within BL.COMMAND.jumpTol). */
   BL.plotInfo = function (map, plot, gOf) {
-    var K = BL.COMMAND, legs = [], eta = 0, rocks = false, clusters = false, sharp = 0, pts = plot.pts, lobes = rockLobes(map), elobes = enemyLobes(map);
+    var K = BL.COMMAND, legs = [], eta = 0, rocks = false, clusters = false, mines = false, sharp = 0, pts = plot.pts, lobes = rockLobes(map), elobes = enemyLobes(map);
     for (var k = 0; k < pts.length - 1; k++) {
       var a = pts[k], b = pts[k + 1], L = dist(a, b), hdg = bearing(a, b), g = Math.max(0.1, gOf(plot.eng[k] || "cruise"));
       var turn = k ? norm(hdg - legs[k - 1].hdg) : norm(hdg - map.start.hdg);
       var rk = lobes.some(function (o) { return segNear(a, b, o).d < o.r; }), cl = elobes.some(function (o) { return segNear(a, b, o).d < o.r; });
-      rocks = rocks || rk; clusters = clusters || cl;
+      var mn = !!map.mines && map.mines.lobes.some(function (o) { return segNear(a, b, o).d < o.r; });
+      rocks = rocks || rk; clusters = clusters || cl; mines = mines || mn;
       if (Math.abs(turn) > K.maxTurn) sharp++;
       eta += L / (g * K.scale);
-      legs.push({ hdg: Math.round(hdg) % 360, len: L, turn: turn, eng: plot.eng[k] || "cruise", rocks: rk, clusters: cl, eta: eta });
+      legs.push({ hdg: Math.round(hdg) % 360, len: L, turn: turn, eng: plot.eng[k] || "cruise", rocks: rk, clusters: cl, mines: mn, eta: eta });
     }
     // When she reaches the zone's edge (the last leg's last stretch is inside it): that's what's
     // timed against the window.
     var n = legs.length, last = legs[n - 1], zoneEta = n ? eta - Math.min(last.len, map.jump.r) / (Math.max(0.1, gOf(last.eng)) * K.scale) : eta;
     var late = zoneEta > map.window - K.early, lastHdg = n ? last.hdg : null;
     var offJump = lastHdg === null || Math.abs(norm(lastHdg - map.jumpHdg)) > K.jumpTol;
-    return { legs: legs, eta: eta, zoneEta: zoneEta, late: late, rocks: rocks, clusters: clusters, sharp: sharp, count: n, offJump: offJump, lastHdg: lastHdg,
+    return { legs: legs, eta: eta, zoneEta: zoneEta, late: late, rocks: rocks, clusters: clusters, mines: mines, sharp: sharp, count: n, offJump: offJump, lastHdg: lastHdg,
       ok: n >= K.legs[0] && n <= K.legs[1] && !late && !clusters && !offJump, jumpHdg: map.jumpHdg };     // (through asteroids is allowed, with a warning)
   };
   // The navigator's plot: the shortest way round every obstacle (corners of an octagon drawn
@@ -189,7 +201,10 @@
     this.m = m;
     var h = m.helm, self = this;
     this.who = "Captain";
-    this.maps = m.route.map(function (id, i) { return BL.makeNavMap(m.seed, i, { window: m.windowFor(i), cruiseG: h.gOf("cruise"), hasDrive: m.hasDrive }); });
+    this.maps = m.route.map(function (id, i) {
+      var enc = BL.ENCOUNTERS[id] || {};
+      return BL.makeNavMap(m.seed, i, { window: m.windowFor(i), cruiseG: h.gOf("cruise"), hasDrive: m.hasDrive, mines: enc.sweep ? "sweep" : enc.mines ? "minefield" : null });
+    });
     this.plots = [];
     this.stance = BL.COMMAND.standing.stance; this.guns = BL.COMMAND.standing.guns;
     this.basePriority = m.priority.slice();
@@ -218,7 +233,7 @@
     h.base = to360(map.start.hdg - (m.turret ? m.turret.heading : 0));
     h.jumpHdg = info.jumpHdg; h.jumpShown = h.jumpHdg !== null; h.course = null;
     this.info = info; this.leg = 0; this.hdgOrder = null; this.engOrder = null; this.jumpOrdered = false;
-    this.inRock = false; this.zoneAt = null; this.holding = false; this.call = null; this.drRate = null; this.drLast = null;
+    this.inRock = false; this.inMines = false; this.zoneAt = null; this.holding = false; this.call = null; this.drRate = null; this.drLast = null;
     this.cur = { rockHits: 0, zoneAt: null, window: m.windowAt(), legs: info.count, onStation: 0, stationT: 0 };
     this.stats.systems[m.jumpIndex] = this.cur;
     // Escort: the carrier sails the plotted course (the navigator's) from the start, reaching the
@@ -228,7 +243,36 @@
       var w = this.escort; w.L = L; w.s = 0; w.v = L / Math.max(10, m.windowAt() * BL.COMMAND.escort.arrive); w.pos = { x: map.start.x, y: map.start.y };
       w.hdg = plot.pts.length > 1 ? bearing(plot.pts[0], plot.pts[1]) : map.start.hdg; this.wcall = null;
     }
+    this.makeFields();
     this.applyStance(); this.applyGuns(true);
+  };
+  /* The battle view's scale (view units per map unit: the map streams past at rockField.flow view
+     units/s at standard, slower on a slow-turning class) and every rock and mine in this system's
+     fields, scattered evenly through their lobes at each field's thickness. */
+  Captain.prototype.makeFields = function () {
+    var m = this.m, h = m.helm, K = BL.COMMAND, F = K.rockField, map = this.map(), R = m.turret.R, enc = m.encounter() || {};
+    var flow = F.flow / (1 + F.lagSlow * h.C.lag), k = this.kView = flow / Math.max(0.1, h.gOf("standard") * K.scale);
+    var r = BL.rng(((m.seed ^ Math.imul(0x68e31da4, this.at + 7)) >>> 0) || 1), objs = this.fieldObjs = [];
+    // Per map unit squared: one per `every` s at standard across the band (2 x spread x rx view units) she sweeps.
+    function thick(every, spread, dense) { return (dense || 1) / ((every[0] + every[1]) / 2) / (2 * spread * R.rx * flow) * k * k; }
+    function scatter(lobes, per, make) {
+      var x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+      lobes.forEach(function (l) { x0 = Math.min(x0, l.x - l.r); x1 = Math.max(x1, l.x + l.r); y0 = Math.min(y0, l.y - l.r); y1 = Math.max(y1, l.y + l.r); });
+      var n = Math.round(per * (x1 - x0) * (y1 - y0));
+      for (var i = 0; i < n; i++) {
+        var p = { x: x0 + r.next() * (x1 - x0), y: y0 + r.next() * (y1 - y0) };
+        if (lobes.some(function (l) { return dist(l, p) < l.r; })) objs.push(make(p));
+      }
+    }
+    map.rocks.forEach(function (o) {
+      scatter(o.lobes, thick(F.every, F.spread), function (p) { return { x: p.x, y: p.y, rock: true, mj: Math.round(r.range(F.mj)), crewHit: F.crewHit, size: 0.8 + r.next() * 0.6, spin: r.next() * 6 }; });
+    });
+    if (map.mines) {
+      var H = enc.sweep || (enc.mines && enc.mines.helm), mj = enc.sweep ? enc.sweep.mj : enc.mines ? enc.mines.gunner.mj.map(function (x) { return x * enc.mines.helm.mj; }) : [90, 90];
+      if (H) scatter(map.mines.lobes, thick(H.every, H.spread, K.minefield.thick * (enc.sweep ? 1 : m.force("minefield"))), function (p) {
+        return { x: p.x, y: p.y, rock: false, mj: Math.round(r.range(mj)), crewHit: H.crewHit || 1, size: 1, spin: r.next() * 6 };
+      });
+    }
   };
   /* Where the plot says to go: the next waypoint's bearing; on the last leg the jump heading
      once she's at the jump point (she holds in the zone until the jump). */
@@ -314,7 +358,7 @@
   Captain.prototype.setStation = function (id) { if (!BL.COMMAND.escort.sides.hasOwnProperty(id)) return; this.station = id; this.m.cue("tick"); };
   // Where she is in the battle view (view units from the gunboat, the view's up = our heading).
   Captain.prototype.wardView = function () {
-    var tu = this.m.turret, R = tu.R, w = this.escort, k = BL.COMMAND.escort.view / this.map().D;
+    var tu = this.m.turret, R = tu.R, w = this.escort, k = this.kView;
     var b = (bearing(this.pos, w.pos) - this.m.helm.compass()) * RAD, d = dist(this.pos, w.pos) * k;
     return { x: R.cx + Math.sin(b) * d, y: R.cy - Math.cos(b) * d, d: d, rot: norm(w.hdg - this.m.helm.compass()) };
   };
@@ -487,7 +531,7 @@
       if (m.phase === "engage" || m.phase === "countdown") { this.cur.stationT += dt; if (this.stationView().on) this.cur.onStation += dt; }
     }
     // Asteroids: inside a field the rocks stream through the battle view (RingTurret.dropRock).
-    this.inRock = BL.inField(map, this.pos);
+    this.inRock = BL.inField(map, this.pos); this.inMines = BL.inMines(map, this.pos);
     if (m.phase !== "done") this.pilot.think(m, this);
   };
   // A rock touched the shield (ring.js; it lands like a mine, shields first).
@@ -507,7 +551,7 @@
     if (d && (d.tp.ev.done || d.tp.y > R.cy)) d = this.dodge = null;
     if (!d) {
       var near = null;
-      tu.torps.forEach(function (tp) { if (tp.rock && !tp.pass && !tp.ev.done && tp.t1 - m.t < F.look && (!near || tp.t1 < near.t1)) near = tp; });
+      tu.torps.forEach(function (tp) { if (tp.anchored && !tp.pass && !tp.ev.done && tp.t1 - m.t < F.look && (!near || tp.t1 < near.t1)) near = tp; });
       if (near) d = this.dodge = { tp: near, side: near.x < R.cx ? 1 : -1 };
     }
     return d ? d.side * F.dodge : 0;

@@ -498,7 +498,7 @@
     <div class="plot-main">
       <div class="plot-mapbox" id="pl-mapbox"><canvas id="pl-map" aria-label="System map: tap to lay a waypoint, tap a waypoint to remove it"></canvas></div>
       <div class="plot-side">
-        <p class="muted small-text" id="pl-hint">Tap the map to lay waypoints (1 to 8 legs) to the jump zone; the last leg must run along the jump heading (the green arrow, ±10°). Tap a waypoint to remove it. Tap a leg's engine order to change it. A leg may cross asteroids (amber: rocks to dodge), never an enemy area.</p>
+        <p class="muted small-text" id="pl-hint">Tap the map to lay waypoints (1 to 8 legs) to the jump zone; the last leg must run along the jump heading (the green arrow, ±10°). Tap a waypoint to remove it. Tap a leg's engine order to change it. A leg may cross asteroids or a minefield (amber: rocks or mines to dodge), never an enemy area.</p>
         <div class="plot-legs" id="pl-legs"></div>
         <div class="plot-time" id="pl-time"></div>
         <div class="plot-warn" id="pl-warn"></div>
@@ -698,7 +698,7 @@
       <li><b>A course of your own.</b> ← → (or ◀ 10° and 10° ▶), a tap on the compass, or a tap on the map gives the helm a course of your own, and the engine buttons an engine order. HELM shows "yours" until you tap <b>RESUME PLOT</b> (R); then the pilot comes back onto the plotted line, never cutting across a field.</li>
       <li><b>Torpedoes.</b> On every burst at you, the call is yours: <b>BREAK PORT</b>, <b>TAKE IT</b> or <b>BREAK STBD</b> (Z X C) before they land. A break the pilot makes in time makes them miss. Your standing order is to take them on the shields, so a burst you don't answer is taken. If the shields can't take it, about half the time the pilot breaks on his own at the last moment, away from asteroid fields; don't count on him. Break away from asteroid fields: the map shows where they are.</li>
       <li><b>The crew.</b> The gunners' order (G) goes to every gun: SUGGESTED (each fight's suggestion), TORPEDOES (point defense: torpedoes about to land first), LAUNCHERS (ships charging to fire first), HUNT (the ships each gun is best against) or FREE FIRE (each gunner picks his own). The engineer's stance (S) is his priority order: shields first, balanced, guns first, or <b>drive first</b>. Normally the drive gets only the power left over after the shields and guns; on DRIVE it comes first after life support, charged fast enough to be full just before the window (flat out once the window is near or open), and the shields and guns share what's left. Use it when the READY line on the map says DRIVE, and go back when it says WINDOW: the shields run lower on DRIVE. Warn engineering (E) before a hard burn.</li>
-      <li><b>Asteroids.</b> You may fly into an asteroid field. Inside one the rocks stream through the battle view like a minefield's mines, faster and more often the faster she goes (none while she's stopped): slow down to make it safer. The pilot steers round the ones coming at her and the gunners shoot them; one that touches the shield hits like a mine (90 MJ, shields first). The rocks hit the enemy ships around her too: an enemy ship a rock touches is damaged, and small ones can be wrecked. A plotted leg that's clear keeps her out of them.</li>
+      <li><b>Asteroids and minefields.</b> You may fly into an asteroid field. Its rocks sit in the field where the map shows it, so the battle view shows them only when she's in it or close by; they come at her faster the faster she goes (none while she's stopped): slow down to make it safer. A mine scenario (the minefield, the gunboat's mine lane) has one big minefield (amber, MINEFIELD) over most of the way to the jump: a course always crosses it ("Through the minefield"), and its mines work the same way. Slowing down there (cruise or less) makes a big difference. The pilot steers round the ones coming at her and the gunners shoot them; one that touches the shield hits like a mine (90 MJ, shields first). The rocks and mines hit the enemy ships around her too: an enemy ship one touches is damaged, and small ones can be wrecked. A plotted leg that's clear keeps her out of them.</li>
       <li><b>The jump.</b> Order it (J or JUMP) once the drive is full, the window is open, the ship is in the zone and she's on the jump heading (within 5°); the JUMP button says what's missing ("Steer 245"). Keeping her on the jump heading is your job: on the plot the pilot flies the last leg along it, and he holds her in the zone; on a course of your own, steer it yourself or RESUME PLOT. An ordered jump waits until she's in the zone (BACK TO THE ZONE) and on the heading (STEER 245), then goes.</li>
       <li><b>Score.</b> Objective and ship condition as everywhere, navigation (in the jump zone by the window, no asteroid hits) and command (the shields and guns against the torpedoes, and the breaks made, yours and the pilot's).</li>
     </ol>
@@ -709,25 +709,25 @@
   </div>
 </section>
 
-<script src="version.js?b=5f045285"></script>
+<script src="version.js?b=404a88fd"></script>
 <script src="update-banner.js?b=ec7860dd"></script>
-<script src="js/data.js?b=85a81c64"></script>
+<script src="js/data.js?b=ffee542b"></script>
 <script src="js/sim.js?b=274dd17e"></script>
 <script src="js/agents.js?b=0a43c68f"></script>
 <script src="js/gunnery.js?b=e453799b"></script>
-<script src="js/ring.js?b=f47b909b"></script>
+<script src="js/ring.js?b=876e91ea"></script>
 <script src="js/helm.js?b=3faad022"></script>
-<script src="js/command.js?b=63b15407"></script>
+<script src="js/command.js?b=f92a6fb4"></script>
 <script src="js/training.js?b=48646f29"></script>
 <script src="js/art.js?b=ac37cac5"></script>
 <script src="js/turretview.js?b=960c39ae"></script>
 <script src="js/ringview.js?b=fc673b15"></script>
-<script src="js/bridgeview.js?b=d43187ac"></script>
+<script src="js/bridgeview.js?b=e5dd1bf5"></script>
 <script src="js/names.js?b=08410f0b"></script>
 <script src="js/story.js?b=6ce99bc9"></script>
 <script src="js/career.js?b=34474452"></script>
 <script src="js/speech.js?b=f9e428ef"></script>
 <script src="js/audio.js?b=273e5325"></script>
-<script src="js/ui.js?b=3dafd4d2"></script>
+<script src="js/ui.js?b=b1855543"></script>
 </body>
 </html>

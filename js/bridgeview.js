@@ -51,6 +51,16 @@
         ctx.fill();
       });
     }
+    // A mine scenario's minefield: a big amber-edged band with mine dots (the same each time).
+    if (map.mines) {
+      var mf = map.mines;
+      blob(mf.lobes, "#c98a2e", "#211808");
+      ctx.fillStyle = "rgba(220,150,70,.55)";
+      mf.lobes.forEach(function (l, i) {
+        for (var q = 0; q < 9; q++) { var a = (i * 7 + q) * 2.399, rr = l.r * 0.8 * Math.sqrt((q + 0.5) / 9), c2 = P({ x: l.x + Math.cos(a) * rr, y: l.y + Math.sin(a) * rr }); ctx.beginPath(); ctx.arc(c2.x, c2.y, small ? 1 : 1.6, 0, Math.PI * 2); ctx.fill(); }
+      });
+      if (!small) { var mc = P(mf); ctx.fillStyle = "rgba(240,181,74,.95)"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("MINEFIELD", mc.x, mc.y); }
+    }
     map.clusters.forEach(function (o) {
       blob(o.lobes || [o], "#b43839", "#2a1214");
       if (!small) { var c = P(o); ctx.fillStyle = "rgba(255,120,120,.9)"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("ENEMY", c.x, c.y); }
@@ -88,7 +98,7 @@
     var pts = plot ? plot.pts : [], info = opts.info;
     for (var k2 = 0; k2 < pts.length - 1; k2++) {
       var a2 = P(pts[k2]), b2 = P(pts[k2 + 1]), lg = info && info.legs[k2];
-      ctx.strokeStyle = lg && lg.clusters ? "#ff4d4d" : lg && lg.rocks ? "#f0b54a" : opts.leg !== undefined && k2 < opts.leg ? "rgba(127,184,255,.35)" : "#7fb8ff";
+      ctx.strokeStyle = lg && lg.clusters ? "#ff4d4d" : lg && (lg.rocks || lg.mines) ? "#f0b54a" : opts.leg !== undefined && k2 < opts.leg ? "rgba(127,184,255,.35)" : "#7fb8ff";
       ctx.lineWidth = small ? 1.5 : 2; ctx.beginPath(); ctx.moveTo(a2.x, a2.y); ctx.lineTo(b2.x, b2.y); ctx.stroke();
       if (!small && lg) {     // the leg's heading beside its middle
         var mx = (a2.x + b2.x) / 2, my = (a2.y + b2.y) / 2, nx = -(b2.y - a2.y), ny = b2.x - a2.x, nl = Math.hypot(nx, ny) || 1;

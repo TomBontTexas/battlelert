@@ -1489,12 +1489,12 @@
     // NAVIGATION: the leg and the next course change, or holding in the jump zone; the window.
     var wi = sim.windowIn(), win = wi > 0 ? "Window in " + mmss(wi) : "Window open";
     var es = c.escort, sv = hv.station;
-    if (es) cpBox("cp-nav", "ESCORT", [c.inRock ? "⚠ <b>ASTEROIDS</b>" : sv ? "Station <b>" + STATION_SHORT[c.station] + "</b> · " + (sv.on ? "on" : "<b>off</b>") : "To the <b>recovery zone</b>",
-      "Carrier hull <b>" + Math.round(100 * es.hull / es.hullMax) + "%</b>", win], c.inRock || es.hull < es.hullMax * 0.3 ? "alert" : sv && sv.on ? "on" : "");
-    else cpBox("cp-nav", "NAVIGATION", c.inRock ? ["⚠ <b>ASTEROIDS</b>", "Leg " + nv.leg + " of " + nv.legs, win]
+    if (es) cpBox("cp-nav", "ESCORT", [c.inRock ? "⚠ <b>ASTEROIDS</b>" : c.inMines ? "⚠ <b>MINEFIELD</b>" : sv ? "Station <b>" + STATION_SHORT[c.station] + "</b> · " + (sv.on ? "on" : "<b>off</b>") : "To the <b>recovery zone</b>",
+      "Carrier hull <b>" + Math.round(100 * es.hull / es.hullMax) + "%</b>", win], c.inRock || c.inMines || es.hull < es.hullMax * 0.3 ? "alert" : sv && sv.on ? "on" : "");
+    else cpBox("cp-nav", "NAVIGATION", c.inRock || c.inMines ? ["⚠ <b>" + (c.inRock ? "ASTEROIDS" : "MINEFIELD") + "</b>", "Leg " + nv.leg + " of " + nv.legs, win]
       : hv.holding ? ["<b>IN THE ZONE</b>", "Jump heading <b>" + hdg3(c.info.jumpHdg) + "</b>", win]
       : ["Leg <b>" + nv.leg + "</b> of " + nv.legs, nv.next ? "Next <b>" + hdg3(nv.next.hdg) + "</b> in " + Math.ceil(nv.next.in) + "s" : "Zone in " + (h.speed > 0.2 ? Math.ceil(nv.toZone / spd) + "s" : "–"), win],
-      c.inRock ? "alert" : hv.holding ? "on" : "");
+      c.inRock || c.inMines ? "alert" : hv.holding ? "on" : "");
     // TORPEDOES: the burst waiting for the captain's call, or the break under way.
     var wv = c.wardCallView ? c.wardCallView() : null;
     cpBox("cp-torp", "TORPEDOES", ev && ev.left > 0 ? ["<b>BREAK " + (ev.dir > 0 ? "STBD" : "PORT") + "</b>", ev.left.toFixed(1) + " s · " + Math.round(ev.off) + "° of " + BL.HELM.dodge.turn + "°"]
@@ -1671,7 +1671,7 @@
     // The legs: heading, time, engine order (tap to change).
     $("pl-legs").innerHTML = info.legs.map(function (l, k) {
       var t = l.len / Math.max(0.1, plotGOf(l.eng) * K.scale);
-      return '<div class="plot-leg' + (l.clusters || (k === info.legs.length - 1 && info.offJump) ? " bad" : l.rocks || Math.abs(l.turn) > K.maxTurn ? " warn" : "") + '"><span>Leg ' + (k + 1) + " · <b>" + hdg3(l.hdg) + "</b> · " + mmss(t) + "</span>" +
+      return '<div class="plot-leg' + (l.clusters || (k === info.legs.length - 1 && info.offJump) ? " bad" : l.rocks || l.mines || Math.abs(l.turn) > K.maxTurn ? " warn" : "") + '"><span>Leg ' + (k + 1) + " · <b>" + hdg3(l.hdg) + "</b> · " + mmss(t) + "</span>" +
         '<button data-leg="' + k + '">' + sim.helm.preset(l.eng).name + "</button></div>";
     }).join("");
     // When it arrives, against the window.
@@ -1682,6 +1682,7 @@
     if (info.count < K.legs[0]) warn.push(["bad", "Needs " + K.legs[0] + " to " + K.legs[1] + " legs (" + info.count + " now)"]);
     if (info.offJump) warn.push(["bad", "Last leg must be " + hdg3(e.map.jumpHdg) + " ±" + K.jumpTol + "° (now " + hdg3(info.lastHdg) + ")"]);
     if (info.rocks) warn.push(["", "Through asteroids: rocks to dodge and shoot"]);
+    if (info.mines) warn.push(["", "Through the minefield: mines to dodge and shoot"]);
     if (info.late) warn.push(["bad", "Arrives after the window: more speed or fewer legs"]);
     if (info.clusters) warn.push(["bad", "Crosses an enemy area"]);
     if (info.sharp) warn.push(["", "Turn of more than " + K.maxTurn + "° at a waypoint"]);
