@@ -1464,7 +1464,7 @@
     // TORPEDOES: the burst waiting for the captain's call, or the break under way.
     cpBox("cp-torp", "TORPEDOES", ev && ev.left > 0 ? ["<b>BREAK " + (ev.dir > 0 ? "STBD" : "PORT") + "</b>", ev.left.toFixed(1) + " s · " + Math.round(ev.off) + "° of " + BL.HELM.dodge.turn + "°"]
       : cv ? ["<b>" + cv.n + "</b> inbound · " + cv.in.toFixed(1) + " s", cv.canBreak ? "Break or take it?" : "Too late to break"]
-      : ["None inbound", "Standing: take it"], ev && ev.left > 0 ? "on" : cv ? "alert" : "");
+      : ["None inbound", "Standing: take it", "Pilot may break on his own"], ev && ev.left > 0 ? "on" : cv ? "alert" : "");
     // ENGINE ROOM: the engineer's stance, the hottest reactor, the shields and the drive.
     var heat = 0; ship.reactors.forEach(function (rx) { heat = Math.max(heat, rx.heat); });
     var sh = sim.sys("shield"), dr = sim.sys("drive");
@@ -1706,7 +1706,7 @@
     if (!cp.rockHits) good.push("No asteroid hits.");
     var onTime = cp.systems.filter(function (s) { return s.zoneAt !== null && s.zoneAt <= s.window + K.zoneGrace; }).length;
     if (onTime === cp.systems.length && cp.systems.length) good.push("In the jump zone on time every time.");
-    if (cp.breaks && cp.breaksMade === cp.breaks) good.push("Every break you ordered was made.");
+    if (cp.breaks + cp.pilotBreaks && cp.breaksMade === cp.breaks + cp.pilotBreaks) good.push("Every break was made.");
     if (!good.length) good.push("You kept the ship in the fight.");
     $("db-good").textContent = good.join(" ");
     $("db-worst").textContent = cp.rockHits ? "The ship hit asteroids " + cp.rockHits + (cp.rockHits === 1 ? " time." : " times.") :
@@ -1722,7 +1722,7 @@
     var rows = [
       ["Engineer", esc(en.name) + ", " + en.label + " (skill " + Math.round(en.skill * 100) + ")"],
       ["Gun crew", crew.map(function (c) { return esc(c.name) + ", " + c.label + " (" + Math.round(c.skill * 100) + ")"; }).join(" · ")],
-      ["Torpedo bursts", cp.calls + ": " + cp.breaks + " breaks ordered (" + cp.breaksMade + " made), " + cp.taken + " taken on the shields, " + cp.unanswered + " with no call"],
+      ["Torpedo bursts", cp.calls + ": " + cp.breaks + " breaks ordered, " + cp.pilotBreaks + " by the pilot on his own (" + cp.breaksMade + " made), " + cp.taken + " taken on the shields, " + cp.unanswered + " with no call"],
       ["Asteroid hits", cp.rockHits],
       ["Enemy ships destroyed by your crew", cp.kills + " / " + cp.ships],
       ["Torpedoes shot down", cp.downed],

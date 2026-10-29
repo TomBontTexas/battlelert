@@ -101,10 +101,13 @@
       if (s.kind !== "hangar" || s.mode === "lost" || !want[s.id] || want[s.id] < s.maxMW) return;
       order = [s.id].concat(order.filter(function (id) { return id !== s.id; }));
     });
-    // Fill in priority order, each from its own reactor; the drive and buster take what's left.
+    // Fill in priority order, each from its own reactor; the drive and buster take what's left
+    // (unless the captain's stance is drive first: then the drive in its place, fast enough to be
+    // full a few seconds before the window, at its full rate once the window is near or open).
+    if (drive && m.driveFirst) want.drive = Math.min(drive.maxMW, 1.2 * (drive.maxMJ - drive.mj) / Math.max(1, m.windowIn() - 8));
     order.forEach(function (id) {
       var s = m.sys(id);
-      if (s.kind === "drive" || s.kind === "buster") return;
+      if ((s.kind === "drive" && !m.driveFirst) || s.kind === "buster") return;
       var full = s.mj >= s.maxMJ - 0.5;
       var w = Math.min(want[id] || 0, s.maxMW);
       var draw = full ? Math.min(w, m.holdMW(s)) : w;
@@ -115,7 +118,9 @@
       if (s.split) for (var k = 0; k < n; k++) left[k] -= Math.min(draw, give) / n;
       else left[s.reactor] -= Math.min(draw, give);
     });
-    if (drive) {
+    // (drive first: it has its share already, and takes what's left on top)
+    if (drive && m.driveFirst) m.setSetpoint("drive", Math.min(drive.maxMW, drive.set + Math.max(0, left[drive.reactor])));
+    else if (drive) {
       var behind = m.windowIn() < (drive.maxMJ - drive.mj) / Math.max(1, drive.maxMW) + 5;
       var dg = Math.max(behind ? 12 : 0, Math.min(drive.maxMW, left[drive.reactor]));
       m.setSetpoint("drive", dg);

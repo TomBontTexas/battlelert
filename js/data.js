@@ -816,10 +816,15 @@
     jumpTurn: 60, jumpTol: 10, approach: 0.3,
     legs: [1, 8], legCost: 0.04, maxTurn: 100, early: 12, capture: 0.05, dogleg: 0.08, lookahead: 0.1,
     rockMJ: 90, rockEvery: 4, zoneGrace: 5, zoneHold: 1.5,
+    // A burst with no call from the captain that the shields can't take: the pilot breaks on his
+    // own this share of the time (decided once per burst).
+    pilotOwn: 0.5,
     // Standing orders at the start of a mission (the captain changes them on the bridge).
     standing: { guns: "auto", stance: "balanced" },
-    stances: { shields: { name: "Shields first", short: "SHIELDS" }, balanced: { name: "Balanced", short: "BALANCED" }, guns: { name: "Guns first", short: "GUNS" } },
-    stanceList: ["shields", "balanced", "guns"],
+    // (drive first: after life support the drive charges to be full by the window, the rest share what's left)
+    stances: { shields: { name: "Shields first", short: "SHIELDS" }, balanced: { name: "Balanced", short: "BALANCED" }, guns: { name: "Guns first", short: "GUNS" },
+      drive: { name: "Drive first", short: "DRIVE" } },
+    stanceList: ["shields", "balanced", "guns", "drive"],
     // The gunners' order buttons on the bridge: what the guns go after (BL.GUNNERY.orders underneath).
     gunShort: { auto: "SUGGESTED", defend: "TORPEDOES", stop: "LAUNCHERS", hunt: "HUNT", free: "FREE FIRE" }
   };

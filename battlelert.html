@@ -613,7 +613,7 @@
       <tr><td>↑ ↓</td><td>Engines one order up or down (stop … flank)</td></tr>
       <tr><td>Z / X / C</td><td>On a torpedo burst: break to port / take it on the shields / break to starboard</td></tr>
       <tr><td>G</td><td>Gunners' order: suggested, torpedoes, launchers, hunt, free fire</td></tr>
-      <tr><td>S</td><td>Engineer's stance: shields first, balanced, guns first</td></tr>
+      <tr><td>S</td><td>Engineer's stance: shields first, balanced, guns first, drive first</td></tr>
       <tr><td>E</td><td>Warn engineering that a burn is coming</td></tr>
       <tr><td>J</td><td>Order the jump (once it's ready)</td></tr>
       <tr><td>V</td><td>Swap the map and the battle view (the map in the middle, the battle in the box at the right)</td></tr>
@@ -688,11 +688,11 @@
       <li><b>The pilot flies it.</b> He steers for the plotted legs and gives the engines each leg's order. NAVIGATION on the BRIDGE panel shows the leg, the next course change and the jump window; the map at the right shows the ship on the plot. In the jump zone he holds her there, dead slow and then stopped, for the jump.</li>
       <li><b>The map.</b> Its top line counts down to the jump zone at her speed now, along the rest of the plot: faster and it drops, slower and it climbs. The next line counts down to when the jump can go: the window open and the drive full, at the rate the drive is charging now (whichever is later: WINDOW or DRIVE; or DRIVE NOT CHARGING). Against that the top line says <b>EARLY</b> (slow down, or she waits in the zone), <b>ON TIME</b> or <b>LATE</b> (more speed). Drag it to pan, pinch or use + − to zoom, FIT for the whole map. <b>⇄ SWAP</b> (V) puts the map in the middle and the battle view in its box; swap again to go back.</li>
       <li><b>A course of your own.</b> ← → (or ◀ 10° and 10° ▶), a tap on the compass, or a tap on the map gives the helm a course of your own, and the engine buttons an engine order. HELM shows "yours" until you tap <b>RESUME PLOT</b> (R); then the pilot comes back onto the plotted line, never cutting across a field.</li>
-      <li><b>Torpedoes.</b> On every burst at you, the call is yours: <b>BREAK PORT</b>, <b>TAKE IT</b> or <b>BREAK STBD</b> (Z X C) before they land. A break the pilot makes in time makes them miss. Your standing order is to take them on the shields, so a burst you don't answer is taken. Break away from asteroid fields: the map shows where they are.</li>
-      <li><b>The crew.</b> The gunners' order (G) goes to every gun: SUGGESTED (each fight's suggestion), TORPEDOES (point defense: torpedoes about to land first), LAUNCHERS (ships charging to fire first), HUNT (the ships each gun is best against) or FREE FIRE (each gunner picks his own). The engineer's stance (S) is his priority order: shields first, balanced, or guns first. Warn engineering (E) before a hard burn.</li>
+      <li><b>Torpedoes.</b> On every burst at you, the call is yours: <b>BREAK PORT</b>, <b>TAKE IT</b> or <b>BREAK STBD</b> (Z X C) before they land. A break the pilot makes in time makes them miss. Your standing order is to take them on the shields, so a burst you don't answer is taken. If the shields can't take it, about half the time the pilot breaks on his own at the last moment, away from asteroid fields; don't count on him. Break away from asteroid fields: the map shows where they are.</li>
+      <li><b>The crew.</b> The gunners' order (G) goes to every gun: SUGGESTED (each fight's suggestion), TORPEDOES (point defense: torpedoes about to land first), LAUNCHERS (ships charging to fire first), HUNT (the ships each gun is best against) or FREE FIRE (each gunner picks his own). The engineer's stance (S) is his priority order: shields first, balanced, guns first, or <b>drive first</b>. Normally the drive gets only the power left over after the shields and guns; on DRIVE it comes first after life support, charged fast enough to be full just before the window (flat out once the window is near or open), and the shields and guns share what's left. Use it when the READY line on the map says DRIVE, and go back when it says WINDOW: the shields run lower on DRIVE. Warn engineering (E) before a hard burn.</li>
       <li><b>Asteroids.</b> A ship inside an asteroid field takes a hit like a mine (90 MJ, shields first) every few seconds. A plotted leg that's clear keeps her out of them.</li>
       <li><b>The jump.</b> Order it (J or JUMP) once the drive is full, the window is open, the ship is in the zone and she's on the jump heading (within 5°); the JUMP button says what's missing ("Steer 245"). Keeping her on the jump heading is your job: on the plot the pilot flies the last leg along it, and he holds her in the zone; on a course of your own, steer it yourself or RESUME PLOT. An ordered jump waits until she's in the zone (BACK TO THE ZONE) and on the heading (STEER 245), then goes.</li>
-      <li><b>Score.</b> Objective and ship condition as everywhere, navigation (in the jump zone by the window, no asteroid hits) and command (the shields and guns against the torpedoes, and the breaks you ordered made).</li>
+      <li><b>Score.</b> Objective and ship condition as everywhere, navigation (in the jump zone by the window, no asteroid hits) and command (the shields and guns against the torpedoes, and the breaks made, yours and the pilot's).</li>
     </ol>
     <h2>Pilot training</h2>
     <p>From the career screen, <b>Pilot training</b> puts you at the helm of any ship you're qualified on as a pilot (the gunboat if you aren't yet) on an endless buoy course: no enemies, no captain's orders, all the usual controls. Keep <b>red</b> buoys to port (on your left) and <b>green</b> to starboard; the next one is ringed, with a chevron on the side to pass, and marked in its color on the compass and the ring. The helm panel shows its side, bearing and seconds away, and a tally: passed on the right side, wrong side, hit (the hull touched it) and missed (too wide, or you wandered off and the course starts again ahead). The rating is the share passed on the right side: Excellent 90% and up, Good 75%, Fair 50%, else Needs work. Turning too hard still fills the stress bar and counts structural hits, but does the hull no harm. Fly as long as you like; <b>Exit training</b> shows the summary. Training earns no reputation and isn't saved to your record.</p>
@@ -703,13 +703,13 @@
 
 <script src="version.js?b=3ce8203c"></script>
 <script src="update-banner.js?b=ec7860dd"></script>
-<script src="js/data.js?b=49f2852d"></script>
+<script src="js/data.js?b=02592f30"></script>
 <script src="js/sim.js?b=53184a3d"></script>
-<script src="js/agents.js?b=a9187bf4"></script>
+<script src="js/agents.js?b=0a43c68f"></script>
 <script src="js/gunnery.js?b=685ea271"></script>
 <script src="js/ring.js?b=d2bfd43d"></script>
 <script src="js/helm.js?b=94fbf21e"></script>
-<script src="js/command.js?b=dfa73db7"></script>
+<script src="js/command.js?b=f55b203c"></script>
 <script src="js/training.js?b=48646f29"></script>
 <script src="js/art.js?b=ac37cac5"></script>
 <script src="js/turretview.js?b=960c39ae"></script>
@@ -720,6 +720,6 @@
 <script src="js/career.js?b=34474452"></script>
 <script src="js/speech.js?b=f9e428ef"></script>
 <script src="js/audio.js?b=273e5325"></script>
-<script src="js/ui.js?b=66cd98e2"></script>
+<script src="js/ui.js?b=13a8feda"></script>
 </body>
 </html>

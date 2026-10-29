@@ -193,7 +193,7 @@
     this.plots = [];
     this.stance = BL.COMMAND.standing.stance; this.guns = BL.COMMAND.standing.guns;
     this.basePriority = m.priority.slice();
-    this.stats = { rockHits: 0, calls: 0, breaks: 0, breaksMade: 0, taken: 0, unanswered: 0, systems: [] };
+    this.stats = { rockHits: 0, calls: 0, breaks: 0, pilotBreaks: 0, breaksMade: 0, taken: 0, unanswered: 0, systems: [] };
     this.pilot = new CaptainPilot();
   }
   BL.Captain = Captain;
@@ -270,10 +270,13 @@
   // Back to the plot: the navigation computer steers for the next waypoint.
   Captain.prototype.resumePlot = function () { this.hdgOrder = null; this.engOrder = null; this.m.cue("tick"); };
   Captain.prototype.setStance = function (id) { if (!BL.COMMAND.stances[id]) return; this.stance = id; this.applyStance(); this.m.cue("tick"); };
-  // The engineer's stance is his priority order: shields first, guns first, or as the ship comes.
+  // The engineer's stance is his priority order: shields first, guns first, the drive first (after
+  // life support; the AI engineer then charges it to be full by the window, not just with what's
+  // left: AIEngineer.think), or as the ship comes.
   Captain.prototype.applyStance = function () {
     var m = this.m, base = this.basePriority.slice(), guns = base.filter(function (id) { var s = m.sys(id); return s && s.kind === "gun"; });
-    var first = this.stance === "shields" ? ["shield"] : this.stance === "guns" ? guns : [];
+    m.driveFirst = this.stance === "drive" && !!m.sys("drive");
+    var first = this.stance === "shields" ? ["shield"] : this.stance === "guns" ? guns : m.driveFirst ? ["life", "drive"] : [];
     m.setPriority(first.concat(base.filter(function (id) { return first.indexOf(id) < 0; })));
   };
   Captain.prototype.setGuns = function (id) { if (!BL.GUNNERY.orders[id]) return; this.guns = id; this.applyGuns(); this.m.cue("tick"); };
@@ -314,6 +317,18 @@
     this.stats.breaks++;
     h.orderBreak(this.openFish(), this.call.ship, dir);
     return true;
+  };
+  // No call from the captain and the burst about to land (BL.HELM.evade.lateMin s): the pilot
+  // sometimes (BL.COMMAND.pilotOwn) breaks on his own if the shields can't take it, away from
+  // asteroid fields; else it's taken.
+  Captain.prototype.pilotCall = function () {
+    var m = this.m, E = BL.HELM.evade, cv = this.callView();
+    if (!cv || cv.in > E.lateMin || !cv.canBreak || m.sys("shield").mj >= cv.mj * E.cover) return;
+    this.rng = this.rng || BL.rng((m.seed ^ 0x3c6ef372) >>> 0);
+    if (this.call.own === undefined) this.call.own = this.rng.chance(BL.COMMAND.pilotOwn);
+    if (!this.call.own) return;
+    this.call.done = true; this.stats.pilotBreaks++;
+    m.helm.orderBreak(this.openFish(), this.call.ship, this.awayFromRocks(cv.bearing < 0 ? 1 : -1));
   };
   // The break side `dir`, unless an asteroid field lies close on that side: then the other way.
   Captain.prototype.awayFromRocks = function (dir) {
@@ -389,13 +404,15 @@
 
   /* ------------------------------------------------------------- The NPC pilot
      Flies what the captain wants (Captain.helmView) on autopilot, with the engines it says, and
-     breaks hard when the captain orders a break, then comes back to the course. He doesn't dodge
-     on his own: his standing order is to take torpedoes on the shields. */
+     breaks hard when the captain orders a break, then comes back to the course. His standing
+     order is to take torpedoes on the shields; only when the captain makes no call and the
+     shields can't take the burst does he sometimes break on his own at the last moment (Captain.pilotCall). */
   function CaptainPilot() { this.breaking = false; }
   BL.CaptainPilot = CaptainPilot;
   CaptainPilot.prototype.think = function (m, c) {
     var h = m.helm;
     if (h.locked()) return;
+    c.pilotCall();
     var ev = h.evadeView();
     if (ev && ev.left > 0) { h.setWheel(ev.off >= BL.HELM.dodge.turn * 1.4 ? 0 : ev.dir * Math.min(1, h.C.safe / h.topTurn() * 0.98)); this.breaking = true; return; }
     this.breaking = false;
@@ -414,13 +431,13 @@
     sys.forEach(function (s) { nav += (s.zoneAt !== null && s.zoneAt <= s.window + K.zoneGrace ? 1 : s.zoneAt !== null ? 0.5 : 0) * Math.max(0, 1 - 0.25 * s.rockHits); });
     nav = sys.length ? nav / sys.length : 0;
     var hs = m.helm.stats, stopped = m.stats.salvos ? (m.stats.salvosShielded + (tu.stats.downed || 0)) / (m.stats.salvos + (tu.stats.downed || 0)) : 1;
-    var made = st.breaks ? hs.evasiveMet / st.breaks : 1;
+    var made = st.breaks + st.pilotBreaks ? hs.evasiveMet / (st.breaks + st.pilotBreaks) : 1;
     var command = clamp(0.6 * stopped + 0.4 * made, 0, 1);
     r.station = "captain";
     r.parts = { objective: r.parts.objective, condition: r.parts.condition, navigation: Math.round(25 * nav), command: Math.round(25 * command) };
     r.raw = r.parts.objective + r.parts.condition + r.parts.navigation + r.parts.command;
     r.score = Math.round(r.raw * Math.pow(1 - m.cfg.lookCostPct / 100, r.looks));
-    r.captain = { rockHits: st.rockHits, calls: st.calls, breaks: st.breaks, breaksMade: hs.evasiveMet, taken: st.taken, unanswered: st.unanswered,
+    r.captain = { rockHits: st.rockHits, calls: st.calls, breaks: st.breaks, pilotBreaks: st.pilotBreaks, breaksMade: hs.evasiveMet, taken: st.taken, unanswered: st.unanswered,
       systems: sys.map(function (s) { return { zoneAt: s.zoneAt === null ? null : Math.round(s.zoneAt), window: s.window, rockHits: s.rockHits, legs: s.legs }; }),
       ships: tu.stats.ships, kills: tu.stats.kills, downed: tu.stats.downed };
     return r;
@@ -448,6 +465,7 @@
     var m = new BL.Mission(Object.assign({ seed: seed, quiet: true, classId: classId, tl: tl, helm: true, captain: true,
       gunner: { weapons: BL.GUNNERY.loadout[classId], ring: true, arcs: rc.arcs, arcNames: rc.arcNames, helm: true } }, extra));
     var eng = new BL.AIEngineer(0.5, 0.25, m.turret.engineer.skill), bot = new CaptainBot();
+    if (extra && extra.stance) m.captain.stance = extra.stance;     // (tests: a standing stance other than balanced)
     m.beginJump();
     var guard = 0;
     while (m.phase !== "done" && guard++ < BL.TICK_RATE * 60 * 30) {
