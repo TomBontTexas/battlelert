@@ -828,6 +828,14 @@
     // A burst with no call from the captain that the shields can't take: the pilot breaks on his
     // own this share of the time (decided once per burst).
     pilotOwn: 0.5,
+    // Gunboat escort (bridge test; command.js Escort): the carrier sails the plotted course to the
+    // jump point in `arrive` of the time to the window; the gunboat's station is `station` x the
+    // map's size off her (sides: ahead, port, starboard, astern), on it within `near`; the pilot
+    // aims `lead` s ahead of it. In the battle view she sits `view` units per map size from the
+    // gunboat. `share` of the enemy's torpedoes go at her; each that lands costs mj x perMJ of her
+    // hull. COVER works within `cover` view units of her, the torpedoes landing in `coverTime` s or later.
+    escort: { arrive: 0.9, station: 0.06, near: 0.025, lead: 3, sides: { ahead: 0, port: -90, stbd: 90, astern: 180 },
+              view: 5, share: 0.5, hull: 100, perMJ: 0.03, cover: 0.55, coverTime: 0.8 },
     // Standing orders at the start of a mission (the captain changes them on the bridge).
     standing: { guns: "auto", stance: "balanced" },
     // (drive first: after life support the drive charges to be full by the window, the rest share what's left)

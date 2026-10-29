@@ -154,14 +154,16 @@
     m.chat("warnEng", null, "good");
     return true;
   };
-  Helm.prototype.launch = function () {
+  // order: the engine order she leaves at (the bridge: the plot's first leg, so she doesn't shoot
+  // far across the map before the course; at the helm, flank).
+  Helm.prototype.launch = function (order) {
     var m = this.m;
     if (!this.inTube || m.phase === "done") return false;
     this.inTube = false;
     this.launchAt = m.totalT; this.clearAt = m.totalT + this.H.launch.clear;
     // The catapult throws the boat out at flank; once clear, it comes back to standard.
-    var g = this.gOf("flank");
-    this.port = { g: g, ord: "flank" }; this.stbd = { g: g, ord: "flank" };
+    var ord = order || "flank", g = this.gOf(ord);
+    this.port = { g: g, ord: ord }; this.stbd = { g: g, ord: ord };
     this.out.port = this.out.stbd = this.speed = g;
     this.hist = [];
     var wait = Math.max(0, m.t - m.cfg.arrivalSeconds);

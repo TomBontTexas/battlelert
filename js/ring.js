@@ -598,8 +598,11 @@
         e.ionized = true; e.at += ion.delay; e.mj = Math.round(e.mj * ion.salvoMult);
         if (t < e.at - (e.travel || G.torpedo.travel)) return;
       }
-      if (m.helm && e.type === "salvo") m.helm.torpedoLaunched(e, s);       // Tactical reports it; the captain: break, or take it
-      var hitB = s.bearing + (self.rng.next() - 0.5) * 24, hit = self.rim(hitB);
+      // Escort: a share of the salvos go at the carrier, wherever she is in the view (cover, or she takes it).
+      var cp = m.captain, ward = e.type === "salvo" && cp && cp.wardAlive() && self.rng.chance(BL.COMMAND.escort.share);
+      if (ward) { e.ward = true; cp.wardLaunched(e, s); }
+      else if (m.helm && e.type === "salvo") m.helm.torpedoLaunched(e, s);       // Tactical reports it; the captain: break, or take it
+      var hitB = s.bearing + (self.rng.next() - 0.5) * 24, hit = ward ? cp.wardView() : self.rim(hitB);
       var nose = { x: s.x - Math.sin(s.rot) * s.h / 2, y: s.y + Math.cos(s.rot) * s.h / 2 };
       var torp = { id: self.nextId++, ev: e, x0: nose.x, y0: nose.y, x1: hit.x, y1: hit.y, hitB: hitB, t0: t, t1: e.at, x: nose.x, y: nose.y, weak: !!e.ionized,
         size: (BL.TORPEDOES[e.torpSize] || {}).down || 1 };      // a dart is a small target, a ship killer a big one
@@ -615,6 +618,11 @@
       if (self.cur) { self.stats.torps++; self.cur.torps++; } else self.stats.torps++;
       m.cue("torpLaunch");
     });
+    // Torpedoes at the carrier follow her (she and the gunboat both move).
+    if (m.captain && m.captain.wardAlive()) {
+      var wv = m.captain.wardView();
+      this.torps.forEach(function (tp) { if (tp.ev && tp.ev.ward && !tp.ev.done) { tp.x1 = wv.x; tp.y1 = wv.y; } });
+    }
   };
 
   // An enemy gun fires (Mission.runEnemyGuns): a red bolt from one of the wave's ships to our shield.

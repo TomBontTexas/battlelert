@@ -193,8 +193,12 @@
     this.plots = [];
     this.stance = BL.COMMAND.standing.stance; this.guns = BL.COMMAND.standing.guns;
     this.basePriority = m.priority.slice();
-    this.stats = { rockHits: 0, calls: 0, breaks: 0, pilotBreaks: 0, breaksMade: 0, taken: 0, unanswered: 0, systems: [] };
+    this.stats = { rockHits: 0, calls: 0, breaks: 0, pilotBreaks: 0, breaksMade: 0, taken: 0, unanswered: 0, systems: [],
+      wardTorps: 0, wardCalls: 0, covers: 0, covered: 0 };
     this.pilot = new CaptainPilot();
+    // Escort (a gunboat screening the carrier, BL.COMMAND.escort): her hull carries over from sortie to sortie.
+    this.escort = m.escort ? { hull: BL.COMMAND.escort.hull, hullMax: BL.COMMAND.escort.hull } : null;
+    this.station = "ahead"; this.wcall = null;
   }
   BL.Captain = Captain;
   // The system she's in (set on arrival: after a jump the display still shows the last one until the next arrival).
@@ -215,8 +219,15 @@
     h.jumpHdg = info.jumpHdg; h.jumpShown = h.jumpHdg !== null; h.course = null;
     this.info = info; this.leg = 0; this.hdgOrder = null; this.engOrder = null; this.jumpOrdered = false;
     this.inRock = false; this.zoneAt = null; this.holding = false; this.call = null; this.drRate = null; this.drLast = null;
-    this.cur = { rockHits: 0, zoneAt: null, window: m.windowAt(), legs: info.count };
+    this.cur = { rockHits: 0, zoneAt: null, window: m.windowAt(), legs: info.count, onStation: 0, stationT: 0 };
     this.stats.systems[m.jumpIndex] = this.cur;
+    // Escort: the carrier sails the plotted course (the navigator's) from the start, reaching the
+    // jump point at BL.COMMAND.escort.arrive of the time to the window.
+    if (this.escort) {
+      var L = 0; for (var k = 1; k < plot.pts.length; k++) L += dist(plot.pts[k - 1], plot.pts[k]);
+      var w = this.escort; w.L = L; w.s = 0; w.v = L / Math.max(10, m.windowAt() * BL.COMMAND.escort.arrive); w.pos = { x: map.start.x, y: map.start.y };
+      w.hdg = plot.pts.length > 1 ? bearing(plot.pts[0], plot.pts[1]) : map.start.hdg; this.wcall = null;
+    }
     this.applyStance(); this.applyGuns(true);
   };
   /* Where the plot says to go: the next waypoint's bearing; on the last leg the jump heading
@@ -258,7 +269,93 @@
     // Holding in the zone: dead slow up to the jump point, stopped once she's past it.
     var past = (this.pos.x - j.x) * Math.sin(hd) + (this.pos.y - j.y) * Math.cos(hd) > 0;
     var hold = past ? "stop" : "deadSlow";
+    // Escort: the pilot keeps station on the carrier until she's at the jump point; then he brings
+    // the gunboat into the recovery zone on its heading, as on any plot.
+    if (this.escort && this.escort.s < this.escort.L) {
+      var sv = this.stationView();
+      return { hdg: this.hdgOrder !== null ? this.hdgOrder : sv.hdg, eng: this.engOrder || sv.eng, own: this.hdgOrder !== null || !!this.engOrder, nav: nv, holding: false, station: sv };
+    }
     return { hdg: this.hdgOrder !== null ? this.hdgOrder : nv.steer, eng: this.engOrder || (this.holding ? hold : nv.eng), own: this.hdgOrder !== null || !!this.engOrder, nav: nv, holding: this.holding };
+  };
+
+  /* ------------------------------------------------------------- Escort
+     A gunboat screening the carrier (BL.COMMAND.escort). She sails the plotted course; the
+     gunboat keeps a station on her (ahead, port, starboard or astern, `station` x the map's size
+     off her), the pilot steering for it and matching her speed. Enemy launchers send a `share`
+     of their torpedoes at her: in the battle view she sits where she is from the gunboat, so the
+     gun crew can shoot those down when she's close. COVER puts the gunboat in the way of a
+     burst at her (only within `cover` battle-view units of her): her torpedoes hit our shields
+     instead. Each one that reaches her costs her mj x perMJ of her hull; at 0 she's lost. */
+  // Where she is along her course (s map units from the start) and her heading there.
+  Captain.prototype.wardAt = function (s) {
+    var pts = this.plotFor(this.at).pts;
+    for (var k = 1; k < pts.length; k++) {
+      var L = dist(pts[k - 1], pts[k]);
+      if (s <= L || k === pts.length - 1) { var u = L ? Math.min(1, s / L) : 1; return { x: pts[k - 1].x + (pts[k].x - pts[k - 1].x) * u, y: pts[k - 1].y + (pts[k].y - pts[k - 1].y) * u, hdg: bearing(pts[k - 1], pts[k]) }; }
+      s -= L;
+    }
+    return { x: pts[0].x, y: pts[0].y, hdg: 0 };
+  };
+  Captain.prototype.wardAlive = function () { return !!this.escort && this.escort.hull > 0 && !!this.escort.pos; };
+  // The station: where it is, how far she is from it, and what the pilot steers and orders.
+  Captain.prototype.stationView = function () {
+    var E = BL.COMMAND.escort, w = this.escort, D = this.map().D, h = this.m.helm, K = BL.COMMAND;
+    var st = along(w.pos, w.hdg + E.sides[this.station], E.station * D), d = dist(this.pos, st), near = E.near * D;
+    var moving = w.s < w.L, vw = moving ? w.v : 0;
+    // Aim a few seconds ahead of the station (she's moving); close in, sail her heading.
+    var aim = moving ? along(st, w.hdg, vw * E.lead) : st, hdg = d > near * 0.6 ? bearing(this.pos, aim) : w.hdg;
+    // Speed: flat out to catch up from far off; near, her speed plus or minus as the station is ahead or behind.
+    var ahead = (st.x - this.pos.x) * Math.sin(w.hdg * RAD) + (st.y - this.pos.y) * Math.cos(w.hdg * RAD);
+    var want = d > 4 * near ? Infinity : Math.max(0, vw + clamp(ahead / near, -1, 1) * Math.max(vw, 2 * K.scale) * 0.6);
+    var eng = "full", bestD = Infinity;
+    if (want !== Infinity) ["stop", "deadSlow", "cruise", "standard", "full"].forEach(function (id) { var dd = Math.abs(h.gOf(id) * K.scale - want); if (dd < bestD) { bestD = dd; eng = id; } });
+    return { pos: st, d: d, on: d <= near, hdg: Math.round(to360(hdg)) % 360, eng: eng };
+  };
+  Captain.prototype.setStation = function (id) { if (!BL.COMMAND.escort.sides.hasOwnProperty(id)) return; this.station = id; this.m.cue("tick"); };
+  // Where she is in the battle view (view units from the gunboat, the view's up = our heading).
+  Captain.prototype.wardView = function () {
+    var tu = this.m.turret, R = tu.R, w = this.escort, k = BL.COMMAND.escort.view / this.map().D;
+    var b = (bearing(this.pos, w.pos) - this.m.helm.compass()) * RAD, d = dist(this.pos, w.pos) * k;
+    return { x: R.cx + Math.sin(b) * d, y: R.cy - Math.cos(b) * d, d: d, rot: norm(w.hdg - this.m.helm.compass()) };
+  };
+  // A torpedo launched at her (ring.js): a call for COVER, open until they land.
+  Captain.prototype.wardLaunched = function (e, s) {
+    var m = this.m;
+    if (this.wcall && m.t - this.wcall.at < BL.HELM.evade.burst && !this.wcall.done) { this.wcall.fish.push(e); return; }
+    this.wcall = { at: m.t, fish: [e], ship: s, done: false };
+    this.stats.wardCalls++;
+  };
+  Captain.prototype.wardCallView = function () {
+    var m = this.m, c = this.wcall;
+    if (!c || c.done || !this.wardAlive()) return null;
+    var live = c.fish.filter(function (f) { return !f.done && f.ward && f.at > m.t; });
+    if (!live.length) { c.done = true; return null; }
+    var land = Math.min.apply(null, live.map(function (f) { return f.at; }));
+    return { n: live.length, in: land - m.t, mj: live.reduce(function (a, f) { return a + f.mj; }, 0), canCover: this.wardView().d <= BL.COMMAND.escort.cover };
+  };
+  // COVER: the burst at her turns on us (the gunboat swings into its way); our shields take it.
+  Captain.prototype.cover = function () {
+    var m = this.m, tu = m.turret, cv = this.wardCallView(), self = this;
+    if (!cv || !cv.canCover) return false;
+    this.wcall.done = true; this.stats.covers++;
+    this.wcall.fish.forEach(function (e) {
+      if (e.done || !e.ward || !e.torp) return;
+      var tp = e.torp, b = norm(Math.atan2(tp.x - tu.R.cx, -(tp.y - tu.R.cy)) / RAD), p = tu.rim(b);
+      e.ward = false; e.covered = true; self.stats.covered++;
+      tp.x0 = tp.x; tp.y0 = tp.y; tp.t0 = m.t; tp.x1 = p.x; tp.y1 = p.y; tp.hitB = b;
+      m.helm.landBy(e, m.t + BL.COMMAND.escort.coverTime);
+    });
+    m.cue("tick");
+    return true;
+  };
+  // A torpedo reached her.
+  Captain.prototype.wardHit = function (e) {
+    var m = this.m, w = this.escort;
+    if (!this.wardAlive()) return;
+    w.hull = Math.max(0, w.hull - e.mj * BL.COMMAND.escort.perMJ);
+    e.outcome = "ward"; this.stats.wardTorps++;
+    m.cue("shieldHit");
+    if (w.hull <= 0 && m.phase !== "done") m.finish("wardLost");
   };
 
   /* ------------------------------------------------------------- Orders */
@@ -383,6 +480,12 @@
     if (zone && this.cur.zoneAt === null) this.cur.zoneAt = m.t;
     // In the zone on the last leg, the pilot holds her there (dead slow, then stopped) for the jump.
     this.holding = zone && (this.leg >= pts.length - 2 || this.jumpOrdered);
+    // Escort: the carrier sails on; time on station counts while the fight is on.
+    if (this.escort && this.escort.pos) {
+      var w = this.escort; w.s = Math.min(w.L, w.s + w.v * dt);
+      var wp = this.wardAt(w.s); w.pos = { x: wp.x, y: wp.y }; w.hdg = wp.hdg;
+      if (m.phase === "engage" || m.phase === "countdown") { this.cur.stationT += dt; if (this.stationView().on) this.cur.onStation += dt; }
+    }
     // Asteroids: inside a field the rocks stream through the battle view (RingTurret.dropRock).
     this.inRock = BL.inField(map, this.pos);
     if (m.phase !== "done") this.pilot.think(m, this);
@@ -411,7 +514,7 @@
   };
   CaptainPilot.prototype.think = function (m, c) {
     var h = m.helm;
-    if (h.inTube && m.t >= 1) h.launch();             // a gunboat: out of the carrier's tube at once
+    if (h.inTube && m.t >= 1) h.launch(c.helmView().eng);   // a gunboat: out of the carrier's tube at once, at the course's speed
     if (h.locked()) return;
     c.pilotCall();
     var ev = h.evadeView();
@@ -429,8 +532,11 @@
   BL.scoreCaptain = function (m, outcome) {
     var r = BL.score(m, outcome), c = m.captain, st = c.stats, K = BL.COMMAND, tu = m.turret;
     var sys = st.systems.filter(Boolean), nav = 0;
-    sys.forEach(function (s) { nav += (s.zoneAt !== null && s.zoneAt <= s.window + K.zoneGrace ? 1 : s.zoneAt !== null ? 0.5 : 0) * Math.max(0, 1 - 0.25 * s.rockHits); });
+    // (escort: navigation is the share of the fight spent on station)
+    sys.forEach(function (s) { nav += (c.escort ? (s.stationT ? s.onStation / s.stationT : 0) : s.zoneAt !== null && s.zoneAt <= s.window + K.zoneGrace ? 1 : s.zoneAt !== null ? 0.5 : 0) * Math.max(0, 1 - 0.25 * s.rockHits); });
     nav = sys.length ? nav / sys.length : 0;
+    // Escort: the objective is her: brought home, worth her hull left.
+    if (c.escort) r.parts.objective = outcome === "wardLost" ? 0 : Math.round(r.parts.objective * c.escort.hull / c.escort.hullMax);
     var hs = m.helm.stats, stopped = m.stats.salvos ? (m.stats.salvosShielded + (tu.stats.downed || 0)) / (m.stats.salvos + (tu.stats.downed || 0)) : 1;
     var made = st.breaks + st.pilotBreaks ? hs.evasiveMet / (st.breaks + st.pilotBreaks) : 1;
     var command = clamp(0.6 * stopped + 0.4 * made, 0, 1);
@@ -442,6 +548,10 @@
       systems: sys.map(function (s) { return { zoneAt: s.zoneAt === null ? null : Math.round(s.zoneAt), window: s.window, rockHits: s.rockHits, legs: s.legs }; }),
       ships: tu.stats.ships, kills: tu.stats.kills, downed: tu.stats.downed,
       rocks: tu.stats.rocks || 0, rocksDown: tu.stats.rocksDown || 0, rockEnemy: tu.stats.rockEnemy || 0 };
+    if (c.escort) {
+      r.captain.escort = { hull: Math.round(100 * c.escort.hull / c.escort.hullMax), torps: st.wardTorps, calls: st.wardCalls, covers: st.covers, covered: st.covered,
+        onStation: sys.map(function (s) { return s.stationT ? Math.round(100 * s.onStation / s.stationT) : 0; }) };
+    }
     return r;
   };
 
@@ -459,6 +569,10 @@
       if (cv.canBreak && (m.sys("shield").mj < cv.mj * E.cover || this.rng.chance(E.chance))) c.answer(c.awayFromRocks(cv.bearing < 0 ? 1 : -1));
       else c.answer(0);
     }
+    // Escort: cover a burst at the carrier when our shields can take it.
+    var wv = c.wardCallView();
+    var sh = m.sys("shield"), ours = c.openFish().reduce(function (a, f) { return a + f.mj; }, 0);
+    if (wv && wv.canCover && wv.in < BL.GUNNERY.torpedo.travel && sh.mj >= (wv.mj + ours) * E.cover && sh.mj >= sh.maxMJ * 0.5) c.cover();
     if (c.jumpView().ready && !c.jumpOrdered) c.orderJump();
   };
   BL.runCaptainHeadless = function (seed, classId, tl, idle, extra) {

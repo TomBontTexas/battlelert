@@ -146,6 +146,8 @@
       c.restore();
     });
 
+    drawWard(c, S, m);     // the carrier we escort
+
     // Torpedoes heading for the shield (and mines drifting in).
     var tsp = sprite("torpedo");
     tu.torps.forEach(function (tp) {
@@ -538,6 +540,23 @@
     c.restore();
     c.lineWidth = 1.5 / S;
     if (!tp.pass && tp.t1 - m.t < 1.2) { c.strokeStyle = Math.floor(t * 8) % 2 ? "rgba(255,90,70,0.9)" : "rgba(255,90,70,0.3)"; c.beginPath(); c.arc(tp.x1, tp.y1, 0.02, 0, Math.PI * 2); c.stroke(); }
+  }
+  // The carrier the gunboat escorts (command.js Escort): a long grey-blue flight deck on her heading,
+  // where she is from the gunboat, with her hull left.
+  function drawWard(c, S, m) {
+    var cp = m.captain;
+    if (!cp || !cp.wardAlive() || !cp.pos) return;
+    var v = cp.wardView(), L = 0.17, W = 0.05;
+    if (v.x < -0.3 || v.x > 1.3 || v.y < -0.3 || v.y > 1.3) return;
+    c.save(); c.translate(v.x, v.y); c.rotate(v.rot * Math.PI / 180);
+    c.fillStyle = "#3a4d63"; c.strokeStyle = "#9fc3e8"; c.lineWidth = 1.5 / S;
+    c.beginPath(); c.moveTo(0, -L / 2); c.lineTo(W / 2, -L * 0.3); c.lineTo(W / 2, L / 2); c.lineTo(-W / 2, L / 2); c.lineTo(-W / 2, -L * 0.3); c.closePath(); c.fill(); c.stroke();
+    c.strokeStyle = "rgba(230,240,255,.55)"; c.setLineDash([0.01, 0.008]); c.beginPath(); c.moveTo(0, -L * 0.28); c.lineTo(0, L * 0.45); c.stroke(); c.setLineDash([]);
+    c.fillStyle = "#6f8aa8"; c.fillRect(W * 0.18, -L * 0.05, W * 0.3, L * 0.16);
+    c.restore();
+    var es = cp.escort, f = es.hull / es.hullMax;
+    c.fillStyle = "rgba(0,0,0,.5)"; c.fillRect(v.x - 0.05, v.y + L / 2 + 0.012, 0.1, 0.012);
+    c.fillStyle = f > 0.5 ? "#4fd18b" : f > 0.25 ? "#ffd666" : "#ff6b6b"; c.fillRect(v.x - 0.05, v.y + L / 2 + 0.012, 0.1 * f, 0.012);
   }
   // A drifting mine: a dark spiked ball with a blinking light, its path a faint grey line.
   function drawMine(c, S, tp, t, m) {

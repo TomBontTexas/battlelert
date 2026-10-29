@@ -67,6 +67,8 @@
     // Pilot station: the player at the helm (opts.helm), the gun crew on every gun; see helm.js.
     this.helm = opts.helm && this.turret && this.turret.ring ? new BL.Helm(this) : null;
     // Command (opts.captain): the player is the captain; an NPC pilot flies the helm; see command.js.
+    // opts.escort (a gunboat): each sortie screens the carrier (Captain, BL.COMMAND.escort).
+    this.escort = !!opts.escort && !this.hasDrive;
     this.captain = opts.captain && this.helm ? new BL.Captain(this) : null;
     this.trainer = null;                    // made on arrival (the helm's heading is set then)
     this.stats = {
@@ -536,6 +538,7 @@
   };
 
   Mission.prototype.fire = function (e) {
+    if (e.ward && this.captain) { this.captain.wardHit(e); return; }     // a torpedo at the carrier we escort
     // In the engine room a wave is its toughness, not ships on screen: a salvo from a wave already
     // part destroyed comes only with the share still fighting (at the gun and the helm a dead
     // ship's torpedoes never launch, ring.js; the enemy guns go the same way, runEnemyGuns).

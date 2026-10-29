@@ -605,6 +605,7 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 .cp-orders { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: flex-end; justify-content: center; padding: 2px 4px; }
 .cp-orders[hidden] { display: none; }
 .cp-grp { display: flex; flex-direction: column; gap: 2px; }
+.cp-grp[hidden], .cp-row button[hidden] { display: none; }
 .cp-lbl { font-size: 11px; letter-spacing: .08em; color: var(--muted); white-space: nowrap; }
 .cp-row { display: flex; gap: 4px; }
 .cp-row button { padding: 6px 8px; font-size: 13px; min-height: 40px; white-space: nowrap; }
