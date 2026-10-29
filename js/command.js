@@ -328,7 +328,7 @@
     if (this.call.own === undefined) this.call.own = this.rng.chance(BL.COMMAND.pilotOwn);
     if (!this.call.own) return;
     this.call.done = true; this.stats.pilotBreaks++;
-    m.helm.orderBreak(this.openFish(), this.call.ship, this.awayFromRocks(cv.bearing < 0 ? 1 : -1));
+    m.helm.orderBreak(this.openFish(), this.call.ship, this.awayFromRocks(cv.bearing < 0 ? 1 : -1), true);
   };
   // The break side `dir`, unless an asteroid field lies close on that side: then the other way.
   Captain.prototype.awayFromRocks = function (dir) {

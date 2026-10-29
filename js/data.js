@@ -931,6 +931,7 @@
     jumpSteady:  ["{who}: steady as she goes."],                         // lined up for the jump (TexasBont, Oct 23, 2026)
     corridor:    ["{who}: Helm, you're outside the corridor."],          // out of the corridor (TexasBont, Oct 23, 2026)
     disobey:     ["{who}: Helm, I said hold your course!", "{who}: that was not my order, Helm. It goes in my report.", "{who}: Helm! Steady means steady!"],
+    evadeOwn:    ["Helm: breaking {dir}!"],
     evadeMissed: ["{who}: too slow on that break, Helm!", "{who}: I said break, Helm!"],
     helmReq:     ["Gunner {n}: Captain, nothing in my arc. Target {side}."],     // to the captain, who orders the helm
     jumpNoticeH: ["Navigation: jump window in {t} s. Jump heading {hdg}."],     // reports; the captain orders the heading

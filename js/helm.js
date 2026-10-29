@@ -363,16 +363,18 @@
   // The break covers torpedo f: it lands no sooner than the break allows.
   Helm.prototype.cover = function (f, ev) { f.evade = ev; f.hold = false; this.landBy(f, ev.until); };
   // The captain orders a break covering `fish`, cutting in (dir: -1 left, 1 right, if he names it).
-  Helm.prototype.orderBreak = function (fish, s, side) {
+  // own: the pilot breaks on his own (Captain.pilotCall): he says so himself, and no captain's
+  // order or rebuke is heard.
+  Helm.prototype.orderBreak = function (fish, s, side, own) {
     var m = this.m, E = this.H.evade, now = m.t, self = this;
     // Against the turn the ship is making (that throws the aim off fastest), else away from the torpedo.
     var dir = side ? side : Math.abs(this.omega) > 3 ? (this.omega > 0 ? -1 : 1) : s && norm(s.bearing) < 0 ? 1 : -1;
     this.lastBreak = now;
-    var ev = this.evade = { at: now, until: now + E.orderTime + BL.GUNNERY.torpedo.travel, dir: dir, snap: this.aimSnap(), judged: false };
+    var ev = this.evade = { at: now, until: now + E.orderTime + BL.GUNNERY.torpedo.travel, dir: dir, snap: this.aimSnap(), judged: false, own: !!own };
     if (this.burst && now - this.burst.at < E.burst) this.burst.evade = ev;
     fish.forEach(function (f) { self.cover(f, ev); });
     this.stats.evasive++; if (this.cur) this.cur.evasive++;
-    m.chat("evade", { who: this.who, dir: dir > 0 ? "right" : "left" }, "warn", true);
+    m.chat(own ? "evadeOwn" : "evade", { who: this.who, dir: dir > 0 ? "right" : "left" }, "warn", true);
     m.cue("warn");
   };
   // The captain keeps watching the fish he said to take: once the shields can't take them, break.
@@ -401,7 +403,7 @@
     if (!ev || ev.judged || m.t < ev.until) return;
     ev.judged = true;
     if (this.dodged(ev.snap)) { this.stats.evasiveMet++; if (this.cur) this.cur.evasiveMet++; }
-    else m.chat("evadeMissed", { who: this.who }, "bad");
+    else if (!ev.own) m.chat("evadeMissed", { who: this.who }, "bad");
   };
   Helm.prototype.evadeView = function () {
     var ev = this.evade, m = this.m;
