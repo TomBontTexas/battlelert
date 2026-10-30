@@ -273,6 +273,7 @@
       var L = 0; for (var k = 1; k < plot.pts.length; k++) L += dist(plot.pts[k - 1], plot.pts[k]);
       var w = this.escort; w.L = L; w.s = 0; w.v = L / Math.max(10, m.windowAt() * BL.COMMAND.escort.arrive); w.pos = { x: map.start.x, y: map.start.y };
       w.hdg = plot.pts.length > 1 ? bearing(plot.pts[0], plot.pts[1]) : map.start.hdg; this.wcall = null; this.placeWard();
+      w.wing.forEach(function (g) { g.pos = null; });      // (each wingman starts the system on his station)
     }
     this.makeFields();
     this.applyStance(); this.applyGuns(true);
@@ -437,7 +438,32 @@
     return this.toView(s && s.pos ? s.pos : w.pos, w.hdg);
   };
   // Where wingman i is (on his station) in the battle view.
-  Captain.prototype.wingView = function (i) { var g = this.escort.wing[i]; return g ? this.toView(this.stationAt(g.station), this.escort.hdg) : null; };
+  Captain.prototype.wingView = function (i) { var g = this.escort.wing[i]; return g ? this.toView(g.pos || this.stationAt(g.station), g.pos ? g.hdg : this.escort.hdg) : null; };
+  // She sails her course like a ship: steering for a point `wardLead` x the map's size ahead of
+  // where the course has got to (w.s), turning on a circle of `wardRadius` x the map's size, faster
+  // to catch up when she's behind it and slowing to a stop at its end. Corners are curves.
+  Captain.prototype.moveWard = function (dt) {
+    var E = BL.COMMAND.escort, w = this.escort, D = this.map().D, carrot = this.wardAt(Math.min(w.L, w.s + E.wardLead * D)), d = dist(w.pos, carrot);
+    var rate = Math.min(45, w.v / (E.wardRadius * D) / RAD) * dt;      // degrees this tick
+    if (d > 1e-6) w.hdg = to360(w.hdg + clamp(norm(bearing(w.pos, carrot) - w.hdg), -rate, rate));
+    var spd = w.v * clamp(d / (E.wardLead * D), 0, 1.3);
+    w.pos = along(w.pos, w.hdg, spd * dt);
+  };
+  // The wingmen fly to their stations (at our full speed, turning `wingTurn` degrees a second),
+  // so one moved by a swap crosses over, and the enemy round him comes along.
+  Captain.prototype.moveWing = function (dt) {
+    var E = BL.COMMAND.escort, w = this.escort, vmax = this.m.helm.gOf("full") * BL.COMMAND.scale, near = E.near * this.map().D, self = this;
+    w.wing.forEach(function (g) {
+      var st = self.stationAt(g.station);
+      if (!g.pos) { g.pos = { x: st.x, y: st.y }; g.hdg = w.hdg; return; }
+      if (g.hull <= 0) return;
+      var d = dist(g.pos, st), want = d > near ? bearing(g.pos, st) : w.hdg;
+      g.hdg = to360(g.hdg + clamp(norm(want - g.hdg), -E.wingTurn * dt, E.wingTurn * dt));
+      // Full ahead while he's off station (along his heading, so he swings round to it); on it, he holds it.
+      if (d > near) g.pos = along(g.pos, g.hdg, Math.min(d, vmax * dt * Math.max(0.2, Math.cos(norm(want - g.hdg) * RAD))));
+      else g.pos = along(g.pos, bearing(g.pos, st), Math.min(d, vmax * dt));
+    });
+  };
   // A torpedo launched at her (ring.js): a call for COVER, open until they land.
   Captain.prototype.wardLaunched = function (e, s) {
     var m = this.m;
@@ -657,7 +683,7 @@
     // Escort: the carrier sails on; time on station counts while the fight is on.
     if (this.escort && this.escort.pos) {
       var w = this.escort; w.s = Math.min(w.L, w.s + w.v * dt);
-      var wp = this.wardAt(w.s); w.pos = { x: wp.x, y: wp.y }; w.hdg = wp.hdg; this.placeWard();
+      this.moveWard(dt); this.placeWard(); this.moveWing(dt);
       if (m.phase === "engage" || m.phase === "countdown") { this.cur.stationT += dt; if (this.stationView().on) this.cur.onStation += dt; }
     }
     // Asteroids: inside a field the rocks stream through the battle view (RingTurret.dropRock).

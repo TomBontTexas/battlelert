@@ -1456,7 +1456,7 @@
         ctx.beginPath(); ctx.moveTo(0, -L); ctx.lineTo(L * 0.32, -L * 0.45); ctx.lineTo(L * 0.32, L * 0.8); ctx.lineTo(-L * 0.32, L * 0.8); ctx.lineTo(-L * 0.32, -L * 0.45); ctx.closePath(); ctx.fill(); ctx.stroke();
         ctx.restore();
       });
-      es.wing.forEach(function (g) { if (g.hull > 0) BL.drawMapShip(ctx, fr.toPx(c.stationAt(g.station)), es.hdg, big ? 8 : 6, "#7fd8c8"); });
+      es.wing.forEach(function (g) { if (g.hull > 0) BL.drawMapShip(ctx, fr.toPx(g.pos || c.stationAt(g.station)), g.pos ? g.hdg : es.hdg, big ? 8 : 6, "#7fd8c8"); });
       var cp = fr.toPx(es.pos);
       if (big) { ctx.fillStyle = "rgba(207,227,255,.9)"; ctx.font = "600 11px ui-monospace, Menlo, Consolas, monospace"; ctx.textAlign = "left"; ctx.textBaseline = "middle"; ctx.fillText(es.W.label + " " + Math.round(100 * es.hull / es.hullMax) + "%", cp.x + (big ? 30 : 20), cp.y); }
       if (hv && hv.station) { var sp = fr.toPx(hv.station.pos); ctx.strokeStyle = hv.station.on ? "rgba(61,255,122,.9)" : "rgba(255,214,102,.9)"; ctx.lineWidth = 1.5; ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.arc(sp.x, sp.y, Math.max(4, BL.COMMAND.escort.near * map.D * fr.s), 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]); }
