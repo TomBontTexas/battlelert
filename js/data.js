@@ -864,6 +864,12 @@
     // to fly through in order, spread over `along` of the way to the jump point and `side` off it.
     // The navigator's plot keeps `slack` s in hand for each one.
     checkpoints: { classes: ["picket"], n: [2, 4], r: 0.06, along: [0.15, 0.8], side: [0.08, 0.22], slack: 8 },
+    // Light cruiser and up: MAIN GUN swings the bow onto the biggest ship until the crew fires (at
+    // most `timeout` s), then she comes back to the plot. Cruiser and up: LAUNCH / RECOVER call the
+    // squadron in `lead` s (the window `launch` or `recover` s); with no order the flight deck
+    // launches and recovers on its own schedule, and once the captain has recovered it early it stays aboard until he launches.
+    mainSwing: { timeout: 25, botSwing: 60 },      // (botSwing: the test bot swings only for a target that far off the bow)
+    hangarOrder: { lead: 5, launch: 10, recover: 12 },
     // Standing orders at the start of a mission (the captain changes them on the bridge).
     standing: { guns: "auto", stance: "balanced" },
     // (drive first: after life support the drive charges to be full by the window, the rest share what's left)

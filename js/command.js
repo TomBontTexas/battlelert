@@ -264,7 +264,7 @@
     h.base = to360(map.start.hdg - (m.turret ? m.turret.heading : 0));
     h.jumpHdg = info.jumpHdg; h.jumpShown = h.jumpHdg !== null; h.course = null;
     this.info = info; this.leg = 0; this.hdgOrder = null; this.engOrder = null; this.jumpOrdered = false;
-    this.inRock = false; this.inMines = false; this.zoneAt = null; this.holding = false; this.call = null; this.drRate = null; this.drLast = null;
+    this.inRock = false; this.inMines = false; this.zoneAt = null; this.holding = false; this.call = null; this.drRate = null; this.drLast = null; this.swing = null;
     this.cur = { rockHits: 0, zoneAt: null, window: m.windowAt(), legs: info.count, onStation: 0, stationT: 0, cps: map.checkpoints.map(function () { return false; }) };
     this.stats.systems[m.jumpIndex] = this.cur;
     // Escort: the carrier sails the plotted course (the navigator's) from the start, reaching the
@@ -351,7 +351,9 @@
       var sv = this.stationView();
       return { hdg: this.hdgOrder !== null ? this.hdgOrder : sv.hdg, eng: this.engOrder || sv.eng, own: this.hdgOrder !== null || !!this.engOrder, nav: nv, holding: false, station: sv };
     }
-    return { hdg: this.hdgOrder !== null ? this.hdgOrder : nv.steer, eng: this.engOrder || (this.holding ? hold : nv.eng), own: this.hdgOrder !== null || !!this.engOrder, nav: nv, holding: this.holding };
+    // MAIN GUN: the bow on the target until the crew fires (Captain.orderMain).
+    var sw = this.swing && !this.holding ? this.m.helm.compass() + this.m.turret.bearingOf(this.swing.s.x, this.swing.s.y) : null;
+    return { hdg: this.hdgOrder !== null ? this.hdgOrder : sw !== null ? Math.round(to360(sw)) % 360 : nv.steer, eng: this.engOrder || (this.holding ? hold : nv.eng), own: this.hdgOrder !== null || !!this.engOrder, nav: nv, holding: this.holding, main: sw !== null };
   };
 
   /* ------------------------------------------------------------- Escort
@@ -563,12 +565,55 @@
 
   /* ------------------------------------------------------------- Orders */
   Captain.prototype.orderCourse = function (hdg) {
-    this.hdgOrder = Math.round(to360(hdg)) % 360;
+    this.hdgOrder = Math.round(to360(hdg)) % 360; this.swing = null;
     this.m.cue("tick");
   };
   Captain.prototype.orderEngines = function (id) { if (!this.m.helm.preset(id)) return; this.engOrder = id; this.m.cue("tick"); };
   // Back to the plot: the navigation computer steers for the next waypoint.
-  Captain.prototype.resumePlot = function () { this.hdgOrder = null; this.engOrder = null; this.m.cue("tick"); };
+  Captain.prototype.resumePlot = function () { this.hdgOrder = null; this.engOrder = null; this.swing = null; this.m.cue("tick"); };
+  /* MAIN GUN (light cruiser and up): with the gun charged, the pilot swings the bow onto the
+     biggest ship out there and holds it on her until the crew fires (ring.js crewWeapons), then
+     she comes back to the plot. With no order the crew fires whenever a ship crosses the bow. */
+  Captain.prototype.mainView = function () {
+    var m = this.m, mg = m.sys("main"), tu = m.turret;
+    if (!mg) return null;
+    var ready = !mg.tripped && mg.mj >= mg.maxMJ - 0.5, tg = ready ? tu.bigTarget() : null;
+    return { ready: ready, pct: Math.floor(mg.mj / mg.maxMJ * 100), target: tg, swinging: !!this.swing, can: ready && !!tg && !this.swing && !this.holding && !this.jumpOrdered };
+  };
+  Captain.prototype.orderMain = function () {
+    var v = this.mainView();
+    if (!v || !v.can) return false;
+    this.swing = { s: v.target, until: this.m.t + BL.COMMAND.mainSwing.timeout, shots: this.m.stats.mainShots }; this.hdgOrder = null;
+    this.m.cue("tick");
+    return true;
+  };
+  // The swing ends once the gun has fired (or lost most of its charge), nothing is left to swing
+  // onto (a target that's gone gives way to the next biggest), or it has taken too long.
+  Captain.prototype.runSwing = function () {
+    var sw = this.swing, m = this.m, mg = m.sys("main");
+    if (!sw) return;
+    if (sw.s.dead || sw.s.state === "leave" || m.turret.ships.indexOf(sw.s) < 0) sw.s = m.turret.bigTarget();
+    if (!sw.s || !mg || m.stats.mainShots > sw.shots || mg.mj < mg.maxMJ * 0.8 || m.t >= sw.until || this.holding) this.swing = null;
+  };
+  /* LAUNCH / RECOVER (cruiser and up): the flight deck calls it in BL.COMMAND.hangarOrder.lead s
+     and the engineer fills the launchers (or arresters) for it, as for the scheduled calls. */
+  Captain.prototype.hangarView = function () {
+    var m = this.m, hs = m.sys("hangar");
+    if (!hs || !m.data.hangar) return null;
+    var pending = !!hs.call || m.events.some(function (e) { return (e.type === "launch" || e.type === "recover") && !e.done; });
+    var sq = m.squadron, mines = !!(m.encounter() || {}).mines, can = !pending && (sq === "aboard" || sq === "out") && !mines && m.phase !== "countdown";
+    return { squadron: sq, pending: pending, call: hs.call ? hs.call.type : null, can: can, mines: mines && sq === "aboard", order: sq === "out" ? "recover" : "launch" };
+  };
+  Captain.prototype.orderHangar = function () {
+    var v = this.hangarView(), m = this.m, O = BL.COMMAND.hangarOrder;
+    if (!v || !v.can) return false;
+    var t = m.t, type = v.order;
+    m.events.push({ id: m.nextId++, type: type, at: t + O.lead, dur: O[type], announceAt: t, announced: false, visible: true });
+    if (type === "launch") { m.nextLaunchAt = Infinity; m.recoverCalled = false; }       // (the flight deck's own launch is off; its recovery before the jump is back on)
+    else { m.recoverCalled = true; m.nextLaunchAt = Infinity; }
+    m.cue("tick");
+    return true;
+  };
   Captain.prototype.setStance = function (id) { if (!BL.COMMAND.stances[id]) return; this.stance = id; this.applyStance(); this.m.cue("tick"); };
   // The engineer's stance is his priority order: shields first, guns first, the drive first (after
   // life support; the AI engineer then charges it to be full by the window, not just with what's
@@ -696,6 +741,7 @@
     }
     // Asteroids: inside a field the rocks stream through the battle view (RingTurret.dropRock).
     this.inRock = BL.inField(map, this.pos); this.inMines = BL.inMines(map, this.pos);
+    this.runSwing();
     if (m.phase !== "done") this.pilot.think(m, this);
   };
   // A rock touched the shield (ring.js; it lands like a mine, shields first).
@@ -788,6 +834,11 @@
     var wv = c.wardCallView();
     var sh = m.sys("shield"), ours = c.openFish().reduce(function (a, f) { return a + f.mj; }, 0);
     if (wv && wv.canCover && wv.in < BL.GUNNERY.torpedo.travel && sh.mj >= (wv.mj + ours) * E.cover && sh.mj >= sh.maxMJ * 0.5) c.cover();
+    // Main gun: swing onto the big target once it's charged, if it's within botSwing degrees of the bow (a short swing), away from the jump zone.
+    if (!this.noMain && !c.inZone() && !c.callView()) {
+      var mv = c.mainView();
+      if (mv && mv.can && Math.abs(norm(m.turret.bearingOf(mv.target.x, mv.target.y))) <= BL.COMMAND.mainSwing.botSwing) c.orderMain();
+    }
     if (c.jumpView().ready && !c.jumpOrdered) c.orderJump();
   };
   BL.runCaptainHeadless = function (seed, classId, tl, idle, extra) {
@@ -796,6 +847,7 @@
     var m = new BL.Mission(Object.assign({ seed: seed, quiet: true, classId: classId, tl: tl, helm: true, captain: true,
       gunner: { weapons: BL.GUNNERY.loadout[classId], ring: true, arcs: rc.arcs, arcNames: rc.arcNames, helm: true } }, extra));
     var eng = new BL.AIEngineer(0.5, 0.25, m.turret.engineer.skill), bot = new CaptainBot();
+    if (extra && extra.noMain) bot.noMain = true;      // (tests: the main gun on standing orders only)
     if (extra && extra.stance) m.captain.stance = extra.stance;     // (tests: a standing stance other than balanced)
     m.beginJump();
     var guard = 0;

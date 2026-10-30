@@ -614,6 +614,8 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 .cp-torps.live .cp-lbl { color: var(--bad); }
 .cp-torps.live button:not(:disabled) { border-color: var(--bad); color: #ffd0c8; }
 .cp-jump { min-width: 150px; }
+#cp-main, #cp-hangar { min-width: 112px; }
+#cp-main.ready, #cp-hangar.ready { border-color: var(--good); color: var(--good); }
 .cp-jump.ready { border-color: var(--good); color: var(--good); box-shadow: 0 0 10px rgba(99,212,143,.35); }
 
 /* The plotting screen (warp space, clock stopped) */

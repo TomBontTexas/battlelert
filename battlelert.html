@@ -6,7 +6,7 @@
 <meta name="copyright" content="© 2011–2026 Tom Bont. All rights reserved.">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Battlelert</title>
-<link rel="stylesheet" href="css/style.css?b=a1324f84">
+<link rel="stylesheet" href="css/style.css?b=340aba8c">
 </head>
 <body>
 
@@ -405,6 +405,7 @@
     <div class="cp-grp cp-torps"><span class="cp-lbl" id="cp-torp-lbl">TORPEDOES</span><div class="cp-row">
       <button data-brk="-1" title="Break to port (Z)">BREAK PORT <small>(Z)</small></button><button data-brk="0" title="Take it on the shields (X)">TAKE IT <small>(X)</small></button><button data-brk="1" title="Break to starboard (C)">BREAK STBD <small>(C)</small></button><button id="cp-cover" title="Put the gunboat in the way of a burst at the carrier (Q)" hidden>COVER <small>(Q)</small></button></div></div>
     <div class="cp-grp" id="cp-station-grp" hidden><span class="cp-lbl">STATION <small>(1–4)</small></span><div class="cp-row" id="cp-station"></div></div>
+    <div class="cp-grp" id="cp-ship-grp" hidden><span class="cp-lbl">WEAPONS</span><div class="cp-row"><button id="cp-main" title="Swing the bow onto the biggest ship for the main gun (M)" hidden>MAIN GUN <small>(M)</small></button><button id="cp-hangar" title="Launch or recover the gunboat squadron (L)" hidden>LAUNCH <small>(L)</small></button></div></div>
     <div class="cp-grp"><span class="cp-lbl">GUNNERS <small>(G)</small></span><div class="cp-row" id="cp-gunord"></div></div>
     <div class="cp-grp"><span class="cp-lbl">ENGINEER <small>(S)</small></span><div class="cp-row" id="cp-stance"></div></div>
     <div class="cp-grp"><span class="cp-lbl">&nbsp;</span><div class="cp-row"><button id="cp-warn" title="Warn engineering of a burn (E)">WARN ENG <small>(E)</small></button><button id="cp-jump" class="cp-jump" title="Order the jump (J)">JUMP <small>(J)</small></button></div></div>
@@ -620,6 +621,8 @@
       <tr><td>S</td><td>Engineer's stance: shields first, balanced, guns first, drive first</td></tr>
       <tr><td>E</td><td>Warn engineering that a burn is coming</td></tr>
       <tr><td>J</td><td>Order the jump (once it's ready); on a gunboat, the recovery</td></tr>
+      <tr><td>M</td><td>Light cruiser and up: MAIN GUN, swing the bow onto the biggest ship until the crew fires, then back to the plot</td></tr>
+      <tr><td>L</td><td>Cruiser and up: LAUNCH or RECOVER the gunboat squadron</td></tr>
       <tr><td>Q</td><td>Escort mission: COVER the ship the burst is coming at (your ship takes it on its shields)</td></tr>
       <tr><td>1 2 3 4</td><td>Escort mission: keep station ahead of her, off her port beam, off her starboard beam, or astern (a wingman on it swaps with you)</td></tr>
       <tr><td>V</td><td>Swap the map and the battle view (the map starts in the middle, the battle in the box at the right)</td></tr>
@@ -688,7 +691,7 @@
       <li><b>Autopilot.</b> T turns it on and holds the heading; tap the compass across the top to fly to that heading, or tap the captain's order to fly there. On autopilot the strip at the far right of the screen (clear of the battle) is the course set: drag it up and down (headings rise upward, blue box in the middle; the strip's whole height is 360°, so one sweep of the thumb reaches any heading) or tap a heading on it, and the autopilot speeds up and slows the turn to bring her onto it. For the last degree or two, the thin ▲ +1° and ▼ −1° buttons at the ends of the strip (or ] and [) nudge the course one degree; by hand they put her on autopilot one degree off the heading she's on. The compass across the top always shows the ship's actual heading. By hand (autopilot off) the strip is a wheel that slides up and down instead, with no numbers: the farther you slide it from the middle, the harder she turns (down for starboard, up for port), and it stays where you leave it; bringing her onto the heading is up to you. It flies carefully (never past the safe rate, even with a damaged engine; never with split engines) and earns less reputation than steering by hand.</li>
     </ol>
     <h2>On the bridge</h2>
-    <p>The captain plots the course and gives the orders; his crew carry them out. For now the bridge is a test: title screen, <b>Tests</b>, <b>Captain bridge</b>, with the ship picked beside it (gunboat, picket ship, destroyer escort or destroyer, and the gunboat and destroyer escort on escort missions), with no career effect. On a gunboat you're the coxswain: the pilot launches from the carrier's tube at once, and each of the three sorties ends at the carrier's recovery zone instead of a jump: be in it, on its heading, once the sortie timer runs out, and order <b>RECOVER</b> (J). A gunboat has no warp drive, so the engineer has no DRIVE stance. On a gunboat the pilot leaves the tube at the course's speed, not flat out.</p>
+    <p>The captain plots the course and gives the orders; his crew carry them out. For now the bridge is a test: title screen, <b>Tests</b>, <b>Captain bridge</b>, with the ship picked beside it (gunboat, picket ship, destroyer escort, destroyer, light cruiser, cruiser or heavy cruiser, and the gunboat and destroyer escort on escort missions), with no career effect. On a gunboat you're the coxswain: the pilot launches from the carrier's tube at once, and each of the three sorties ends at the carrier's recovery zone instead of a jump: be in it, on its heading, once the sortie timer runs out, and order <b>RECOVER</b> (J). A gunboat has no warp drive, so the engineer has no DRIVE stance. On a gunboat the pilot leaves the tube at the course's speed, not flat out.</p>
     <p><b>Escort missions</b> (pick "Gunboat (escort mission)" or "Destroyer escort (escort mission)" beside the bridge test): your ship is one of a squadron of 2 to 4 screening a ward. A gunboat squadron screens the carrier each sortie; a destroyer escort squadron screens either a convoy of 3 to 5 merchants or a capital ship (rolled for each mission) through every system. She sails her own course to the recovery or jump zone (the blue ships on the map and in the battle view, each with a hull bar); there's no plotting screen. The pilot keeps your station on her (the dashed ring on the map: green when you're on it): <b>AHEAD</b>, <b>PORT</b>, <b>STBD</b> or <b>ASTERN</b> (1 to 4); a course or engine order of your own takes you off it until <b>RESUME STATION</b> (R). Your wingmen (small teal ships) hold other stations; a station button with a teal ▲ has a wingman on it, and picking it swaps you: he flies over to your old station, and any enemy group after him follows him there. She sails her course like a ship, curving round each corner, and her convoy or stations swing round with her. A wingman guards his side of her and shoots down about half the torpedoes coming at her from it; now and then one hits him, and a wingman whose hull runs out is lost and his station opens. Each enemy group picks its target as it arrives and forms up round it: half of them go after her, the rest after a ship of the squadron (you or a wingman, alike), and a group fires only at its own target, so you take only your share. A group whose wingman is lost turns on her. Your gun crew shoots down what they can reach at her and the wingmen, so stay close. When a burst is coming at her, the TORPEDOES box says so: <b>COVER</b> (Q) puts your ship in its way and your shields take it instead, but only when you're close to the ship it's aimed at ("Too far to cover" otherwise). Once she reaches the zone the pilot brings you in on its heading; order RECOVER or JUMP as usual. A carrier or capital ship whose hull runs out is lost, and so is the mission; a convoy is lost only when every merchant is. Score: the objective is her hull at the end (a convoy: the share of its merchants that get through); navigation is the share of each fight you spent on station.</p>
     <p><b>Picket ship: scouting.</b> A picket scouts: each system has 2 to 4 checkpoints (numbered cyan rings on the map) to fly through, in order, before the jump zone. The navigator's plot goes through all of them, and you get a leg more for each one. A plot that misses one shows "Misses checkpoint" and may still be accepted. A checkpoint turns green with a ✓ once you've flown through it, and the NAVIGATION box counts them (CP 1/3). Navigation score on a scouting run: half for reaching the zone on time, half for the share of checkpoints flown through.</p>
     <ol class="tight">
@@ -700,6 +703,7 @@
       <li><b>The crew.</b> The gunners' order (G) goes to every gun: SUGGESTED (each fight's suggestion), TORPEDOES (point defense: torpedoes about to land first), LAUNCHERS (ships charging to fire first), HUNT (the ships each gun is best against) or FREE FIRE (each gunner picks his own). The engineer's stance (S) is his priority order: shields first, balanced, guns first, or <b>drive first</b>. Normally the drive gets only the power left over after the shields and guns; on DRIVE it comes first after life support, charged fast enough to be full just before the window (flat out once the window is near or open), and the shields and guns share what's left. Use it when the READY line on the map says DRIVE, and go back when it says WINDOW: the shields run lower on DRIVE. Warn engineering (E) before a hard burn.</li>
       <li><b>Asteroids and minefields.</b> You may fly into an asteroid field. Its rocks sit in the field where the map shows it, so the battle view shows them only when she's in it or close by; they come at her faster the faster she goes (none while she's stopped): slow down to make it safer. A mine scenario (the minefield, the gunboat's mine lane) has one big minefield (amber, MINEFIELD) over most of the way to the jump: a course always crosses it ("Through the minefield"), and its mines work the same way. Slowing down there (cruise or less) makes a big difference. The pilot steers round the ones coming at her and the gunners shoot them; one that touches the shield hits like a mine (90 MJ, shields first). The rocks and mines hit the enemy ships around her too: an enemy ship one touches is damaged, and small ones can be wrecked. A plotted leg that's clear keeps her out of them.</li>
       <li><b>The jump.</b> Order it (J or JUMP) once the drive is full, the window is open, the ship is in the zone and she's on the jump heading (within 5°); the JUMP button says what's missing ("Steer 245"). Keeping her on the jump heading is your job: on the plot the pilot flies the last leg along it, and he holds her in the zone; on a course of your own, steer it yourself or RESUME PLOT. An ordered jump waits until she's in the zone (BACK TO THE ZONE) and on the heading (STEER 245), then goes.</li>
+      <li><b>Main gun and gunboats</b> (cruisers). With the main gun charged, <b>MAIN GUN</b> (M) has the pilot swing the bow onto the biggest ship out there (the next biggest if it goes first) and hold it there until the crew fires, then come back to the plot; HELM shows "main gun" meanwhile. With no order the crew fires whenever a ship crosses the bow. A swing takes her off the plot (watch EARLY and LATE on the map), and a slow ship bow-on to an enemy has fewer guns on the torpedoes coming from ahead. On a cruiser or heavy cruiser, <b>LAUNCH</b> / <b>RECOVER</b> (L) calls the gunboat squadron out or home in 5 s; the engineer fills the launchers or arresters for it. With no order the flight deck launches early in each fight and recovers before the jump, as always; once you recover the squadron early it stays aboard until you launch it again. No launches in a minefield. GUNS on the BRIDGE panel shows the main gun's charge (or SWINGING) and where the gunboats are.</li>
       <li><b>Score.</b> Objective and ship condition as everywhere, navigation (in the jump zone by the window, no asteroid hits) and command (the shields and guns against the torpedoes, and the breaks made, yours and the pilot's).</li>
     </ol>
     <h2>Pilot training</h2>
@@ -709,15 +713,15 @@
   </div>
 </section>
 
-<script src="version.js?b=0304e58f"></script>
+<script src="version.js?b=4f23e6d5"></script>
 <script src="update-banner.js?b=ec7860dd"></script>
-<script src="js/data.js?b=eac3ecb3"></script>
+<script src="js/data.js?b=74f261e0"></script>
 <script src="js/sim.js?b=ac925dc8"></script>
 <script src="js/agents.js?b=0a43c68f"></script>
 <script src="js/gunnery.js?b=e453799b"></script>
 <script src="js/ring.js?b=a5cdd307"></script>
 <script src="js/helm.js?b=9bf459fd"></script>
-<script src="js/command.js?b=59ae0a45"></script>
+<script src="js/command.js?b=e8214140"></script>
 <script src="js/training.js?b=48646f29"></script>
 <script src="js/art.js?b=ac37cac5"></script>
 <script src="js/turretview.js?b=960c39ae"></script>
@@ -728,6 +732,6 @@
 <script src="js/career.js?b=34474452"></script>
 <script src="js/speech.js?b=f9e428ef"></script>
 <script src="js/audio.js?b=273e5325"></script>
-<script src="js/ui.js?b=649ee0c4"></script>
+<script src="js/ui.js?b=c0c54b41"></script>
 </body>
 </html>
