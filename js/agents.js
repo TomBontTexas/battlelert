@@ -111,6 +111,9 @@
       if ((s.kind === "drive" && !m.driveFirst) || s.kind === "buster") return;
       var full = s.mj >= s.maxMJ - 0.5;
       var w = Math.min(want[id] || 0, s.maxMW);
+      // On the bridge a capacitor at (or nearly at) full gets a trickle charge, enough to hold it
+      // there against its bleed, so the captain's LAUNCH or MAIN GUN doesn't flicker off at 99%.
+      if (m.captain && s.mj >= s.maxMJ - 1) w = Math.max(w, Math.min(s.maxMW, m.holdMW(s) * 1.25 + 0.2));
       var draw = full ? Math.min(w, m.holdMW(s)) : w;
       // (shields split over several reactors: an even share of each, so the tightest one sets the limit)
       var room = s.split ? n * Math.min.apply(null, left) : left[s.reactor];
