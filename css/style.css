@@ -580,28 +580,45 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
    The gun/helm screen with the BRIDGE panel at the left, the map over the SHIP panel at the
    right and the order bar along the bottom. */
 #scr-turret.captain { grid-template-rows: auto 1fr auto auto; }
-#scr-turret.captain .tu-main { grid-template-columns: minmax(210px, 260px) minmax(0, 1fr) minmax(200px, 270px); }
+#scr-turret.captain .tu-main { grid-template-columns: minmax(230px, 280px) minmax(0, 1fr) minmax(200px, 270px); }
 #scr-turret.captain .tu-side { overflow-y: auto; }
 .cp-side { gap: 6px; }
-/* The bridge's telegraphs: three columns of order buttons at the bottom of the BRIDGE panel */
-.cp-teles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; margin-top: auto; flex-shrink: 0; padding-top: 4px; }
-.cp-tcol { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.cp-tcol .cp-lbl { font-size: 10px; text-align: center; overflow: hidden; white-space: normal; }
-.cp-tcol .cp-lbl small { color: var(--muted); }
-.cp-tbtns { display: flex; flex-direction: column; gap: 3px; }
-.cp-tbtns button { width: 100%; padding: 3px 2px; font-size: 11px; line-height: 1.1; min-height: 30px; white-space: normal; overflow-wrap: anywhere; }
+/* The BRIDGE column: each station's status line, meters and orders together */
+#scr-turret.captain .cp-side { gap: 5px; padding: 6px 7px; }
+.cp-sec { display: flex; flex-direction: column; gap: 3px; flex-shrink: 0; background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 3px 5px 5px; }
+.cp-sec.on { border-color: var(--warn); }
+.cp-sec.alert { border-color: var(--bad); }
+.cp-sec.alert .cp-hd, .cp-sec.alert .cp-ln b { color: var(--bad); }
+.cp-hd { font-size: 10px; letter-spacing: .08em; color: var(--muted); }
+.cp-ln { font-family: var(--mono); font-size: 12px; font-weight: 600; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
+.cp-ln b { color: var(--warn); font-weight: 600; }
+.cp-side .cp-row { display: flex; gap: 3px; }
+.cp-side .cp-row[hidden], .cp-side .cp-row button[hidden] { display: none; }
+.cp-side .cp-fill { flex: 1 1 auto; }
+.cp-side .cp-row button { flex: 1 1 0; min-width: 0; min-height: 32px; padding: 3px 2px; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cp-side .cp-row button.cp-wide { flex-grow: 1.6; }
+.cp-side .cp-row button small { display: none; }
+.cp-side .cp-row button.on { border-color: var(--warn); color: var(--warn); }
+.cp-side .cp-jump { min-width: 0; }
+.cp-side button:disabled { opacity: .45; cursor: default; }
+.cp-torps.live .cp-hd { color: var(--bad); }
+/* The telegraphs: three columns, meters and a readout over each */
+.cp-teles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px 5px; flex-shrink: 0; }
+.cp-teles .cp-lbl { font-size: 10px; text-align: center; overflow: hidden; }
+.cp-meters { display: flex; gap: 2px; height: 62px; justify-content: center; }
+.cp-m { flex: 1 1 0; max-width: 14px; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 1px; }
+.cp-m i { flex: 1; width: 100%; display: block; position: relative; overflow: hidden; background: rgba(255,255,255,.08); border: 1px solid var(--line); border-radius: 2px; }
+.cp-m i b { position: absolute; left: 0; right: 0; bottom: 0; background: var(--charge); }
+.cp-m span { font-size: 8px; line-height: 1; color: var(--muted); white-space: nowrap; }
+.cp-m.full i b { background: var(--good); }
+.cp-m.heat i b { background: #e0a040; }
+.cp-m.alarm i b { background: var(--bad); }
+.cp-m.spd i b { background: #8fb8e8; }
+.cp-mv { font-family: var(--mono); font-size: 10px; text-align: center; white-space: nowrap; overflow: hidden; color: var(--text); }
+.cp-tbtns { display: flex; flex-direction: column; gap: 2px; }
+.cp-tbtns button { width: 100%; padding: 2px; font-size: 11px; line-height: 1.1; min-height: 27px; white-space: normal; overflow-wrap: anywhere; }
 .cp-tbtns button.on { border-color: var(--warn); color: var(--warn); }
 .cp-tbtns button:disabled { opacity: .45; cursor: default; }
-/* Room for the telegraphs: the bridge's boxes and buttons compact on every screen */
-#scr-turret.captain .cp-side .panel-title { display: none; }
-#scr-turret.captain .cp-side { gap: 4px; }
-#scr-turret.captain .cp-box { padding: 2px 7px 3px; }
-#scr-turret.captain .cp-box .hd { font-size: 10px; }
-#scr-turret.captain .cp-box .ln { font-size: 12px; line-height: 1.2; }
-.cp-tbtns { gap: 2px; }
-.cp-tbtns button { min-height: 22px; padding: 2px; font-size: 10px; }
-/* WARN ENG and JUMP on their own row, centered under the other orders */
-.cp-brk { flex-basis: 100%; height: 0; }
 .cp-box { flex-shrink: 0; background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px 5px; }
 .cp-box .hd { font-size: 11px; letter-spacing: .08em; color: var(--muted); }
 .cp-box .ln { font-family: var(--mono); font-size: 15px; font-weight: 600; line-height: 1.3; white-space: nowrap; overflow: hidden; color: var(--text); }

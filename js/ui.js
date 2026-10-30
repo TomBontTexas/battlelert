@@ -1391,7 +1391,7 @@
     var h = sim.helm, G = BL.GUNNERY, K = BL.COMMAND;
     $("tu-helm").hidden = $("hm-wheel").hidden = $("hm-strip").hidden = true;
     $("scr-turret").classList.remove("helm"); $("scr-turret").classList.add("captain");
-    $("cp-side").hidden = $("cp-mapbox").hidden = $("cp-orders").hidden = false;
+    $("cp-side").hidden = $("cp-mapbox").hidden = false; $("cp-orders").hidden = true;      // (every order is in the BRIDGE column)
     $("tu-station").textContent = "Bridge · " + (job.test ? sim.data.className : BL.shipLabel(job.classId, job.ship, job.hull) + " (" + sim.data.className + ")") + " · tech level " + sim.data.tl;
     var hasMain = !!sim.sys("main"), hasHangar = !!(sim.sys("hangar") && sim.data.hangar);
     $("tu-keys").textContent = "← → course 10° (Shift 1°) · R resume plot · ↑ ↓ engines · Z break port · X take it · C break starboard · " + (hasMain ? "M main gun · " : "") + (hasHangar ? "L launch / recover · " : "") + "G gunners · S engineer · E warn engineering · J jump · V swap map · + − F zoom · Esc pause · Tap the compass or the map to steer";
@@ -1412,12 +1412,11 @@
   var lastBridgeBox = {};
   var STATION_LIST = ["ahead", "port", "stbd", "astern"], STATION_SHORT = { ahead: "AHEAD", port: "PORT", stbd: "STBD", astern: "ASTERN" },
     STATION_NAME = { ahead: "ahead of the carrier", port: "off her port beam", stbd: "off her starboard beam", astern: "astern of her" };
-  // A BRIDGE box: its title and exactly three lines (a box never changes height).
-  function cpBox(id, title, lines, cls) {
-    var el = $(id), html = '<div class="hd">' + title + "</div>" + [0, 1, 2].map(function (k) { return '<div class="ln">' + (lines[k] || "&nbsp;") + "</div>"; }).join("");
-    setCls(el, "cp-box" + (cls ? " " + cls : ""));
-    if (lastBridgeBox[id] !== html) { lastBridgeBox[id] = html; el.innerHTML = html; fitLines(el); }
-  }
+  // A line or block of the BRIDGE column, rewritten only when it changes.
+  function cpHtml(id, html) { if (lastBridgeBox[id] !== html) { lastBridgeBox[id] = html; $(id).innerHTML = html; } }
+  function cpLine(id, html) { cpHtml(id, html || "&nbsp;"); }
+  // A small upright meter (f: 0 to 1) with its label under it.
+  function meter(lbl, f, cls) { return '<div class="cp-m' + (cls ? " " + cls : "") + '"><i><b style="height:' + Math.round(clampN(f, 0, 1) * 100) + '%"></b></i><span>' + lbl + "</span></div>"; }
   var cpMapCtx = null, cpMapW = 0, cpMapH = 0, cpSwapped = false, cpView = { i: -1, z: 1, dx: 0, dy: 0 };
   // SWAP: the map (with its zoom buttons) in the middle and the battle view in the map's box, or back.
   function bridgeSwap(on) {
@@ -1501,45 +1500,51 @@
     if (!c.pos) { drawBridgeMap(null); return; }
     var hv = c.helmView(), nv = hv.nav, jv = c.jumpView(), cv = c.callView(), ev = h.evadeView(), spd = Math.max(0.05, h.speed) * K.scale;
     drawBridgeMap(hv);
-    // HELM: what she's steering (the captain's own course, or the plot's), her heading and speed, the telegraph.
-    cpBox("cp-helm", "HELM", ["Steer <b>" + hdg3(hv.hdg) + "</b> · " + (hv.own ? "yours" : hv.main ? "main gun" : hv.station ? "station" : "plot"), "Heading " + hdg3(h.compass()) + " · " + fmtG(h.speed) + " G", h.telegraph()], hv.own ? "on" : "");
-    // NAVIGATION: the leg and the next course change, or holding in the jump zone; the window.
-    var wi = sim.windowIn(), win = wi > 0 ? "Window in " + mmss(wi) : "Window open";
-    var es = c.escort, sv = hv.station;
+    // HELM: what she's steering (the captain's own course, the main gun, the station or the plot), her heading and speed.
+    cpLine("cp-helm-ln", "Steer <b>" + hdg3(hv.hdg) + "</b> " + (hv.own ? "yours" : hv.main ? "main gun" : hv.station ? "station" : "plot") + " · " + hdg3(h.compass()) + " · " + fmtG(h.speed) + " G");
+    // NAVIGATION on one line: asteroids or a minefield first; the escort's station and ward; in the zone; else the leg, the next turn and the window.
+    var wi = sim.windowIn(), win = wi > 0 ? "W " + mmss(wi) : "Window open";
+    var es = c.escort, sv = hv.station, nav;
     var afloat = es ? es.ships.filter(function (s) { return s.hull > 0; }).length : 0;
-    if (es) cpBox("cp-nav", "ESCORT", [c.inRock ? "⚠ <b>ASTEROIDS</b>" : c.inMines ? "⚠ <b>MINEFIELD</b>" : sv ? "Station <b>" + STATION_SHORT[c.station] + "</b> · " + (sv.on ? "on" : "<b>off</b>") : "To the <b>" + (sim.hasDrive ? "jump" : "recovery") + " zone</b>",
-      (es.kind === "convoy" ? "Convoy <b>" + afloat + "/" + es.ships.length + "</b> · " : es.kind === "capital" ? "Capital ship " : "Carrier hull ") + "<b>" + Math.round(100 * es.hull / es.hullMax) + "%</b>", win], c.inRock || c.inMines || es.hull < es.hullMax * 0.3 ? "alert" : sv && sv.on ? "on" : "");
-    else {
-      var cps = c.cur && c.cur.cps.length ? " · CP " + c.cur.cps.filter(Boolean).length + "/" + c.cur.cps.length : "";     // a scouting run's checkpoints
-      cpBox("cp-nav", "NAVIGATION", c.inRock || c.inMines ? ["⚠ <b>" + (c.inRock ? "ASTEROIDS" : "MINEFIELD") + "</b>", "Leg " + nv.leg + " of " + nv.legs + cps, win]
-      : hv.holding ? ["<b>IN THE ZONE</b>", "Jump heading <b>" + hdg3(c.info.jumpHdg) + "</b>", win]
-      : ["Leg <b>" + nv.leg + "</b> of " + nv.legs + cps, nv.next ? "Next <b>" + hdg3(nv.next.hdg) + "</b> in " + Math.ceil(nv.next.in) + "s" : "Zone in " + (h.speed > 0.2 ? Math.ceil(nv.toZone / spd) + "s" : "–"), win],
-      c.inRock || c.inMines ? "alert" : hv.holding ? "on" : "");
-    }
+    var cps = c.cur && c.cur.cps.length ? " · CP " + c.cur.cps.filter(Boolean).length + "/" + c.cur.cps.length : "";     // a scouting run's checkpoints
+    if (c.inRock || c.inMines) nav = "⚠ <b>" + (c.inRock ? "ASTEROIDS" : "MINEFIELD") + "</b> · " + win;
+    else if (es) nav = (sv ? "<b>" + STATION_SHORT[c.station] + "</b> " + (sv.on ? "on" : "<b>off</b>") : "To the zone") + " · " + (es.kind === "convoy" ? "Convoy " + afloat + "/" + es.ships.length + " " : es.kind === "capital" ? "Capital " : "Carrier ") + "<b>" + Math.round(100 * es.hull / es.hullMax) + "%</b>";
+    else if (hv.holding) nav = "<b>IN THE ZONE</b> · " + hdg3(c.info.jumpHdg) + " · " + win;
+    else nav = "Leg <b>" + nv.leg + "</b>/" + nv.legs + cps + " · " + (nv.next ? "<b>" + hdg3(nv.next.hdg) + "</b> in " + Math.ceil(nv.next.in) + "s" : "zone " + (h.speed > 0.2 ? Math.ceil(nv.toZone / spd) + "s" : "–")) + " · " + win;
+    cpLine("cp-nav-ln", nav);
+    setCls($("cp-sec-helm"), "cp-sec" + (c.inRock || c.inMines || (es && es.hull < es.hullMax * 0.3) ? " alert" : hv.own || hv.holding || (sv && sv.on) ? " on" : ""));
     // TORPEDOES: the burst waiting for the captain's call, or the break under way.
     var wv = c.wardCallView ? c.wardCallView() : null;
-    cpBox("cp-torp", "TORPEDOES", ev && ev.left > 0 ? ["<b>BREAK " + (ev.dir > 0 ? "STBD" : "PORT") + "</b>", ev.left.toFixed(1) + " s · " + Math.round(ev.off) + "° of " + BL.HELM.dodge.turn + "°"]
-      : wv && !cv ? ["<b>" + wv.n + "</b> at the " + es.W.name + " · " + wv.in.toFixed(1) + " s", wv.canCover ? "COVER her?" : "Too far to cover"]
-      : cv ? ["<b>" + cv.n + "</b> inbound · " + cv.in.toFixed(1) + " s", cv.canBreak ? "Break or take it?" : "Too late to break"]
-      : ["None inbound", "Standing: take it", "Pilot may break on his own"], ev && ev.left > 0 ? "on" : cv || wv ? "alert" : "");
-    // ENGINE ROOM: the engineer's stance, the hottest reactor, the shields and the drive.
-    var heat = 0; ship.reactors.forEach(function (rx) { heat = Math.max(heat, rx.heat); });
-    var sh = sim.sys("shield"), dr = sim.sys("drive");
-    cpBox("cp-eng", "ENGINE ROOM", ["Stance <b>" + K.stances[c.stance].short + "</b>", "Heat " + Math.round(heat) + "% · shields " + Math.round(sh.mj / sh.maxMJ * 100) + "%", dr ? "Drive " + Math.floor(dr.mj / dr.maxMJ * 100) + "%" : ""],
-      heat >= BL.PHYSICS.alarmHeat ? "alert" : "");
-    var g = tu.cur || {}, mv = c.mainView(), hgv = c.hangarView();
-    // (the main gun's charge and the squadron, on the ships that have them)
-    var gl3 = ship.crippled ? "✖ Crew crippled" : [mv ? "Main " + (mv.swinging ? "<b>SWINGING</b>" : mv.ready ? "<b>READY</b>" : mv.pct + "%") : "",
-      hgv ? "Gunboats " + (hgv.call ? (hgv.call === "launch" ? "<b>LAUNCHING</b>" : "<b>RECOVERING</b>") : hgv.pending ? "called" : hgv.squadron === "out" ? "<b>out</b>" : hgv.squadron === "lost" ? "lost" : "aboard") : ""].filter(Boolean).join(" · ");
-    cpBox("cp-guns", "GUNS", ["Order <b>" + K.gunShort[c.guns] + "</b>", "Kills " + (g.kills || 0) + "/" + (g.ships || 0) + " · down " + (g.downed || 0) + "/" + (g.torps || 0), gl3]);
+    cpLine("cp-torp-ln", ev && ev.left > 0 ? "<b>BREAK " + (ev.dir > 0 ? "STBD" : "PORT") + "</b> " + ev.left.toFixed(1) + " s · " + Math.round(ev.off) + "°/" + BL.HELM.dodge.turn + "°"
+      : wv && !cv ? "<b>" + wv.n + "</b> at the " + es.W.name + " · " + (wv.canCover ? "COVER her?" : "too far")
+      : cv ? "<b>" + cv.n + "</b> inbound · " + (cv.canBreak ? "break or take it?" : "too late to break")
+      : "None inbound · standing: take it");
+    setCls($("cp-sec-torp"), "cp-sec cp-torps" + (ev && ev.left > 0 ? " on" : cv || wv ? " alert live" : ""));
+    // The telegraphs' meters: speed; each gun's charge, the main gun, the CIWS and the hangar; each
+    // reactor's heat, the shields and the drive (and the planet buster); a readout under each.
+    var g = tu.cur || {}, mv = c.mainView(), hgv = c.hangarView(), sh = sim.sys("shield"), dr = sim.sys("drive"), heat = 0;
+    function full(x) { return x.mj >= x.maxMJ - 0.5 ? "full" : ""; }
+    cpHtml("cp-m-eng", meter("SPD", h.speed / Math.max(0.1, h.gOf("flank")), "spd"));
+    var gm = "";
+    ship.systems.forEach(function (x) { if (x.kind === "gun") gm += meter(String(x.gunner || ""), x.mj / x.maxMJ, full(x)); });
+    ["main", "pd", "hangar"].forEach(function (id) { var x = sim.sys(id); if (x && x.mode !== "lost") gm += meter(id === "main" ? "M" : id === "pd" ? "C" : "H", x.mj / x.maxMJ, full(x)); });
+    cpHtml("cp-m-gun", gm);
+    var em = "";
+    ship.reactors.forEach(function (rx, k) { heat = Math.max(heat, rx.heat); em += meter(ship.reactors.length > 1 ? "R" + (k + 1) : "RX", rx.heat / 100, rx.heat >= BL.PHYSICS.alarmHeat ? "alarm" : "heat"); });
+    em += meter("SH", sh.mj / sh.maxMJ, full(sh));
+    if (dr) em += meter("DR", dr.mj / dr.maxMJ, full(dr));
+    var bu = sim.sys("buster"); if (bu) em += meter("PB", bu.mj / bu.maxMJ, full(bu));
+    cpHtml("cp-m-engr", em);
+    cpLine("cp-v-eng", fmtG(h.speed) + " G");
+    cpLine("cp-v-gun", ship.crippled ? "✖ crippled" : mv ? "Main " + (mv.swinging ? "swing" : mv.ready ? "READY" : mv.pct + "%") : "Kills " + ((tu.cur || {}).kills || 0));
+    cpLine("cp-v-engr", "Heat " + Math.round(heat) + "%");
     // The order bar
     var live = turretActive();
     Array.prototype.forEach.call($("cp-tele").children, function (b) { b.classList.toggle("on", b.dataset.eng === hv.eng); b.disabled = !live; });
     Array.prototype.forEach.call($("cp-gunord").children, function (b) { b.classList.toggle("on", b.dataset.gun === c.guns); b.disabled = !live; });
     Array.prototype.forEach.call($("cp-stance").children, function (b) { b.classList.toggle("on", b.dataset.stance === c.stance); b.disabled = !live; });
     $("cp-resume").disabled = !live || !hv.own;
-    var tg = $("cp-orders").querySelector(".cp-torps");
-    tg.classList.toggle("live", !!cv);
+    var tg = $("cp-sec-torp");
     setText($("cp-torp-lbl"), cv ? "TORPEDOES · " + cv.in.toFixed(1) + " s" : "TORPEDOES");
     Array.prototype.forEach.call(tg.querySelectorAll("button[data-brk]"), function (b) { b.disabled = !live || !cv || (+b.dataset.brk !== 0 && !cv.canBreak); });
     if (es) {
@@ -1642,8 +1647,7 @@
       else if (b.id === "cp-hangar") c.orderHangar();
       else if (b.id === "cp-jump") c.orderJump();
     }
-    $("cp-orders").addEventListener("click", bridgeClick);
-    $("cp-teles").addEventListener("click", bridgeClick);
+    $("cp-side").addEventListener("click", bridgeClick);
     // The map: a tap steers for that point (a course of the captain's own); a drag pans it, two
     // fingers pinch to zoom, the mouse wheel zooms.
     var mv = $("cp-map"), ptrs = {}, pinch = null;
