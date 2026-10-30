@@ -622,7 +622,8 @@
     var m = this.m, base = this.basePriority.slice(), guns = base.filter(function (id) { var s = m.sys(id); return s && s.kind === "gun"; });
     m.driveFirst = this.stance === "drive" && !!m.sys("drive");
     m.mainFirst = this.stance === "main" && !!m.sys("main");       // (main gun first: after life support, charged flat out: AIEngineer.think)
-    var first = this.stance === "shields" ? ["shield"] : this.stance === "guns" ? guns : m.driveFirst ? ["life", "drive"] : m.mainFirst ? ["life", "main"] : [];
+    m.busterFirst = this.stance === "moab" && !!m.sys("buster");   // (MOAB: the planet buster likewise)
+    var first = this.stance === "shields" ? ["shield"] : this.stance === "guns" ? guns : m.driveFirst ? ["life", "drive"] : m.mainFirst ? ["life", "main"] : m.busterFirst ? ["life", "buster"] : [];
     m.setPriority(first.concat(base.filter(function (id) { return first.indexOf(id) < 0; })));
   };
   Captain.prototype.setGuns = function (id) { if (!BL.GUNNERY.orders[id]) return; this.guns = id; this.applyGuns(); this.m.cue("tick"); };
@@ -692,6 +693,9 @@
   Captain.prototype.jumpView = function () {
     var m = this.m, d = m.sys("drive"), h = m.helm;
     var drive = !d ? null : d.mj < d.maxMJ - 0.5 ? "Drive " + Math.floor(d.mj / d.maxMJ * 100) + "%" : null;
+    // (a dreadnought's final jump also waits for the planet buster: Mission.runJump)
+    var bu = m.sys("buster");
+    if (!drive && bu && m.jumpIndex === m.cfg.jumps - 1 && !m.busterFull()) drive = "Buster " + Math.floor(bu.mj / bu.maxMJ * 100) + "%";
     var steer = "Steer " + BL.hdgText(this.info.jumpHdg);
     // (the squadron must be aboard first, unless her hull is down to the point of leaving it: Mission.runJump)
     var out = m.squadron === "out" && m.ship.hull > m.ship.hullMax * 0.2 ? "Recover gunboats" : null;

@@ -90,7 +90,7 @@
   // coxswain: three sorties from the carrier, each ending at its recovery point.
   // (…Escort: an escort mission, the squadron screening a carrier, convoy or capital ship; command.js Escort.
   // A picket flies a scouting run through checkpoints.)
-  var CAPTAIN_SHIPS = ["gunboat", "gunboatEscort", "picket", "destroyerEscort", "destroyerEscortEscort", "destroyer", "lightCruiser", "cruiser", "heavyCruiser"];
+  var CAPTAIN_SHIPS = ["gunboat", "gunboatEscort", "picket", "destroyerEscort", "destroyerEscortEscort", "destroyer", "lightCruiser", "cruiser", "heavyCruiser", "battleship", "dreadnought"];
   var CAPTAIN_ESCORT = { gunboatEscort: "gunboat", destroyerEscortEscort: "destroyerEscort" };     // escort mission picks: their class
   CAPTAIN_SHIPS.forEach(function (id) {
     var esc = CAPTAIN_ESCORT[id], o = document.createElement("option"); o.value = id; o.textContent = BL.classById(esc || id).name + (esc ? " (escort mission)" : ""); $("cap-pick").appendChild(o);
@@ -1386,7 +1386,7 @@
      Before each system, in warp space with the clock stopped, the plotting screen. */
   var BRIDGE_ENG = ["stop", "deadSlow", "cruise", "standard", "full", "flank"];
   // The engineer's stances this ship has (MAIN GUN on a ship with a main gun, DRIVE on one with a warp drive).
-  function bridgeStances() { return BL.COMMAND.stanceList.filter(function (id) { return (id !== "drive" || sim.hasDrive) && (id !== "main" || !!sim.sys("main")); }); }
+  function bridgeStances() { return BL.COMMAND.stanceList.filter(function (id) { return (id !== "drive" || sim.hasDrive) && (id !== "main" || !!sim.sys("main")) && (id !== "moab" || !!sim.sys("buster")); }); }
   function buildBridge() {
     var h = sim.helm, G = BL.GUNNERY, K = BL.COMMAND;
     $("tu-helm").hidden = $("hm-wheel").hidden = $("hm-strip").hidden = true;
@@ -1530,7 +1530,7 @@
       : "None inbound");
     setCls($("cp-sec-torp"), "cp-sec cp-torps" + (ev && ev.left > 0 ? " on" : cv || wv ? " alert live" : ""));
     // The telegraphs' meters: speed; the guns' charge (all together), the main gun, the CIWS and the hangar; each
-    // reactor's heat, the shields and the drive (and the planet buster); a readout under each.
+    // the reactors' heat (the hottest one, on a ship with several), the shields and the drive (and the planet buster); a readout under each.
     var g = tu.cur || {}, mv = c.mainView(), hgv = c.hangarView(), sh = sim.sys("shield"), dr = sim.sys("drive"), heat = 0;
     function full(x) { return x.mj >= x.maxMJ - 0.5 ? "full" : ""; }
     cpHtml("cp-m-eng", meter("SPD", h.speed / Math.max(0.1, h.gOf("flank")), "spd"));
@@ -1541,7 +1541,8 @@
     ["main", "pd"].forEach(function (id) { var x = sim.sys(id); if (x) gm += meter(id === "main" ? "M" : "C", x.mj / x.maxMJ, full(x)); });
     cpHtml("cp-m-gun", gm);
     var em = "";
-    ship.reactors.forEach(function (rx, k) { heat = Math.max(heat, rx.heat); em += meter(ship.reactors.length > 1 ? "R" + (k + 1) : "RX", rx.heat / 100, rx.heat >= BL.PHYSICS.alarmHeat ? "alarm" : "heat"); });
+    ship.reactors.forEach(function (rx) { heat = Math.max(heat, rx.heat); });
+    em += meter("RX", heat / 100, heat >= BL.PHYSICS.alarmHeat ? "alarm" : "heat");
     em += meter("SH", sh.mj / sh.maxMJ, full(sh));
     if (dr) em += meter("DR", dr.mj / dr.maxMJ, full(dr));
     var bu = sim.sys("buster"); if (bu) em += meter("PB", bu.mj / bu.maxMJ, full(bu));
@@ -1574,8 +1575,9 @@
     }
     if (hgv) {
       var hb = $("cp-hangar"); hb.disabled = !live || !hgv.can; hb.classList.toggle("ready", !!hgv.can);
-      setHtml(hb, hgv.squadron === "lost" ? "SQUADRON LOST" : hgv.pending ? (hgv.order === "recover" ? "RECOVERING" : "LAUNCHING") : hgv.mines ? "NO LAUNCH · MINES"
+      setHtml(hb, hgv.squadron === "lost" ? "SQUADRON LOST" : hgv.pending ? (hgv.order === "recover" ? "RECOVERING" : "LAUNCHING") : hgv.mines ? "NO LAUNCH"
         : (hgv.order === "recover" ? "RECOVER" : "LAUNCH") + (hgv.full ? " <small>(L)</small>" : " " + hgv.pct + "%"));
+      hb.title = hgv.mines ? "No launches in a minefield" : "Launch or recover the gunboat squadron (L)";
     }
     $("cp-warn").disabled = !live || sim.totalT < h.warnReadyAt;
     var jb = $("cp-jump");

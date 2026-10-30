@@ -877,8 +877,9 @@
     standing: { guns: "auto", stance: "balanced" },
     // (drive first: after life support the drive charges to be full by the window, the rest share what's left)
     stances: { shields: { name: "Shields first", short: "SHIELDS" }, balanced: { name: "Balanced", short: "BALANCE" }, guns: { name: "Guns first", short: "GUNS" },
-      drive: { name: "Drive first", short: "DRIVE" }, main: { name: "Main gun first", short: "MAIN GUN" } },
-    stanceList: ["shields", "balanced", "guns", "main", "drive"],      // (main: light cruiser and up; drive: ships with a warp drive)
+      drive: { name: "Drive first", short: "DRIVE" }, main: { name: "Main gun first", short: "MAIN GUN" }, moab: { name: "Planet buster first", short: "MOAB" } },
+    // (main: light cruiser and up; drive: ships with a warp drive; moab: the dreadnought's planet buster)
+    stanceList: ["shields", "balanced", "guns", "main", "drive", "moab"],
     // The gunners' order buttons on the bridge: what the guns go after (BL.GUNNERY.orders underneath).
     gunShort: { auto: "SUGG", defend: "TORP", stop: "LAUNCH", hunt: "HUNT", free: "FREE" }
   };

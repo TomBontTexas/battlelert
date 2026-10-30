@@ -106,9 +106,11 @@
     // (unless the captain's stance is drive first: then the drive in its place, fast enough to be
     // full a few seconds before the window, at its full rate once the window is near or open).
     if (drive && m.driveFirst) want.drive = Math.min(drive.maxMW, 1.2 * (drive.maxMJ - drive.mj) / Math.max(1, m.windowIn() - 8));
+    // (the captain's MOAB stance: the planet buster in its place, flat out)
+    if (buster && m.busterFirst) want.buster = buster.maxMW;
     order.forEach(function (id) {
       var s = m.sys(id);
-      if ((s.kind === "drive" && !m.driveFirst) || s.kind === "buster") return;
+      if ((s.kind === "drive" && !m.driveFirst) || (s.kind === "buster" && !m.busterFirst)) return;
       var full = s.mj >= s.maxMJ - 0.5;
       var w = Math.min(want[id] || 0, s.maxMW);
       // On the bridge a capacitor at (or nearly at) full gets a trickle charge, enough to hold it
@@ -130,7 +132,8 @@
       m.setSetpoint("drive", dg);
       left[drive.reactor] -= dg;
     }
-    if (buster) {
+    if (buster && m.busterFirst) m.setSetpoint("buster", Math.min(buster.maxMW, buster.set + Math.max(0, left[buster.reactor])));
+    else if (buster) {
       // Spread the buster's charge over the time left in the mission, with a margin.
       var timeLeft = Math.max(0, m.windowIn());
       for (var j = m.jumpIndex + 1; j < m.cfg.jumps; j++) timeLeft += m.windowFor(j);
