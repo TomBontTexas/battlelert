@@ -877,7 +877,7 @@
       drive: { name: "Drive first", short: "DRIVE" }, main: { name: "Main gun first", short: "MAIN GUN" } },
     stanceList: ["shields", "balanced", "guns", "main", "drive"],      // (main: light cruiser and up; drive: ships with a warp drive)
     // The gunners' order buttons on the bridge: what the guns go after (BL.GUNNERY.orders underneath).
-    gunShort: { auto: "SUGGESTED", defend: "TORPEDOES", stop: "LAUNCHERS", hunt: "HUNT", free: "FREE FIRE" }
+    gunShort: { auto: "SUGG", defend: "TORP", stop: "LAUNCH", hunt: "HUNT", free: "FREE" }
   };
 
   /* ------------------------------------------------------------ Chatter

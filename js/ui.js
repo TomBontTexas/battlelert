@@ -1407,7 +1407,7 @@
     var esc = !!sim.captain.escort;
     $("cp-station-grp").hidden = $("cp-cover").hidden = !esc;
     $("cp-station").innerHTML = esc ? STATION_LIST.map(function (id, k) { return '<button data-station="' + id + '" title="Keep station ' + STATION_NAME[id] + " (" + (k + 1) + ')">' + STATION_SHORT[id] + "</button>"; }).join("") : "";
-    setHtml($("cp-resume"), esc ? "RESUME STATION <small>(R)</small>" : "RESUME PLOT <small>(R)</small>");
+    setHtml($("cp-resume"), esc ? "RESUME STN <small>(R)</small>" : "RESUME PLOT <small>(R)</small>");
   }
   var lastBridgeBox = {};
   var STATION_LIST = ["ahead", "port", "stbd", "astern"], STATION_SHORT = { ahead: "AHEAD", port: "PORT", stbd: "STBD", astern: "ASTERN" },
@@ -1515,18 +1515,21 @@
     setCls($("cp-sec-helm"), "cp-sec" + (c.inRock || c.inMines || (es && es.hull < es.hullMax * 0.3) ? " alert" : hv.own || hv.holding || (sv && sv.on) ? " on" : ""));
     // TORPEDOES: the burst waiting for the captain's call, or the break under way.
     var wv = c.wardCallView ? c.wardCallView() : null;
-    cpLine("cp-torp-ln", ev && ev.left > 0 ? "<b>BREAK " + (ev.dir > 0 ? "STBD" : "PORT") + "</b> " + ev.left.toFixed(1) + " s · " + Math.round(ev.off) + "°/" + BL.HELM.dodge.turn + "°"
-      : wv && !cv ? "<b>" + wv.n + "</b> at the " + es.W.name + " · " + (wv.canCover ? "COVER her?" : "too far")
-      : cv ? "<b>" + cv.n + "</b> inbound · " + (cv.canBreak ? "break or take it?" : "too late to break")
-      : "None inbound · standing: take it");
+    // (the heading counts the seconds; the line says what's coming, plainly)
+    cpLine("cp-torp-ln", ev && ev.left > 0 ? "<b>Breaking " + (ev.dir > 0 ? "starboard" : "port") + "</b>"
+      : cv ? "<b>" + cv.n + " inbound</b>" + (cv.canBreak ? "" : " · too late to break")
+      : wv ? "<b>" + wv.n + "</b> at the " + es.W.name + (wv.canCover ? "" : " · too far")
+      : "None inbound");
     setCls($("cp-sec-torp"), "cp-sec cp-torps" + (ev && ev.left > 0 ? " on" : cv || wv ? " alert live" : ""));
-    // The telegraphs' meters: speed; each gun's charge, the main gun, the CIWS and the hangar; each
+    // The telegraphs' meters: speed; the guns' charge (all together), the main gun, the CIWS and the hangar; each
     // reactor's heat, the shields and the drive (and the planet buster); a readout under each.
     var g = tu.cur || {}, mv = c.mainView(), hgv = c.hangarView(), sh = sim.sys("shield"), dr = sim.sys("drive"), heat = 0;
     function full(x) { return x.mj >= x.maxMJ - 0.5 ? "full" : ""; }
     cpHtml("cp-m-eng", meter("SPD", h.speed / Math.max(0.1, h.gOf("flank")), "spd"));
     var gm = "";
-    ship.systems.forEach(function (x) { if (x.kind === "gun") gm += meter(String(x.gunner || ""), x.mj / x.maxMJ, full(x)); });
+    var gmj = 0, gmax = 0;
+    ship.systems.forEach(function (x) { if (x.kind === "gun") { gmj += x.mj; gmax += x.maxMJ; } });
+    if (gmax) gm += meter("GUN", gmj / gmax, gmj >= gmax - 0.5 ? "full" : "");
     ["main", "pd", "hangar"].forEach(function (id) { var x = sim.sys(id); if (x && x.mode !== "lost") gm += meter(id === "main" ? "M" : id === "pd" ? "C" : "H", x.mj / x.maxMJ, full(x)); });
     cpHtml("cp-m-gun", gm);
     var em = "";
@@ -1545,7 +1548,7 @@
     Array.prototype.forEach.call($("cp-stance").children, function (b) { b.classList.toggle("on", b.dataset.stance === c.stance); b.disabled = !live; });
     $("cp-resume").disabled = !live || !hv.own;
     var tg = $("cp-sec-torp");
-    setText($("cp-torp-lbl"), cv ? "TORPEDOES · " + cv.in.toFixed(1) + " s" : "TORPEDOES");
+    setText($("cp-torp-lbl"), cv ? "TORPEDOES · " + cv.in.toFixed(1) + " s" : wv ? "TORPEDOES · " + wv.in.toFixed(1) + " s" : "TORPEDOES");
     Array.prototype.forEach.call(tg.querySelectorAll("button[data-brk]"), function (b) { b.disabled = !live || !cv || (+b.dataset.brk !== 0 && !cv.canBreak); });
     if (es) {
       $("cp-cover").disabled = !live || !wv || !wv.canCover; $("cp-cover").classList.toggle("ready", !!(wv && wv.canCover));
