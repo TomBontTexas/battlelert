@@ -51,6 +51,7 @@
     // A story mission (story.js) flies the systems its story names. The mine lane needs the gun
     // view, so in the engine room it's a minefield. reports: a line to play in each system.
     if (opts.route) this.route = opts.route.map(function (id) { return id === "sweep" && !opts.gunner ? "minefield" : id; });
+    if (opts.route && this.dropping() && this.route[this.route.length - 1] === "hunters") this.route[this.route.length - 1] = "raiders";     // (no drive hunters at the drop)
     this.reports = opts.reports || [];
     this.jumpIndex = 0;
     this.phase = "briefing";                // briefing | arrival | engage | countdown | gravspace | done
@@ -95,11 +96,15 @@
 
   // The dreadnought's last system is the drop (no warp out): see runDrop.
   Mission.prototype.isDrop = function () { return !!this.sys("buster") && this.jumpIndex === this.cfg.jumps - 1; };
+  // (the class carries a planet buster: its last system is the drop; usable before the ship is built)
+  Mission.prototype.dropping = function () { return this.data.systems.some(function (s) { return s.id === "buster"; }); };
   Mission.prototype.planRoute = function (gunner) {
     var types = ((gunner && this.data.gunnerEncounters) || this.data.encounters || Object.keys(BL.ENCOUNTERS)).slice(), route = [];
     // At the gun a dreadnought's final system is always the homeworld fortress.
     var last = gunner && this.data.gunnerFinal;
-    for (var i = 0; i < this.cfg.jumps; i++) route.push(last && i === this.cfg.jumps - 1 ? last : this.rng.pick(types));
+    // The drop (a dreadnought's last system) has no drive hunters: she isn't warping out.
+    var noHunt = this.dropping() ? types.filter(function (ty) { return ty !== "hunters"; }) : types;
+    for (var i = 0; i < this.cfg.jumps; i++) route.push(last && i === this.cfg.jumps - 1 ? last : this.rng.pick(i === this.cfg.jumps - 1 ? noHunt : types));
     // On longer routes every encounter type appears at least once.
     if (!last && route.length >= types.length) types.forEach(function (ty, k) {
       if (route.indexOf(ty) < 0) route[(k + this.seed) % route.length] = ty;
@@ -364,7 +369,9 @@
     }
     // Stragglers: light waves of another encounter type that join the fight (frigate groups).
     if (enc.stragglers && t >= this.nextStragglerAt && t < cutoff) {
-      for (var q = this.forceCount(), qi = 0; qi < q; qi++) { var sty = r.pick(enc.stragglers.types); this.queueWaves(1, BL.ENCOUNTERS[sty], sty, "straggler", qi); }
+      // (no drive-hunter stragglers at the drop)
+      var stys = this.isDrop() ? enc.stragglers.types.filter(function (ty) { return ty !== "hunters"; }) : enc.stragglers.types;
+      for (var q = this.forceCount(), qi = 0; qi < q; qi++) { var sty = r.pick(stys); this.queueWaves(1, BL.ENCOUNTERS[sty], sty, "straggler", qi); }
       this.nextStragglerAt = t + r.range(enc.stragglers.every);
     }
     // Groups that were due together come in one after another (BL.MISSION.staggerGap apart).
