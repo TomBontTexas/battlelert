@@ -905,7 +905,8 @@
         if (q.type === "launch") {
           this.cue("launch");
           this.squadron = "out"; this.hangarMode("recover");
-          this.chat("launched", null, "good");
+          // (on the bridge it answers the captain's LAUNCH: it cuts in, so a busy fight can't drop it)
+          this.chat("launched", null, "good", !!this.captain);
         } else {
           this.cue("launch");
           this.squadron = "aboard"; this.hangarMode("launch");
