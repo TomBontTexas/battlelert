@@ -309,12 +309,14 @@
 
   /* ------------------------------------------------------------ Squadron
      Cruiser and up: when the launchers fire, the gunboats fly out of the hangar bays, circle
-     the enemy ships strafing them, and shoot down torpedoes that pass close. When the arresters
+     the enemy ships strafing them, and shoot down torpedoes that pass close. In a minefield they
+     patrol ahead of the bow and shoot the mines coming at her (not the rocks). When the arresters
      bring them home they fly back aboard. Your bolts pass them by. */
   RingTurret.prototype.runWing = function (dt) {
     var m = this.m, hg = m.data.hangar, W = this.G.ring.wing, self = this;
     if (!hg) return;
-    var sq = m.squadron;
+    var sq = m.squadron, enc = m.encounter();
+    var mined = m.captain ? m.captain.inMines : !!(enc && (enc.mines || enc.sweep));
     if (sq !== this.lastSquadron) {
       if (sq === "out") this.launchWing();
       else if (this.lastSquadron === "out") this.wing.forEach(function (g) { g.state = "home"; });
@@ -331,7 +333,10 @@
         if (!tg || tg.dead || tg.state === "leave" || self.ships.indexOf(tg) < 0) tg = g.target = self.wingTarget(i);
         g.orbitA += W.spin * dt;
         if (tg) { tx = tg.x + Math.cos(g.orbitA) * W.orbit; ty = tg.y + Math.sin(g.orbitA) * W.orbit; }
-        else {                                                           // nothing to fight: patrol off our side
+        else if (mined) {                                                // a minefield: sweep ahead of the bow
+          var ah = self.rim((i - (W.n - 1) / 2) / Math.max(1, (W.n - 1) / 2) * W.spread), R0 = self.R;
+          tx = R0.cx + (ah.x - R0.cx) * W.sweep + Math.cos(g.orbitA) * 0.03; ty = R0.cy + (ah.y - R0.cy) * W.sweep + Math.sin(g.orbitA) * 0.03;
+        } else {                                                         // nothing to fight: patrol off our side
           var R = self.R, p = self.rim(g.bay);
           tx = R.cx + (p.x - R.cx) * 2.2 + Math.cos(g.orbitA) * 0.04; ty = R.cy + (p.y - R.cy) * 1.5 + Math.sin(g.orbitA) * 0.04;
         }
@@ -348,7 +353,7 @@
       if (g.state !== "home" && m.totalT >= g.next) {
         g.next = m.totalT + W.tick;
         var tp = null, bd = W.look;
-        self.torps.forEach(function (x) { var dd = Math.hypot(x.x - g.x, x.y - g.y); if (dd < bd) { bd = dd; tp = x; } });
+        self.torps.forEach(function (x) { if (x.rock) return; var dd = Math.hypot(x.x - g.x, x.y - g.y); if (dd < bd) { bd = dd; tp = x; } });
         if (tp) {
           self.effects.push({ type: "tracer", x: g.x, y: g.y, x1: tp.x, y1: tp.y, at: m.totalT });
           if (self.rng.chance(W.kill)) { self.downTorpedo(tp, null); m.stats.intercepts++; }

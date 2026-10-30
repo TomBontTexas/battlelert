@@ -106,7 +106,7 @@
       aux: { capacity: 650, rateMW: 50 }, hullPerMJ: 0.3,
       mission: { jumps: 3, windows: [150, 160, 170] }, encounters: ["raiders", "interceptors", "siege", "minefield", "hunters"],
       mainGun: { dmgPerMJ: 0.6 },
-      hangar: { launchAfter: [6, 12], lead: 10, window: 8, retry: 15, recoverBefore: 25, recoverLead: 12, recoverWindow: 10, intercept: 0.25, dps: 6 },
+      hangar: { launchAfter: [6, 12], lead: 10, window: 8, retry: 15, recoverBefore: 25, recoverLead: 12, recoverWindow: 10, intercept: 0.25, mineClear: 0.5, dps: 6 },
       systems: [
         sys("life", "Life support", "LIFE", "life", 80, 16, 80, 4, { drainMW: 4 }),
         sys("shield", "Shields", "SHLD", "shield", 334, 107, 167, 24),
@@ -126,7 +126,7 @@
       mission: { jumps: 3, windows: [160, 170, 180] }, encounters: ["raiders", "interceptors", "siege", "minefield", "hunters"],
       gunnerEncounters: ["raiders", "interceptors", "siege", "minefield", "hunters", "cruiserA"],
       mainGun: { dmgPerMJ: 0.6 },
-      hangar: { launchAfter: [6, 12], lead: 10, window: 8, retry: 15, recoverBefore: 25, recoverLead: 12, recoverWindow: 10, intercept: 0.25, dps: 6 },
+      hangar: { launchAfter: [6, 12], lead: 10, window: 8, retry: 15, recoverBefore: 25, recoverLead: 12, recoverWindow: 10, intercept: 0.25, mineClear: 0.5, dps: 6 },
       systems: [
         sys("life", "Life support", "LIFE", "life", 90, 18, 90, 5, { drainMW: 4.5 }),
         sys("shield", "Shields", "SHLD", "shield", 434, 134, 217, 26),
@@ -148,7 +148,7 @@
       mission: { jumps: 3, windows: [170, 180, 190] }, encounters: ["raiders", "interceptors", "siege", "minefield", "hunters"],
       gunnerEncounters: ["raiders", "interceptors", "siege", "minefield", "hunters", "cruiserA", "battleshipA"],
       mainGun: { dmgPerMJ: 0.6 },
-      hangar: { launchAfter: [6, 12], lead: 10, window: 8, retry: 15, recoverBefore: 25, recoverLead: 12, recoverWindow: 10, intercept: 0.25, dps: 7 },
+      hangar: { launchAfter: [6, 12], lead: 10, window: 8, retry: 15, recoverBefore: 25, recoverLead: 12, recoverWindow: 10, intercept: 0.25, mineClear: 0.5, dps: 7 },
       systems: [
         sys("life", "Life support", "LIFE", "life", 100, 20, 100, 5, { drainMW: 5, reactor: 0 }),
         sys("shield", "Shields", "SHLD", "shield", 565, 167, 282, 28, { reactor: 0 }),
@@ -172,7 +172,7 @@
       mission: { jumps: 3, windows: [180, 190, 200] }, encounters: ["raiders", "interceptors", "siege", "minefield", "hunters"],
       gunnerEncounters: ["raiders", "interceptors", "siege", "minefield", "hunters", "cruiserA", "battleshipA"], gunnerFinal: "fortress",
       mainGun: { dmgPerMJ: 0.6 },
-      hangar: { launchAfter: [6, 12], lead: 10, window: 8, retry: 15, recoverBefore: 25, recoverLead: 12, recoverWindow: 10, intercept: 0.25, dps: 8 },
+      hangar: { launchAfter: [6, 12], lead: 10, window: 8, retry: 15, recoverBefore: 25, recoverLead: 12, recoverWindow: 10, intercept: 0.25, mineClear: 0.5, dps: 8 },
       systems: [
         sys("life", "Life support", "LIFE", "life", 110, 22, 110, 6, { drainMW: 5.5, reactor: 0 }),
         sys("shield", "Shields", "SHLD", "shield", 734, 209, 367, 30, { reactor: 0 }),
@@ -634,7 +634,9 @@
       // circle their target at `orbit` (spin radians/s) strafing it, and every `tick` s shoot at
       // a torpedo within `look` (kill = the chance it goes down). Their strafing adds up to the
       // class's hangar dps.
-      wing: { n: 4, speed: 0.32, orbit: 0.075, spin: 1.4, size: 0.042, look: 0.1, tick: 0.4, kill: 0.35
+      // (sweep: in a minefield, with no ship to fight, the gunboats patrol `sweep` x the shield's
+      // size out ahead of the bow, spread `spread` degrees either side, shooting mines as they come)
+      wing: { n: 4, speed: 0.32, orbit: 0.075, spin: 1.4, size: 0.042, look: 0.1, tick: 0.4, kill: 0.35, sweep: 1.7, spread: 40
       }
     },
     aiGunner: 0.75,                    // skill of the machine gunner (rail view)

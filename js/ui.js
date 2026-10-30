@@ -1579,9 +1579,8 @@
     }
     if (hgv) {
       var hb = $("cp-hangar"); hb.disabled = !live || !hgv.can; hb.classList.toggle("ready", !!hgv.can);
-      setHtml(hb, hgv.squadron === "lost" ? "SQUADRON LOST" : hgv.pending ? (hgv.order === "recover" ? "RECOVERING" : "LAUNCHING") : hgv.mines ? "NO LAUNCH"
+      setHtml(hb, hgv.squadron === "lost" ? "SQUADRON LOST" : hgv.pending ? (hgv.order === "recover" ? "RECOVERING" : "LAUNCHING")
         : (hgv.order === "recover" ? "RECOVER" : "LAUNCH") + (hgv.full ? " <small>(L)</small>" : " " + hgv.pct + "%"));
-      hb.title = hgv.mines ? "No launches in a minefield" : "Launch or recover the gunboat squadron (L)";
     }
     $("cp-warn").disabled = !live || sim.totalT < h.warnReadyAt;
     var jb = $("cp-jump");

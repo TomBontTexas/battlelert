@@ -242,7 +242,8 @@
     if (this.squadron !== "lost") this.squadron = "aboard";
     this.recoverCalled = false; this.holdSaid = false;
     // (on the bridge the captain launches and recovers it himself: Captain.orderHangar)
-    this.nextLaunchAt = this.sys("hangar") && !enc.mines && !this.training && !this.captain && this.squadron === "aboard" ? this.cfg.arrivalSeconds + r.range(this.data.hangar.launchAfter) : Infinity;
+    // (in a minefield too: clearing mines ahead of the ship is part of the squadron's job)
+    this.nextLaunchAt = this.sys("hangar") && !this.training && !this.captain && this.squadron === "aboard" ? this.cfg.arrivalSeconds + r.range(this.data.hangar.launchAfter) : Infinity;
     this.hangarMode("launch");
     this.ship.gTarget = this.data.cruiseG;
     var drive = this.sys("drive"); if (drive) drive.mj = 0;
@@ -853,7 +854,9 @@
         if (this.curBurn) this.curBurn.short += dt;
         if (!this.starvedSaid) { this.starvedSaid = true; this.chat("starved", null, "bad"); }
         // (At the gunner station the mines are seen and shot instead; starving brings more of them.)
-        if (!(this.turret && this.turret.ring) && this.rng.chance(enc.mines.strikePerSec * this.force("minefield") * Math.min(1, short / Math.max(1, ship.gWant)) * dt)) this.mineStrike(enc);
+        // (the squadron, while it's out, clears hangar.mineClear of the mines in her way)
+        var clear = this.squadron === "out" && this.data.hangar ? 1 - this.data.hangar.mineClear : 1;
+        if (!(this.turret && this.turret.ring) && this.rng.chance(enc.mines.strikePerSec * this.force("minefield") * clear * Math.min(1, short / Math.max(1, ship.gWant)) * dt)) this.mineStrike(enc);
       } else if (short < 0.05) this.starvedSaid = false;
     }
     ship.engineMW = ship.g * perG;
