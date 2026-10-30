@@ -76,7 +76,7 @@
     });
     // Main gun: fires whenever full, so feed it hard while there's a target, else let it sit.
     var main = m.sys("main");
-    if (main) want.main = wavesUp ? main.maxMW : Math.min(main.maxMW, (main.maxMJ - main.mj) / 20);
+    if (main) want.main = wavesUp || m.mainFirst ? main.maxMW : Math.min(main.maxMW, (main.maxMJ - main.mj) / 20);
     // Hangar: full power when a call is open or coming soon, else top up slowly.
     ship.systems.forEach(function (s) {
       if (s.kind !== "hangar") return;

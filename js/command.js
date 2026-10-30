@@ -621,7 +621,8 @@
   Captain.prototype.applyStance = function () {
     var m = this.m, base = this.basePriority.slice(), guns = base.filter(function (id) { var s = m.sys(id); return s && s.kind === "gun"; });
     m.driveFirst = this.stance === "drive" && !!m.sys("drive");
-    var first = this.stance === "shields" ? ["shield"] : this.stance === "guns" ? guns : m.driveFirst ? ["life", "drive"] : [];
+    m.mainFirst = this.stance === "main" && !!m.sys("main");       // (main gun first: after life support, charged flat out: AIEngineer.think)
+    var first = this.stance === "shields" ? ["shield"] : this.stance === "guns" ? guns : m.driveFirst ? ["life", "drive"] : m.mainFirst ? ["life", "main"] : [];
     m.setPriority(first.concat(base.filter(function (id) { return first.indexOf(id) < 0; })));
   };
   Captain.prototype.setGuns = function (id) { if (!BL.GUNNERY.orders[id]) return; this.guns = id; this.applyGuns(); this.m.cue("tick"); };

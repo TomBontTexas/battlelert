@@ -586,7 +586,7 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 /* The bridge's telegraphs: three columns of order buttons at the bottom of the BRIDGE panel */
 .cp-teles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; margin-top: auto; flex-shrink: 0; padding-top: 4px; }
 .cp-tcol { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.cp-tcol .cp-lbl { font-size: 10px; text-align: center; overflow: hidden; text-overflow: ellipsis; }
+.cp-tcol .cp-lbl { font-size: 10px; text-align: center; overflow: hidden; white-space: normal; }
 .cp-tcol .cp-lbl small { color: var(--muted); }
 .cp-tbtns { display: flex; flex-direction: column; gap: 3px; }
 .cp-tbtns button { width: 100%; padding: 3px 2px; font-size: 11px; line-height: 1.1; min-height: 30px; white-space: normal; overflow-wrap: anywhere; }

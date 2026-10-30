@@ -1385,6 +1385,8 @@
      puts the map in the middle and the battle view in its box); the orders along the bottom.
      Before each system, in warp space with the clock stopped, the plotting screen. */
   var BRIDGE_ENG = ["stop", "deadSlow", "cruise", "standard", "full", "flank"];
+  // The engineer's stances this ship has (MAIN GUN on a ship with a main gun, DRIVE on one with a warp drive).
+  function bridgeStances() { return BL.COMMAND.stanceList.filter(function (id) { return (id !== "drive" || sim.hasDrive) && (id !== "main" || !!sim.sys("main")); }); }
   function buildBridge() {
     var h = sim.helm, G = BL.GUNNERY, K = BL.COMMAND;
     $("tu-helm").hidden = $("hm-wheel").hidden = $("hm-strip").hidden = true;
@@ -1397,7 +1399,7 @@
     $("cp-main").hidden = !hasMain; $("cp-hangar").hidden = !hasHangar; $("cp-ship-grp").hidden = !hasMain && !hasHangar;
     $("cp-tele").innerHTML = BRIDGE_ENG.slice().reverse().map(function (id) { var p = h.preset(id); return '<button data-eng="' + id + '" title="All ' + p.name.toLowerCase() + '">' + p.short + "</button>"; }).join("");
     $("cp-gunord").innerHTML = ["auto"].concat(G.orderList).map(function (id) { var o = G.orders[id]; return '<button data-gun="' + id + '" title="' + o.name + '">' + K.gunShort[id] + "</button>"; }).join("");
-    $("cp-stance").innerHTML = K.stanceList.filter(function (id) { return id !== "drive" || sim.hasDrive; }).map(function (id) { return '<button data-stance="' + id + '" title="' + K.stances[id].name + '">' + K.stances[id].short + "</button>"; }).join("");
+    $("cp-stance").innerHTML = bridgeStances().map(function (id) { return '<button data-stance="' + id + '" title="' + K.stances[id].name + '">' + K.stances[id].short + "</button>"; }).join("");
     $("tu-mainrow").hidden = true;
     lastBridgeBox = {};
     bridgeSwap(true);               // the map in the middle, the battle in the box at the right (SWAP for the other way)
@@ -1606,7 +1608,7 @@
     else if (kl === "x" && !ev.repeat) c.answer(0);
     else if (kl === "c" && !ev.repeat) c.answer(1);
     else if (kl === "g" && !ev.repeat) c.setGuns(cycle(["auto"].concat(BL.GUNNERY.orderList), c.guns, 1));
-    else if (kl === "s" && !ev.repeat) c.setStance(cycle(BL.COMMAND.stanceList.filter(function (id) { return id !== "drive" || sim.hasDrive; }), c.stance, 1));
+    else if (kl === "s" && !ev.repeat) c.setStance(cycle(bridgeStances(), c.stance, 1));
     else if (kl === "q" && !ev.repeat && c.escort) c.cover();
     else if (k >= "1" && k <= "4" && !ev.repeat && c.escort) c.setStation(STATION_LIST[+k - 1]);
     else if (kl === "e" && !ev.repeat) c.warn();
