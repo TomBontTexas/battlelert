@@ -342,7 +342,7 @@
   // What the helm is to do now: the captain's own course and engines, else the plot's.
   Captain.prototype.helmView = function () {
     var nv = this.navView(), j = this.map().jump, hd = (this.info.jumpHdg || 0) * RAD;
-    // Holding in the zone: dead slow up to the jump point, stopped once she's past it.
+    // Holding in the zone: slow up to the jump point, stopped once she's past it.
     var past = (this.pos.x - j.x) * Math.sin(hd) + (this.pos.y - j.y) * Math.cos(hd) > 0;
     var hold = past ? "stop" : "deadSlow";
     // Escort: the pilot keeps station on the carrier until she's at the jump point; then he brings
@@ -732,7 +732,7 @@
     map.checkpoints.forEach(function (c, i) { if (!cur.cps[i] && dist(pos, c) < c.r) { cur.cps[i] = true; m.cue("tick"); } });
     var zone = this.inZone();
     if (zone && this.cur.zoneAt === null) this.cur.zoneAt = m.t;
-    // In the zone on the last leg, the pilot holds her there (dead slow, then stopped) for the jump.
+    // In the zone on the last leg, the pilot holds her there (slow, then stopped) for the jump.
     this.holding = zone && (this.leg >= pts.length - 2 || this.jumpOrdered);
     // Escort: the carrier sails on; time on station counts while the fight is on.
     if (this.escort && this.escort.pos) {

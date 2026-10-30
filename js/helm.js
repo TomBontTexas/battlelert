@@ -221,7 +221,7 @@
     var H = this.H, r = this.rng, big = Math.min(H.order.turn[1], this.C.safe * 5), small = Math.min(H.order.turn[0], big / 2);
     this.nextTurn = Math.round(r.range([small, big]) / 5) * 5 * (r.chance(0.5) ? 1 : -1);
   };
-  Helm.prototype.orderWords = function (e) { return "all ahead " + this.preset(e.eng).name.toLowerCase(); };
+  Helm.prototype.orderWords = function (e) { var p = this.preset(e.eng); return "all ahead " + (p.say || p.name).toLowerCase(); };     // (spoken: "dead slow")
   // A course order the captain gives on the spot (for a gunner's call, the main gun, the jump
   // heading): `warn` s of notice plus time to swing, then hold it `dur` s. The engines keep the
   // ahead order they have (standard if they're split or going astern).

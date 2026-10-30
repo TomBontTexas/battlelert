@@ -734,9 +734,9 @@
     orders: [
       { id: "fullAstern", name: "Full astern",      short: "FULL AST", f: -0.5 },
       { id: "halfAstern", name: "Half astern",      short: "HALF AST", f: -0.25 },
-      { id: "slowAstern", name: "Dead slow astern", short: "SLOW AST", f: -0.1 },
+      { id: "slowAstern", name: "Slow astern",      short: "SLOW AST", say: "Dead slow astern", f: -0.1 },
       { id: "stop",       name: "Stop",             short: "STOP",     f: 0 },
-      { id: "deadSlow",   name: "Dead slow",        short: "DEAD SLOW", f: 0.1 },
+      { id: "deadSlow",   name: "Slow",             short: "SLOW", say: "Dead slow", f: 0.1 },     // (say: the words spoken in an order; shown as Slow)
       { id: "cruise",     name: "Cruise",           short: "CRUISE",   f: 0.25 },
       { id: "standard",   name: "Standard",         short: "STANDARD", f: 0.5 },
       { id: "full",       name: "Full",             short: "FULL",     f: 1 },
