@@ -1538,13 +1538,15 @@
     var gmj = 0, gmax = 0;
     ship.systems.forEach(function (x) { if (x.kind === "gun") { gmj += x.mj; gmax += x.maxMJ; } });
     if (gmax) gm += meter("GUN", gmj / gmax, gmj >= gmax - 0.5 ? "full" : "");
-    ["main", "pd", "hangar"].forEach(function (id) { var x = sim.sys(id); if (x && x.mode !== "lost") gm += meter(id === "main" ? "M" : id === "pd" ? "C" : "H", x.mj / x.maxMJ, full(x)); });
+    ["main", "pd"].forEach(function (id) { var x = sim.sys(id); if (x) gm += meter(id === "main" ? "M" : "C", x.mj / x.maxMJ, full(x)); });
     cpHtml("cp-m-gun", gm);
     var em = "";
     ship.reactors.forEach(function (rx, k) { heat = Math.max(heat, rx.heat); em += meter(ship.reactors.length > 1 ? "R" + (k + 1) : "RX", rx.heat / 100, rx.heat >= BL.PHYSICS.alarmHeat ? "alarm" : "heat"); });
     em += meter("SH", sh.mj / sh.maxMJ, full(sh));
     if (dr) em += meter("DR", dr.mj / dr.maxMJ, full(dr));
     var bu = sim.sys("buster"); if (bu) em += meter("PB", bu.mj / bu.maxMJ, full(bu));
+    // (the hangar: LN the launchers while the squadron is aboard, AR the arresters while it's out)
+    var hx = hgv && hgv.squadron !== "lost" ? sim.sys("hangar") : null; if (hx) em += meter(hgv.order === "recover" ? "AR" : "LN", hx.mj / hx.maxMJ, full(hx));
     cpHtml("cp-m-engr", em);
     cpLine("cp-v-eng", fmtG(h.speed) + " G");
     cpLine("cp-v-gun", ship.crippled ? "✖ crippled" : mv ? "Main " + (mv.swinging ? "swing" : mv.ready ? "READY" : mv.pct + "%") : "Kills " + ((tu.cur || {}).kills || 0));
@@ -1572,7 +1574,8 @@
     }
     if (hgv) {
       var hb = $("cp-hangar"); hb.disabled = !live || !hgv.can; hb.classList.toggle("ready", !!hgv.can);
-      setHtml(hb, hgv.squadron === "lost" ? "SQUADRON LOST" : hgv.pending ? (hgv.order === "recover" ? "RECOVERING" : "LAUNCHING") : hgv.mines ? "NO LAUNCH · MINES" : (hgv.order === "recover" ? "RECOVER" : "LAUNCH") + " <small>(L)</small>");
+      setHtml(hb, hgv.squadron === "lost" ? "SQUADRON LOST" : hgv.pending ? (hgv.order === "recover" ? "RECOVERING" : "LAUNCHING") : hgv.mines ? "NO LAUNCH · MINES"
+        : (hgv.order === "recover" ? "RECOVER" : "LAUNCH") + (hgv.full ? " <small>(L)</small>" : " " + hgv.pct + "%"));
     }
     $("cp-warn").disabled = !live || sim.totalT < h.warnReadyAt;
     var jb = $("cp-jump");

@@ -865,11 +865,11 @@
     // The navigator's plot keeps `slack` s in hand for each one.
     checkpoints: { classes: ["picket"], n: [2, 4], r: 0.06, along: [0.15, 0.8], side: [0.08, 0.22], slack: 8 },
     // Light cruiser and up: MAIN GUN swings the bow onto the biggest ship until the crew fires (at
-    // most `timeout` s), then she comes back to the plot; the crew fires it only on that order. Cruiser and up: LAUNCH / RECOVER call the
-    // squadron in `lead` s (the window `launch` or `recover` s); with no order the flight deck
-    // launches and recovers on its own schedule, and once the captain has recovered it early it stays aboard until he launches.
+    // most `timeout` s), then she comes back to the plot; the crew fires it only on that order. Cruiser and up: the
+    // captain alone launches and recovers the gunboat squadron (LAUNCH / RECOVER, once the engineer
+    // has the launchers or arresters full); the test bot recovers `botRecover` s before the window.
     mainSwing: { timeout: 25, botSwing: 60 },      // (botSwing: the test bot swings only for a target that far off the bow)
-    hangarOrder: { lead: 5, launch: 10, recover: 12 },
+    hangarOrder: { botRecover: 40 },
     // Standing orders at the start of a mission (the captain changes them on the bridge).
     standing: { guns: "auto", stance: "balanced" },
     // (drive first: after life support the drive charges to be full by the window, the rest share what's left)

@@ -83,7 +83,8 @@
       var type = s.mode === "recover" ? "recover" : "launch", room = s.maxMJ - s.mj;
       if (s.mode === "lost") { want[s.id] = 0; return; }
       var soon = s.call || fc.some(function (e) { return e.type === type && e.in < room / Math.max(1, s.maxMW) + 4; });
-      want[s.id] = soon ? s.maxMW : Math.min(s.maxMW, room / 12);
+      // (on the bridge the captain launches and recovers when he likes: keep it charging until full)
+      want[s.id] = soon || (m.captain && room > 0.3) ? s.maxMW : Math.min(s.maxMW, room / 12);
     });
 
     // A player's call for power: a careful engineer keeps the shields first; a less careful one

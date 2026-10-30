@@ -240,7 +240,8 @@
     // recovered before the jump. A squadron left behind is gone for the rest of the mission.
     if (this.squadron !== "lost") this.squadron = "aboard";
     this.recoverCalled = false; this.holdSaid = false;
-    this.nextLaunchAt = this.sys("hangar") && !enc.mines && !this.training && this.squadron === "aboard" ? this.cfg.arrivalSeconds + r.range(this.data.hangar.launchAfter) : Infinity;
+    // (on the bridge the captain launches and recovers it himself: Captain.orderHangar)
+    this.nextLaunchAt = this.sys("hangar") && !enc.mines && !this.training && !this.captain && this.squadron === "aboard" ? this.cfg.arrivalSeconds + r.range(this.data.hangar.launchAfter) : Infinity;
     this.hangarMode("launch");
     this.ship.gTarget = this.data.cruiseG;
     var drive = this.sys("drive"); if (drive) drive.mj = 0;
@@ -367,7 +368,7 @@
       this.events.push({ id: this.nextId++, type: "launch", at: la, dur: hg.window, announceAt: t, announced: false, visible: true });
       this.nextLaunchAt = Infinity;
     }
-    if (hg && this.squadron === "out" && !this.recoverCalled && t >= this.windowAt() - hg.recoverBefore - hg.recoverLead) {
+    if (hg && this.squadron === "out" && !this.recoverCalled && !this.captain && t >= this.windowAt() - hg.recoverBefore - hg.recoverLead) {
       this.recoverCalled = true;
       var ra = Math.max(t + hg.recoverLead, this.windowAt() - hg.recoverBefore);
       this.events.push({ id: this.nextId++, type: "recover", at: ra, dur: hg.recoverWindow, announceAt: t, announced: false, visible: true });
@@ -923,7 +924,7 @@
         this.stats.calls.push({ type: q.type, filled: false, jump: this.jumpIndex + 1 });
         this.chat("launchMissed", null, "bad");
         // A missed launch is called again, if there's still time before the recovery.
-        if (q.type === "launch" && t + hgd.retry < this.windowAt() - hgd.recoverBefore - 20) this.nextLaunchAt = t + hgd.retry;
+        if (q.type === "launch" && !this.captain && t + hgd.retry < this.windowAt() - hgd.recoverBefore - 20) this.nextLaunchAt = t + hgd.retry;
       }
     }
   };

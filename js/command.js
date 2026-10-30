@@ -595,22 +595,22 @@
     if (sw.s.dead || sw.s.state === "leave" || m.turret.ships.indexOf(sw.s) < 0) sw.s = m.turret.bigTarget();
     if (!sw.s || !mg || m.stats.mainShots > sw.shots || mg.mj < mg.maxMJ * 0.8 || m.t >= sw.until || this.holding) this.swing = null;
   };
-  /* LAUNCH / RECOVER (cruiser and up): the flight deck calls it in BL.COMMAND.hangarOrder.lead s
-     and the engineer fills the launchers (or arresters) for it, as for the scheduled calls. */
+  /* LAUNCH / RECOVER (cruiser and up): the captain alone launches and recovers the gunboat
+     squadron. The engineer keeps the hangar capacitor charging (the launchers while it's aboard,
+     the arresters while it's out); once it's full the order goes at once (Mission.runCalls). The
+     ship won't jump with the squadron out (unless her hull is nearly gone). */
   Captain.prototype.hangarView = function () {
     var m = this.m, hs = m.sys("hangar");
     if (!hs || !m.data.hangar) return null;
-    var pending = !!hs.call || m.events.some(function (e) { return (e.type === "launch" || e.type === "recover") && !e.done; });
-    var sq = m.squadron, mines = !!(m.encounter() || {}).mines, can = !pending && (sq === "aboard" || sq === "out") && !mines && m.phase !== "countdown";
-    return { squadron: sq, pending: pending, call: hs.call ? hs.call.type : null, can: can, mines: mines && sq === "aboard", order: sq === "out" ? "recover" : "launch" };
+    var sq = m.squadron, mines = !!(m.encounter() || {}).mines, full = hs.mj >= hs.maxMJ - 0.5;
+    var can = !hs.call && full && (sq === "aboard" || sq === "out") && !(mines && sq === "aboard") && (m.phase === "engage" || m.phase === "countdown" && sq === "out");
+    return { squadron: sq, pending: !!hs.call, call: hs.call ? hs.call.type : null, can: can, full: full, pct: Math.floor(hs.mj / hs.maxMJ * 100),
+      mines: mines && sq === "aboard", order: sq === "out" ? "recover" : "launch" };
   };
   Captain.prototype.orderHangar = function () {
-    var v = this.hangarView(), m = this.m, O = BL.COMMAND.hangarOrder;
+    var v = this.hangarView(), m = this.m;
     if (!v || !v.can) return false;
-    var t = m.t, type = v.order;
-    m.events.push({ id: m.nextId++, type: type, at: t + O.lead, dur: O[type], announceAt: t, announced: false, visible: true });
-    if (type === "launch") { m.nextLaunchAt = Infinity; m.recoverCalled = false; }       // (the flight deck's own launch is off; its recovery before the jump is back on)
-    else { m.recoverCalled = true; m.nextLaunchAt = Infinity; }
+    m.sys("hangar").call = { until: m.t + 1, type: v.order };
     m.cue("tick");
     return true;
   };
@@ -693,8 +693,10 @@
     var m = this.m, d = m.sys("drive"), h = m.helm;
     var drive = !d ? null : d.mj < d.maxMJ - 0.5 ? "Drive " + Math.floor(d.mj / d.maxMJ * 100) + "%" : null;
     var steer = "Steer " + BL.hdgText(this.info.jumpHdg);
-    var why = drive || (m.t < m.windowAt() ? "Window in " + Math.ceil(m.windowAt() - m.t) + "s" : !this.inZone() ? "Outside the zone" : !h.inJumpCorridor() ? steer : null);
-    var wait = !this.jumpOrdered ? null : drive || (!this.inZone(BL.COMMAND.zoneHold) ? "BACK TO THE ZONE" : !h.inJumpCorridor() ? steer.toUpperCase() : null);
+    // (the squadron must be aboard first, unless her hull is down to the point of leaving it: Mission.runJump)
+    var out = m.squadron === "out" && m.ship.hull > m.ship.hullMax * 0.2 ? "Recover gunboats" : null;
+    var why = drive || out || (m.t < m.windowAt() ? "Window in " + Math.ceil(m.windowAt() - m.t) + "s" : !this.inZone() ? "Outside the zone" : !h.inJumpCorridor() ? steer : null);
+    var wait = !this.jumpOrdered ? null : drive || (out && out.toUpperCase()) || (!this.inZone(BL.COMMAND.zoneHold) ? "BACK TO THE ZONE" : !h.inJumpCorridor() ? steer.toUpperCase() : null);
     return { ready: !why, why: why, ordered: this.jumpOrdered, wait: wait };
   };
   Captain.prototype.orderJump = function () {
@@ -835,6 +837,9 @@
     var wv = c.wardCallView();
     var sh = m.sys("shield"), ours = c.openFish().reduce(function (a, f) { return a + f.mj; }, 0);
     if (wv && wv.canCover && wv.in < BL.GUNNERY.torpedo.travel && sh.mj >= (wv.mj + ours) * E.cover && sh.mj >= sh.maxMJ * 0.5) c.cover();
+    // Gunboats: launch as soon as the launchers are full; recover botRecover s before the window.
+    var hv2 = c.hangarView();
+    if (hv2 && hv2.can && (hv2.order === "launch" ? m.t < m.windowAt() - BL.COMMAND.hangarOrder.botRecover - 20 : m.t >= m.windowAt() - BL.COMMAND.hangarOrder.botRecover)) c.orderHangar();
     // Main gun: swing onto the big target once it's charged, if it's within botSwing degrees of the bow (a short swing), away from the jump zone.
     if (!this.noMain && !c.inZone() && !c.callView()) {
       var mv = c.mainView();
