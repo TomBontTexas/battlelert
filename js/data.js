@@ -738,7 +738,7 @@
       { id: "stop",       name: "Stop",             short: "STOP",     f: 0 },
       { id: "deadSlow",   name: "Slow",             short: "SLOW", say: "Dead slow", f: 0.1 },     // (say: the words spoken in an order; shown as Slow)
       { id: "cruise",     name: "Cruise",           short: "CRUISE",   f: 0.25 },
-      { id: "standard",   name: "Standard",         short: "STANDARD", f: 0.5 },
+      { id: "standard",   name: "Standard",         short: "STD", f: 0.5 },
       { id: "full",       name: "Full",             short: "FULL",     f: 1 },
       { id: "flank",      name: "Flank",            short: "FLANK",    f: 1.1 }
     ],
@@ -873,7 +873,7 @@
     // Standing orders at the start of a mission (the captain changes them on the bridge).
     standing: { guns: "auto", stance: "balanced" },
     // (drive first: after life support the drive charges to be full by the window, the rest share what's left)
-    stances: { shields: { name: "Shields first", short: "SHIELDS" }, balanced: { name: "Balanced", short: "BALANCED" }, guns: { name: "Guns first", short: "GUNS" },
+    stances: { shields: { name: "Shields first", short: "SHIELDS" }, balanced: { name: "Balanced", short: "BALANCE" }, guns: { name: "Guns first", short: "GUNS" },
       drive: { name: "Drive first", short: "DRIVE" }, main: { name: "Main gun first", short: "MAIN GUN" } },
     stanceList: ["shields", "balanced", "guns", "main", "drive"],      // (main: light cruiser and up; drive: ships with a warp drive)
     // The gunners' order buttons on the bridge: what the guns go after (BL.GUNNERY.orders underneath).

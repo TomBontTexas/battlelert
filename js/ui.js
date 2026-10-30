@@ -1407,7 +1407,8 @@
     var esc = !!sim.captain.escort;
     $("cp-station-grp").hidden = $("cp-cover").hidden = !esc;
     $("cp-station").innerHTML = esc ? STATION_LIST.map(function (id, k) { return '<button data-station="' + id + '" title="Keep station ' + STATION_NAME[id] + " (" + (k + 1) + ')">' + STATION_SHORT[id] + "</button>"; }).join("") : "";
-    setHtml($("cp-resume"), esc ? "RESUME STN <small>(R)</small>" : "RESUME PLOT <small>(R)</small>");
+    setHtml($("cp-resume"), "RESUME <small>(R)</small>");
+    $("cp-resume").title = esc ? "Back to your station (R)" : "Back to the plotted course (R)";
   }
   var lastBridgeBox = {};
   var STATION_LIST = ["ahead", "port", "stbd", "astern"], STATION_SHORT = { ahead: "AHEAD", port: "PORT", stbd: "STBD", astern: "ASTERN" },
@@ -1501,17 +1502,20 @@
     var hv = c.helmView(), nv = hv.nav, jv = c.jumpView(), cv = c.callView(), ev = h.evadeView(), spd = Math.max(0.05, h.speed) * K.scale;
     drawBridgeMap(hv);
     // HELM: what she's steering (the captain's own course, the main gun, the station or the plot), her heading and speed.
-    cpLine("cp-helm-ln", "Steer <b>" + hdg3(hv.hdg) + "</b> " + (hv.own ? "yours" : hv.main ? "main gun" : hv.station ? "station" : "plot") + " · " + hdg3(h.compass()) + " · " + fmtG(h.speed) + " G");
-    // NAVIGATION on one line: asteroids or a minefield first; the escort's station and ward; in the zone; else the leg, the next turn and the window.
-    var wi = sim.windowIn(), win = wi > 0 ? "W " + mmss(wi) : "Window open";
+    // (four short lines, so nothing runs off the narrow column)
+    cpLine("cp-helm-ln", "Steer <b>" + hdg3(hv.hdg) + "</b> " + (hv.own ? "yours" : hv.main ? "main gun" : hv.station ? "station" : "plot"));
+    cpLine("cp-hdg-ln", "Hdg " + hdg3(h.compass()) + " · " + fmtG(h.speed) + " G");
+    // NAVIGATION: asteroids or a minefield first; the escort's station and ward; in the zone; else the leg and the next turn. Then the window (and a scouting run's checkpoints).
+    var wi = sim.windowIn(), win = wi > 0 ? "Window " + mmss(wi) : "Window open";
     var es = c.escort, sv = hv.station, nav;
     var afloat = es ? es.ships.filter(function (s) { return s.hull > 0; }).length : 0;
     var cps = c.cur && c.cur.cps.length ? " · CP " + c.cur.cps.filter(Boolean).length + "/" + c.cur.cps.length : "";     // a scouting run's checkpoints
-    if (c.inRock || c.inMines) nav = "⚠ <b>" + (c.inRock ? "ASTEROIDS" : "MINEFIELD") + "</b> · " + win;
+    if (c.inRock || c.inMines) nav = "⚠ <b>" + (c.inRock ? "ASTEROIDS" : "MINEFIELD") + "</b>";
     else if (es) nav = (sv ? "<b>" + STATION_SHORT[c.station] + "</b> " + (sv.on ? "on" : "<b>off</b>") : "To the zone") + " · " + (es.kind === "convoy" ? "Convoy " + afloat + "/" + es.ships.length + " " : es.kind === "capital" ? "Capital " : "Carrier ") + "<b>" + Math.round(100 * es.hull / es.hullMax) + "%</b>";
-    else if (hv.holding) nav = "<b>IN THE ZONE</b> · " + hdg3(c.info.jumpHdg) + " · " + win;
-    else nav = "Leg <b>" + nv.leg + "</b>/" + nv.legs + cps + " · " + (nv.next ? "<b>" + hdg3(nv.next.hdg) + "</b> in " + Math.ceil(nv.next.in) + "s" : "zone " + (h.speed > 0.2 ? Math.ceil(nv.toZone / spd) + "s" : "–")) + " · " + win;
+    else if (hv.holding) nav = "<b>IN THE ZONE</b> · " + hdg3(c.info.jumpHdg);
+    else nav = "Leg <b>" + nv.leg + "</b>/" + nv.legs + " · " + (nv.next ? "<b>" + hdg3(nv.next.hdg) + "</b> in " + Math.ceil(nv.next.in) + "s" : "zone " + (h.speed > 0.2 ? Math.ceil(nv.toZone / spd) + "s" : "–"));
     cpLine("cp-nav-ln", nav);
+    cpLine("cp-win-ln", win + cps);
     setCls($("cp-sec-helm"), "cp-sec" + (c.inRock || c.inMines || (es && es.hull < es.hullMax * 0.3) ? " alert" : hv.own || hv.holding || (sv && sv.on) ? " on" : ""));
     // TORPEDOES: the burst waiting for the captain's call, or the break under way.
     var wv = c.wardCallView ? c.wardCallView() : null;
