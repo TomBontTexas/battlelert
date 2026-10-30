@@ -6,7 +6,7 @@
 <meta name="copyright" content="© 2011–2026 Tom Bont. All rights reserved.">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Battlelert</title>
-<link rel="stylesheet" href="css/style.css?b=340aba8c">
+<link rel="stylesheet" href="css/style.css?b=e57ef939">
 </head>
 <body>
 
@@ -308,6 +308,12 @@
       <div class="cp-box" id="cp-torp"></div>
       <div class="cp-box" id="cp-eng"></div>
       <div class="cp-box" id="cp-guns"></div>
+      <!-- The telegraphs: engines (flank at the top down to stop), the gunners' order, the engineer's stance -->
+      <div class="cp-teles" id="cp-teles">
+        <div class="cp-tcol"><span class="cp-lbl">ENGINES <small>(↑↓)</small></span><div class="cp-tbtns" id="cp-tele"></div></div>
+        <div class="cp-tcol"><span class="cp-lbl">GUNNERS <small>(G)</small></span><div class="cp-tbtns" id="cp-gunord"></div></div>
+        <div class="cp-tcol"><span class="cp-lbl">ENGINEER <small>(S)</small></span><div class="cp-tbtns" id="cp-stance"></div></div>
+      </div>
     </aside>
     <!-- The helm (pilot station): replaces the gun panel -->
     <aside class="panel tu-side hm-side" id="tu-helm" hidden>
@@ -401,13 +407,10 @@
   <div class="cp-orders" id="cp-orders" hidden>
     <div class="cp-grp"><span class="cp-lbl">COURSE</span><div class="cp-row">
       <button data-turn="-10" title="Course 10° to port (←; Shift 1°)">◀ 10°</button><button data-turn="10" title="Course 10° to starboard (→; Shift 1°)">10° ▶</button><button id="cp-resume" title="Back to the plotted course (R)">RESUME PLOT <small>(R)</small></button></div></div>
-    <div class="cp-grp"><span class="cp-lbl">ENGINES</span><div class="cp-row" id="cp-tele"></div></div>
     <div class="cp-grp cp-torps"><span class="cp-lbl" id="cp-torp-lbl">TORPEDOES</span><div class="cp-row">
       <button data-brk="-1" title="Break to port (Z)">BREAK PORT <small>(Z)</small></button><button data-brk="0" title="Take it on the shields (X)">TAKE IT <small>(X)</small></button><button data-brk="1" title="Break to starboard (C)">BREAK STBD <small>(C)</small></button><button id="cp-cover" title="Put the gunboat in the way of a burst at the carrier (Q)" hidden>COVER <small>(Q)</small></button></div></div>
     <div class="cp-grp" id="cp-station-grp" hidden><span class="cp-lbl">STATION <small>(1–4)</small></span><div class="cp-row" id="cp-station"></div></div>
     <div class="cp-grp" id="cp-ship-grp" hidden><span class="cp-lbl">WEAPONS</span><div class="cp-row"><button id="cp-main" title="Swing the bow onto the biggest ship for the main gun (M)" hidden>MAIN GUN <small>(M)</small></button><button id="cp-hangar" title="Launch or recover the gunboat squadron (L)" hidden>LAUNCH <small>(L)</small></button></div></div>
-    <div class="cp-grp"><span class="cp-lbl">GUNNERS <small>(G)</small></span><div class="cp-row" id="cp-gunord"></div></div>
-    <div class="cp-grp"><span class="cp-lbl">ENGINEER <small>(S)</small></span><div class="cp-row" id="cp-stance"></div></div>
     <div class="cp-grp"><span class="cp-lbl">&nbsp;</span><div class="cp-row"><button id="cp-warn" title="Warn engineering of a burn (E)">WARN ENG <small>(E)</small></button><button id="cp-jump" class="cp-jump" title="Order the jump (J)">JUMP <small>(J)</small></button></div></div>
   </div>
   <footer class="con-foot"><span class="hint-bar" id="tu-keys">← → slide · Space fire (hold) · 1 2 torpedoes · C call for power · P pause · Mouse: move to aim, hold button to fire · Touch: drag to aim, hold FIRE</span></footer>
@@ -629,7 +632,7 @@
       <tr><td>+ − / F</td><td>Zoom the map in or out / the whole map again</td></tr>
       <tr><td>Esc</td><td>Pause and resume</td></tr>
       <tr><td>N / U / Enter</td><td>Plotting screen: navigator's plot / undo the last waypoint / accept</td></tr>
-      <tr><td>Mouse / touch</td><td>Tap the compass across the top, or a point on the map, to steer there; drag the map to pan it, pinch or use the mouse wheel (or + − FIT) to zoom; ⇄ SWAP swaps the map and the battle view; the order bar along the bottom has every order. Plotting: tap the map to lay a waypoint, tap a waypoint to remove it, tap a leg's engine order to change it</td></tr>
+      <tr><td>Mouse / touch</td><td>Tap the compass across the top, or a point on the map, to steer there; drag the map to pan it, pinch or use the mouse wheel (or + − FIT) to zoom; ⇄ SWAP swaps the map and the battle view; the telegraphs at the bottom of the BRIDGE panel give the engine order, the gunners' order and the engineer's stance, and the order bar along the bottom has the rest. Plotting: tap the map to lay a waypoint, tap a waypoint to remove it, tap a leg's engine order to change it</td></tr>
     </table>
     <div class="menu"><button id="btn-options-close" class="primary">Done</button></div>
   </div>
@@ -732,6 +735,6 @@
 <script src="js/career.js?b=34474452"></script>
 <script src="js/speech.js?b=f9e428ef"></script>
 <script src="js/audio.js?b=273e5325"></script>
-<script src="js/ui.js?b=c0c54b41"></script>
+<script src="js/ui.js?b=794eb8c2"></script>
 </body>
 </html>

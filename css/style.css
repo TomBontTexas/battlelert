@@ -580,9 +580,29 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
    The gun/helm screen with the BRIDGE panel at the left, the map over the SHIP panel at the
    right and the order bar along the bottom. */
 #scr-turret.captain { grid-template-rows: auto 1fr auto auto; }
-#scr-turret.captain .tu-main { grid-template-columns: minmax(180px, 240px) minmax(0, 1fr) minmax(200px, 270px); }
+#scr-turret.captain .tu-main { grid-template-columns: minmax(210px, 260px) minmax(0, 1fr) minmax(200px, 270px); }
 #scr-turret.captain .tu-side { overflow-y: auto; }
 .cp-side { gap: 6px; }
+/* The bridge's telegraphs: three columns of order buttons at the bottom of the BRIDGE panel */
+.cp-teles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; margin-top: auto; flex-shrink: 0; padding-top: 4px; }
+.cp-tcol { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.cp-tcol .cp-lbl { font-size: 10px; text-align: center; overflow: hidden; text-overflow: ellipsis; }
+.cp-tcol .cp-lbl small { color: var(--muted); }
+.cp-tbtns { display: flex; flex-direction: column; gap: 3px; }
+.cp-tbtns button { width: 100%; padding: 3px 2px; font-size: 11px; line-height: 1.1; min-height: 30px; white-space: normal; overflow-wrap: anywhere; }
+.cp-tbtns button.on { border-color: var(--warn); color: var(--warn); }
+.cp-tbtns button:disabled { opacity: .45; cursor: default; }
+/* Room for the telegraphs: the bridge's boxes a little tighter, and tighter still on short screens */
+#scr-turret.captain .cp-side .panel-title { display: none; }
+#scr-turret.captain .cp-box .ln { font-size: 13px; line-height: 1.25; }
+#scr-turret.captain .cp-box .hd { font-size: 10px; }
+@media (max-height: 860px) {
+  #scr-turret.captain .cp-side { gap: 4px; }
+  #scr-turret.captain .cp-box { padding: 2px 7px 3px; }
+  #scr-turret.captain .cp-box .ln { font-size: 12px; line-height: 1.2; }
+  .cp-tbtns { gap: 2px; }
+  .cp-tbtns button { min-height: 22px; padding: 2px; font-size: 10px; }
+}
 .cp-box { flex-shrink: 0; background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px 5px; }
 .cp-box .hd { font-size: 11px; letter-spacing: .08em; color: var(--muted); }
 .cp-box .ln { font-family: var(--mono); font-size: 15px; font-weight: 600; line-height: 1.3; white-space: nowrap; overflow: hidden; color: var(--text); }

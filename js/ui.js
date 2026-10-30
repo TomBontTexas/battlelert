@@ -1395,7 +1395,7 @@
     $("tu-keys").textContent = "← → course 10° (Shift 1°) · R resume plot · ↑ ↓ engines · Z break port · X take it · C break starboard · " + (hasMain ? "M main gun · " : "") + (hasHangar ? "L launch / recover · " : "") + "G gunners · S engineer · E warn engineering · J jump · V swap map · + − F zoom · Esc pause · Tap the compass or the map to steer";
     // Light cruiser and up: MAIN GUN; cruiser and up: LAUNCH / RECOVER the squadron.
     $("cp-main").hidden = !hasMain; $("cp-hangar").hidden = !hasHangar; $("cp-ship-grp").hidden = !hasMain && !hasHangar;
-    $("cp-tele").innerHTML = BRIDGE_ENG.map(function (id) { var p = h.preset(id); return '<button data-eng="' + id + '" title="All ' + p.name.toLowerCase() + '">' + p.short + "</button>"; }).join("");
+    $("cp-tele").innerHTML = BRIDGE_ENG.slice().reverse().map(function (id) { var p = h.preset(id); return '<button data-eng="' + id + '" title="All ' + p.name.toLowerCase() + '">' + p.short + "</button>"; }).join("");
     $("cp-gunord").innerHTML = ["auto"].concat(G.orderList).map(function (id) { var o = G.orders[id]; return '<button data-gun="' + id + '" title="' + o.name + '">' + K.gunShort[id] + "</button>"; }).join("");
     $("cp-stance").innerHTML = K.stanceList.filter(function (id) { return id !== "drive" || sim.hasDrive; }).map(function (id) { return '<button data-stance="' + id + '" title="' + K.stances[id].name + '">' + K.stances[id].short + "</button>"; }).join("");
     $("tu-mainrow").hidden = true;
@@ -1622,7 +1622,7 @@
     ev.preventDefault();
   }
   (function wireBridge() {
-    $("cp-orders").addEventListener("click", function (ev) {
+    function bridgeClick(ev) {
       var b = ev.target.closest("button"), c = sim && sim.captain;
       if (!b) return;
       b.blur();
@@ -1639,7 +1639,9 @@
       else if (b.id === "cp-main") c.orderMain();
       else if (b.id === "cp-hangar") c.orderHangar();
       else if (b.id === "cp-jump") c.orderJump();
-    });
+    }
+    $("cp-orders").addEventListener("click", bridgeClick);
+    $("cp-teles").addEventListener("click", bridgeClick);
     // The map: a tap steers for that point (a course of the captain's own); a drag pans it, two
     // fingers pinch to zoom, the mouse wheel zooms.
     var mv = $("cp-map"), ptrs = {}, pinch = null;
