@@ -541,22 +541,44 @@
     c.lineWidth = 1.5 / S;
     if (!tp.pass && tp.t1 - m.t < 1.2) { c.strokeStyle = Math.floor(t * 8) % 2 ? "rgba(255,90,70,0.9)" : "rgba(255,90,70,0.3)"; c.beginPath(); c.arc(tp.x1, tp.y1, 0.02, 0, Math.PI * 2); c.stroke(); }
   }
-  // The carrier the gunboat escorts (command.js Escort): a long grey-blue flight deck on her heading,
-  // where she is from the gunboat, with her hull left.
+  // The ward we escort (command.js Escort), each ship where she is from us, on her heading, with
+  // her hull left: a carrier's long grey-blue flight deck, a capital ship's long hull with turrets,
+  // merchants' short boxy hulls; and the squadron's wingmen on their stations (small teal hulls).
   function drawWard(c, S, m) {
     var cp = m.captain;
     if (!cp || !cp.wardAlive() || !cp.pos) return;
-    var v = cp.wardView(), L = 0.17, W = 0.05;
-    if (v.x < -0.3 || v.x > 1.3 || v.y < -0.3 || v.y > 1.3) return;
-    c.save(); c.translate(v.x, v.y); c.rotate(v.rot * Math.PI / 180);
-    c.fillStyle = "#3a4d63"; c.strokeStyle = "#9fc3e8"; c.lineWidth = 1.5 / S;
-    c.beginPath(); c.moveTo(0, -L / 2); c.lineTo(W / 2, -L * 0.3); c.lineTo(W / 2, L / 2); c.lineTo(-W / 2, L / 2); c.lineTo(-W / 2, -L * 0.3); c.closePath(); c.fill(); c.stroke();
-    c.strokeStyle = "rgba(230,240,255,.55)"; c.setLineDash([0.01, 0.008]); c.beginPath(); c.moveTo(0, -L * 0.28); c.lineTo(0, L * 0.45); c.stroke(); c.setLineDash([]);
-    c.fillStyle = "#6f8aa8"; c.fillRect(W * 0.18, -L * 0.05, W * 0.3, L * 0.16);
-    c.restore();
-    var es = cp.escort, f = es.hull / es.hullMax;
-    c.fillStyle = "rgba(0,0,0,.5)"; c.fillRect(v.x - 0.05, v.y + L / 2 + 0.012, 0.1, 0.012);
-    c.fillStyle = f > 0.5 ? "#4fd18b" : f > 0.25 ? "#ffd666" : "#ff6b6b"; c.fillRect(v.x - 0.05, v.y + L / 2 + 0.012, 0.1 * f, 0.012);
+    var es = cp.escort, kind = es.kind;
+    function off(v, k) { return v.x < -0.3 * k || v.x > 1 + 0.3 * k || v.y < -0.3 * k || v.y > 1 + 0.3 * k; }
+    es.ships.forEach(function (s, i) {
+      if (s.hull <= 0) return;
+      var v = cp.wardView(i), L = kind === "convoy" ? 0.08 : 0.17, W = kind === "convoy" ? 0.035 : 0.05;
+      if (off(v, 1)) return;
+      c.save(); c.translate(v.x, v.y); c.rotate(v.rot * Math.PI / 180);
+      c.fillStyle = kind === "convoy" ? "#4d5a52" : "#3a4d63"; c.strokeStyle = kind === "convoy" ? "#b9c9bd" : "#9fc3e8"; c.lineWidth = 1.5 / S;
+      c.beginPath(); c.moveTo(0, -L / 2); c.lineTo(W / 2, -L * 0.3); c.lineTo(W / 2, L / 2); c.lineTo(-W / 2, L / 2); c.lineTo(-W / 2, -L * 0.3); c.closePath(); c.fill(); c.stroke();
+      if (kind === "carrier") {
+        c.strokeStyle = "rgba(230,240,255,.55)"; c.setLineDash([0.01, 0.008]); c.beginPath(); c.moveTo(0, -L * 0.28); c.lineTo(0, L * 0.45); c.stroke(); c.setLineDash([]);
+        c.fillStyle = "#6f8aa8"; c.fillRect(W * 0.18, -L * 0.05, W * 0.3, L * 0.16);
+      } else if (kind === "capital") {
+        c.fillStyle = "#8fa9c6"; [-0.25, -0.1, 0.22].forEach(function (y) { c.beginPath(); c.arc(0, y * L, W * 0.22, 0, Math.PI * 2); c.fill(); });
+        c.fillStyle = "#6f8aa8"; c.fillRect(-W * 0.18, 0, W * 0.36, L * 0.12);
+      } else {
+        c.fillStyle = "#7c8a6e"; for (var q = 0; q < 3; q++) c.fillRect(-W * 0.32, -L * 0.22 + q * L * 0.2, W * 0.64, L * 0.15);
+      }
+      c.restore();
+      var f = s.hull / s.hullMax, bw = kind === "convoy" ? 0.06 : 0.1;
+      c.fillStyle = "rgba(0,0,0,.5)"; c.fillRect(v.x - bw / 2, v.y + L / 2 + 0.012, bw, 0.012);
+      c.fillStyle = f > 0.5 ? "#4fd18b" : f > 0.25 ? "#ffd666" : "#ff6b6b"; c.fillRect(v.x - bw / 2, v.y + L / 2 + 0.012, bw * f, 0.012);
+    });
+    es.wing.forEach(function (g, i) {
+      if (g.hull <= 0) return;
+      var v = cp.wingView(i), L = 0.05;
+      if (off(v, 1)) return;
+      c.save(); c.translate(v.x, v.y); c.rotate(v.rot * Math.PI / 180);
+      c.fillStyle = "#2f5f5a"; c.strokeStyle = "#7fd8c8"; c.lineWidth = 1.5 / S;
+      c.beginPath(); c.moveTo(0, -L / 2); c.lineTo(L * 0.3, L / 2); c.lineTo(0, L * 0.3); c.lineTo(-L * 0.3, L / 2); c.closePath(); c.fill(); c.stroke();
+      c.restore();
+    });
   }
   // A drifting mine: a dark spiked ball with a blinking light, its path a faint grey line.
   function drawMine(c, S, tp, t, m) {

@@ -94,6 +94,16 @@
       ctx.lineTo(tip.x + px * hl * 0.6, tip.y + py * hl * 0.6); ctx.lineTo(tip.x - px * hl * 0.6, tip.y - py * hl * 0.6); ctx.closePath(); ctx.fill();
       if (!small) { ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("JUMP " + BL.hdgText(map.jumpHdg), tip.x + ux * 28, tip.y + uy * 22); }
     }
+    // A scouting run's checkpoints: numbered cyan rings (green and ticked once flown through).
+    (map.checkpoints || []).forEach(function (cp, i) {
+      var c = P(cp), hit = opts.cpHit && opts.cpHit[i];
+      ctx.strokeStyle = hit ? "rgba(61,255,122,.9)" : "rgba(110,220,255,.9)"; ctx.fillStyle = hit ? "rgba(61,255,122,.14)" : "rgba(110,220,255,.1)"; ctx.lineWidth = 1.5; ctx.setLineDash(hit ? [] : [4, 3]);
+      ctx.beginPath(); ctx.arc(c.x, c.y, cp.r * s, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = hit ? "rgba(61,255,122,.95)" : "rgba(150,230,255,.95)"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.font = "700 " + (small ? 10 : 13) + "px ui-monospace, Menlo, Consolas, monospace"; ctx.fillText(hit ? "✓" : String(cp.n), c.x, c.y);
+      if (!small) { ctx.font = "12px ui-monospace, Menlo, Consolas, monospace"; ctx.textBaseline = "top"; ctx.fillText("CHECKPOINT " + cp.n, c.x, c.y + cp.r * s + 3); }
+    });
+    ctx.font = (small ? 10 : 12) + "px ui-monospace, Menlo, Consolas, monospace";
     // The plotted legs: done ones dim, the rest bright; red through a field, amber through a cluster.
     var pts = plot ? plot.pts : [], info = opts.info;
     for (var k2 = 0; k2 < pts.length - 1; k2++) {
@@ -126,6 +136,7 @@
       drawShip(ctx, sp, opts.hdg || 0, small ? 7 : 11, "#ffd666");
     }
   };
+  BL.drawMapShip = function (ctx, c, hdg, len, color) { drawShip(ctx, c, hdg, len, color); };
   function drawShip(ctx, c, hdg, len, color) {
     var a = hdg * RAD, sx = Math.sin(a), cy = -Math.cos(a), px = -cy, py = sx;
     ctx.fillStyle = color; ctx.beginPath();

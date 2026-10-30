@@ -837,14 +837,25 @@
     // A burst with no call from the captain that the shields can't take: the pilot breaks on his
     // own this share of the time (decided once per burst).
     pilotOwn: 0.5,
-    // Gunboat escort (bridge test; command.js Escort): the carrier sails the plotted course to the
-    // jump point in `arrive` of the time to the window; the gunboat's station is `station` x the
-    // map's size off her (sides: ahead, port, starboard, astern), on it within `near`; the pilot
-    // aims `lead` s ahead of it. In the battle view she sits where she is from the
-    // gunboat (at Captain.kView). `share` of the enemy's torpedoes go at her; each that lands costs mj x perMJ of her
-    // hull. COVER works within `cover` view units of her, the torpedoes landing in `coverTime` s or later.
+    // Escort missions (bridge test; command.js Escort): the ward sails the plotted course to the
+    // jump point in `arrive` of the time to the window; our station is `station` x the map's size
+    // off her (sides: ahead, port, starboard, astern), on it within `near`; the pilot aims `lead` s
+    // ahead of it. In the battle view she sits where she is from us (at Captain.kView). `share` of
+    // the enemy's torpedoes go at her; each that lands costs its ship mj x perMJ of its hull. COVER
+    // works within `cover` view units of her, the torpedoes landing in `coverTime` s or later.
+    // The squadron is `squad` ships, ours included; a wingman shoots down `wingStop` of the
+    // torpedoes at her from his side, and `wingRisk` of those he takes mj x wingPerMJ of his hull.
+    // The ward (kinds): a gunboat squadron's carrier; a destroyer escort squadron's convoy of
+    // merchants (`ships`, two abreast `gap` apart) or capital ship, rolled per mission.
     escort: { arrive: 0.9, station: 0.06, near: 0.025, lead: 3, sides: { ahead: 0, port: -90, stbd: 90, astern: 180 },
-              share: 0.5, hull: 100, perMJ: 0.03, cover: 0.55, coverTime: 0.8 },
+              share: 0.5, cover: 0.55, coverTime: 0.8, squad: [2, 4], wingStop: 0.5, wingRisk: 0.2, wingPerMJ: 0.1, wingHull: 100,
+              kinds: { carrier: { name: "carrier", label: "CARRIER", ships: [1, 1], hull: 100, perMJ: 0.03 },
+                       capital: { name: "capital ship", label: "CAPITAL SHIP", ships: [1, 1], hull: 100, perMJ: 0.03 },
+                       convoy: { name: "convoy", label: "CONVOY", ships: [3, 5], hull: 100, perMJ: 0.08, gap: 0.03, station: 0.075 } } },
+    // A picket's scouting run (the captain's path): `n` checkpoints of radius `r` (x the map's size)
+    // to fly through in order, spread over `along` of the way to the jump point and `side` off it.
+    // The navigator's plot keeps `slack` s in hand for each one.
+    checkpoints: { classes: ["picket"], n: [2, 4], r: 0.06, along: [0.15, 0.8], side: [0.08, 0.22], slack: 8 },
     // Standing orders at the start of a mission (the captain changes them on the bridge).
     standing: { guns: "auto", stance: "balanced" },
     // (drive first: after life support the drive charges to be full by the window, the rest share what's left)

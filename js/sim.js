@@ -67,8 +67,9 @@
     // Pilot station: the player at the helm (opts.helm), the gun crew on every gun; see helm.js.
     this.helm = opts.helm && this.turret && this.turret.ring ? new BL.Helm(this) : null;
     // Command (opts.captain): the player is the captain; an NPC pilot flies the helm; see command.js.
-    // opts.escort (a gunboat): each sortie screens the carrier (Captain, BL.COMMAND.escort).
-    this.escort = !!opts.escort && !this.hasDrive;
+    // opts.escort: an escort mission (a gunboat squadron screens the carrier each sortie, a
+    // destroyer escort squadron a convoy or capital ship each system; Captain, BL.COMMAND.escort).
+    this.escort = !!opts.escort;
     this.captain = opts.captain && this.helm ? new BL.Captain(this) : null;
     this.trainer = null;                    // made on arrival (the helm's heading is set then)
     this.stats = {
