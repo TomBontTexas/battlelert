@@ -1530,7 +1530,7 @@
       : "None inbound");
     setCls($("cp-sec-torp"), "cp-sec cp-torps" + (ev && ev.left > 0 ? " on" : cv || wv ? " alert live" : ""));
     // The telegraphs' meters: speed; the guns' charge (all together), the main gun, the CIWS and the hangar; each
-    // the reactors' heat (the hottest one, on a ship with several), the shields and the drive (and the planet buster); a readout under each.
+    // the reactors' output, the shields and the drive (and the planet buster); a readout under each.
     var g = tu.cur || {}, mv = c.mainView(), hgv = c.hangarView(), sh = sim.sys("shield"), dr = sim.sys("drive"), heat = 0;
     function full(x) { return x.mj >= x.maxMJ - 0.5 ? "full" : ""; }
     cpHtml("cp-m-eng", meter("SPD", h.speed / Math.max(0.1, h.gOf("flank")), "spd"));
@@ -1541,8 +1541,10 @@
     ["main", "pd"].forEach(function (id) { var x = sim.sys(id); if (x) gm += meter(id === "main" ? "M" : "C", x.mj / x.maxMJ, full(x)); });
     cpHtml("cp-m-gun", gm);
     var em = "";
-    ship.reactors.forEach(function (rx) { heat = Math.max(heat, rx.heat); });
-    em += meter("RX", heat / 100, heat >= BL.PHYSICS.alarmHeat ? "alarm" : "heat");
+    // RX: the reactors' output (the hardest-worked one, against its rating; red when overloaded); their heat is the red bar under the meters.
+    var load = 0;
+    ship.reactors.forEach(function (rx) { heat = Math.max(heat, rx.heat); load = Math.max(load, rx.loadPct); });
+    em += meter("RX", load / 100, load > 100 ? "alarm" : "");
     em += meter("SH", sh.mj / sh.maxMJ, full(sh));
     if (dr) em += meter("DR", dr.mj / dr.maxMJ, full(dr));
     var bu = sim.sys("buster"); if (bu) em += meter("PB", bu.mj / bu.maxMJ, full(bu));
