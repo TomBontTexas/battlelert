@@ -877,7 +877,7 @@
     hears: ["launched"],
     // Standing orders at the start of a mission (the captain changes them on the bridge).
     standing: { guns: "auto", stance: "balanced" },
-    // (drive first: after life support the drive charges to be full by the window, the rest share what's left)
+    // (drive first: after life support the drive charges to be full by the window (its last percent flat out), the rest share what's left)
     stances: { shields: { name: "Shields first", short: "SHIELDS" }, balanced: { name: "Balanced", short: "BALANCE" }, guns: { name: "Guns first", short: "GUNS" },
       drive: { name: "Drive first", short: "DRIVE" }, main: { name: "Main gun first", short: "MAIN GUN" }, moab: { name: "Planet buster first", short: "MOAB" } },
     // (main: light cruiser and up; drive: ships with a warp drive; moab: the dreadnought's planet buster)
@@ -914,10 +914,10 @@
     lifeLow:     ["Medical: air's getting thin.", "Medical: life support is failing."],
     lifeOut:     ["Medical: crew passing out! Gunners are slowing down.", "Medical: life support's out. The crew can't keep this up."],
     lifeBack:    ["Medical: air's back. Crew recovering."],
-    jumpNotice:  ["Navigation: jump window in {t} s. Drive must be full.", "Bridge: jump window opens in {t} seconds."],
-    jumpOpen:    ["Navigation: jump window open. Waiting on the drive.", "Captain: window's open. Where's my drive, Engineering?"],
-    jumpOpenNav: ["Navigation: jump window open. Waiting on the drive."],      // the bridge: Navigation's line only
-    jumpGo:      ["Bridge: drive full. Jumping in {t}.", "Bridge: all hands, jump in {t}."],
+    jumpNotice:  ["Navigation: warp window in {t} s. Drive must be full.", "Bridge: warp window opens in {t} seconds."],
+    jumpOpen:    ["Navigation: warp window open. Waiting on the drive.", "Captain: window's open. Where's my drive, Engineering?"],
+    jumpOpenNav: ["Navigation: warp window open. Waiting on the drive."],      // the bridge: Navigation's line only
+    jumpGo:      ["Bridge: drive full. Warping in {t}.", "Bridge: all hands, warp in {t}."],
     damaged:     ["Damage control: {what}."],
     killedOther: ["Tactical: {enemy} destroyed.", "Tactical: {enemy} breaking up."],
     mainFired:   ["Gunnery: main gun fired! Direct hit.", "Gunnery: main gun away! {enemy} is hurting.", "Gunnery: main gun on target. Keep it coming, Engineering!"],
@@ -934,8 +934,8 @@
     recoverCall: ["Flight deck: recovering the squadron in {t} s. Charge the arresters.", "Captain: gunboats coming home in {t} seconds. Arresters must be full."],
     recovered2:  ["Flight deck: squadron recovered. All gunboats aboard.", "Flight deck: arresters caught them. Squadron's home."],
     recoverLate: ["Flight deck: arresters aren't charged! The gunboats are circling.", "Captain: we can't take the squadron aboard, Engineering. Charge those arresters!"],
-    holdForSquadron: ["Bridge: holding the jump until the squadron is aboard.", "Captain: we don't leave without our gunboats."],
-    squadronLeft:["Captain: we can't wait for the gunboats. Jumping now!", "Bridge: hull's too far gone. We're leaving the squadron behind."],
+    holdForSquadron: ["Bridge: holding the warp until the squadron is aboard.", "Captain: we don't leave without our gunboats."],
+    squadronLeft:["Captain: we can't wait for the gunboats. Warping now!", "Bridge: hull's too far gone. We're leaving the squadron behind."],
     intercepted: ["Squadron: we caught that salvo!", "Flight deck: gunboats knocked down a salvo."],
     mineHit:     ["Damage control: mine strike! Hull down {dmg}.", "We clipped a mine! Hull down {dmg}."],
     strike:      ["Tactical: drive strike inbound, {t} s!", "Tactical: hunters are going for the drive. Impact in {t}.", "Tactical: missile on the drive in {t} seconds!"],
@@ -944,7 +944,7 @@
     driveHit:    ["Damage control: drive strike! We lost {pct}% of the drive charge.", "Navigation: they hit the drive. Charge down {pct}%!"],
     heatR:       ["Reactor room: reactor {r} is running hot!", "Reactor room: heat's climbing on reactor {r}!"],
     auxEmptyR:   ["Aux bank {r} is empty."],
-    busterWait:  ["Bridge: the planet buster isn't charged. We can't make the final jump!", "Weapons: buster's not ready, Captain. Holding the jump."],
+    busterWait:  ["Bridge: the planet buster isn't charged. We can't make the final warp!", "Weapons: buster's not ready, Captain. Holding the warp."],
     starved:     ["Helm: engines are starved! I can't hold the course!", "Helm: not enough power to the engines, we're drifting into the mines!"],
     auxEmpty:    ["Aux bank is empty."],
     // Gunner station. A key ending in G replaces the plain one while the player is at a gun.
@@ -963,8 +963,8 @@
     ptMiss:      ["Tactical: torpedo missed.", "Coxswain: it slipped the torpedo."],
     // The helm. A key ending in H replaces the plain one (and the gunner's G one) at the helm.
     launchH:     ["Carrier: Transferring launch control to gunboats. Launch when ready."],   // TexasBont's launch line (Oct 13, 2026)
-    arrivalH:    ["Navigation: out of warp space. Jump heading {hdg}, Helm.", "Captain: normal space. Helm, she's yours; jump heading is {hdg}."],
-    takeConn:    ["Captain: I have the conn. Coming to {hdg} for the jump.", "Captain: I'll take her, Helm. Jump heading {hdg}."],
+    arrivalH:    ["Navigation: out of warp space. Warp heading {hdg}, Helm.", "Captain: normal space. Helm, she's yours; warp heading is {hdg}."],
+    takeConn:    ["Captain: I have the conn. Coming to {hdg} for the warp.", "Captain: I'll take her, Helm. Warp heading {hdg}."],
     recoveredH:  ["Carrier: gunboat recovered. Nice flying.", "Coxswain: we're on the deck. Good flying, Helm."],
     burnH:       [],                     // the captain's orders replace the bridge's burns at the helm
     mainReadyH:  ["Engineering: main gun's charged."],   // a report only: where the bow goes is the captain's call
@@ -992,8 +992,8 @@
     evadeOwn:    ["Helm: breaking {dir}!"],
     evadeMissed: ["{who}: too slow on that break, Helm!", "{who}: I said break, Helm!"],
     helmReq:     ["Gunner {n}: Captain, nothing in my arc. Target {side}."],     // to the captain, who orders the helm
-    jumpNoticeH: ["Navigation: jump window in {t} s. Jump heading {hdg}."],     // reports; the captain orders the heading
-    jumpHeading: ["Navigation: drive's full. We're off the jump heading."],
+    jumpNoticeH: ["Navigation: warp window in {t} s. Warp heading {hdg}."],     // reports; the captain orders the heading
+    jumpHeading: ["Navigation: drive's full. We're off the warp heading."],
     warnEng:     ["Engineering: standing by for your burn.", "Engineering: understood, power's ready for the engines.", "Engineering: copy, Helm. Engines get first call."]
   };
 

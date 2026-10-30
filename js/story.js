@@ -1040,9 +1040,9 @@
    "id": "pilot-2-1",
    "n": 2,
    "k": 1,
-   "title": "First Jump",
+   "title": "First Warp",
    "chapter": "Beyond the Line",
-   "briefing": "{ship} will scout three enemy-held systems ahead of the main fleet. The picket ship has its own warp drive, but each arrival leaves it needing to recharge before the next jump window. Azurian interceptors are searching for isolated scouts. Keep the ship alive through every approach and be ready when the captain orders the next departure. Renn says speed without timing is merely a fast mistake.",
+   "briefing": "{ship} will scout three enemy-held systems ahead of the main fleet. The picket ship has its own warp drive, but each arrival leaves it needing to recharge before the next warp window. Azurian interceptors are searching for isolated scouts. Keep the ship alive through every approach and be ready when the captain orders the next departure. Renn says speed without timing is merely a fast mistake.",
    "systems": [
     "raiders",
     "interceptors",
@@ -1060,7 +1060,7 @@
    "k": 2,
    "title": "Eyes Ahead",
    "chapter": "Beyond the Line",
-   "briefing": "Fleet Command needs a reliable picture of Azurian movements along the next approach. {ship} will pass through three contested systems, close enough to identify hostile formations and far enough to preserve its own escape. You cannot outfight a heavy enemy force in a picket ship. Fly the captain’s course, watch the next jump window, and leave the heroics to someone with thicker armor.",
+   "briefing": "Fleet Command needs a reliable picture of Azurian movements along the next approach. {ship} will pass through three contested systems, close enough to identify hostile formations and far enough to preserve its own escape. You cannot outfight a heavy enemy force in a picket ship. Fly the captain’s course, watch the next warp window, and leave the heroics to someone with thicker armor.",
    "systems": [
     "interceptors",
     "frigate",
@@ -1078,7 +1078,7 @@
    "k": 3,
    "title": "Raider Trap",
    "chapter": "Beyond the Line",
-   "briefing": "Azurian raiders have been ambushing the scouts that keep our fleet informed, waiting for them while they recharge for the next jump. {ship} must identify their positions in three systems and return with the findings. A ship that cannot reach its jump window can be stranded where help cannot arrive in time. Follow the captain’s maneuvering orders and resist the urge to outrun the jump window; haste will not recharge a drive.",
+   "briefing": "Azurian raiders have been ambushing the scouts that keep our fleet informed, waiting for them while they recharge for the next warp. {ship} must identify their positions in three systems and return with the findings. A ship that cannot reach its warp window can be stranded where help cannot arrive in time. Follow the captain’s maneuvering orders and resist the urge to outrun the warp window; haste will not recharge a drive.",
    "systems": [
     "raiders",
     "frigate",
@@ -1114,7 +1114,7 @@
    "k": 2,
    "title": "Bring Them Home",
    "chapter": "Holding the Line",
-   "briefing": "A group of damaged Imperial ships must withdraw through enemy-held systems. {ship} will screen their movement while they prepare for each jump. Your maneuvers must keep the escort between the damaged vessels and the attackers without obstructing their route. Experienced crews are hard to replace this late in the war. The captain expects careful positioning, not a chase after every enemy contact.",
+   "briefing": "A group of damaged Imperial ships must withdraw through enemy-held systems. {ship} will screen their movement while they prepare for each warp. Your maneuvers must keep the escort between the damaged vessels and the attackers without obstructing their route. Experienced crews are hard to replace this late in the war. The captain expects careful positioning, not a chase after every enemy contact.",
    "systems": [
     "interceptors",
     "hunters",
@@ -1186,7 +1186,7 @@
    "k": 3,
    "title": "No Easy Turn",
    "chapter": "Into Enemy Space",
-   "briefing": "Azurian drive hunters are attacking ships at the edge of a destroyer formation. {ship} must cross three contested systems and keep those attackers from stalling the advance. The enemy favors sudden converging approaches designed to force mistakes at the helm. Follow the captain’s course changes, preserve your freedom to maneuver, and watch for the announced jump window.",
+   "briefing": "Azurian drive hunters are attacking ships at the edge of a destroyer formation. {ship} must cross three contested systems and keep those attackers from stalling the advance. The enemy favors sudden converging approaches designed to force mistakes at the helm. Follow the captain’s course changes, preserve your freedom to maneuver, and watch for the announced warp window.",
    "systems": [
     "hunters",
     "frigate",
@@ -1384,7 +1384,7 @@
    "k": 2,
    "title": "The Heavy Turn",
    "chapter": "Breaking the Defense",
-   "briefing": "An Azurian capital-ship formation is preparing a counterattack against the Imperial offensive. {ship} has orders to intercept it across three hostile systems. The battleship’s weapons can decide the engagement only when the captain can bring them into useful positions. Maneuver deliberately, anticipate the ship’s mass, and preserve the approach for the next jump window. Renn has no desire to learn how fast a battleship can make a bad decision.",
+   "briefing": "An Azurian capital-ship formation is preparing a counterattack against the Imperial offensive. {ship} has orders to intercept it across three hostile systems. The battleship’s weapons can decide the engagement only when the captain can bring them into useful positions. Maneuver deliberately, anticipate the ship’s mass, and preserve the approach for the next warp window. Renn has no desire to learn how fast a battleship can make a bad decision.",
    "systems": [
     "frigate",
     "battleshipA",

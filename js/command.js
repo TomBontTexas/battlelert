@@ -616,8 +616,8 @@
   };
   Captain.prototype.setStance = function (id) { if (!BL.COMMAND.stances[id]) return; this.stance = id; this.applyStance(); this.m.cue("tick"); };
   // The engineer's stance is his priority order: shields first, guns first, the drive first (after
-  // life support; the AI engineer then charges it to be full by the window, not just with what's
-  // left: AIEngineer.think), or as the ship comes.
+  // life support; the AI engineer then charges it to be full by the window (its last percent flat out), not just with what's left:
+  // AIEngineer.think), or as the ship comes.
   Captain.prototype.applyStance = function () {
     var m = this.m, base = this.basePriority.slice(), guns = base.filter(function (id) { var s = m.sys(id); return s && s.kind === "gun"; });
     m.driveFirst = this.stance === "drive" && !!m.sys("drive");

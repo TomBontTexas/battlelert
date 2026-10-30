@@ -104,8 +104,9 @@
     });
     // Fill in priority order, each from its own reactor; the drive and buster take what's left
     // (unless the captain's stance is drive first: then the drive in its place, fast enough to be
-    // full a few seconds before the window, at its full rate once the window is near or open).
-    if (drive && m.driveFirst) want.drive = Math.min(drive.maxMW, 1.2 * (drive.maxMJ - drive.mj) / Math.max(1, m.windowIn() - 8));
+    // full a few seconds before the window, at its full rate once the window is near or open, and
+    // flat out over its last percent: paced to the very end it crawled at 99%, or hung there).
+    if (drive && m.driveFirst) want.drive = drive.mj >= drive.maxMJ * 0.99 ? drive.maxMW : Math.min(drive.maxMW, 1.2 * (drive.maxMJ - drive.mj) / Math.max(1, m.windowIn() - 8));
     // (the captain's MOAB stance: the planet buster in its place, flat out)
     if (buster && m.busterFirst) want.buster = buster.maxMW;
     order.forEach(function (id) {
@@ -138,7 +139,9 @@
       var timeLeft = Math.max(0, m.windowIn());
       for (var j = m.jumpIndex + 1; j < m.cfg.jumps; j++) timeLeft += m.windowFor(j);
       var needRate = (buster.maxMJ - buster.mj) / Math.max(10, timeLeft - 15);
-      m.setSetpoint("buster", Math.min(buster.maxMW, Math.max(needRate * 1.2, left[buster.reactor])));
+      // (never less than enough to top it off against its bleed, or it can hang just short of full)
+      var top = buster.mj < buster.maxMJ - 0.5 ? m.holdMW(buster) * 1.25 + 2 : 0;
+      m.setSetpoint("buster", Math.min(buster.maxMW, Math.max(needRate * 1.2, left[buster.reactor], top)));
     }
 
     // Aux: bridge shield and point-defense gaps right before a hit, and dry guns during a request.

@@ -139,16 +139,16 @@
     $("brief-story").hidden = !story;
     if (story) $("brief-story").innerHTML = "<b>" + esc(story.title) + "</b> · " + BL.classByN(j.n).name + " chapter: " + esc(story.chapter) + " · story mission " + story.k + " of 3";
     $("brief-lede").textContent = story ? storyText(story.briefing) : sim.hasDrive
-      ? "Escort the planet buster's route through " + sim.cfg.jumps + " Azurian-held systems. In each one the warp drive starts empty: keep the ship alive, charge the drive, and the captain jumps once the jump window opens."
+      ? "Escort the planet buster's route through " + sim.cfg.jumps + " Azurian-held systems. In each one the warp drive starts empty: keep the ship alive, charge the drive, and the captain warps once the warp window opens."
       : "Gunboats have no warp drive. In each of the carrier's " + sim.cfg.jumps + " systems it launches you into the fight and recovers you when the sortie timer runs out, then carries you through warp space to the next one. Keep the gunboat alive through every sortie.";
     $("brief-route").innerHTML = sim.route.map(function (id, i) {
       var e = BL.ENCOUNTERS[id];
       // At the gun: each enemy described the first time it comes up, then just which gun has the edge.
       if (sim.turret) { var first = sim.route.indexOf(id) === i;
         return "<li>" + (sim.hasDrive ? "System " : "Sortie ") + (i + 1) + ": <b>" + e.name + "</b>. " + gunnerTip(id, !first) +
-          (sim.hasDrive ? " Jump window " + sim.windowFor(i) + " s." : " Recovered after " + sim.windowFor(i) + " s.") + "</li>"; }
+          (sim.hasDrive ? " Warp window " + sim.windowFor(i) + " s." : " Recovered after " + sim.windowFor(i) + " s.") + "</li>"; }
       return "<li>" + (sim.hasDrive ? "System " : "Sortie ") + (i + 1) + ": <b>" + e.name + "</b>. " + e.what + ". Tests: " + e.tests.toLowerCase() +
-        (sim.hasDrive ? ". Jump window opens " + sim.windowFor(i) + " s after arrival." : ". The carrier recovers you " + sim.windowFor(i) + " s after launch.") + "</li>";
+        (sim.hasDrive ? ". Warp window opens " + sim.windowFor(i) + " s after arrival." : ". The carrier recovers you " + sim.windowFor(i) + " s after launch.") + "</li>";
     }).join("") + (sim.sys("buster") ? "<li>The Azurian world: drop the planet buster.</li>" : "");
     $("brief-ship-title").textContent = "Your ship: " + (j.test ? cls.name : BL.shipLabel(j.classId, j.ship, j.hull) + ", " + cls.name) + ", tech level " + j.tl;
     var html = [
@@ -316,7 +316,7 @@
     caps.classList.toggle("dense", DISPLAY.length >= 8);
     $("trip-order").classList.toggle("trip-two", DISPLAY.length >= 8);
     $("hd-station").textContent = "Main Engineering · " + (job.test ? sim.data.className : BL.shipLabel(job.classId, job.ship, job.hull) + " (" + sim.data.className + ")") + " · tech level " + sim.data.tl;
-    $("jump-label").textContent = sim.hasDrive ? "JUMP" : "RECOVERY";
+    $("jump-label").textContent = sim.hasDrive ? "WARP" : "RECOVERY";
     $("auxbank").hidden = !sim.hasAux() || multiRx();
     document.body.classList.toggle("no-aux", !sim.hasAux());
     $("hint-bar").textContent = DEFAULT_HINT = "1–" + Math.min(9, DISPLAY.length) + " select · ↑↓ charge rate (Shift: ×5) · ←→ next system" + (sim.hasAux() ? " · A aux" : "") + (multiRx() ? " · R reactor" : "") + " · [ ] priority · 0 zero · M max · Space pause · H hints";
@@ -409,9 +409,9 @@
       s.kind === "life" ? "Drains " + s.drainMW + " MW all the time. Empty = crippled crew." :
       s.kind === "main" ? "Fires by itself the moment it is full and a target is up: the whole charge in one heavy shot. Keep feeding it to keep it firing." :
       s.kind === "pd" ? "CIWS (close-in weapon system): each drive strike it stops costs a chunk of charge. Shields don't stop drive strikes." :
-      s.kind === "buster" ? "The planet buster: charges from the start, keeps its charge, can't charge in warp space. Must be full for the final jump." :
-      s.kind === "hangar" ? "Launchers while the squadron is aboard: full when the bridge calls the launch, to kick the gunboats out. Arresters while it is out: full when the bridge calls the recovery. No jump until the gunboats are aboard." :
-      "Must be full for the captain to jump.";
+      s.kind === "buster" ? "The planet buster: charges from the start, keeps its charge, can't charge in warp space. Must be full for the final warp." :
+      s.kind === "hangar" ? "Launchers while the squadron is aboard: full when the bridge calls the launch, to kick the gunboats out. Arresters while it is out: full when the bridge calls the recovery. No warp until the gunboats are aboard." :
+      "Must be full for the captain to warp.";
   }
 
   function canControl() { return running && sim && (!paused || looking) && sim.phase !== "done"; }
@@ -569,9 +569,9 @@
   function render() {
     var ship = sim.ship, enc = sim.encounter() || {};
     // Header
-    $("hd-jump").innerHTML = (sim.hasDrive ? "Jump" : "Sortie") + " <b>" + (sim.jumpIndex + 1) + "</b> of " + sim.cfg.jumps + " · <b>" + (enc.name || "") + "</b>";
+    $("hd-jump").innerHTML = (sim.hasDrive ? "Warp" : "Sortie") + " <b>" + (sim.jumpIndex + 1) + "</b> of " + sim.cfg.jumps + " · <b>" + (enc.name || "") + "</b>";
     var ph = sim.phase === "arrival" ? "Engagement in " + Math.ceil(sim.cfg.arrivalSeconds - sim.t) + " s" :
-      sim.phase === "countdown" ? "JUMPING IN " + Math.max(1, Math.ceil(sim.jumpAt - sim.t)) :
+      sim.phase === "countdown" ? "WARPING IN " + Math.max(1, Math.ceil(sim.jumpAt - sim.t)) :
       sim.phase === "engage" ? "T+" + mmss(sim.t) : "";
     setText($("hd-phase"), ph);
 
@@ -658,8 +658,8 @@
     if (drive) {
     setText($("jump-drive"), "drive " + Math.floor(dp * 100) + "%");
     $("jump-fill").style.width = pct(dp);
-    if (sim.phase === "countdown") { js = "✔ Drive full. Jumping in " + Math.max(1, Math.ceil(sim.jumpAt - sim.t)) + " s"; jc += " go"; }
-    else if (sim.squadron === "out" && wi <= 0) { js = "⚠ Window OPEN: holding the jump until the squadron is aboard"; jc += " late"; }
+    if (sim.phase === "countdown") { js = "✔ Drive full. Warping in " + Math.max(1, Math.ceil(sim.jumpAt - sim.t)) + " s"; jc += " go"; }
+    else if (sim.squadron === "out" && wi <= 0) { js = "⚠ Window OPEN: holding the warp until the squadron is aboard"; jc += " late"; }
     else if (sim.jumpIndex === sim.cfg.jumps - 1 && !sim.busterFull() && wi <= 0) { js = "⚠ Window OPEN: the planet buster isn't full · " + Math.floor(sim.sys("buster").mj / sim.sys("buster").maxMJ * 100) + "%"; jc += " late"; }
     else if (wi > 0) {
       var need = (drive.maxMJ - drive.mj) / Math.max(1, wi);
@@ -711,7 +711,7 @@
       } else if (e.type === "launch" || e.type === "recover") {
         var cs = sim.sys("hangar"), pc = Math.floor(cs.mj / cs.maxMJ * 100);
         var what = e.type === "launch" ? "✈ LAUNCH · launchers" : "⤓ RECOVERY · arresters";
-        label = what + (e.late ? " OVERDUE · must be full · " + pc + "% · no jump until aboard" : e.open ? " NOW · must be full · " + pc + "% · " + Math.ceil(e.dur) + " s left" : " · must be full · " + pc + "% now" + secs);
+        label = what + (e.late ? " OVERDUE · must be full · " + pc + "% · no warp until aboard" : e.open ? " NOW · must be full · " + pc + "% · " + Math.ceil(e.dur) + " s left" : " · must be full · " + pc + "% now" + secs);
         el.classList.toggle("short", pc < 100 && e.in < (cs.maxMJ - cs.mj) / Math.max(1, cs.maxMW));
       } else {
         label = "◆ GUN " + e.gun + " RAPID FIRE · " + Math.round(sim.data.gun.shotMJ / sim.data.gun.fullInterval) + " MW for " + e.dur + " s" + secs;
@@ -735,9 +735,9 @@
     Object.keys(fcEls).forEach(function (id) { if (!seen[id]) { fcEls[id].remove(); delete fcEls[id]; } });
     var wi = sim.windowIn(), fj = $("fc-jump");
     if (!sim.hasDrive) { setText(fj, wi <= sim.cfg.jumpWindowNotice ? "Recovery in " + Math.max(0, Math.ceil(wi)) + " s ▶" : ""); setCls(fj, "fc-jump"); }
-    else if (sim.phase === "countdown") { setText(fj, "JUMPING"); setCls(fj, "fc-jump"); }
-    else if (wi > 0) { setText(fj, wi <= sim.cfg.jumpWindowNotice ? "Jump window in " + Math.ceil(wi) + " s ▶" : ""); setCls(fj, "fc-jump"); }
-    else { setText(fj, "JUMP WINDOW OPEN · drive " + Math.floor(sim.sys("drive").mj / sim.sys("drive").maxMJ * 100) + "%"); setCls(fj, "fc-jump open"); }
+    else if (sim.phase === "countdown") { setText(fj, "WARPING"); setCls(fj, "fc-jump"); }
+    else if (wi > 0) { setText(fj, wi <= sim.cfg.jumpWindowNotice ? "Warp window in " + Math.ceil(wi) + " s ▶" : ""); setCls(fj, "fc-jump"); }
+    else { setText(fj, "WARP WINDOW OPEN · drive " + Math.floor(sim.sys("drive").mj / sim.sys("drive").maxMJ * 100) + "%"); setCls(fj, "fc-jump open"); }
   }
 
   function speakNew() {
@@ -783,7 +783,7 @@
   function buildTurret() {
     var tu = sim.turret, w = tu.w;
     $("tu-station").textContent = "Gunnery · " + (job.test ? sim.data.className : BL.shipLabel(job.classId, job.ship, job.hull) + " (" + sim.data.className + ")") + " · tech level " + sim.data.tl;
-    $("tu-rec-label").textContent = sim.hasDrive ? "JUMP" : "RECOVERY";
+    $("tu-rec-label").textContent = sim.hasDrive ? "WARP" : "RECOVERY";
     lastJolt = 0;
     $("tu-keys").textContent = (tu.ring ? "→ clockwise · ← counterclockwise" : "← → slide") + " · Space fire (hold) · " + (tu.ring ? "W wide view · " : "") + (tu.firesMain ? "M main gun · " : "") + (tu.bats.length > 1 ? "1–" + tu.bats.length + " switch guns · O orders · " : sim.data.torpedoes ? "1 2 torpedoes · " : "") +
       "C call for power · P pause · " + (tu.ring ? "Mouse or trackpad: the gun follows the pointer; click a target to swing to it; hold button to fire · Touch: touch the view to point, hold FIRE" : "Mouse: move to aim, hold button to fire · Touch: drag to aim, hold FIRE");
@@ -900,9 +900,9 @@
     else BL.drawTurret(tuCtx, tuSize, sim, tu, ts);
     showBattery();
     if (wideOn()) renderHud(tu);
-    $("tu-jump").innerHTML = (sim.hasDrive ? "Jump" : "Sortie") + " <b>" + (sim.jumpIndex + 1) + "</b> of " + sim.cfg.jumps + " · <b>" + (enc.name || "") + "</b>";
+    $("tu-jump").innerHTML = (sim.hasDrive ? "Warp" : "Sortie") + " <b>" + (sim.jumpIndex + 1) + "</b> of " + sim.cfg.jumps + " · <b>" + (enc.name || "") + "</b>";
     setText($("tu-phase"), sim.phase === "arrival" ? (sim.hasDrive ? "Engagement in " : "Launching in ") + Math.ceil(sim.cfg.arrivalSeconds - sim.t) + " s" :
-      sim.phase === "countdown" ? "JUMPING IN " + Math.max(1, Math.ceil(sim.jumpAt - sim.t)) : sim.phase === "engage" ? "T+" + mmss(sim.t) : "");
+      sim.phase === "countdown" ? "WARPING IN " + Math.max(1, Math.ceil(sim.jumpAt - sim.t)) : sim.phase === "engage" ? "T+" + mmss(sim.t) : "");
     Array.prototype.forEach.call($("tu-bats").children, function (el, i) {
       var g = tu.gun(tu.bats[i]); el.querySelector(".mini i").style.width = pct(g.mj / g.baseMJ);
     });
@@ -996,7 +996,7 @@
     $("hud-hull").style.width = pct(ship.hull / ship.hullMax); setText($("hud-hull-val"), Math.max(0, Math.round(ship.hull)) + "/" + ship.hullMax);
     $("hud-shield").style.width = pct(sh.mj / sh.maxMJ); setText($("hud-shield-val"), Math.round(sh.mj) + "/" + sh.maxMJ);
     var wi = sim.windowIn();
-    setHtml($("hud-rec"), drive ? "JUMP <b>" + (wi > 0 ? Math.ceil(wi) + " s" : "open") + "</b> · drive <b>" + Math.floor(drive.mj / drive.maxMJ * 100) + "%</b>" : "RECOVERY <b>" + Math.max(0, Math.ceil(wi)) + " s</b>");
+    setHtml($("hud-rec"), drive ? "WARP <b>" + (wi > 0 ? Math.ceil(wi) + " s" : "open") + "</b> · drive <b>" + Math.floor(drive.mj / drive.maxMJ * 100) + "%</b>" : "RECOVERY <b>" + Math.max(0, Math.ceil(wi)) + " s</b>");
     var g = tu.cur || {};
     setHtml($("hud-tally"), g.mines ? "Mines <b>" + (g.minesDowned || 0) + "/" + g.mines + "</b>" : "Ships <b>" + (g.kills || 0) + "/" + (g.ships || 0) + "</b> · Torpedoes <b>" + (g.downed || 0) + "/" + (g.torps || 0) + "</b>");
     Array.prototype.forEach.call($("hud-guns").children, function (b, i) { b.classList.toggle("on", i === tu.sel); });
@@ -1243,9 +1243,9 @@
     sizeTurret();
     BL.drawRing(tuCtx, { w: tuW, h: tuH, wide: false }, sim, tu, ts);
     drawStrip();
-    $("tu-jump").innerHTML = sim.training ? "<b>Training course</b>" : (sim.hasDrive ? "Jump" : "Sortie") + " <b>" + (sim.jumpIndex + 1) + "</b> of " + sim.cfg.jumps + " · <b>" + (enc.name || "") + "</b>";
+    $("tu-jump").innerHTML = sim.training ? "<b>Training course</b>" : (sim.hasDrive ? "Warp" : "Sortie") + " <b>" + (sim.jumpIndex + 1) + "</b> of " + sim.cfg.jumps + " · <b>" + (enc.name || "") + "</b>";
     setText($("tu-phase"), h.inTube ? "IN THE TUBE: LAUNCH WHEN READY" : sim.phase === "arrival" ? "Engagement in " + Math.ceil(sim.cfg.arrivalSeconds - sim.t) + " s" :
-      sim.phase === "countdown" ? "JUMPING IN " + Math.max(1, Math.ceil(sim.jumpAt - sim.t)) : sim.phase === "engage" ? "T+" + mmss(sim.t) : "");
+      sim.phase === "countdown" ? "WARPING IN " + Math.max(1, Math.ceil(sim.jumpAt - sim.t)) : sim.phase === "engage" ? "T+" + mmss(sim.t) : "");
     renderComms();
     // The captain's order
     var o = h.orderView(), ob = $("hm-order"), oh;
@@ -1293,7 +1293,7 @@
       slot1 = '<div class="hold"><span>' + inbound.length + (inbound.length === 1 ? " torpedo" : " torpedoes") + " inbound.</span>" + (h.corridorView() ? "<span>Dodge inside the corridor.</span>" : "") + "</div>";
     al.push(slot1);
     var jv = h.jumpView();
-    if (h.jumpHdg !== null) al.push(!jv ? '<div class="empty"></div>' : '<div class="jump' + (jv.on ? "" : jv.in < 30 ? " off" : "") + '" data-hdg="' + jv.hdg + '"><span>Jump heading <b>' + BL.hdgText(jv.hdg) + "</b>" + (jv.on ? " ✔" : "") + "</span><span>" +
+    if (h.jumpHdg !== null) al.push(!jv ? '<div class="empty"></div>' : '<div class="jump' + (jv.on ? "" : jv.in < 30 ? " off" : "") + '" data-hdg="' + jv.hdg + '"><span>Warp heading <b>' + BL.hdgText(jv.hdg) + "</b>" + (jv.on ? " ✔" : "") + "</span><span>" +
       (jv.in > 0 ? "Window in " + Math.ceil(jv.in) + " s" : "Window open") + "</span></div>");
     if (tr) {
       var ts2 = tr.stats, rt = tr.rating();
@@ -1396,7 +1396,7 @@
     $("cp-side").hidden = $("cp-mapbox").hidden = false; $("cp-orders").hidden = true;      // (every order is in the BRIDGE column)
     $("tu-station").textContent = "Bridge · " + (job.test ? sim.data.className : BL.shipLabel(job.classId, job.ship, job.hull) + " (" + sim.data.className + ")") + " · tech level " + sim.data.tl;
     var hasMain = !!sim.sys("main"), hasHangar = !!(sim.sys("hangar") && sim.data.hangar);
-    $("tu-keys").textContent = "← → course 10° (Shift 1°) · R resume plot · ↑ ↓ engines · Z break port · X take it · C break starboard · " + (hasMain ? "M main gun · " : "") + (hasHangar ? "L launch / recover · " : "") + "G gunners · S engineer · E warn engineering · J jump · V swap map · + − F zoom · Esc pause · Tap the compass or the map to steer";
+    $("tu-keys").textContent = "← → course 10° (Shift 1°) · R resume plot · ↑ ↓ engines · Z break port · X take it · C break starboard · " + (hasMain ? "M main gun · " : "") + (hasHangar ? "L launch / recover · " : "") + "G gunners · S engineer · E warn engineering · J warp · V swap map · + − F zoom · Esc pause · Tap the compass or the map to steer";
     // Light cruiser and up: MAIN GUN; cruiser and up: LAUNCH / RECOVER the squadron.
     $("cp-main").hidden = !hasMain; $("cp-hangar").hidden = !hasHangar; $("cp-ship-grp").hidden = !hasMain && !hasHangar;
     $("cp-tele").innerHTML = BRIDGE_ENG.slice().reverse().map(function (id) { var p = h.preset(id); return '<button data-eng="' + id + '" title="All ' + p.name.toLowerCase() + '">' + p.short + "</button>"; }).join("");
@@ -1477,8 +1477,8 @@
     // open and the drive full at the rate it's charging now, whichever is later): EARLY (slow
     // down, or she waits there), LATE (more speed), else on time.
     var eta = c.zoneEta(), rd = c.readyEta(), fs = big ? 15 : 12;
-    var l1 = eta === 0 ? "IN THE ZONE" : eta === null ? "ZONE IN –" : "ZONE IN " + mmss(Math.ceil(eta));
-    var l2 = rd.at === 0 ? "JUMP READY" : rd.at === null ? "DRIVE NOT CHARGING" : "READY IN " + mmss(Math.ceil(rd.at)) + " · " + rd.by.toUpperCase();
+    var l1 = eta === 0 ? "IN THE ZONE" : eta === null ? "ZONE ARRIVAL IN –" : "ZONE ARRIVAL IN " + mmss(Math.ceil(eta));
+    var l2 = rd.at === 0 ? "CAN WARP NOW" : rd.at === null ? "DRIVE NOT CHARGING" : "CAN WARP IN " + mmss(Math.ceil(rd.at)) + " · " + rd.by.toUpperCase();
     var tag = eta === null || eta === 0 || rd.at === null ? "" : eta < rd.at - 10 ? " · EARLY" : eta > rd.at + BL.COMMAND.zoneGrace ? " · LATE" : " · ON TIME";
     var col = tag === " · EARLY" ? "#ffd666" : tag === " · LATE" ? "#ff6b6b" : "#3dff7a";
     ctx.font = "600 " + fs + "px ui-monospace, Menlo, Consolas, monospace"; ctx.textAlign = "left"; ctx.textBaseline = "top";
@@ -1524,9 +1524,9 @@
     });
     sizeTurret();
     BL.drawRing(tuCtx, { w: tuW, h: tuH, wide: false }, sim, tu, ts);
-    $("tu-jump").innerHTML = "Jump <b>" + (sim.jumpIndex + 1) + "</b> of " + sim.cfg.jumps + " · <b>" + (enc.name || "") + "</b>";
+    $("tu-jump").innerHTML = "Warp <b>" + (sim.jumpIndex + 1) + "</b> of " + sim.cfg.jumps + " · <b>" + (enc.name || "") + "</b>";
     setText($("tu-phase"), sim.phase === "arrival" ? "Engagement in " + Math.ceil(sim.cfg.arrivalSeconds - sim.t) + " s" :
-      sim.phase === "countdown" ? "JUMPING IN " + Math.max(1, Math.ceil(sim.jumpAt - sim.t)) : sim.phase === "engage" ? "T+" + mmss(sim.t) : "IN WARP SPACE");
+      sim.phase === "countdown" ? "WARPING IN " + Math.max(1, Math.ceil(sim.jumpAt - sim.t)) : sim.phase === "engage" ? "T+" + mmss(sim.t) : "IN WARP SPACE");
     renderComms();
     if (!c.pos) { drawBridgeMap(null); return; }
     var hv = c.helmView(), nv = hv.nav, jv = c.jumpView(), cv = c.callView(), ev = h.evadeView(), spd = Math.max(0.05, h.speed) * K.scale;
@@ -1612,8 +1612,8 @@
     var jb = $("cp-jump");
     jb.disabled = !live || !jv.ready || jv.ordered || sim.phase === "countdown";
     jb.classList.toggle("ready", jv.ready && !jv.ordered);
-    var jw = sim.hasDrive ? "JUMP" : "RECOVER";        // a gunboat: the carrier's recovery
-    setHtml(jb, sim.phase === "countdown" ? "JUMPING" : jv.ordered ? esc(jv.wait || (sim.hasDrive ? "JUMPING" : "RECOVERING")) : jv.ready ? jw + " <small>(J)</small>" : esc(jv.why || jw));
+    var jw = sim.hasDrive ? "WARP" : "RECOVER";        // a gunboat: the carrier's recovery
+    setHtml(jb, sim.phase === "countdown" ? "WARPING" : jv.ordered ? esc(jv.wait || (sim.hasDrive ? "WARPING" : "RECOVERING")) : jv.ready ? jw + " <small>(J)</small>" : esc(jv.why || jw));
     // SHIP
     setText($("tu-hull-val"), Math.max(0, Math.round(ship.hull)) + " / " + ship.hullMax);
     $("tu-hull").style.width = pct(ship.hull / ship.hullMax);
@@ -1832,7 +1832,7 @@
     var cs = sim.captain.stats.systems[n - 1] || {}, hc = sim.helm.jumps[n - 1] || {}, g = sim.turret.jumps[n - 1] || {}, K = BL.COMMAND;
     var zone = cs.zoneAt === null || cs.zoneAt === undefined ? "never reached" : "reached at " + mmss(cs.zoneAt) + (cs.zoneAt <= cs.window + K.zoneGrace ? " (on time)" : " (late; window " + mmss(cs.window) + ")");
     return "<p>Fighting has stopped." + (next ? " The ship is in warp space." : "") + "</p><ul class='grav-list'>" +
-      "<li>Jump zone: " + zone + "</li>" +
+      "<li>Warp zone: " + zone + "</li>" +
       (cs.rockHits ? "<li>Asteroid hits: " + cs.rockHits + "</li>" : "") +
       "<li>Breaks you ordered: " + (hc.evasiveMet || 0) + " made of " + (hc.evasive || 0) + "</li>" +
       "<li>Enemy ships destroyed by your crew: " + g.kills + " of " + g.ships + "</li>" +
@@ -1844,10 +1844,10 @@
   }
   function debriefCaptain(r) {
     var cp = r.captain, d = r.detail, K = BL.COMMAND, good = [];
-    if (r.outcome === "success") good.push(sim.hasDrive ? "The ship made all its jumps." : "The carrier recovered her after every sortie.");
+    if (r.outcome === "success") good.push(sim.hasDrive ? "The ship made all its warps." : "The carrier recovered her after every sortie.");
     if (!cp.rockHits) good.push("No asteroid hits.");
     var onTime = cp.systems.filter(function (s) { return s.zoneAt !== null && s.zoneAt <= s.window + K.zoneGrace; }).length;
-    if (onTime === cp.systems.length && cp.systems.length) good.push(sim.hasDrive ? "In the jump zone on time every time." : "In the recovery zone on time every time.");
+    if (onTime === cp.systems.length && cp.systems.length) good.push(sim.hasDrive ? "In the warp zone on time every time." : "In the recovery zone on time every time.");
     if (cp.breaks + cp.pilotBreaks && cp.breaksMade === cp.breaks + cp.pilotBreaks) good.push("Every break was made.");
     if (!good.length) good.push("You kept the ship in the fight.");
     var cpN = 0, cpHit = 0; cp.systems.forEach(function (s) { cpN += s.cps || 0; cpHit += s.cpsHit || 0; });
@@ -1857,7 +1857,7 @@
       cpHit < cpN ? "Missed " + (cpN - cpHit) + " of " + cpN + " checkpoints." : cp.rockHits ? "The ship hit asteroids " + cp.rockHits + (cp.rockHits === 1 ? " time." : " times.") :
       onTime < cp.systems.length ? "The ship reached the " + (sim.hasDrive ? "jump" : "recovery") + " zone late in " + (cp.systems.length - onTime) + " of " + cp.systems.length + (sim.hasDrive ? " systems." : " sorties.") :
       cp.unanswered ? cp.unanswered + " torpedo bursts came and went with no call from you (taken on the shields)." : "Nothing went badly wrong.";
-    $("db-jumps").innerHTML = "<tr><th>" + (sim.hasDrive ? "Jump" : "Sortie") + "</th><th>Encounter</th><th>Legs</th><th>In the zone</th><th>Asteroid hits</th><th>Breaks made</th><th>Shielded</th><th>Hull lost</th><th>Seconds</th></tr>" +
+    $("db-jumps").innerHTML = "<tr><th>" + (sim.hasDrive ? "Warp" : "Sortie") + "</th><th>Encounter</th><th>Legs</th><th>In the zone</th><th>Asteroid hits</th><th>Breaks made</th><th>Shielded</th><th>Hull lost</th><th>Seconds</th></tr>" +
       r.jumps.map(function (j, i) {
         var s = cp.systems[i] || {}, t = sim.helm.jumps[i] || {};
         return "<tr><td>" + (i + 1) + "</td><td>" + BL.ENCOUNTERS[j.encounter].name + "</td><td>" + (s.legs || "") + "</td><td>" + (s.zoneAt === null || s.zoneAt === undefined ? "never" : mmss(s.zoneAt) + " / " + mmss(s.window)) + "</td><td>" + (s.rockHits || 0) +
@@ -1966,7 +1966,7 @@
   }
   function debriefHelm(r) {
     var hm = r.helm, d = r.detail;
-    $("db-jumps").innerHTML = "<tr><th>" + (r.hasDrive ? "Jump" : "Sortie") + "</th><th>Encounter</th><th>Orders met</th><th>Dodged</th><th>Structural hits</th>" + (r.hasDrive ? "<th>On time</th>" : "<th>Launch wait</th>") + "<th>Shielded</th><th>Hull lost</th><th>Seconds</th></tr>" +
+    $("db-jumps").innerHTML = "<tr><th>" + (r.hasDrive ? "Warp" : "Sortie") + "</th><th>Encounter</th><th>Orders met</th><th>Dodged</th><th>Structural hits</th>" + (r.hasDrive ? "<th>On time</th>" : "<th>Launch wait</th>") + "<th>Shielded</th><th>Hull lost</th><th>Seconds</th></tr>" +
       r.jumps.map(function (j, i) {
         var t = hm.jumps[i] || {};
         return "<tr><td>" + (i + 1) + "</td><td>" + BL.ENCOUNTERS[j.encounter].name + "</td><td>" + t.ordersMet + " / " + t.orders + "</td><td>" + (t.dodged || 0) + " / " + (t.torps || 0) + "</td><td>" + t.stressHits + "</td>" +
@@ -1997,7 +1997,7 @@
   }
   function wentWellHelm(r) {
     var hm = r.helm, notes = [];
-    if (r.outcome === "success") notes.push(sim.sys("buster") ? "The planet buster got through." : r.hasDrive ? "The ship made all its jumps." : "The gunboat made it back aboard.");
+    if (r.outcome === "success") notes.push(sim.sys("buster") ? "The planet buster got through." : r.hasDrive ? "The ship made all its warps." : "The gunboat made it back aboard.");
     if (hm.orders && hm.ordersMet === hm.orders) notes.push("Every order met.");
     else if (hm.orders && hm.ordersMet / hm.orders >= 0.75) notes.push(hm.ordersMet + " of " + hm.orders + " orders met.");
     if (!hm.stressHits && !hm.flankHits) notes.push("No structural damage from your flying.");
@@ -2023,8 +2023,8 @@
     gravFinal = !!final;
     var n = sim.stats.jumps.length, js = sim.stats.jumps[n - 1], next = final ? null : sim.encounter();
     var dmg = sim.stats.damageReports.filter(function (d) { return d.jump === n; });
-    $("grav-title").textContent = final ? (sim.hasDrive ? "Jump " + n + " of " + sim.cfg.jumps + " complete" + (sim.sys("buster") ? ": planet buster away" : "") : "Sortie " + n + " of " + sim.cfg.jumps + " complete: back aboard the carrier")
-      : sim.hasDrive ? "In warp space: jump " + n + " of " + sim.cfg.jumps + " complete" : "Aboard the carrier: sortie " + n + " of " + sim.cfg.jumps + " complete";
+    $("grav-title").textContent = final ? (sim.hasDrive ? "Warp " + n + " of " + sim.cfg.jumps + " complete" + (sim.sys("buster") ? ": planet buster away" : "") : "Sortie " + n + " of " + sim.cfg.jumps + " complete: back aboard the carrier")
+      : sim.hasDrive ? "In warp space: warp " + n + " of " + sim.cfg.jumps + " complete" : "Aboard the carrier: sortie " + n + " of " + sim.cfg.jumps + " complete";
     $("btn-grav-go").textContent = final ? "Mission debriefing" : sim.captain ? "Plot the next course" : sim.hasDrive ? "Drop out of warp space" : "Launch";
     if (sim.turret) { $("grav-body").innerHTML = sim.captain ? gravCaptain(js, dmg, next, n) : sim.helm ? gravHelm(js, dmg, next, n) : gravGunner(js, dmg, next, n); overlay("ov-grav", true); return; }
     $("grav-body").innerHTML =
@@ -2034,7 +2034,7 @@
       "<li>Hull damage taken: " + js.hullLost + "</li>" +
       "<li>Failsafe trips: " + js.trips + "</li>" +
       "<li>Enemies destroyed: " + js.kills + "</li>" +
-      (sim.hasDrive ? "<li>Jump " + (js.onTime ? "on time" : "late: the drive wasn't full when the window opened") + "</li>" : "") +
+      (sim.hasDrive ? "<li>Warp " + (js.onTime ? "on time" : "late: the drive wasn't full when the window opened") + "</li>" : "") +
       (dmg.length ? "<li>Damage: " + dmg.map(function (d) { return d.what; }).join("; ") + "</li>" : "") +
       (!final && sim.lastRepairs && sim.lastRepairs.length ? "<li>Damage control repaired half of it: " + sim.lastRepairs.join("; ") + "</li>" : "") +
       "</ul>" +
@@ -2114,10 +2114,10 @@
       r.outcome === "destroyed" ? "Ship destroyed" : r.outcome === "wardLost" ? (r.captain && r.captain.escort ? r.captain.escort.name.replace(/^./, function (x) { return x.toUpperCase(); }) : "Carrier") + " lost" : "Abandoned ship";
     if (r.testWin) $("db-title").textContent += " (test win)";
     $("db-lede").textContent = (job.test ? "" : BL.shipLabel(job.classId, job.ship, job.hull) + ", " + r.className + ", tech level " + r.tl + " · ") + "Seed " + r.seed + " · " +
-      r.jumpsDone + " of " + sim.cfg.jumps + (r.hasDrive ? " jumps · " : " sorties · ") + d.minutes + " minutes · hull " + r.hull + " / " + r.hullMax +
+      r.jumpsDone + " of " + sim.cfg.jumps + (r.hasDrive ? " warps · " : " sorties · ") + d.minutes + " minutes · hull " + r.hull + " / " + r.hullMax +
       (r.looks ? " · looked at the paused console " + r.looks + (r.looks === 1 ? " time" : " times") + " (−" + (100 - Math.round(100 * r.score / Math.max(1, r.raw))) + "%)" : "");
     $("db-score").textContent = r.score;
-    $("db-jumps-title").textContent = r.hasDrive ? "Jump by jump" : "Sortie by sortie";
+    $("db-jumps-title").textContent = r.hasDrive ? "Warp by warp" : "Sortie by sortie";
     var names = r.station === "captain" ? { objective: "Objective", condition: "Ship condition", navigation: "Navigation", command: "Command" }
       : r.station === "pilot" ? { objective: "Objective", condition: "Ship condition", orders: "Orders met", handling: "Ship handling" }
       : r.station === "gunner" ? { objective: "Objective", condition: "Ship condition", accuracy: "Accuracy", threats: "Threats stopped" }
@@ -2130,7 +2130,7 @@
     $("db-worst").textContent = r.station === "pilot" ? worstHelm(r) : r.station === "gunner" ? worstGunner(r) : worstMoment(r);
     if (r.station === "pilot") { debriefHelm(r); return; }
     if (r.station === "gunner") { debriefGunner(r); return; }
-    $("db-jumps").innerHTML = "<tr><th>" + (r.hasDrive ? "Jump" : "Sortie") + "</th><th>Encounter</th><th>Salvos shielded</th><th>Hull lost</th><th>Trips</th><th>Kills</th><th>On time</th><th>Seconds</th></tr>" +
+    $("db-jumps").innerHTML = "<tr><th>" + (r.hasDrive ? "Warp" : "Sortie") + "</th><th>Encounter</th><th>Salvos shielded</th><th>Hull lost</th><th>Trips</th><th>Kills</th><th>On time</th><th>Seconds</th></tr>" +
       r.jumps.map(function (j, i) {
         return "<tr><td>" + (i + 1) + "</td><td>" + BL.ENCOUNTERS[j.encounter].name + "</td><td>" + j.shielded + " / " + j.salvos + "</td><td>" + j.hullLost +
           "</td><td>" + j.trips + "</td><td>" + j.kills + "</td><td>" + (j.onTime ? "yes" : "no") + "</td><td>" + j.seconds + "</td></tr>";
@@ -2140,7 +2140,7 @@
       ["Surprise salvos", d.surprises],
       ["Gun requests filled", d.requestsFilled + " / " + d.requests],
       ["Torpedoes the gun crew shot down", d.crewDowned || 0],
-      ["Jumps on time", d.jumpsOnTime + " / " + r.jumpsDone],
+      ["Warps on time", d.jumpsOnTime + " / " + r.jumpsDone],
       ["Failsafe trips", d.trips],
       ["Enemies destroyed", d.kills],
       ["Energy delivered", d.deliveredMJ + " MJ"],
@@ -2233,10 +2233,10 @@
 
   function wentWell(r) {
     var d = r.detail, notes = [];
-    if (r.outcome === "success") notes.push(sim.sys("buster") ? "The planet buster got through." : "The ship made all its jumps.");
+    if (r.outcome === "success") notes.push(sim.sys("buster") ? "The planet buster got through." : "The ship made all its warps.");
     if (d.salvosAnnounced && d.salvosShielded === d.salvosAnnounced) notes.push("Every announced salvo hit full shields.");
     else if (d.salvosAnnounced && d.salvosShielded / d.salvosAnnounced >= 0.75) notes.push("Shields stopped " + d.salvosShielded + " of " + d.salvosAnnounced + " announced salvos.");
-    if (r.jumpsDone && d.jumpsOnTime === r.jumpsDone) notes.push("Every jump was on time.");
+    if (r.jumpsDone && d.jumpsOnTime === r.jumpsDone) notes.push("Every warp was on time.");
     if (d.trips === 0 && r.jumpsDone) notes.push("The failsafe never tripped.");
     if (d.requests && d.requestsFilled / d.requests >= 0.8) notes.push("Gunners got power for " + d.requestsFilled + " of " + d.requests + " requests.");
     if (d.efficiencyPct >= 95) notes.push("Very little energy wasted as heat (" + d.efficiencyPct + "% efficient).");
@@ -2251,8 +2251,8 @@
     var o = r.longestOverload, q = r.worstRequest;
     var oSev = o.dur / 8, qSev = q ? q.missed / 6 : 0;
     if (o.dur < 1 && (!q || q.missed === 0)) return "Nothing stands out. Clean run.";
-    if (oSev >= qSev) return "The longest overload: " + o.dur + " s above 100% load in jump " + o.jump + ", starting at T+" + mmss(o.t) + ".";
-    return "Gunner " + q.gun + " in jump " + q.jump + " (T+" + mmss(q.t) + "): called for rapid fire and missed " + q.missed + " of " + q.wanted + " shots for lack of charge.";
+    if (oSev >= qSev) return "The longest overload: " + o.dur + " s above 100% load in warp " + o.jump + ", starting at T+" + mmss(o.t) + ".";
+    return "Gunner " + q.gun + " in warp " + q.jump + " (T+" + mmss(q.t) + "): called for rapid fire and missed " + q.missed + " of " + q.wanted + " shots for lack of charge.";
   }
 
   function saveDebrief() {

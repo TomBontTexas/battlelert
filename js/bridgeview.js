@@ -82,7 +82,7 @@
     var jc = P(map.jump);
     ctx.strokeStyle = "rgba(61,255,122,.85)"; ctx.fillStyle = "rgba(61,255,122,.12)"; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.arc(jc.x, jc.y, map.jump.r * s, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-    if (!small) { ctx.fillStyle = "rgba(61,255,122,.95)"; ctx.textAlign = "center"; ctx.textBaseline = "top"; ctx.fillText(map.recovery ? "RECOVERY ZONE" : "JUMP ZONE", jc.x, jc.y + map.jump.r * s + 3); }
+    if (!small) { ctx.fillStyle = "rgba(61,255,122,.95)"; ctx.textAlign = "center"; ctx.textBaseline = "top"; ctx.fillText(map.recovery ? "RECOVERY ZONE" : "WARP ZONE", jc.x, jc.y + map.jump.r * s + 3); }
     // The jump heading: the approach line leading in (dashed) and an arrow through the zone.
     if (map.approach) {
       var ap = P(map.approach), ja = map.jumpHdg * RAD, ux = Math.sin(ja), uy = -Math.cos(ja), tip = { x: jc.x + ux * map.jump.r * s * 1.6, y: jc.y + uy * map.jump.r * s * 1.6 };
@@ -92,7 +92,7 @@
       var hl = small ? 6 : 9, px = -uy, py = ux;
       ctx.fillStyle = "rgba(61,255,122,.95)"; ctx.beginPath(); ctx.moveTo(tip.x + ux * hl, tip.y + uy * hl);
       ctx.lineTo(tip.x + px * hl * 0.6, tip.y + py * hl * 0.6); ctx.lineTo(tip.x - px * hl * 0.6, tip.y - py * hl * 0.6); ctx.closePath(); ctx.fill();
-      if (!small) { ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("JUMP " + BL.hdgText(map.jumpHdg), tip.x + ux * 28, tip.y + uy * 22); }
+      if (!small) { ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("WARP " + BL.hdgText(map.jumpHdg), tip.x + ux * 28, tip.y + uy * 22); }
     }
     // A scouting run's checkpoints: numbered cyan rings (green and ticked once flown through).
     (map.checkpoints || []).forEach(function (cp, i) {
