@@ -62,6 +62,7 @@
     this.result = null;
     this.buildShip();
     this.hasDrive = !!this.sys("drive");
+    this.world = opts.world || (this.sys("buster") ? r0pick(this.seed, this.cfg.dropWorlds) : null);     // the drop's target world
     // Gunner station: the player aims one gun (opts.gunner = { weapon, gun }); see gunnery.js.
     this.turret = !opts.gunner ? null : opts.gunner.ring ? new BL.RingTurret(this, opts.gunner) : new BL.Turret(this, opts.gunner);
     // Pilot station: the player at the helm (opts.helm), the gun crew on every gun; see helm.js.
@@ -88,8 +89,12 @@
       damageReports: []
     };
   }
+  // (a pick that doesn't touch the mission's own random numbers)
+  function r0pick(seed, list) { return list[((seed >>> 0) * 2654435761 >>> 0) % list.length]; }
   BL.Mission = Mission;
 
+  // The dreadnought's last system is the drop (no warp out): see runDrop.
+  Mission.prototype.isDrop = function () { return !!this.sys("buster") && this.jumpIndex === this.cfg.jumps - 1; };
   Mission.prototype.planRoute = function (gunner) {
     var types = ((gunner && this.data.gunnerEncounters) || this.data.encounters || Object.keys(BL.ENCOUNTERS)).slice(), route = [];
     // At the gun a dreadnought's final system is always the homeworld fortress.
@@ -213,7 +218,17 @@
     // At the helm a key ending in H wins, at the gun one ending in G (not for the captain's own lines).
     var own = this.captain && BL.COMMAND.hears.indexOf(key) >= 0;
     var lines = (this.helm && !own && BL.CHATTER[key + "H"]) || (this.turret && BL.CHATTER[key + "G"]) || BL.CHATTER[key]; if (!lines || !lines.length) return;
-    this.say(fill(this.rng.pick(lines), vars), kind, now);
+    // (the drop: no line about the drive, and the warp's window, zone and heading are the drop's)
+    if (this.isDrop() && /^(jump|arrival)/.test(key)) lines = lines.filter(function (l) { return !/drive/i.test(l); });
+    // (on the bridge the drop has no heading: a line giving one gives way to the plain line, if any)
+    if (this.isDrop() && this.captain && lines.some(function (l) { return /\{hdg\}/.test(l); })) {
+      lines = lines.filter(function (l) { return !/\{hdg\}/.test(l); });
+      if (!lines.length) lines = (BL.CHATTER[key] || []).filter(function (l) { return !/\{hdg\}/.test(l) && !(/^(jump|arrival)/.test(key) && /drive/i.test(l)); });
+    }
+    if (!lines.length) return;
+    var line = fill(this.rng.pick(lines), vars);
+    if (this.isDrop()) line = line.replace(/\b(warp|Warp)( window| zone| heading)/g, function (x, w, what) { return (w === "Warp" ? "Drop" : "drop") + what; });
+    this.say(line, kind, now);
     this.cue("chatter");
   };
   // The helm hears no running commentary (BL.HELM.quiet).
@@ -286,7 +301,7 @@
     this.cue("jump");
     if (!this.hasDrive) this.chat("recovered", null, "good");
     if (this.jumpIndex >= this.cfg.jumps - 1) {
-      if (this.sys("buster")) this.say("Bridge: Azurian world dead ahead. Planet buster away!", "good");   // (only a dreadnought carries one)
+      if (this.sys("buster")) this.say("Bridge: Azurian " + this.world + " world dead ahead. Planet buster away!", "good");   // (only a dreadnought carries one)
       this.finish("success");
     } else {
       this.phase = "gravspace";
@@ -571,7 +586,7 @@
         s.nextShot = Math.min(s.nextShot, this.t);
       }
     } else if (e.type === "jump") {
-      if (this.hasDrive && this.phase !== "countdown") this.chat(this.captain ? "jumpOpenNav" : "jumpOpen", null, "warn");     // (on the bridge no "where's my drive" in the player's name)
+      if (this.hasDrive && this.phase !== "countdown" && !this.isDrop()) this.chat(this.captain ? "jumpOpenNav" : "jumpOpen", null, "warn");     // (on the bridge no "where's my drive" in the player's name)
     }
   };
 
@@ -1061,7 +1076,24 @@
     if (ship.crippled) this.stats.crippledTime += dt;
   };
 
+  /* The dreadnought's last system: the drop. No warp out: she launches the planet buster at the
+     target world from the drop zone. It goes once the MOAB is full and the window open (at the
+     helm, on the drop heading; on the bridge, the captain's order, in the zone). She may be early
+     and wait; if it hasn't gone by the window + cfg.dropLate s, the mission fails. */
+  Mission.prototype.runDrop = function () {
+    var t = this.t, win = this.windowAt();
+    if (this.phase !== "engage") return;
+    var ready = this.busterFull();
+    if (!ready && t >= win && !this.busterSaid) { this.busterSaid = true; this.chat("busterWait", null, "bad"); }
+    if (ready && this.helm && !this.captain && !this.helm.inJumpCorridor()) ready = false;
+    if (ready && this.captain && !this.captain.mayJump()) ready = false;
+    if (ready && t >= win) { this.driveFullAt = t; this.doJump(); return; }
+    if (t > win + this.cfg.dropLate) this.finish("dropMissed");
+  };
+  // When the drop window closes (s from now), in the drop system; else null.
+  Mission.prototype.dropClosesIn = function () { return this.isDrop() ? this.windowAt() + this.cfg.dropLate - this.t : null; };
   Mission.prototype.runJump = function () {
+    if (this.isDrop()) { this.runDrop(); return; }
     var drive = this.sys("drive"), t = this.t;
     if (!drive) {                       // gunboat: the carrier recovers it when the sortie timer runs out
       // (on the bridge the coxswain orders the recovery, in the recovery zone on its heading)

@@ -82,9 +82,9 @@
     var jc = P(map.jump);
     ctx.strokeStyle = "rgba(61,255,122,.85)"; ctx.fillStyle = "rgba(61,255,122,.12)"; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.arc(jc.x, jc.y, map.jump.r * s, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-    if (!small) { ctx.fillStyle = "rgba(61,255,122,.95)"; ctx.textAlign = "center"; ctx.textBaseline = "top"; ctx.fillText(map.recovery ? "RECOVERY ZONE" : "WARP ZONE", jc.x, jc.y + map.jump.r * s + 3); }
+    if (!small) { ctx.fillStyle = "rgba(61,255,122,.95)"; ctx.textAlign = "center"; ctx.textBaseline = "top"; ctx.fillText(map.recovery ? "RECOVERY ZONE" : map.drop ? "DROP ZONE" : "WARP ZONE", jc.x, jc.y + map.jump.r * s + 3); }
     // The jump heading: the approach line leading in (dashed) and an arrow through the zone.
-    if (map.approach) {
+    if (map.approach && !map.drop) {     // (the drop has no heading)
       var ap = P(map.approach), ja = map.jumpHdg * RAD, ux = Math.sin(ja), uy = -Math.cos(ja), tip = { x: jc.x + ux * map.jump.r * s * 1.6, y: jc.y + uy * map.jump.r * s * 1.6 };
       ctx.strokeStyle = "rgba(61,255,122,.7)"; ctx.lineWidth = 1.5; ctx.setLineDash([6, 4]);
       ctx.beginPath(); ctx.moveTo(ap.x, ap.y); ctx.lineTo(jc.x, jc.y); ctx.stroke(); ctx.setLineDash([]);

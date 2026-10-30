@@ -39,7 +39,7 @@
     // The jump heading (to the nearest 5 degrees) and the approach point on the line leading in to it.
     var jh = Math.round(to360(jb + r.range([0, K.jumpTurn]) * (r.chance(0.5) ? 1 : -1)) / 5) * 5 % 360;
     var app = along(jump, jh + 180, K.approach * D);
-    var map = { D: D, start: start, jump: { x: jump.x, y: jump.y, r: K.zone * D }, jumpHdg: jh, approach: app, rocks: [], clusters: [], window: opts.window, recovery: opts.hasDrive === false };     // (recovery: a gunboat's carrier pickup)
+    var map = { D: D, start: start, jump: { x: jump.x, y: jump.y, r: K.zone * D }, jumpHdg: jh, approach: app, rocks: [], clusters: [], window: opts.window, recovery: opts.hasDrive === false, drop: !!opts.drop };     // (recovery: a gunboat's carrier pickup)
     // A picket's scouting run (opts.checkpoints): checkpoints to fly through in order, spread along
     // the way to the jump point and off to either side. Placed first: every area keeps clear of them.
     map.checkpoints = [];
@@ -148,7 +148,7 @@
     // timed against the window.
     var n = legs.length, last = legs[n - 1], zoneEta = n ? eta - Math.min(last.len, map.jump.r) / (Math.max(0.1, gOf(last.eng)) * K.scale) : eta;
     var late = zoneEta > map.window - K.early, lastHdg = n ? last.hdg : null;
-    var offJump = lastHdg === null || Math.abs(norm(lastHdg - map.jumpHdg)) > K.jumpTol;
+    var offJump = !map.drop && (lastHdg === null || Math.abs(norm(lastHdg - map.jumpHdg)) > K.jumpTol);     // (the drop has no heading)
     // A scouting run: the checkpoints no leg passes through (a warning; each missed costs navigation).
     var cpMiss = (map.checkpoints || []).filter(function (c) {
       for (var j = 0; j < pts.length - 1; j++) if (segNear(pts[j], pts[j + 1], c).d < c.r) return false;
@@ -233,7 +233,7 @@
     this.who = "Captain";
     this.maps = m.route.map(function (id, i) {
       var enc = BL.ENCOUNTERS[id] || {};
-      return BL.makeNavMap(m.seed, i, { window: m.windowFor(i), cruiseG: h.gOf("cruise"), hasDrive: m.hasDrive, mines: enc.sweep ? "sweep" : enc.mines ? "minefield" : null,
+      return BL.makeNavMap(m.seed, i, { window: m.windowFor(i), cruiseG: h.gOf("cruise"), hasDrive: m.hasDrive, drop: !!m.sys("buster") && i === m.route.length - 1, mines: enc.sweep ? "sweep" : enc.mines ? "minefield" : null,
         checkpoints: BL.COMMAND.checkpoints.classes.indexOf(m.data.classId) >= 0 });
     });
     this.plots = [];
@@ -333,6 +333,11 @@
   // "window" | "drive", win, drive }.
   Captain.prototype.readyEta = function () {
     var m = this.m, d = m.sys("drive"), win = Math.max(0, m.windowAt() - m.t), drv = 0;
+    // (the drop: the MOAB instead of the drive)
+    if (m.isDrop()) {
+      var bu = m.sys("buster"), bt = bu.mj >= bu.maxMJ - 0.5 ? 0 : this.buRate > 0.05 ? (bu.maxMJ - bu.mj) / this.buRate : null;
+      return { at: bt === null ? null : Math.max(win, bt), by: bt === null || bt > win ? "moab" : "window", win: win, drive: bt };
+    }
     if (d && d.mj < d.maxMJ - 0.5) drv = this.drRate > 0.05 ? (d.maxMJ - d.mj) / this.drRate : null;
     var at = drv === null ? null : Math.max(win, drv);
     return { at: at, by: drv === null || drv > win ? "drive" : "window", win: win, drive: drv };
@@ -692,6 +697,12 @@
   // Once ordered, it goes when she's in the zone and on the heading; `wait` says what it's waiting for.
   Captain.prototype.jumpView = function () {
     var m = this.m, d = m.sys("drive"), h = m.helm;
+    if (m.isDrop()) {                  // the drop: the MOAB full, the window open, in the zone (no heading, no drive)
+      var bu = m.sys("buster"), moab = !m.busterFull() ? "MOAB " + Math.floor(bu.mj / bu.maxMJ * 100) + "%" : null;
+      var dwhy = moab || (m.t < m.windowAt() ? "Window in " + Math.ceil(m.windowAt() - m.t) + "s" : !this.inZone() ? "Outside the zone" : null);
+      var dwait = !this.jumpOrdered ? null : moab || (!this.inZone(BL.COMMAND.zoneHold) ? "BACK TO THE ZONE" : m.t < m.windowAt() ? "WAITING" : null);
+      return { ready: !moab && this.inZone(), why: dwhy, ordered: this.jumpOrdered, wait: dwait, drop: true };
+    }
     var drive = !d ? null : d.mj < d.maxMJ - 0.5 ? "Drive " + Math.floor(d.mj / d.maxMJ * 100) + "%" : null;
     // (a dreadnought's final jump also waits for the planet buster: Mission.runJump)
     var bu = m.sys("buster");
@@ -718,7 +729,12 @@
     // The ship moves on the map at her speed, on her compass heading.
     var hdg = h.compass(), v = h.speed * K.scale;
     this.pos.x += Math.sin(hdg * RAD) * v * dt; this.pos.y += Math.cos(hdg * RAD) * v * dt;
-    // The drive's charge rate, MJ/s, averaged over the last few seconds.
+    // The drive's charge rate, MJ/s, averaged over the last few seconds (and the MOAB's, for the drop).
+    var bu = m.sys("buster");
+    if (bu && dt > 0) {
+      if (this.buLast !== null && this.buLast !== undefined) { var br = (bu.mj - this.buLast) / dt, ba = Math.min(1, dt / K.driveTau); this.buRate = this.buRate === null || this.buRate === undefined ? br : this.buRate + (br - this.buRate) * ba; }
+      this.buLast = bu.mj;
+    }
     var dr = m.sys("drive");
     if (dr && dt > 0) {
       if (this.drLast !== null) { var rate = (dr.mj - this.drLast) / dt, a = Math.min(1, dt / K.driveTau); this.drRate = this.drRate === null ? rate : this.drRate + (rate - this.drRate) * a; }
@@ -844,8 +860,14 @@
     // Gunboats: launch as soon as the launchers are full; recover botRecover s before the window.
     var hv2 = c.hangarView();
     if (hv2 && hv2.can && (hv2.order === "launch" ? m.t < m.windowAt() - BL.COMMAND.hangarOrder.botRecover - 20 : m.t >= m.windowAt() - BL.COMMAND.hangarOrder.botRecover)) c.orderHangar();
-    // Main gun: swing onto the big target once it's charged, if it's within botSwing degrees of the bow (a short swing), away from the jump zone.
-    if (!this.noMain && !c.inZone() && !c.callView()) {
+    // The drop (a hard deadline): flank speed when she'd reach the zone too late, the plot's engines
+    // again once she's in it, and no main-gun swings in the last minute.
+    // (judged only over the last 90 s: early in the system her speed says little)
+    var drop = m.isDrop(), eta = drop ? c.zoneEta() : null, late = drop && !c.inZone() && m.windowIn() < 90 && eta !== null && eta > m.windowIn() - 5;
+    if (late && c.engOrder !== "flank") c.orderEngines("flank");
+    else if (!late && drop && c.engOrder === "flank") c.engOrder = null;
+    // Main gun: swing onto the big target once it's charged, if it's within botSwing degrees of the bow (a short swing), away from the warp zone.
+    if (!this.noMain && !c.inZone() && !c.callView() && !(drop && m.windowIn() < 60)) {
       var mv = c.mainView();
       if (mv && mv.can && Math.abs(norm(m.turret.bearingOf(mv.target.x, mv.target.y))) <= BL.COMMAND.mainSwing.botSwing) c.orderMain();
     }

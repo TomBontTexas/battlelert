@@ -106,6 +106,8 @@
     // (unless the captain's stance is drive first: then the drive in its place, fast enough to be
     // full a few seconds before the window, at its full rate once the window is near or open, and
     // flat out over its last percent: paced to the very end it crawled at 99%, or hung there).
+    if (drive && m.isDrop()) drive = null;      // the drop: no warp out, so the drive gets nothing
+    if (m.sys("drive") && m.isDrop()) m.setSetpoint("drive", 0);
     if (drive && m.driveFirst) want.drive = drive.mj >= drive.maxMJ * 0.99 ? drive.maxMW : Math.min(drive.maxMW, 1.2 * (drive.maxMJ - drive.mj) / Math.max(1, m.windowIn() - 8));
     // (the captain's MOAB stance: the planet buster in its place, flat out)
     if (buster && m.busterFirst) want.buster = buster.maxMW;

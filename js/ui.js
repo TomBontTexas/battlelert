@@ -132,7 +132,8 @@
     if (guns && rc) { guns.ring = true; guns.arcs = rc.arcs; guns.arcNames = rc.arcNames; if (!guns.weapons) guns.weapons = [guns.weapon]; delete guns.weapon; }
     var story = j.story && BL.storyMission(j.story);
     sim = new BL.Mission({ seed: j.seed, classId: j.classId, tl: j.tl, gunner: guns, helm: !!j.helm, captain: !!j.captain, escort: !!j.escort, sweep: j.test && j.classId === "gunboat" && !!guns && !j.escort,
-      route: story ? story.systems : null, reports: story ? story.reports.map(storyText) : null });
+      route: story ? story.systems : null, reports: story ? story.reports.map(storyText) : null,
+      world: story ? ((story.briefing || "").match(/(industrial|military|transportation) world/) || [])[1] : null });
     if (j.test) $("seed-input").value = j.seed;
     var d = sim.data, cls = BL.classById(j.classId);
     $("brief-seed").textContent = "· seed " + j.seed;
@@ -148,8 +149,9 @@
         return "<li>" + (sim.hasDrive ? "System " : "Sortie ") + (i + 1) + ": <b>" + e.name + "</b>. " + gunnerTip(id, !first) +
           (sim.hasDrive ? " Warp window " + sim.windowFor(i) + " s." : " Recovered after " + sim.windowFor(i) + " s.") + "</li>"; }
       return "<li>" + (sim.hasDrive ? "System " : "Sortie ") + (i + 1) + ": <b>" + e.name + "</b>. " + e.what + ". Tests: " + e.tests.toLowerCase() +
-        (sim.hasDrive ? ". Warp window opens " + sim.windowFor(i) + " s after arrival." : ". The carrier recovers you " + sim.windowFor(i) + " s after launch.") + "</li>";
-    }).join("") + (sim.sys("buster") ? "<li>The Azurian world: drop the planet buster.</li>" : "");
+        (sim.sys("buster") && i === sim.cfg.jumps - 1 ? ". The drop: no warp out. The planet buster must be launched from the drop zone within " + sim.cfg.dropLate + " s of the window opening " + sim.windowFor(i) + " s after arrival, or the mission fails."
+          : sim.hasDrive ? ". Warp window opens " + sim.windowFor(i) + " s after arrival." : ". The carrier recovers you " + sim.windowFor(i) + " s after launch.") + "</li>";
+    }).join("") + (sim.sys("buster") ? "<li>The target: an Azurian " + sim.world + " world. Drop the planet buster on it.</li>" : "");
     $("brief-ship-title").textContent = "Your ship: " + (j.test ? cls.name : BL.shipLabel(j.classId, j.ship, j.hull) + ", " + cls.name) + ", tech level " + j.tl;
     var html = [
       d.reactors.length > 1 ? "<div><span>Reactors</span> " + d.reactors.map(function (x) { return x.name + " " + x.mw + " MW"; }).join(", ") + "</div>"
@@ -655,7 +657,15 @@
       setCls($("jump-status"), "jump-status");
     }
     var dp = drive ? drive.mj / drive.maxMJ : 0;
-    if (drive) {
+    setText($("jump-label"), sim.isDrop() ? "DROP" : drive ? "WARP" : "RECOVERY");
+    if (drive && sim.isDrop()) {          // the drop: the planet buster, not the drive
+      var bz = sim.sys("buster"), bp = bz.mj / bz.maxMJ, ci = sim.dropClosesIn();
+      setText($("jump-drive"), "buster " + Math.floor(bp * 100) + "%");
+      $("jump-fill").style.width = pct(bp);
+      if (wi > 0) { var bneed = (bz.maxMJ - bz.mj) / Math.max(1, wi); js = "Drop window opens in " + Math.ceil(wi) + " s" + (bp < 1 ? " · buster needs ~" + Math.ceil(bneed) + " MW from now" : " · buster ready"); if (bneed > bz.maxMW * 0.8) jc += " late"; }
+      else { js = "⚠ DROP WINDOW OPEN: closes in " + Math.max(0, Math.ceil(ci)) + " s" + (bp < 1 ? " · buster " + Math.floor(bp * 100) + "%" : ""); jc += " late"; }
+      setText($("jump-status"), js); setCls($("jump-status"), jc);
+    } else if (drive) {
     setText($("jump-drive"), "drive " + Math.floor(dp * 100) + "%");
     $("jump-fill").style.width = pct(dp);
     if (sim.phase === "countdown") { js = "✔ Drive full. Warping in " + Math.max(1, Math.ceil(sim.jumpAt - sim.t)) + " s"; jc += " go"; }
@@ -735,6 +745,7 @@
     Object.keys(fcEls).forEach(function (id) { if (!seen[id]) { fcEls[id].remove(); delete fcEls[id]; } });
     var wi = sim.windowIn(), fj = $("fc-jump");
     if (!sim.hasDrive) { setText(fj, wi <= sim.cfg.jumpWindowNotice ? "Recovery in " + Math.max(0, Math.ceil(wi)) + " s ▶" : ""); setCls(fj, "fc-jump"); }
+    else if (sim.isDrop()) { setText(fj, wi > 0 ? (wi <= sim.cfg.jumpWindowNotice ? "Drop window in " + Math.ceil(wi) + " s ▶" : "") : "DROP WINDOW OPEN · closes in " + Math.max(0, Math.ceil(sim.dropClosesIn())) + " s · buster " + Math.floor(sim.sys("buster").mj / sim.sys("buster").maxMJ * 100) + "%"); setCls(fj, wi > 0 ? "fc-jump" : "fc-jump open"); }
     else if (sim.phase === "countdown") { setText(fj, "WARPING"); setCls(fj, "fc-jump"); }
     else if (wi > 0) { setText(fj, wi <= sim.cfg.jumpWindowNotice ? "Warp window in " + Math.ceil(wi) + " s ▶" : ""); setCls(fj, "fc-jump"); }
     else { setText(fj, "WARP WINDOW OPEN · drive " + Math.floor(sim.sys("drive").mj / sim.sys("drive").maxMJ * 100) + "%"); setCls(fj, "fc-jump open"); }
@@ -1479,6 +1490,8 @@
     var eta = c.zoneEta(), rd = c.readyEta(), fs = big ? 15 : 12;
     var l1 = eta === 0 ? "IN THE ZONE" : eta === null ? "ZONE ARRIVAL IN –" : "ZONE ARRIVAL IN " + mmss(Math.ceil(eta));
     var l2 = rd.at === 0 ? "CAN WARP NOW" : rd.at === null ? "DRIVE NOT CHARGING" : "CAN WARP IN " + mmss(Math.ceil(rd.at)) + " · " + rd.by.toUpperCase();
+    // (the drop: when it can go, then once the window's open, when it closes)
+    if (sim.isDrop()) l2 = sim.windowIn() <= 0 ? "DROP WINDOW CLOSES IN " + mmss(Math.max(0, Math.ceil(sim.dropClosesIn()))) : rd.at === null ? "MOAB NOT CHARGING" : "CAN DROP IN " + mmss(Math.ceil(rd.at)) + " · " + rd.by.toUpperCase();
     var tag = eta === null || eta === 0 || rd.at === null ? "" : eta < rd.at - 10 ? " · EARLY" : eta > rd.at + BL.COMMAND.zoneGrace ? " · LATE" : " · ON TIME";
     var col = tag === " · EARLY" ? "#ffd666" : tag === " · LATE" ? "#ff6b6b" : "#3dff7a";
     ctx.font = "600 " + fs + "px ui-monospace, Menlo, Consolas, monospace"; ctx.textAlign = "left"; ctx.textBaseline = "top";
@@ -1487,7 +1500,7 @@
     var tw = Math.max(ctx.measureText(l1 + tag).width, ctx.measureText(l2).width, ctx.measureText(l3).width);
     ctx.fillStyle = "rgba(5,8,12,.8)"; ctx.fillRect(3, 3, tw + 10, fs * (l3 ? 3 : 2) + (l3 ? 12 : 10));
     ctx.fillStyle = col; ctx.fillText(l1 + tag, 8, 6);
-    ctx.fillStyle = "rgba(200,215,230,.85)"; ctx.fillText(l2, 8, 8 + fs);
+    ctx.fillStyle = sim.isDrop() && sim.windowIn() <= 0 ? "#ff6b6b" : "rgba(200,215,230,.85)"; ctx.fillText(l2, 8, 8 + fs);
     if (l3) { ctx.fillStyle = mo.eta === 0 ? "#3dff7a" : "#e7a0ff"; ctx.fillText(l3, 8, 10 + fs * 2); }
   }
   function hdg3(v) { return BL.hdgText(v); }
@@ -1506,6 +1519,12 @@
     return { pct: Math.floor(bu.mj / bu.maxMJ * 100), f: bu.mj / bu.maxMJ, eta: full ? 0 : moabT.rate > 0.05 ? (bu.maxMJ - bu.mj) / moabT.rate : null };
   }
   function moabRow() {
+    if (sim.isDrop()) {
+      var dwi = sim.windowIn();
+      setText($("tu-rec-label"), "DROP");
+      setText($("tu-rec-val"), dwi > 0 ? "in " + Math.ceil(dwi) + " s" : "closes in " + Math.max(0, Math.ceil(sim.dropClosesIn())) + " s");
+      $("tu-rec").style.width = pct(Math.min(1, sim.t / Math.max(1, sim.windowAt())));
+    } else setText($("tu-rec-label"), sim.hasDrive ? "WARP" : "RECOVERY");
     var mo = moabEta();
     $("tu-moabrow").hidden = !mo;
     if (!mo) return;
@@ -1586,7 +1605,7 @@
     var live = turretActive();
     Array.prototype.forEach.call($("cp-tele").children, function (b) { b.classList.toggle("on", b.dataset.eng === hv.eng); b.disabled = !live; });
     Array.prototype.forEach.call($("cp-gunord").children, function (b) { b.classList.toggle("on", b.dataset.gun === c.guns); b.disabled = !live; });
-    Array.prototype.forEach.call($("cp-stance").children, function (b) { b.classList.toggle("on", b.dataset.stance === c.stance); b.disabled = !live; });
+    Array.prototype.forEach.call($("cp-stance").children, function (b) { b.classList.toggle("on", b.dataset.stance === c.stance); b.disabled = !live; b.hidden = b.dataset.stance === "drive" && sim.isDrop(); });
     $("cp-resume").disabled = !live || !hv.own;
     var tg = $("cp-sec-torp");
     setText($("cp-torp-lbl"), cv ? "TORPEDOES · " + cv.in.toFixed(1) + " s" : wv ? "TORPEDOES · " + wv.in.toFixed(1) + " s" : "TORPEDOES");
@@ -1612,8 +1631,8 @@
     var jb = $("cp-jump");
     jb.disabled = !live || !jv.ready || jv.ordered || sim.phase === "countdown";
     jb.classList.toggle("ready", jv.ready && !jv.ordered);
-    var jw = sim.hasDrive ? "WARP" : "RECOVER";        // a gunboat: the carrier's recovery
-    setHtml(jb, sim.phase === "countdown" ? "WARPING" : jv.ordered ? esc(jv.wait || (sim.hasDrive ? "WARPING" : "RECOVERING")) : jv.ready ? jw + " <small>(J)</small>" : esc(jv.why || jw));
+    var jw = sim.isDrop() ? "DROP MOAB" : sim.hasDrive ? "WARP" : "RECOVER";        // a gunboat: the carrier's recovery; the dreadnought's last system: the drop
+    setHtml(jb, sim.phase === "countdown" ? "WARPING" : jv.ordered ? esc(jv.wait || (sim.isDrop() ? "DROPPING" : sim.hasDrive ? "WARPING" : "RECOVERING")) : jv.ready ? jw + " <small>(J)</small>" : esc(jv.why || jw));
     // SHIP
     setText($("tu-hull-val"), Math.max(0, Math.round(ship.hull)) + " / " + ship.hullMax);
     $("tu-hull").style.width = pct(ship.hull / ship.hullMax);
@@ -1844,7 +1863,7 @@
   }
   function debriefCaptain(r) {
     var cp = r.captain, d = r.detail, K = BL.COMMAND, good = [];
-    if (r.outcome === "success") good.push(sim.hasDrive ? "The ship made all its warps." : "The carrier recovered her after every sortie.");
+    if (r.outcome === "success") good.push(sim.sys("buster") ? "The planet buster was dropped on the " + sim.world + " world." : sim.hasDrive ? "The ship made all its warps." : "The carrier recovered her after every sortie.");
     if (!cp.rockHits) good.push("No asteroid hits.");
     var onTime = cp.systems.filter(function (s) { return s.zoneAt !== null && s.zoneAt <= s.window + K.zoneGrace; }).length;
     if (onTime === cp.systems.length && cp.systems.length) good.push(sim.hasDrive ? "In the warp zone on time every time." : "In the recovery zone on time every time.");
@@ -1853,9 +1872,9 @@
     var cpN = 0, cpHit = 0; cp.systems.forEach(function (s) { cpN += s.cps || 0; cpHit += s.cpsHit || 0; });
     if (cpN && cpHit === cpN) good.push("Every checkpoint scouted.");
     $("db-good").textContent = good.join(" ");
-    $("db-worst").textContent = r.outcome === "destroyed" ? "The ship was destroyed." : r.outcome === "wardLost" ? "The " + cp.escort.name + " was lost." :
+    $("db-worst").textContent = r.outcome === "destroyed" ? "The ship was destroyed." : r.outcome === "dropMissed" ? "The drop window closed before the planet buster was launched." : r.outcome === "wardLost" ? "The " + cp.escort.name + " was lost." :
       cpHit < cpN ? "Missed " + (cpN - cpHit) + " of " + cpN + " checkpoints." : cp.rockHits ? "The ship hit asteroids " + cp.rockHits + (cp.rockHits === 1 ? " time." : " times.") :
-      onTime < cp.systems.length ? "The ship reached the " + (sim.hasDrive ? "jump" : "recovery") + " zone late in " + (cp.systems.length - onTime) + " of " + cp.systems.length + (sim.hasDrive ? " systems." : " sorties.") :
+      onTime < cp.systems.length ? "The ship reached the " + (sim.hasDrive ? "warp" : "recovery") + " zone late in " + (cp.systems.length - onTime) + " of " + cp.systems.length + (sim.hasDrive ? " systems." : " sorties.") :
       cp.unanswered ? cp.unanswered + " torpedo bursts came and went with no call from you (taken on the shields)." : "Nothing went badly wrong.";
     $("db-jumps").innerHTML = "<tr><th>" + (sim.hasDrive ? "Warp" : "Sortie") + "</th><th>Encounter</th><th>Legs</th><th>In the zone</th><th>Asteroid hits</th><th>Breaks made</th><th>Shielded</th><th>Hull lost</th><th>Seconds</th></tr>" +
       r.jumps.map(function (j, i) {
@@ -2023,7 +2042,7 @@
     gravFinal = !!final;
     var n = sim.stats.jumps.length, js = sim.stats.jumps[n - 1], next = final ? null : sim.encounter();
     var dmg = sim.stats.damageReports.filter(function (d) { return d.jump === n; });
-    $("grav-title").textContent = final ? (sim.hasDrive ? "Warp " + n + " of " + sim.cfg.jumps + " complete" + (sim.sys("buster") ? ": planet buster away" : "") : "Sortie " + n + " of " + sim.cfg.jumps + " complete: back aboard the carrier")
+    $("grav-title").textContent = final ? (sim.sys("buster") ? "The drop: planet buster away on the " + sim.world + " world" : sim.hasDrive ? "Warp " + n + " of " + sim.cfg.jumps + " complete" : "Sortie " + n + " of " + sim.cfg.jumps + " complete: back aboard the carrier")
       : sim.hasDrive ? "In warp space: warp " + n + " of " + sim.cfg.jumps + " complete" : "Aboard the carrier: sortie " + n + " of " + sim.cfg.jumps + " complete";
     $("btn-grav-go").textContent = final ? "Mission debriefing" : sim.captain ? "Plot the next course" : sim.hasDrive ? "Drop out of warp space" : "Launch";
     if (sim.turret) { $("grav-body").innerHTML = sim.captain ? gravCaptain(js, dmg, next, n) : sim.helm ? gravHelm(js, dmg, next, n) : gravGunner(js, dmg, next, n); overlay("ov-grav", true); return; }
@@ -2111,7 +2130,7 @@
     var r = sim.result, d = r.detail;
     show("scr-debrief");
     $("db-title").textContent = r.outcome === "success" ? (r.hasDrive ? (sim.sys("buster") ? "Mission complete: planet buster delivered" : "Mission complete") : "Sortie complete: recovered by the carrier") :
-      r.outcome === "destroyed" ? "Ship destroyed" : r.outcome === "wardLost" ? (r.captain && r.captain.escort ? r.captain.escort.name.replace(/^./, function (x) { return x.toUpperCase(); }) : "Carrier") + " lost" : "Abandoned ship";
+      r.outcome === "destroyed" ? "Ship destroyed" : r.outcome === "dropMissed" ? "Drop window missed: the planet buster never launched" : r.outcome === "wardLost" ? (r.captain && r.captain.escort ? r.captain.escort.name.replace(/^./, function (x) { return x.toUpperCase(); }) : "Carrier") + " lost" : "Abandoned ship";
     if (r.testWin) $("db-title").textContent += " (test win)";
     $("db-lede").textContent = (job.test ? "" : BL.shipLabel(job.classId, job.ship, job.hull) + ", " + r.className + ", tech level " + r.tl + " · ") + "Seed " + r.seed + " · " +
       r.jumpsDone + " of " + sim.cfg.jumps + (r.hasDrive ? " warps · " : " sorties · ") + d.minutes + " minutes · hull " + r.hull + " / " + r.hullMax +
@@ -2589,7 +2608,7 @@
   $("btn-registry-back").onclick = function () { click(); showHub(); };
   $("btn-card-back").onclick = function () { click(); showRegistry(); };
 
-  var OUTCOME_NAME = { success: "Success", destroyed: "Destroyed", abandoned: "Abandoned ship", timeout: "Out of time", wardLost: "Escorted ship lost" };
+  var OUTCOME_NAME = { success: "Success", destroyed: "Destroyed", abandoned: "Abandoned ship", timeout: "Out of time", wardLost: "Escorted ship lost", dropMissed: "Drop window missed" };
   function showShipCard(e) {
     var c = career, d = BL.shipFor(e.classId, e.tl), cls = BL.classById(e.classId), rec = e.rec;
     var sysOf = function (kind) { return d.systems.filter(function (s) { return s.kind === kind; }); }, one = function (k) { return sysOf(k)[0]; };

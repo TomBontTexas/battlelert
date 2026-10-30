@@ -300,6 +300,10 @@
     arrivalSeconds: 8,                 // calm before the first wave of each jump
     jumpWindowNotice: 40,              // "Jump window in 40 s"
     jumpOnTimeGrace: 5,                // drive full within this many seconds of the window = on time
+    // The dreadnought's last system: no warp out. She drops the planet buster (MOAB) on the target
+    // world from the drop zone: MOAB full, window open; past the window + dropLate s it's a failure.
+    dropLate: 10,
+    dropWorlds: ["industrial", "military", "transportation"],
     jumpCountdown: 3,
     forecastSpan: 15,                  // seconds shown on the forecast strip
     breakOff: 60,                      // no new enemy waves this long after the jump window opens
@@ -485,7 +489,7 @@
     // mission at the gun. It never moves and never gives up; its torpedoes (volleys of three)
     // keep coming for the whole fight unless it is destroyed. Four interceptor escorts, stragglers.
     fortress: {
-      name: "Homeworld fortress",
+      name: "Planetary fortress",
       enemy: "Azurian fortress",
       what: "The fortress guarding the Azurian world and four escorts; its torpedoes come in threes every 6 to 8 s for the whole fight",
       tests: "Holding out until the planet buster is away",
@@ -895,7 +899,7 @@
     recovered:   ["Carrier: gunboat recovered. Well flown.", "Coxswain: we're on the deck. Nice work, Engineering."],
     arrival:     ["Bridge: dropping out of warp space. Drive is empty.", "Captain: we're out of warp space. Start charging the drive, Engineering.", "Helm: normal space. Drive reads empty."],
     briefing:    ["Tactical: expect {enemies}. {what}.", "Tactical: scopes show {enemies} on approach."],
-    fortressIn:  ["Tactical: the homeworld fortress, dead ahead. Hold it off until the buster's away.", "Captain: there's the fortress guarding their world. Guns, keep it off us.",
+    fortressIn:  ["Tactical: the planetary fortress, dead ahead. Hold it off until the buster's away.", "Captain: there's the fortress guarding their world. Guns, keep it off us.",
                   "Tactical: Azurian fortress dead ahead. It won't move and it won't stop firing."],
     waveIn:      ["Tactical: {enemy} on scope.", "Tactical: new contacts, {enemy}.", "Tactical: {enemy} closing."],
     salvo:       ["Tactical: enemy salvo in {t} s.", "Tactical: incoming fire, {t} seconds.", "Tactical: they're locking on. Salvo in {t}."],
@@ -944,7 +948,7 @@
     driveHit:    ["Damage control: drive strike! We lost {pct}% of the drive charge.", "Navigation: they hit the drive. Charge down {pct}%!"],
     heatR:       ["Reactor room: reactor {r} is running hot!", "Reactor room: heat's climbing on reactor {r}!"],
     auxEmptyR:   ["Aux bank {r} is empty."],
-    busterWait:  ["Bridge: the planet buster isn't charged. We can't make the final warp!", "Weapons: buster's not ready, Captain. Holding the warp."],
+    busterWait:  ["Bridge: the planet buster isn't charged. We can't make the drop!", "Weapons: buster's not ready, Captain. Holding the drop."],
     starved:     ["Helm: engines are starved! I can't hold the course!", "Helm: not enough power to the engines, we're drifting into the mines!"],
     auxEmpty:    ["Aux bank is empty."],
     // Gunner station. A key ending in G replaces the plain one while the player is at a gun.
