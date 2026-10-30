@@ -880,7 +880,15 @@
     // answer to his own LAUNCH, in its plain (bridge) wording.
     hears: ["launched"],
     // Standing orders at the start of a mission (the captain changes them on the bridge).
-    standing: { guns: "auto", stance: "balanced" },
+    // On the bridge the crew act on the captain's orders and don't cover for him: the gunners have
+    // no fight's suggestion (FREE until he orders otherwise), and the engineer guards the shields
+    // against the torpedoes he sees coming only on SHIELDS (AIEngineer.think). The pilot breaks on
+    // his own by the captain's standing policy (pilots); the captain's BREAK buttons override it.
+    standing: { guns: "free", stance: "balanced", pilot: "hold" },
+    guardOnShields: true, guardReact: 2.5,
+    pilots: { evade: { name: "Evade: break for every burst he can", short: "EVADE" }, hold: { name: "Hold course: break only when the shields can't take it", short: "HOLD" },
+      steady: { name: "Steady: no breaks, take everything on the shields", short: "STEADY" } },
+    pilotList: ["evade", "hold", "steady"],
     // (drive first: after life support the drive charges to be full by the window (its last percent flat out), the rest share what's left)
     stances: { shields: { name: "Shields first", short: "SHIELDS" }, balanced: { name: "Balanced", short: "BALANCE" }, guns: { name: "Guns first", short: "GUNS" },
       drive: { name: "Drive first", short: "DRIVE" }, main: { name: "Main gun first", short: "MAIN GUN" }, moab: { name: "Planet buster first", short: "MOAB" } },

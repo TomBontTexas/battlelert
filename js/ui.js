@@ -1407,11 +1407,11 @@
     $("cp-side").hidden = $("cp-mapbox").hidden = false; $("cp-orders").hidden = true;      // (every order is in the BRIDGE column)
     $("tu-station").textContent = "Bridge · " + (job.test ? sim.data.className : BL.shipLabel(job.classId, job.ship, job.hull) + " (" + sim.data.className + ")") + " · tech level " + sim.data.tl;
     var hasMain = !!sim.sys("main"), hasHangar = !!(sim.sys("hangar") && sim.data.hangar);
-    $("tu-keys").textContent = "← → course 10° (Shift 1°) · R resume plot · ↑ ↓ engines · Z break port · X take it · C break starboard · " + (hasMain ? "M main gun · " : "") + (hasHangar ? "L launch / recover · " : "") + "G gunners · S engineer · E warn engineering · J warp · V swap map · + − F zoom · Esc pause · Tap the compass or the map to steer";
+    $("tu-keys").textContent = "← → course 10° (Shift 1°) · R resume plot · ↑ ↓ engines · Z break port · X take it · C break starboard · " + (hasMain ? "M main gun · " : "") + (hasHangar ? "L launch / recover · " : "") + (sim.helm.canBreak(BL.GUNNERY.torpedo.travel) ? "B pilot · " : "") + "G gunners · S engineer · E warn engineering · J warp · V swap map · + − F zoom · Esc pause · Tap the compass or the map to steer";
     // Light cruiser and up: MAIN GUN; cruiser and up: LAUNCH / RECOVER the squadron.
     $("cp-main").hidden = !hasMain; $("cp-hangar").hidden = !hasHangar; $("cp-ship-grp").hidden = !hasMain && !hasHangar;
     $("cp-tele").innerHTML = BRIDGE_ENG.slice().reverse().map(function (id) { var p = h.preset(id); return '<button data-eng="' + id + '" title="All ' + p.name.toLowerCase() + '">' + p.short + "</button>"; }).join("");
-    $("cp-gunord").innerHTML = ["auto"].concat(G.orderList).map(function (id) { var o = G.orders[id]; return '<button data-gun="' + id + '" title="' + o.name + '">' + K.gunShort[id] + "</button>"; }).join("");
+    $("cp-gunord").innerHTML = G.orderList.map(function (id) { var o = G.orders[id]; return '<button data-gun="' + id + '" title="' + o.name + '">' + K.gunShort[id] + "</button>"; }).join("");
     $("cp-stance").innerHTML = bridgeStances().map(function (id) { return '<button data-stance="' + id + '" title="' + K.stances[id].name + '">' + K.stances[id].short + "</button>"; }).join("");
     $("tu-mainrow").hidden = true;
     lastBridgeBox = {};
@@ -1420,7 +1420,8 @@
     // A ship that can't swing far enough before a torpedo lands (light cruiser and up) never
     // breaks: no break buttons; her shields take every burst.
     canBreakEver = sim.helm.canBreak(BL.GUNNERY.torpedo.travel);
-    $("cp-brk-row").hidden = !canBreakEver;
+    $("cp-brk-row").hidden = $("cp-pilot-row").hidden = !canBreakEver;
+    $("cp-pilot-row").innerHTML = K.pilotList.map(function (id) { return '<button data-pilot="' + id + '" title="Pilot: ' + K.pilots[id].name + ' (B)">' + K.pilots[id].short + "</button>"; }).join("");
     var esc = !!sim.captain.escort;
     $("cp-station-grp").hidden = $("cp-cover").hidden = !esc;
     $("cp-station").innerHTML = esc ? STATION_LIST.map(function (id, k) { return '<button data-station="' + id + '" title="Keep station ' + STATION_NAME[id] + " (" + (k + 1) + ')">' + STATION_SHORT[id] + "</button>"; }).join("") : "";
@@ -1605,6 +1606,7 @@
     var live = turretActive();
     Array.prototype.forEach.call($("cp-tele").children, function (b) { b.classList.toggle("on", b.dataset.eng === hv.eng); b.disabled = !live; });
     Array.prototype.forEach.call($("cp-gunord").children, function (b) { b.classList.toggle("on", b.dataset.gun === c.guns); b.disabled = !live; });
+    Array.prototype.forEach.call($("cp-pilot-row").children, function (b) { b.classList.toggle("on", b.dataset.pilot === c.breaks); b.disabled = !live; });
     Array.prototype.forEach.call($("cp-stance").children, function (b) { b.classList.toggle("on", b.dataset.stance === c.stance); b.disabled = !live; b.hidden = b.dataset.stance === "drive" && sim.isDrop(); });
     $("cp-resume").disabled = !live || !hv.own;
     var tg = $("cp-sec-torp");
@@ -1677,7 +1679,8 @@
     else if (kl === "z" && !ev.repeat) c.answer(-1);
     else if (kl === "x" && !ev.repeat) c.answer(0);
     else if (kl === "c" && !ev.repeat) c.answer(1);
-    else if (kl === "g" && !ev.repeat) c.setGuns(cycle(["auto"].concat(BL.GUNNERY.orderList), c.guns, 1));
+    else if (kl === "g" && !ev.repeat) c.setGuns(cycle(BL.GUNNERY.orderList, c.guns, 1));
+    else if (kl === "b" && !ev.repeat && canBreakEver) c.setPilot(cycle(BL.COMMAND.pilotList, c.breaks, 1));
     else if (kl === "s" && !ev.repeat) c.setStance(cycle(bridgeStances(), c.stance, 1));
     else if (kl === "q" && !ev.repeat && c.escort) c.cover();
     else if (k >= "1" && k <= "4" && !ev.repeat && c.escort) c.setStation(STATION_LIST[+k - 1]);
@@ -1705,6 +1708,7 @@
       else if (b.dataset.brk !== undefined) c.answer(+b.dataset.brk);
       else if (b.dataset.gun) c.setGuns(b.dataset.gun);
       else if (b.dataset.stance) c.setStance(b.dataset.stance);
+      else if (b.dataset.pilot) c.setPilot(b.dataset.pilot);
       else if (b.dataset.station) c.setStation(b.dataset.station);
       else if (b.id === "cp-cover") c.cover();
       else if (b.id === "cp-warn") c.warn();

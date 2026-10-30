@@ -60,6 +60,10 @@
       return inc.next > 8 ? Math.min(w, (s.maxMJ - s.mj) / (6 + slack * 14)) : w;
     }
     var salvos = incomingOf("salvo"), strikes = incomingOf("strike");
+    // On the bridge the engineer guards the shields against what's coming only on the captain's
+    // SHIELDS stance; otherwise he just keeps them topping up (BL.COMMAND.standing).
+    // (he still reacts once a burst is guardReact s out, too late to charge for it fully)
+    if (m.captain && BL.COMMAND.guardOnShields && m.captain.stance !== "shields" && salvos.next > BL.COMMAND.guardReact) salvos = { next: 99, mj: 0 };
 
     var want = {};
     want.life = life.mj < life.maxMJ * 0.9 ? 7 : 3.5;

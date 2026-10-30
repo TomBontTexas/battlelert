@@ -655,6 +655,7 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 #cp-station button.wing { border-color: #7fd8c8; color: #7fd8c8; }     /* a wingman holds this station */
 .cp-torps.live .cp-lbl { color: var(--bad); }
 .cp-torps.live button:not(:disabled) { border-color: var(--bad); color: #ffd0c8; }
+.cp-torps #cp-pilot-row button.on { background: #3a2f66; border-color: var(--aux); color: #fff; }     /* (the pilot's policy stays marked when the box goes red) */
 .cp-jump { min-width: 150px; }
 #cp-main.ready, #cp-hangar.ready { border-color: var(--good); color: var(--good); }
 .cp-jump.ready { border-color: var(--good); color: var(--good); box-shadow: 0 0 10px rgba(99,212,143,.35); }

@@ -237,7 +237,7 @@
         checkpoints: BL.COMMAND.checkpoints.classes.indexOf(m.data.classId) >= 0 });
     });
     this.plots = [];
-    this.stance = BL.COMMAND.standing.stance; this.guns = BL.COMMAND.standing.guns;
+    this.stance = BL.COMMAND.standing.stance; this.guns = BL.COMMAND.standing.guns; this.breaks = BL.COMMAND.standing.pilot;
     this.basePriority = m.priority.slice();
     this.stats = { rockHits: 0, calls: 0, breaks: 0, pilotBreaks: 0, breaksMade: 0, taken: 0, unanswered: 0, systems: [],
       wardTorps: 0, wardCalls: 0, covers: 0, covered: 0, wingStops: 0 };
@@ -631,6 +631,8 @@
     var first = this.stance === "shields" ? ["shield"] : this.stance === "guns" ? guns : m.driveFirst ? ["life", "drive"] : m.mainFirst ? ["life", "main"] : m.busterFirst ? ["life", "buster"] : [];
     m.setPriority(first.concat(base.filter(function (id) { return first.indexOf(id) < 0; })));
   };
+  // The pilot's standing break policy (BL.COMMAND.pilots): EVADE, HOLD or STEADY.
+  Captain.prototype.setPilot = function (id) { if (!BL.COMMAND.pilots[id]) return; this.breaks = id; this.m.cue("tick"); };
   Captain.prototype.setGuns = function (id) { if (!BL.GUNNERY.orders[id]) return; this.guns = id; this.applyGuns(); this.m.cue("tick"); };
   Captain.prototype.applyGuns = function (quiet) {
     var tu = this.m.turret, id = this.guns;
@@ -671,14 +673,12 @@
     return true;
   };
   // No call from the captain and the burst about to land (BL.HELM.evade.lateMin s): the pilot
-  // sometimes (BL.COMMAND.pilotOwn) breaks on his own if the shields can't take it, away from
-  // asteroid fields; else it's taken.
+  // breaks on his own by the captain's standing policy, away from asteroid fields: EVADE for any
+  // burst, HOLD only when the shields can't take it, STEADY never; else it's taken.
   Captain.prototype.pilotCall = function () {
     var m = this.m, E = BL.HELM.evade, cv = this.callView();
-    if (!cv || cv.in > E.lateMin || !cv.canBreak || m.sys("shield").mj >= cv.mj * E.cover) return;
-    this.rng = this.rng || BL.rng((m.seed ^ 0x3c6ef372) >>> 0);
-    if (this.call.own === undefined) this.call.own = this.rng.chance(BL.COMMAND.pilotOwn);
-    if (!this.call.own) return;
+    if (!cv || cv.in > E.lateMin || !cv.canBreak || this.breaks === "steady") return;
+    if (this.breaks === "hold" && m.sys("shield").mj >= cv.mj * E.cover) return;
     this.call.done = true; this.stats.pilotBreaks++;
     m.helm.orderBreak(this.openFish(), this.call.ship, this.awayFromRocks(cv.bearing < 0 ? 1 : -1), true);
   };
@@ -857,6 +857,18 @@
     var wv = c.wardCallView();
     var sh = m.sys("shield"), ours = c.openFish().reduce(function (a, f) { return a + f.mj; }, 0);
     if (wv && wv.canCover && wv.in < BL.GUNNERY.torpedo.travel && sh.mj >= (wv.mj + ours) * E.cover && sh.mj >= sh.maxMJ * 0.5) c.cover();
+    // The crew act on orders: SHIELDS while there are enemy ships about (else BALANCE), and the
+    // gun order most of the guns would suggest for this fight, checked every few seconds.
+    if (!this.fixedStance) {
+      var up = m.waves && m.waves.some(function (w) { return !w.dead; }), want = up ? "shields" : "balanced";
+      if (c.stance !== want && c.stance !== "drive" && c.stance !== "moab") c.setStance(want);
+    }
+    if (m.turret && m.totalT >= (this.gunAt || 0)) {
+      this.gunAt = m.totalT + 4;
+      var votes = {}; m.turret.bats.forEach(function (b) { var o = m.turret.suggestOrder(b).order; votes[o] = (votes[o] || 0) + 1; });
+      var best = Object.keys(votes).sort(function (a, b) { return votes[b] - votes[a]; })[0];
+      if (best && c.guns !== best) c.setGuns(best);
+    }
     // Gunboats: launch as soon as the launchers are full; recover botRecover s before the window.
     var hv2 = c.hangarView();
     if (hv2 && hv2.can && (hv2.order === "launch" ? m.t < m.windowAt() - BL.COMMAND.hangarOrder.botRecover - 20 : m.t >= m.windowAt() - BL.COMMAND.hangarOrder.botRecover)) c.orderHangar();
@@ -880,7 +892,7 @@
       gunner: { weapons: BL.GUNNERY.loadout[classId], ring: true, arcs: rc.arcs, arcNames: rc.arcNames, helm: true } }, extra));
     var eng = new BL.AIEngineer(0.5, 0.25, m.turret.engineer.skill), bot = new CaptainBot();
     if (extra && extra.noMain) bot.noMain = true;      // (tests: the main gun on standing orders only)
-    if (extra && extra.stance) m.captain.stance = extra.stance;     // (tests: a standing stance other than balanced)
+    if (extra && extra.stance) { m.captain.stance = extra.stance; bot.fixedStance = true; }     // (tests: a standing stance other than balanced, held all mission)
     m.beginJump();
     var guard = 0;
     while (m.phase !== "done" && guard++ < BL.TICK_RATE * 60 * 30) {
