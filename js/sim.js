@@ -476,7 +476,8 @@
         for (var k = 0; k < n; k++) if (self.rng.chance(spec.rate * dt)) {
           var hit = self.rng.chance(G.hit);
           if (self.turret && self.turret.enemyShot) self.turret.enemyShot(w, g[0], hit);
-          if (hit) self.gunHit(spec.mj * (w.factor || 1));
+          // (a group after another ship of the escort: it takes the hit)
+          if (hit) { if (w.aim !== null && w.aim !== undefined && self.captain) self.captain.gunAt(w.aim, spec.mj * (w.factor || 1)); else self.gunHit(spec.mj * (w.factor || 1)); }
         }
       });
     });
@@ -518,6 +519,7 @@
       if (this.turret) {
         var from = this.turret.shipOf(e);
         if (from && from.dead) return;
+        if (from && from.aim !== null && from.aim !== undefined) return;      // (escort: a group after another ship)
         if (this.totalT - (this.lastSalvoCall || -99) < 3) return;
         this.lastSalvoCall = this.totalT;
       }
@@ -539,7 +541,8 @@
   };
 
   Mission.prototype.fire = function (e) {
-    if (e.ward && this.captain) { this.captain.wardHit(e); return; }     // a torpedo at the carrier we escort
+    if (e.ward && this.captain) { this.captain.wardHit(e); return; }     // a torpedo at the ward we escort
+    if (e.wing !== undefined && this.captain) { this.captain.wingHit(e); return; }     // at a wingman
     // In the engine room a wave is its toughness, not ships on screen: a salvo from a wave already
     // part destroyed comes only with the share still fighting (at the gun and the helm a dead
     // ship's torpedoes never launch, ring.js; the enemy guns go the same way, runEnemyGuns).

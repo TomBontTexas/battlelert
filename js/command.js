@@ -460,7 +460,38 @@
   Captain.prototype.wingStopped = function (e) {
     var E = BL.COMMAND.escort, g = this.escort.wing[e.wingStop.w];
     this.stats.wingStops++; g.stops++;
-    if (this.rng.chance(E.wingRisk)) g.hull = Math.max(0, g.hull - e.mj * E.wingPerMJ);
+    if (e.wing === undefined && this.rng.chance(E.wingRisk)) this.wingDamage(e.wingStop.w, e.mj * E.wingPerMJ);
+  };
+  /* Who an arriving enemy group goes after (ring.js addGroup): the ward `aimWard` of the time, else
+     one of the squadron's ships still in it, us included, alike. "ward", a wingman's index, or null (us). */
+  Captain.prototype.pickAim = function (rng) {
+    var es = this.escort;
+    if (this.wardAlive() && rng.chance(BL.COMMAND.escort.aimWard)) return "ward";
+    var who = [null]; es.wing.forEach(function (g, i) { if (g.hull > 0) who.push(i); });
+    return who[Math.floor(rng.next() * who.length)];
+  };
+  // Where a group's target is in the battle view: the ward's middle, or the wingman.
+  Captain.prototype.aimView = function (aim) { return aim === "ward" ? this.wardView() : this.wingView(aim); };
+  // A torpedo at a wingman: his own gun shoots it down `wingSelf` of the time (ring.js, as for a guard).
+  Captain.prototype.wingLaunched = function (e) {
+    var m = this.m; this.rng = this.rng || BL.rng((m.seed ^ 0x3c6ef372) >>> 0);
+    if (this.rng.chance(BL.COMMAND.escort.wingSelf)) e.wingStop = { at: m.t + (e.at - m.t) * this.rng.range([0.35, 0.7]), w: e.wing };
+  };
+  Captain.prototype.wingHit = function (e) { e.outcome = "wing"; this.wingDamage(e.wing, e.mj * BL.COMMAND.escort.wingPerMJ); };
+  // Enemy gunfire at the group's target: the ward (one of her ships) or a wingman.
+  Captain.prototype.gunAt = function (aim, mj) {
+    var E = BL.COMMAND.escort, es = this.escort;
+    if (aim === "ward") { if (!this.wardAlive()) return; this.rng = this.rng || BL.rng((this.m.seed ^ 0x3c6ef372) >>> 0); this.wardHit({ mj: mj * E.gunWard, wardShip: this.wardPick(this.rng) }); }
+    else this.wingDamage(aim, mj * E.gunWing * E.wingPerMJ);
+  };
+  // A wingman's hull; at 0 he's lost, and the groups after him turn on the ward.
+  Captain.prototype.wingDamage = function (i, d) {
+    var g = this.escort.wing[i], m = this.m;
+    if (!g || g.hull <= 0) return;
+    g.hull = Math.max(0, g.hull - d);
+    if (g.hull > 0) return;
+    m.cue("hullHit");
+    m.waves.forEach(function (w) { if (w.aim === i) { w.aim = "ward"; (w.ships || []).forEach(function (s) { s.aim = "ward"; }); } });
   };
   Captain.prototype.wardCallView = function () {
     var m = this.m, c = this.wcall;
@@ -491,8 +522,8 @@
     if (!this.wardAlive() || !s || s.hull <= 0) return;
     s.hull = Math.max(0, s.hull - e.mj * w.W.perMJ);
     w.hull = w.ships.reduce(function (a, q) { return a + q.hull; }, 0);
-    e.outcome = "ward"; this.stats.wardTorps++;
-    m.cue("shieldHit");
+    if (e.type) { e.outcome = "ward"; this.stats.wardTorps++; }
+    if (e.type) m.cue("shieldHit");
     if (w.hull <= 0 && m.phase !== "done") m.finish("wardLost");
   };
 

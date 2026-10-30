@@ -277,12 +277,12 @@
       if (now - b.idleSince < Q.idle || now < (b.reqReady || 0)) return;
       var reach = self.reach(b) + Math.max(R.rx, R.ry), best = null, bd = 1e9;
       self.ships.forEach(function (s) {
-        if (!alive(s) || b.w.best.indexOf(s.type) < 0 || s.r > reach) return;
-        var d = Math.abs(norm(s.bearing - b.arcC));
+        if (!alive(s) || b.w.best.indexOf(s.type) < 0 || Math.hypot(s.x - R.cx, s.y - R.cy) > reach) return;
+        var d = Math.abs(norm(self.bearingOf(s.x, s.y) - b.arcC));
         if (d < bd) { bd = d; best = s; }
       });
       if (!best) return;
-      var rel = norm(best.bearing - b.arcC), turn = Math.round((rel - (rel > 0 ? 1 : -1) * b.arcH * 0.5) / 5) * 5;
+      var rel = norm(self.bearingOf(best.x, best.y) - b.arcC), turn = Math.round((rel - (rel > 0 ? 1 : -1) * b.arcH * 0.5) / 5) * 5;
       if (Math.abs(turn) < 10) return;
       b.idleSince = 0; called = true;
       h.request(b, turn, best);
@@ -293,7 +293,7 @@
     if (!this.live() || m.phase === "arrival") return;
     var tube = this.pt.indexOf(true), bow = BL.HELM.ptBow;
     if (tube >= 0 && !this.ptTorps.length) {
-      var tg = this.ships.some(function (s) { return s.lockable && !s.dead && s.state === "hold" && Math.abs(norm(s.bearing)) <= bow; });
+      var self2 = this, tg = this.ships.some(function (s) { return s.lockable && !s.dead && s.state === "hold" && Math.abs(norm(self2.bearingOf(s.x, s.y))) <= bow; });
       if (!tg) this.ptSeen = 0;
       else if (!this.ptSeen) this.ptSeen = now + this.crewReact();
       else if (now >= this.ptSeen) { this.ptSeen = 0; this.launchPT(tube); }
@@ -556,6 +556,9 @@
   // A wave comes in from one bearing and its ships spread out around it at their holding distance.
   RingTurret.prototype.addGroup = function (list, wave, type, look, n, totalHp) {
     var r = this.rng, t = this.m.t, R = this.R, hp = totalHp / n;
+    // Escort mission: the group picks its target as it arrives (Captain.pickAim): the ward, a
+    // wingman, or us (null). It forms up round its target, wherever that is in the view.
+    if (wave.aim === undefined) wave.aim = this.m.captain && this.m.captain.escort ? this.m.captain.pickAim(r) : null;
     if (wave.bearing === undefined) wave.bearing = look.bearing !== undefined ? look.bearing : this.pickBearing();
     var band = look.ringR || [0.36, 0.44], groupPhase = r.next() * Math.PI * 2, groupPeriod = r.range(look.period);
     var hold = r.range(band) - R.pull, spread = (look.w + 0.05) / hold / RAD;
@@ -568,7 +571,7 @@
         sway: look.sway * 120 * (look.formation ? 1 : 0.7 + r.next() * 0.6),
         period: look.formation ? groupPeriod : r.range(look.period), phase: look.formation ? groupPhase : r.next() * Math.PI * 2,
         dive: look.dive * 0.5, diveAt: t + 3 + r.next() * 4, diveUntil: 0,
-        born: t, state: "enter", ionUntil: 0, flashAt: -9, dead: false, x: 0, y: 0, rot: 0
+        born: t, state: "enter", ionUntil: 0, flashAt: -9, dead: false, x: 0, y: 0, rot: 0, aim: wave.aim
       };
       this.placeShip(s);
       list.push(s); this.ships.push(s);
@@ -576,8 +579,8 @@
     return n;
   };
   RingTurret.prototype.placeShip = function (s) {
-    var R = this.R;
-    s.x = R.cx + s.r * Math.sin(s.bearing * RAD); s.y = R.cy - s.r * Math.cos(s.bearing * RAD);
+    var R = this.R, a = s.aim !== null && s.aim !== undefined && this.m.captain ? this.m.captain.aimView(s.aim) : null, cx = a ? a.x : R.cx, cy = a ? a.y : R.cy;
+    s.x = cx + s.r * Math.sin(s.bearing * RAD); s.y = cy - s.r * Math.cos(s.bearing * RAD);     // (s.bearing: round its target)
     s.rot = s.bearing * RAD;                 // the art's nose (down) turned to face the ship
   };
   RingTurret.prototype.moveShips = function (dt) {
@@ -626,11 +629,14 @@
         e.ionized = true; e.at += ion.delay; e.mj = Math.round(e.mj * ion.salvoMult);
         if (t < e.at - (e.travel || G.torpedo.travel)) return;
       }
-      // Escort: a share of the salvos go at the carrier, wherever she is in the view (cover, or she takes it).
-      var cp = m.captain, ward = e.type === "salvo" && cp && cp.wardAlive() && self.rng.chance(BL.COMMAND.escort.share);
+      // Escort: a group after the ward fires at her ships, wherever they are in the view (cover, or
+      // she takes it); one after a wingman at him; a drive hunter after another ship's drive is gone from our fight.
+      var cp = m.captain, aim = s.aim, ward = aim === "ward" && cp && cp.wardAlive(), wing = typeof aim === "number" && cp ? aim : null;
+      if (aim !== null && aim !== undefined && e.type === "strike") { e.done = true; e.cancelled = true; e.visible = false; return; }
       if (ward) { e.ward = true; e.wardShip = cp.wardPick(self.rng); cp.wardLaunched(e, s); }
+      else if (wing !== null) { e.wing = wing; cp.wingLaunched(e); }
       else if (m.helm && e.type === "salvo") m.helm.torpedoLaunched(e, s);       // Tactical reports it; the captain: break, or take it
-      var hitB = s.bearing + (self.rng.next() - 0.5) * 24, hit = ward ? cp.wardView(e.wardShip) : self.rim(hitB);
+      var hitB = s.bearing + (self.rng.next() - 0.5) * 24, hit = ward ? cp.wardView(e.wardShip) : wing !== null ? cp.wingView(wing) : self.rim(hitB);
       var nose = { x: s.x - Math.sin(s.rot) * s.h / 2, y: s.y + Math.cos(s.rot) * s.h / 2 };
       var torp = { id: self.nextId++, ev: e, x0: nose.x, y0: nose.y, x1: hit.x, y1: hit.y, hitB: hitB, t0: t, t1: e.at, x: nose.x, y: nose.y, weak: !!e.ionized,
         size: (BL.TORPEDOES[e.torpSize] || {}).down || 1 };      // a dart is a small target, a ship killer a big one
@@ -654,6 +660,7 @@
         var e = tp.ev;
         if (!e || e.done) return;
         if (e.ward) { var wv = cp2.wardView(e.wardShip); tp.x1 = wv.x; tp.y1 = wv.y; }
+        else if (e.wing !== undefined) { var gv = cp2.wingView(e.wing); tp.x1 = gv.x; tp.y1 = gv.y; }
         if (e.wingStop && t >= e.wingStop.at) {
           var g = cp2.wingView(e.wingStop.w);
           if (g) self.effects.push({ type: "tracer", x: g.x, y: g.y, x1: tp.x, y1: tp.y, at: m.totalT });
@@ -671,7 +678,7 @@
   RingTurret.prototype.enemyShot = function (w, size, hit) {
     var live = (w.ships || []).filter(function (s) { return !s.dead && s.state !== "leave" && s.state !== "enter"; });
     if (!live.length) return;
-    var s = live[Math.floor(this.rng.next() * live.length)], p = this.rim(s.bearing + (this.rng.next() - 0.5) * 20);
+    var s = live[Math.floor(this.rng.next() * live.length)], p = w.aim !== null && w.aim !== undefined && this.m.captain ? this.m.captain.aimView(w.aim) : this.rim(s.bearing + (this.rng.next() - 0.5) * 20);
     var miss = hit ? 0 : 0.06;
     this.effects.push({ type: "ebolt", x: s.x, y: s.y, x1: p.x + (this.rng.next() - 0.5) * miss * 2, y1: p.y + (this.rng.next() - 0.5) * miss * 2, at: this.m.totalT, big: size !== "light", hit: hit });
   };

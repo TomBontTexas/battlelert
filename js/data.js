@@ -845,10 +845,14 @@
     // works within `cover` view units of her, the torpedoes landing in `coverTime` s or later.
     // The squadron is `squad` ships, ours included; a wingman shoots down `wingStop` of the
     // torpedoes at her from his side, and `wingRisk` of those he takes mj x wingPerMJ of his hull.
+    // Each enemy group picks its target as it arrives: the ward `aimWard` of the time, else one of
+    // the squadron's ships alike (us too); it forms up round it and fires only at it. A wingman
+    // shoots down `wingSelf` of the torpedoes at himself; gunfire hits the ward at gunWard x its mj, a wingman at gunWing x.
     // The ward (kinds): a gunboat squadron's carrier; a destroyer escort squadron's convoy of
     // merchants (`ships`, two abreast `gap` apart) or capital ship, rolled per mission.
     escort: { arrive: 0.9, station: 0.06, near: 0.025, lead: 3, sides: { ahead: 0, port: -90, stbd: 90, astern: 180 },
-              share: 0.5, cover: 0.55, coverTime: 0.8, squad: [2, 4], wingStop: 0.5, wingRisk: 0.2, wingPerMJ: 0.1, wingHull: 100,
+              cover: 0.55, coverTime: 0.8, squad: [2, 4], wingStop: 0.5, wingRisk: 0.2, wingPerMJ: 0.1, wingHull: 100,
+              aimWard: 0.5, wingSelf: 0.5, gunWard: 0.3, gunWing: 0.3,
               kinds: { carrier: { name: "carrier", label: "CARRIER", ships: [1, 1], hull: 100, perMJ: 0.03 },
                        capital: { name: "capital ship", label: "CAPITAL SHIP", ships: [1, 1], hull: 100, perMJ: 0.03 },
                        convoy: { name: "convoy", label: "CONVOY", ships: [3, 5], hull: 100, perMJ: 0.08, gap: 0.03, station: 0.075 } } },
