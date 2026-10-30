@@ -592,17 +592,16 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 .cp-tbtns button { width: 100%; padding: 3px 2px; font-size: 11px; line-height: 1.1; min-height: 30px; white-space: normal; overflow-wrap: anywhere; }
 .cp-tbtns button.on { border-color: var(--warn); color: var(--warn); }
 .cp-tbtns button:disabled { opacity: .45; cursor: default; }
-/* Room for the telegraphs: the bridge's boxes a little tighter, and tighter still on short screens */
+/* Room for the telegraphs: the bridge's boxes and buttons compact on every screen */
 #scr-turret.captain .cp-side .panel-title { display: none; }
-#scr-turret.captain .cp-box .ln { font-size: 13px; line-height: 1.25; }
+#scr-turret.captain .cp-side { gap: 4px; }
+#scr-turret.captain .cp-box { padding: 2px 7px 3px; }
 #scr-turret.captain .cp-box .hd { font-size: 10px; }
-@media (max-height: 860px) {
-  #scr-turret.captain .cp-side { gap: 4px; }
-  #scr-turret.captain .cp-box { padding: 2px 7px 3px; }
-  #scr-turret.captain .cp-box .ln { font-size: 12px; line-height: 1.2; }
-  .cp-tbtns { gap: 2px; }
-  .cp-tbtns button { min-height: 22px; padding: 2px; font-size: 10px; }
-}
+#scr-turret.captain .cp-box .ln { font-size: 12px; line-height: 1.2; }
+.cp-tbtns { gap: 2px; }
+.cp-tbtns button { min-height: 22px; padding: 2px; font-size: 10px; }
+/* WARN ENG and JUMP on their own row, centered under the other orders */
+.cp-brk { flex-basis: 100%; height: 0; }
 .cp-box { flex-shrink: 0; background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px 5px; }
 .cp-box .hd { font-size: 11px; letter-spacing: .08em; color: var(--muted); }
 .cp-box .ln { font-family: var(--mono); font-size: 15px; font-weight: 600; line-height: 1.3; white-space: nowrap; overflow: hidden; color: var(--text); }
