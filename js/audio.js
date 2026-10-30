@@ -7,6 +7,10 @@
   var ctx = null, master = null, noiseBuf = null, hum = null;
   var vols = { fx: 0.8, alarm: 0.8, chat: 0.6 };
   var lastPlayed = {};
+  // When Safari pauses the engine (the voices, another app's sound, the screen locking), the
+  // next tap wakes it. wakeAt: when that was asked; a woken engine that is still not running
+  // after REBUILD_MS is replaced by a new one (iPad can leave one stuck "interrupted").
+  var wakeAt = 0, REBUILD_MS = 800, rebuilt = 0;
   var MIN_GAP = { shot: 0.09, tick: 0.05, chatter: 0.25, shieldHit: 0.08, pulse: 0.06, shipHit: 0.05, torpLaunch: 0.12 };
 
   // iPad/iPhone: Safari mutes Web Audio in silent mode unless the page counts as media
@@ -37,16 +41,34 @@
   // wakes it again after Safari suspends or interrupts it (backgrounding, screen lock).
   function init() {
     unlockMediaPlayback();
-    if (BL.speech) BL.speech.unlock();
-    if (ctx) { if (ctx.state !== "running" && ctx.state !== "closed") ctx.resume(); return; }
+    if (ctx && ctx.state !== "running" && wakeAt && Date.now() - wakeAt > REBUILD_MS) {
+      try { ctx.close(); } catch (e) {}
+      ctx = null; hum = null; rebuilt++;
+    }
+    if (ctx) { if (ctx.state !== "running") wake(); speechUnlock(); return; }
     var AC = root.AudioContext || root.webkitAudioContext;
     if (!AC) return;
     ctx = new AC();
-    if (ctx.state !== "running") ctx.resume();
+    ctx.onstatechange = function () { if (ctx && ctx.state === "running") wakeAt = 0; };
+    wakeAt = 0;
+    if (ctx.state !== "running") wake();
+    speechUnlock();
     master = ctx.createGain(); master.gain.value = 0.9; master.connect(ctx.destination);
     noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
     var ch = noiseBuf.getChannelData(0);
     for (var i = 0; i < ch.length; i++) ch[i] = Math.random() * 2 - 1;
+  }
+
+  function wake() {
+    if (!wakeAt) wakeAt = Date.now();
+    try { var r = ctx.resume(); if (r && r.catch) r.catch(function () {}); } catch (e) {}
+  }
+  // (the voices are woken after the sound engine, and only when it is running: on iPad the
+  // voices' silent wake-up line can pause the engine if it comes first)
+  function speechUnlock() {
+    if (!BL.speech) return;
+    if (!ctx || ctx.state === "running") BL.speech.unlock();
+    else setTimeout(function () { BL.speech.unlock(); }, 150);
   }
 
   function noiseSource(t0, dur) {
@@ -88,7 +110,10 @@
   }
 
   function play(name) {
-    if (!ctx || ctx.state !== "running") return;
+    if (!ctx || ctx.state === "closed") return;
+    // A paused engine still takes the sound (it plays the moment it wakes), but only just after
+    // a tap has asked it to wake: sounds piled up over a long pause would all play at once.
+    if (ctx.state !== "running" && !(wakeAt && Date.now() - wakeAt < REBUILD_MS)) return;
     var r = BL.SOUNDS[name]; if (!r) return;
     var vol = r.vol * (vols[r.ch] === undefined ? 1 : vols[r.ch]);
     if (vol <= 0.001) return;
@@ -110,7 +135,7 @@
     hum = { osc: osc, osc2: osc2, flt: flt, g: g };
   }
   function humSet(loadPct, on) {
-    if (!hum) return;
+    if (!hum) { if (!ctx || !on) return; humStart(); if (!hum) return; }     // (a rebuilt engine starts its hum again)
     var t = ctx.currentTime, p = Math.min(loadPct, 160) / 100;
     hum.osc.frequency.setTargetAtTime(40 + 22 * p, t, 0.3);
     hum.osc2.frequency.setTargetAtTime(40.6 + 22 * p, t, 0.3);
@@ -127,6 +152,8 @@
     play: play,
     humStart: humStart,
     humSet: humSet,
+    // For the Options screen: what state the sound engine is in.
+    status: function () { return !ctx ? "not started" : ctx.state + (rebuilt ? " (restarted " + rebuilt + "×)" : ""); },
     setVolume: function (ch, v) { vols[ch] = v; },
     volumes: vols
   };

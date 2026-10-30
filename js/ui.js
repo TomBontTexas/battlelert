@@ -231,7 +231,7 @@
     $("btn-abandon").hidden = !!sim.training;
     $("btn-resume").textContent = sim.turret ? "Resume (P)" : "Resume (Space)";
     overlay("ov-pause", true); $("planning-banner").hidden = true;
-    $("pause-voice").textContent = BL.speech.status();
+    $("pause-voice").textContent = BL.speech.status() + " Sound effects: " + BL.audio.status() + ".";
     click();
   }
   function resume() {
@@ -286,7 +286,7 @@
   $("btn-voice-test").onclick = function () { BL.audio.init(); BL.speech.test(); renderVoiceTable(); $("voice-details").open = true; };
   function renderVoiceTable() {
     var q = ["", "", "Enhanced", "Premium"];
-    $("voice-status").textContent = BL.speech.status();
+    $("voice-status").textContent = BL.speech.status() + " Sound effects: " + BL.audio.status() + ".";
     $("voice-count").textContent = BL.speech.supported ? "This device offers " + BL.speech.voiceCount() + " usable English voices (joke and robot voices are skipped)." : "This browser can't speak.";
     $("voice-table").innerHTML = BL.speech.crew().map(function (c) {
       return "<tr><td>" + c.speaker + "</td><td>" + esc(c.voice) + (q[c.quality] ? " · " + q[c.quality] : "") + "</td></tr>";
