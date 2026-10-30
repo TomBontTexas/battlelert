@@ -978,6 +978,7 @@
       setText($("tu-rec-val"), Math.max(0, Math.ceil(wi)) + " s");
       $("tu-rec").style.width = pct(sim.t / sim.windowAt());
     }
+    moabRow();
     var g = tu.cur || {};
     $("tu-tally").innerHTML = (g.mines ? "<span>Mines shot down</span><b>" + (g.minesDowned || 0) + " / " + g.mines + "</b>"
       : "<span>Ships destroyed</span><b>" + (g.kills || 0) + " / " + (g.ships || 0) + "</b><span>Torpedoes shot down</span><b>" + (g.downed || 0) + " / " + (g.torps || 0) + "</b>") +
@@ -1350,6 +1351,7 @@
     var wi = sim.windowIn(), drive = sim.sys("drive");
     if (drive) { setText($("tu-rec-val"), (wi > 0 ? "in " + Math.ceil(wi) + " s · " : "open · ") + Math.floor(drive.mj / drive.maxMJ * 100) + "%"); $("tu-rec").style.width = pct(drive.mj / drive.maxMJ); }
     else { setText($("tu-rec-val"), Math.max(0, Math.ceil(wi)) + " s"); $("tu-rec").style.width = pct(sim.t / sim.windowAt()); }
+    moabRow();
     var ms = tu.mainState();
     if (ms) {
       setText($("tu-main-val"), ms.tripped ? "tripped" : ms.ready ? "READY · " + Math.round(ms.mj) + " MJ" : Math.round(ms.mj) + " / " + Math.round(ms.max) + " MJ");
@@ -1480,12 +1482,36 @@
     var tag = eta === null || eta === 0 || rd.at === null ? "" : eta < rd.at - 10 ? " · EARLY" : eta > rd.at + BL.COMMAND.zoneGrace ? " · LATE" : " · ON TIME";
     var col = tag === " · EARLY" ? "#ffd666" : tag === " · LATE" ? "#ff6b6b" : "#3dff7a";
     ctx.font = "600 " + fs + "px ui-monospace, Menlo, Consolas, monospace"; ctx.textAlign = "left"; ctx.textBaseline = "top";
-    var tw = Math.max(ctx.measureText(l1 + tag).width, ctx.measureText(l2).width);
-    ctx.fillStyle = "rgba(5,8,12,.8)"; ctx.fillRect(3, 3, tw + 10, fs * 2 + 10);
+    // (the dreadnought: when the planet buster will be full)
+    var mo = moabEta(), l3 = !mo ? "" : mo.eta === 0 ? "MOAB FULL" : mo.eta === null ? "MOAB NOT CHARGING · " + mo.pct + "%" : "MOAB FULL IN " + mmss(Math.ceil(mo.eta));
+    var tw = Math.max(ctx.measureText(l1 + tag).width, ctx.measureText(l2).width, ctx.measureText(l3).width);
+    ctx.fillStyle = "rgba(5,8,12,.8)"; ctx.fillRect(3, 3, tw + 10, fs * (l3 ? 3 : 2) + (l3 ? 12 : 10));
     ctx.fillStyle = col; ctx.fillText(l1 + tag, 8, 6);
     ctx.fillStyle = "rgba(200,215,230,.85)"; ctx.fillText(l2, 8, 8 + fs);
+    if (l3) { ctx.fillStyle = mo.eta === 0 ? "#3dff7a" : "#e7a0ff"; ctx.fillText(l3, 8, 10 + fs * 2); }
   }
   function hdg3(v) { return BL.hdgText(v); }
+  // The dreadnought's planet buster (MOAB): its charge and when it'll be full at the rate it's
+  // charging now (averaged over BL.COMMAND.driveTau s, like the drive's). eta: s, 0 full, null not charging.
+  var moabT = { last: null, at: 0, rate: null };
+  function moabEta() {
+    var bu = sim && sim.sys("buster");
+    if (!bu) return null;
+    var t = sim.totalT, full = bu.mj >= bu.maxMJ - 0.5;
+    if (moabT.last === null || t < moabT.at) moabT = { last: bu.mj, at: t, rate: null };
+    else if (t - moabT.at >= 0.25) {
+      var r = (bu.mj - moabT.last) / (t - moabT.at), a = Math.min(1, (t - moabT.at) / BL.COMMAND.driveTau);
+      moabT.rate = moabT.rate === null ? r : moabT.rate + (r - moabT.rate) * a; moabT.last = bu.mj; moabT.at = t;
+    }
+    return { pct: Math.floor(bu.mj / bu.maxMJ * 100), f: bu.mj / bu.maxMJ, eta: full ? 0 : moabT.rate > 0.05 ? (bu.maxMJ - bu.mj) / moabT.rate : null };
+  }
+  function moabRow() {
+    var mo = moabEta();
+    $("tu-moabrow").hidden = !mo;
+    if (!mo) return;
+    setText($("tu-moab-val"), mo.eta === 0 ? "full" : mo.pct + "% · " + (mo.eta === null ? "not charging" : "full in " + mmss(Math.ceil(mo.eta))));
+    $("tu-moab").style.width = pct(mo.f);
+  }
   function renderBridge(ts) {
     var tu = sim.turret, h = sim.helm, c = sim.captain, ship = sim.ship, enc = sim.encounter() || {}, K = BL.COMMAND;
     $("btn-tu-exit").hidden = true;
@@ -1596,6 +1622,7 @@
     $("tu-shield").style.width = pct(sh.mj / sh.maxMJ);
     if (dr) { setText($("tu-rec-val"), (wi > 0 ? "in " + Math.ceil(wi) + " s · " : "open · ") + Math.floor(dr.mj / dr.maxMJ * 100) + "%"); $("tu-rec").style.width = pct(dr.mj / dr.maxMJ); }
     else { setText($("tu-rec-val"), wi > 0 ? "in " + Math.ceil(wi) + " s" : "open"); $("tu-rec").style.width = pct(Math.min(1, sim.t / Math.max(1, sim.windowAt()))); }     // a gunboat: the sortie timer to the recovery
+    moabRow();
     var dl = sim.stats.damageReports;
     if (dl.length !== lastTuDamage) {
       lastTuDamage = dl.length;
