@@ -870,6 +870,9 @@
     // has the launchers or arresters full); the test bot recovers `botRecover` s before the window.
     mainSwing: { timeout: 25, botSwing: 60 },      // (botSwing: the test bot swings only for a target that far off the bow)
     hangarOrder: { botRecover: 40 },
+    // Lines the captain hears although the pilot's quiet list (BL.HELM.quiet) mutes them: the
+    // answer to his own LAUNCH, in its plain (bridge) wording.
+    hears: ["launched"],
     // Standing orders at the start of a mission (the captain changes them on the bridge).
     standing: { guns: "auto", stance: "balanced" },
     // (drive first: after life support the drive charges to be full by the window, the rest share what's left)
