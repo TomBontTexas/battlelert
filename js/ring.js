@@ -581,6 +581,11 @@
   RingTurret.prototype.placeShip = function (s) {
     var R = this.R, a = s.aim !== null && s.aim !== undefined && this.m.captain ? this.m.captain.aimView(s.aim) : null, cx = a ? a.x : R.cx, cy = a ? a.y : R.cy;
     s.x = cx + s.r * Math.sin(s.bearing * RAD); s.y = cy - s.r * Math.cos(s.bearing * RAD);     // (s.bearing: round its target)
+    // One formed up round another ship stays clear of our shield (pushed out from us to just outside it).
+    if (a) {
+      var ex = (s.x - R.cx) / (R.rx * 1.3 + s.w), ey = (s.y - R.cy) / (R.ry * 1.3 + s.h), q = Math.hypot(ex, ey);
+      if (q < 1 && q > 1e-6) { s.x = R.cx + (s.x - R.cx) / q; s.y = R.cy + (s.y - R.cy) / q; }
+    }
     s.rot = s.bearing * RAD;                 // the art's nose (down) turned to face the ship
   };
   RingTurret.prototype.moveShips = function (dt) {

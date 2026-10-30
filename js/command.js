@@ -371,23 +371,31 @@
     var m = this.m, E = BL.COMMAND.escort, r = BL.rng((Math.imul(m.seed, 0x9e3779b1) ^ 0x51ed270b) >>> 0 || 1); r.next();
     var kind = !m.hasDrive ? "carrier" : r.chance(0.5) ? "convoy" : "capital", W = E.kinds[kind], n = r.int(W.ships), ships = [];
     // A convoy sails two abreast, `gap` x the map's size apart.
+    // (a, c: rows ahead and places across, in Captain.placeWard's gaps)
     var rows = Math.ceil(n / 2);
     for (var i = 0; i < n; i++) {
       var row = Math.floor(i / 2), pair = row < rows - 1 || n % 2 === 0;
-      ships.push({ hull: W.hull, hullMax: W.hull, a: ((rows - 1) / 2 - row) * (W.gap || 0), c: pair ? (i % 2 - 0.5) * (W.gap || 0) : 0, pos: null });
+      ships.push({ hull: W.hull, hullMax: W.hull, a: (rows - 1) / 2 - row, c: pair ? i % 2 - 0.5 : 0, pos: null });
     }
     var wing = [];
     for (var k = r.int(E.squad) - 1; k > 0; k--) wing.push({ station: WING_SIDES[wing.length], hull: E.wingHull, hullMax: E.wingHull, stops: 0 });
     return { kind: kind, W: W, ships: ships, wing: wing, hull: n * W.hull, hullMax: n * W.hull, pos: null };
   };
   // Her ships' places round the course point she's at (her heading), and the hull left in all.
+  // Sizes in the battle view follow our class's scale there: one of her ships is `size` x our
+  // ship's length (wardLen); a convoy's rows are 1.3 lengths apart and its pair 0.6 across; a
+  // station is far enough off that our shield clears her (at least `station` x the map's size).
+  Captain.prototype.wardLen = function () { return this.m.turret.R.shipH * this.escort.W.size; };
   Captain.prototype.placeWard = function () {
-    var w = this.escort, D = this.map().D;
-    w.ships.forEach(function (s) { s.pos = along(along(w.pos, w.hdg, s.a * D), w.hdg + 90, s.c * D); });
+    var w = this.escort, D = this.map().D, E = BL.COMMAND.escort, k = this.kView, L = this.wardLen(), R = this.m.turret.R;
+    var ga = Math.max((w.W.gap || 0) * D, k ? L * 1.3 / k : 0), gc = Math.max((w.W.gap || 0) * D, k ? L * 0.6 / k : 0);
+    var rows = Math.ceil(w.ships.length / 2), reach = L / 2 + (rows - 1) / 2 * L * 1.3;
+    w.stD = Math.max((w.W.station || E.station) * D, k ? (Math.max(R.rx, R.ry) + reach + E.clear) / k : 0);
+    w.ships.forEach(function (s) { s.pos = along(along(w.pos, w.hdg, s.a * ga), w.hdg + 90, s.c * gc); });
     w.hull = w.ships.reduce(function (a, s) { return a + s.hull; }, 0);
   };
   Captain.prototype.stationAt = function (id) {
-    var w = this.escort; return along(w.pos, w.hdg + BL.COMMAND.escort.sides[id], (w.W.station || BL.COMMAND.escort.station) * this.map().D);
+    var w = this.escort; return along(w.pos, w.hdg + BL.COMMAND.escort.sides[id], w.stD || (w.W.station || BL.COMMAND.escort.station) * this.map().D);
   };
   // The wingman (still with the squadron) on a station, or null.
   Captain.prototype.wingOn = function (id) { var es = this.escort; return es && es.wing.filter(function (g) { return g.hull > 0 && g.station === id; })[0] || null; };

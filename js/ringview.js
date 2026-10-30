@@ -551,7 +551,7 @@
     function off(v, k) { return v.x < -0.3 * k || v.x > 1 + 0.3 * k || v.y < -0.3 * k || v.y > 1 + 0.3 * k; }
     es.ships.forEach(function (s, i) {
       if (s.hull <= 0) return;
-      var v = cp.wardView(i), L = kind === "convoy" ? 0.08 : 0.17, W = kind === "convoy" ? 0.035 : 0.05;
+      var v = cp.wardView(i), L = cp.wardLen(), W = L * es.W.width;
       if (off(v, 1)) return;
       c.save(); c.translate(v.x, v.y); c.rotate(v.rot * Math.PI / 180);
       c.fillStyle = kind === "convoy" ? "#4d5a52" : "#3a4d63"; c.strokeStyle = kind === "convoy" ? "#b9c9bd" : "#9fc3e8"; c.lineWidth = 1.5 / S;
@@ -566,13 +566,13 @@
         c.fillStyle = "#7c8a6e"; for (var q = 0; q < 3; q++) c.fillRect(-W * 0.32, -L * 0.22 + q * L * 0.2, W * 0.64, L * 0.15);
       }
       c.restore();
-      var f = s.hull / s.hullMax, bw = kind === "convoy" ? 0.06 : 0.1;
+      var f = s.hull / s.hullMax, bw = Math.max(0.05, L * 0.6);
       c.fillStyle = "rgba(0,0,0,.5)"; c.fillRect(v.x - bw / 2, v.y + L / 2 + 0.012, bw, 0.012);
       c.fillStyle = f > 0.5 ? "#4fd18b" : f > 0.25 ? "#ffd666" : "#ff6b6b"; c.fillRect(v.x - bw / 2, v.y + L / 2 + 0.012, bw * f, 0.012);
     });
     es.wing.forEach(function (g, i) {
       if (g.hull <= 0) return;
-      var v = cp.wingView(i), L = 0.05;
+      var v = cp.wingView(i), L = m.turret.R.shipH * 0.8;
       if (off(v, 1)) return;
       c.save(); c.translate(v.x, v.y); c.rotate(v.rot * Math.PI / 180);
       c.fillStyle = "#2f5f5a"; c.strokeStyle = "#7fd8c8"; c.lineWidth = 1.5 / S;

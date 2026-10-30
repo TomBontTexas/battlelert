@@ -91,13 +91,14 @@
   // (…Escort: an escort mission, the squadron screening a carrier, convoy or capital ship; command.js Escort.
   // A picket flies a scouting run through checkpoints.)
   var CAPTAIN_SHIPS = ["gunboat", "gunboatEscort", "picket", "destroyerEscort", "destroyerEscortEscort", "destroyer"];
+  var CAPTAIN_ESCORT = { gunboatEscort: "gunboat", destroyerEscortEscort: "destroyerEscort" };     // escort mission picks: their class
   CAPTAIN_SHIPS.forEach(function (id) {
-    var esc = /.Escort$/.test(id), o = document.createElement("option"); o.value = id; o.textContent = BL.classById(esc ? id.replace(/Escort$/, "") : id).name + (esc ? " (escort mission)" : ""); $("cap-pick").appendChild(o);
+    var esc = CAPTAIN_ESCORT[id], o = document.createElement("option"); o.value = id; o.textContent = BL.classById(esc || id).name + (esc ? " (escort mission)" : ""); $("cap-pick").appendChild(o);
   });
   $("cap-pick").value = CAPTAIN_SHIPS.indexOf(settings.capPick) >= 0 ? settings.capPick : "destroyer";
   $("cap-pick").onchange = function () { settings.capPick = this.value; saveSettings(); };
   function captainJob(seed) {
-    var pick = $("cap-pick").value, escort = /.Escort$/.test(pick), id = escort ? pick.replace(/Escort$/, "") : pick, c = BL.classById(id);
+    var pick = $("cap-pick").value, escort = !!CAPTAIN_ESCORT[pick], id = CAPTAIN_ESCORT[pick] || pick, c = BL.classById(id);
     return { test: true, station: "captain", classId: id, n: c.n, tl: BL.TECH.base(id), ship: c.name, seed: seed, helm: true, captain: true, escort: escort };
   }
   $("btn-captain").onclick = function () {
