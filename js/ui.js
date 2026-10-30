@@ -1541,10 +1541,10 @@
     ["main", "pd"].forEach(function (id) { var x = sim.sys(id); if (x) gm += meter(id === "main" ? "M" : "C", x.mj / x.maxMJ, full(x)); });
     cpHtml("cp-m-gun", gm);
     var em = "";
-    // RX: the reactors' output (the hardest-worked one, against its rating; red when overloaded); their heat is the red bar under the meters.
+    // RX: the reactors' output (the hardest-worked one, against its rating; orange when overloaded); their heat is the red bar under the meters.
     var load = 0;
     ship.reactors.forEach(function (rx) { heat = Math.max(heat, rx.heat); load = Math.max(load, rx.loadPct); });
-    em += meter("RX", load / 100, load > 100 ? "alarm" : "");
+    em += meter("RX", load / 150, "rx" + (load > 100 ? " heat" : ""));       // (0 to 150%, as at the engineer station; the tick is 100%)
     em += meter("SH", sh.mj / sh.maxMJ, full(sh));
     if (dr) em += meter("DR", dr.mj / dr.maxMJ, full(dr));
     var bu = sim.sys("buster"); if (bu) em += meter("PB", bu.mj / bu.maxMJ, full(bu));
