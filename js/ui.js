@@ -1404,13 +1404,17 @@
     lastBridgeBox = {};
     bridgeSwap(true);               // the map in the middle, the battle in the box at the right (SWAP for the other way)
     // Escort (a gunboat screening the carrier): the station buttons and COVER.
+    // A ship that can't swing far enough before a torpedo lands (light cruiser and up) never
+    // breaks: no break buttons; her shields take every burst.
+    canBreakEver = sim.helm.canBreak(BL.GUNNERY.torpedo.travel);
+    $("cp-brk-row").hidden = !canBreakEver;
     var esc = !!sim.captain.escort;
     $("cp-station-grp").hidden = $("cp-cover").hidden = !esc;
     $("cp-station").innerHTML = esc ? STATION_LIST.map(function (id, k) { return '<button data-station="' + id + '" title="Keep station ' + STATION_NAME[id] + " (" + (k + 1) + ')">' + STATION_SHORT[id] + "</button>"; }).join("") : "";
     setHtml($("cp-resume"), "RESUME <small>(R)</small>");
     $("cp-resume").title = esc ? "Back to your station (R)" : "Back to the plotted course (R)";
   }
-  var lastBridgeBox = {};
+  var lastBridgeBox = {}, canBreakEver = true;
   var STATION_LIST = ["ahead", "port", "stbd", "astern"], STATION_SHORT = { ahead: "AHEAD", port: "PORT", stbd: "STBD", astern: "ASTERN" },
     STATION_NAME = { ahead: "ahead of the carrier", port: "off her port beam", stbd: "off her starboard beam", astern: "astern of her" };
   // A line or block of the BRIDGE column, rewritten only when it changes.
@@ -1521,7 +1525,7 @@
     var wv = c.wardCallView ? c.wardCallView() : null;
     // (the heading counts the seconds; the line says what's coming, plainly)
     cpLine("cp-torp-ln", ev && ev.left > 0 ? "<b>Breaking " + (ev.dir > 0 ? "starboard" : "port") + "</b>"
-      : cv ? "<b>" + cv.n + " inbound</b>" + (cv.canBreak ? "" : " · too late to break")
+      : cv ? "<b>" + cv.n + " inbound</b>" + (!canBreakEver ? " · shields take it" : cv.canBreak ? "" : " · too late to break")
       : wv ? "<b>" + wv.n + "</b> at the " + es.W.name + (wv.canCover ? "" : " · too far")
       : "None inbound");
     setCls($("cp-sec-torp"), "cp-sec cp-torps" + (ev && ev.left > 0 ? " on" : cv || wv ? " alert live" : ""));
