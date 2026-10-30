@@ -618,8 +618,7 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 .cp-mv { font-family: var(--mono); font-size: 10px; text-align: center; white-space: nowrap; overflow: hidden; color: var(--text); }
 /* (the reactor heat under ENGINEER: a horizontal bar) */
 .cp-hbar { display: block; position: relative; height: 8px; margin: 2px 2px 0; overflow: hidden; background: rgba(255,255,255,.08); border: 1px solid var(--line); border-radius: 2px; }
-.cp-hbar b { position: absolute; left: 0; top: 0; bottom: 0; background: #e0a040; }
-.cp-hbar.alarm b { background: var(--bad); }
+.cp-hbar b { position: absolute; left: 0; top: 0; bottom: 0; background: var(--bad); }
 .cp-tbtns { display: flex; flex-direction: column; gap: 2px; }
 .cp-tbtns button { width: 100%; padding: 2px; font-size: 11px; line-height: 1.1; min-height: 30px; white-space: normal; overflow-wrap: normal; word-break: keep-all; }     /* (wraps only between words: MAIN / GUN) */
 .cp-tbtns button.on { border-color: var(--warn); color: var(--warn); }

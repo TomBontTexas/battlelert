@@ -1552,7 +1552,7 @@
     cpLine("cp-v-eng", fmtG(h.speed) + " G");
     // (the main gun's charge is on the M meter and the MAIN GUN button; the heat, the hottest reactor's, is a bar)
     cpLine("cp-v-gun", ship.crippled ? "✖ crippled" : "Kills " + ((tu.cur || {}).kills || 0));
-    cpLine("cp-v-engr", '<span class="cp-hbar' + (heat >= BL.PHYSICS.alarmHeat ? " alarm" : "") + '"><b style="width:' + Math.round(clampN(heat, 0, 100)) + '%"></b></span>');
+    cpLine("cp-v-engr", '<span class="cp-hbar"><b style="width:' + Math.round(clampN(heat, 0, 100)) + '%"></b></span>');
     $("cp-v-engr").title = "Reactor heat " + Math.round(heat) + "%";
     // The order bar
     var live = turretActive();
