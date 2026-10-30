@@ -1550,8 +1550,10 @@
     var hx = hgv && hgv.squadron !== "lost" ? sim.sys("hangar") : null; if (hx) em += meter(hgv.order === "recover" ? "AR" : "LN", hx.mj / hx.maxMJ, full(hx));
     cpHtml("cp-m-engr", em);
     cpLine("cp-v-eng", fmtG(h.speed) + " G");
-    cpLine("cp-v-gun", ship.crippled ? "✖ crippled" : mv ? "Main " + (mv.swinging ? "swing" : mv.ready ? "READY" : mv.pct + "%") : "Kills " + ((tu.cur || {}).kills || 0));
-    cpLine("cp-v-engr", "Heat " + Math.round(heat) + "%");
+    // (the main gun's charge is on the M meter and the MAIN GUN button; the heat, the hottest reactor's, is a bar)
+    cpLine("cp-v-gun", ship.crippled ? "✖ crippled" : "Kills " + ((tu.cur || {}).kills || 0));
+    cpLine("cp-v-engr", '<span class="cp-hbar' + (heat >= BL.PHYSICS.alarmHeat ? " alarm" : "") + '"><b style="width:' + Math.round(clampN(heat, 0, 100)) + '%"></b></span>');
+    $("cp-v-engr").title = "Reactor heat " + Math.round(heat) + "%";
     // The order bar
     var live = turretActive();
     Array.prototype.forEach.call($("cp-tele").children, function (b) { b.classList.toggle("on", b.dataset.eng === hv.eng); b.disabled = !live; });
