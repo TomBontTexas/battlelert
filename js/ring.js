@@ -298,9 +298,10 @@
       else if (!this.ptSeen) this.ptSeen = now + this.crewReact();
       else if (now >= this.ptSeen) { this.ptSeen = 0; this.launchPT(tube); }
     }
-    var ms = this.mainState();
+    // (on the bridge the main gun fires only on the captain's MAIN GUN order: Captain.orderMain)
+    var ms = this.mainState(), held = m.captain && !m.captain.swing;
     if (ms) {
-      if (!ms.ready || !this.mainLine()) this.mainSeen = 0;
+      if (!ms.ready || held || !this.mainLine()) this.mainSeen = 0;
       else if (!this.mainSeen) this.mainSeen = now + this.crewReact();
       else if (now >= this.mainSeen) { this.mainSeen = 0; this.fireMain(); }
     }

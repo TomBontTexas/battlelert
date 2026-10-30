@@ -573,7 +573,7 @@
   Captain.prototype.resumePlot = function () { this.hdgOrder = null; this.engOrder = null; this.swing = null; this.m.cue("tick"); };
   /* MAIN GUN (light cruiser and up): with the gun charged, the pilot swings the bow onto the
      biggest ship out there and holds it on her until the crew fires (ring.js crewWeapons), then
-     she comes back to the plot. With no order the crew fires whenever a ship crosses the bow. */
+     she comes back to the plot. The crew holds the main gun's fire until the captain orders it. */
   Captain.prototype.mainView = function () {
     var m = this.m, mg = m.sys("main"), tu = m.turret;
     if (!mg) return null;

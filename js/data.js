@@ -865,7 +865,7 @@
     // The navigator's plot keeps `slack` s in hand for each one.
     checkpoints: { classes: ["picket"], n: [2, 4], r: 0.06, along: [0.15, 0.8], side: [0.08, 0.22], slack: 8 },
     // Light cruiser and up: MAIN GUN swings the bow onto the biggest ship until the crew fires (at
-    // most `timeout` s), then she comes back to the plot. Cruiser and up: LAUNCH / RECOVER call the
+    // most `timeout` s), then she comes back to the plot; the crew fires it only on that order. Cruiser and up: LAUNCH / RECOVER call the
     // squadron in `lead` s (the window `launch` or `recover` s); with no order the flight deck
     // launches and recovers on its own schedule, and once the captain has recovered it early it stays aboard until he launches.
     mainSwing: { timeout: 25, botSwing: 60 },      // (botSwing: the test bot swings only for a target that far off the bow)
