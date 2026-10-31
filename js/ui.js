@@ -1903,7 +1903,7 @@
       ["Gun crew", crew.map(function (c) { return esc(c.name) + ", " + c.label + " (" + Math.round(c.skill * 100) + ")"; }).join(" · ")],
       ["Pilot", esc(pc.name) + ", " + pc.label + " (skill " + Math.round(pc.skill * 100) + ")"],
       ["Torpedo bursts", cp.calls + ": " + cp.breaks + " breaks ordered, " + cp.pilotBreaks + " by the pilot on his own (" + cp.breaksMade + " made), " + cp.taken + " taken on the shields, " + cp.unanswered + " with no call"],
-      ["Asteroid hits", cp.rockHits]].concat(cpN ? [
+      ["Asteroid hits", cp.rockHits], ["Enemy areas flown into", cp.swarms || 0]].concat(cpN ? [
       ["Checkpoints", cp.systems.map(function (s) { return s.cpsHit + "/" + s.cps; }).join(" · ") + " (system by system)"]] : []).concat(cp.escort ? [
       [cp.escort.kind === "convoy" ? "Convoy at the end" : (cp.escort.kind === "capital" ? "Capital ship" : "Carrier") + " hull at the end",
         (cp.escort.kind === "convoy" ? cp.escort.afloat + " of " + cp.escort.ships + " merchants through, hull " : "") + cp.escort.hull + "%"],

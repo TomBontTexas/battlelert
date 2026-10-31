@@ -717,6 +717,7 @@
       <li><b>A course of your own.</b> ← → (or ◀ 10° and 10° ▶), a tap on the compass, or a tap on the map gives the helm a course of your own, and the engine buttons an engine order. HELM shows "yours" until you tap <b>RESUME</b> (R); then the pilot comes back onto the plotted line, never cutting across a field.</li>
       <li><b>Torpedoes.</b> The pilot breaks on his own, by your standing policy for him (B): <b>EVADE</b> (he breaks for every burst he can: fewer hits, but she wanders off the plot and arrives later), <b>HOLD</b> (the standing order: he breaks only when the shields can't take it) or <b>STEADY</b> (no breaks: for a minefield, a main-gun swing or the last run into the zone). He breaks at the last moment, away from asteroid fields. For any one burst you can override him: <b>◀ BREAK</b> (to port), <b>TAKE IT</b> or <b>BREAK ▶</b> (to starboard) (Z X C) before they land. A break made in time makes them miss. A light cruiser and anything bigger turns too slowly to dodge a torpedo, so it has no break buttons or pilot policy: its shields take every burst. Break away from asteroid fields: the map shows where they are.</li>
       <li><b>The crew.</b> Your crew act on your orders; they don't cover for you. The gunners' order (G) goes to every gun: FREE (the standing order: each gunner picks his own, torpedoes about to land, else the nearest ship), TORP (point defense: torpedoes about to land first), LAUNCH (ships charging to fire first), or HUNT (the ships each gun is best against). Nobody picks the order for the fight but you; the GUN meter over them is all the guns' charge together. Over the ENGINEER buttons, RX is the reactors' output, 0 to 150% of their rating (the tick is 100%; orange when one is overloaded), then the shields (SH), the drive (DR) and the other charges; the red bar under them is the reactors' heat. The engineer's stance (S) is his priority order: balanced, shields first, guns first, or <b>drive first</b>. Only on <b>SHIELDS</b> does he charge the shields ahead of the torpedoes he sees coming (and bridge a gap from the aux bank); on any other stance he just keeps them topping up and reacts only when a burst is a couple of seconds out, too late to fill them. But SHIELDS costs the guns: on it they get only a small share of their power, and the ships that launch the torpedoes keep coming. Go to SHIELDS for the torpedoes and back to BALANCE or GUNS to shoot. Normally the drive gets only the power left over after the shields and guns; on DRIVE it comes first after life support, charged fast enough to be full just before the window (flat out once the window is near or open, and over its last percent), and the shields and guns share what's left. Use it when the READY line on the map says DRIVE, and go back when it says WINDOW: the shields run lower on DRIVE. On a ship with a main gun, <b>MAIN GUN</b> puts it first after life support and charges it flat out, fight or no fight, so it's ready sooner for your MAIN GUN order; the shields and other guns share what's left. On a dreadnought, <b>MOAB</b> does the same for the planet buster (PB under ENGINEER), which must be full for the final warp; the MOAB bar under WARP and the map's top-left corner show when it'll be full at the rate it's charging. Warn engineering (E) before a hard burn.</li>
+      <li><b>Enemy areas.</b> The red areas on the map are enemy country. Your plot can't cross one, but a break or a course order can carry you into one: then a swarm comes out of it, several times a normal fight. Fly out again and half of what's left of the swarm goes back; the other half stays on you. Keep breaks and turns clear of them.</li>
       <li><b>Orders take time.</b> A new stance takes a few seconds to reach the engineer, and a new gun order a few seconds to reach each gun crew; the less skilled the crewman, the longer (skill 50 takes twice as long as skill 100). A new break policy (B) likewise takes a couple of seconds to reach the pilot, by his skill. Until an order is carried out, its button blinks and a bar fills along its bottom; when the bar is full, the crew are doing it. Give the order before you need it.</li>
       <li><b>Asteroids and minefields.</b> You may fly into an asteroid field. Its rocks sit in the field where the map shows it, so the battle view shows them only when she's in it or close by; they come at her faster the faster she goes (none while she's stopped): slow down to make it safer. A mine scenario (the minefield, the gunboat's mine lane) has one big minefield (amber, MINEFIELD) over most of the way to the warp: a course always crosses it ("Through the minefield"), and its mines work the same way. Slowing down there (cruise or less) makes a big difference. The pilot steers round the ones coming at her and the gunners shoot them; one that touches the shield hits like a mine (90 MJ, shields first). The rocks and mines hit the enemy ships around her too: an enemy ship one touches is damaged, and small ones can be wrecked. A plotted leg that's clear keeps her out of them.</li>
       <li><b>The warp.</b> Order it (J or WARP) once the drive is full, the window is open, the ship is in the zone and she's on the warp heading (within 5°); the WARP button says what's missing ("Steer 245"). Keeping her on the warp heading is your job: on the plot the pilot flies the last leg along it, and he holds her in the zone; on a course of your own, steer it yourself or RESUME PLOT. An ordered warp waits until she's in the zone (BACK TO THE ZONE) and on the heading (STEER 245), then goes.</li>
@@ -731,15 +732,15 @@
   </div>
 </section>
 
-<script src="version.js?b=0e8500ee"></script>
+<script src="version.js?b=3ddde915"></script>
 <script src="update-banner.js?b=ec7860dd"></script>
-<script src="js/data.js?b=390b02bb"></script>
-<script src="js/sim.js?b=1a9cbfcc"></script>
+<script src="js/data.js?b=754a1ef7"></script>
+<script src="js/sim.js?b=c654f029"></script>
 <script src="js/agents.js?b=66980d26"></script>
 <script src="js/gunnery.js?b=8e0c60ed"></script>
 <script src="js/ring.js?b=58426569"></script>
 <script src="js/helm.js?b=a862112e"></script>
-<script src="js/command.js?b=601c67b0"></script>
+<script src="js/command.js?b=e5f9724a"></script>
 <script src="js/training.js?b=48646f29"></script>
 <script src="js/art.js?b=ac37cac5"></script>
 <script src="js/turretview.js?b=960c39ae"></script>
@@ -750,6 +751,6 @@
 <script src="js/career.js?b=34474452"></script>
 <script src="js/speech.js?b=a8bbd298"></script>
 <script src="js/audio.js?b=7bd9e9f9"></script>
-<script src="js/ui.js?b=c35526fb"></script>
+<script src="js/ui.js?b=d23bb9d1"></script>
 </body>
 </html>

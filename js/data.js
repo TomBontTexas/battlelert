@@ -893,6 +893,10 @@
     // skill 100, divided by his skill (skill 50: twice as long).
     // (Captain.carryOut; the button blinks, a bar filling along its bottom, till then.)
     orderLag: { stance: 4, guns: 3, breaks: 2 },
+    // An enemy area on the map (a red cluster): fly into one (a break, a course order) and a swarm
+    // comes out of it, mult x this system's force in waves (at least min); fly out and half of
+    // what's left of it goes back, the other half stays on her. (Captain.step)
+    swarm: { mult: 3, min: 3 },
     // SHIELDS costs the guns: on it the engineer gives the guns and the main gun only this share of
     // the power they'd ask for (AIEngineer.think), so the captain switches it on for the torpedoes
     // and off again to shoot.

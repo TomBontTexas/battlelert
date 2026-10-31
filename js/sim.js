@@ -375,7 +375,10 @@
       this.nextStragglerAt = t + r.range(enc.stragglers.every);
     }
     // Groups that were due together come in one after another (BL.MISSION.staggerGap apart).
-    while (this.spawnQueue.length && this.spawnQueue[0].at <= t) { var sq = this.spawnQueue.shift(); this.spawnWave(sq.enc, sq.typeId, sq.line); }
+    while (this.spawnQueue.length && this.spawnQueue[0].at <= t) {
+      var sq = this.spawnQueue.shift(); this.spawnWave(sq.enc, sq.typeId, sq.line);
+      if (sq.swarm && this.captain) this.captain.swarm.push(this.waves[this.waves.length - 1].id);     // (Captain.enemyArea)
+    }
     var b = enc.burns;
     // At the helm the captain gives course and engine orders instead of the bridge's burns.
     if (this.helm) this.helm.schedule(t);
@@ -845,6 +848,13 @@
   };
   Mission.prototype.liveWaveOtherThan = function (w) {
     return this.waves.some(function (x) { return x !== w && !x.dead; });
+  };
+
+  // A wave pulls back before it's done (the bridge: half a swarm going back to its enemy area).
+  Mission.prototype.withdrawWave = function (w) {
+    this.waves = this.waves.filter(function (x) { return x !== w; });
+    this.events = this.events.filter(function (e) { return e.wave !== w.id || e.done; });
+    this.chat("withdrew", { enemy: w.name }, "info");
   };
 
   Mission.prototype.runWaves = function () {

@@ -242,7 +242,7 @@
     this.stanceOn = this.stance; this.gunsOn = this.guns; this.breaksOn = this.breaks; this.lag = {};
     this.basePriority = m.priority.slice();
     this.stats = { rockHits: 0, calls: 0, breaks: 0, pilotBreaks: 0, breaksMade: 0, taken: 0, unanswered: 0, systems: [],
-      wardTorps: 0, wardCalls: 0, covers: 0, covered: 0, wingStops: 0 };
+      wardTorps: 0, wardCalls: 0, covers: 0, covered: 0, wingStops: 0, swarms: 0 };
     this.pilot = new CaptainPilot();
     this.pilotCrew = BL.pickPilot(m.seed, m.data.classId);     // (his name and skill: how fast he takes an order)
     // Escort (BL.COMMAND.escort): the ward's hull carries over from system to system.
@@ -267,7 +267,7 @@
     h.base = to360(map.start.hdg - (m.turret ? m.turret.heading : 0));
     h.jumpHdg = info.jumpHdg; h.jumpShown = h.jumpHdg !== null; h.course = null;
     this.info = info; this.leg = 0; this.hdgOrder = null; this.engOrder = null; this.jumpOrdered = false;
-    this.inRock = false; this.inMines = false; this.zoneAt = null; this.holding = false; this.call = null; this.drRate = null; this.drLast = null; this.swing = null;
+    this.inRock = false; this.inMines = false; this.inCluster = -1; this.swarm = []; this.zoneAt = null; this.holding = false; this.call = null; this.drRate = null; this.drLast = null; this.swing = null;
     this.cur = { rockHits: 0, zoneAt: null, window: m.windowAt(), legs: info.count, onStation: 0, stationT: 0, cps: map.checkpoints.map(function () { return false; }) };
     this.stats.systems[m.jumpIndex] = this.cur;
     // Escort: the carrier sails the plotted course (the navigator's) from the start, reaching the
@@ -756,6 +756,34 @@
     this.jumpOrdered = true; this.m.cue("tick");
     return true;
   };
+  // An enemy area (BL.COMMAND.swarm): into one, a swarm comes out of it; out again, half of what's
+  // left of the swarm goes back, the rest stays on her.
+  Captain.prototype.enemyArea = function () {
+    var m = this.m, pos = this.pos, K = BL.COMMAND.swarm, k = -1;
+    this.map().clusters.forEach(function (c, i) { if (k < 0 && (c.lobes || [c]).some(function (o) { return dist(pos, o) < o.r; })) k = i; });
+    if (k === this.inCluster) return;
+    var was = this.inCluster; this.inCluster = k;
+    if (k >= 0 && was < 0) {
+      var enc = m.encounter(), id = m.route[m.jumpIndex];
+      if (!enc.wave) { id = "raiders"; enc = BL.ENCOUNTERS.raiders; }
+      var n = Math.max(K.min, Math.round(K.mult * m.force(id))), before = m.nextId, q0 = m.spawnQueue.slice();
+      m.queueWaves(n, enc, id, "straggler");
+      // (the first comes at once; the rest are queued, and join the swarm as they spawn: Mission.schedule)
+      this.swarm = m.waves.filter(function (w) { return w.id >= before; }).map(function (w) { return w.id; });
+      m.spawnQueue.forEach(function (q) { if (q0.indexOf(q) < 0) q.swarm = true; });
+      this.stats.swarms++;
+      m.cue("tick");
+    } else if (k < 0 && was >= 0) {
+      // Out again: every other one of the swarm goes back (one still to come never comes).
+      var ids = this.swarm, all = m.waves.filter(function (w) { return !w.dead && ids.indexOf(w.id) >= 0; }).concat(m.spawnQueue.filter(function (q) { return q.swarm; }));
+      all.forEach(function (x, i) {
+        if (i % 2) return;
+        if (x.enc) m.spawnQueue.splice(m.spawnQueue.indexOf(x), 1); else m.withdrawWave(x);
+      });
+      m.spawnQueue.forEach(function (q) { q.swarm = false; });
+      this.swarm = [];
+    }
+  };
   // Mission.runJump asks: may the countdown run?
   Captain.prototype.mayJump = function () { return this.jumpOrdered && this.inZone(BL.COMMAND.zoneHold); };
 
@@ -787,6 +815,7 @@
       if (dist(this.pos, b) > (cpw ? cpw.r * 0.4 : K.capture * map.D) && n.u < 0.999) break;
       this.leg++;
     }
+    this.enemyArea();
     // Checkpoints flown through.
     var cur = this.cur, pos = this.pos;
     map.checkpoints.forEach(function (c, i) { if (!cur.cps[i] && dist(pos, c) < c.r) { cur.cps[i] = true; m.cue("tick"); } });
@@ -865,7 +894,7 @@
     r.parts = { objective: r.parts.objective, condition: r.parts.condition, navigation: Math.round(25 * nav), command: Math.round(25 * command) };
     r.raw = r.parts.objective + r.parts.condition + r.parts.navigation + r.parts.command;
     r.score = Math.round(r.raw * Math.pow(1 - m.cfg.lookCostPct / 100, r.looks));
-    r.captain = { rockHits: st.rockHits, calls: st.calls, breaks: st.breaks, pilotBreaks: st.pilotBreaks, breaksMade: hs.evasiveMet, taken: st.taken, unanswered: st.unanswered,
+    r.captain = { rockHits: st.rockHits, swarms: st.swarms, calls: st.calls, breaks: st.breaks, pilotBreaks: st.pilotBreaks, breaksMade: hs.evasiveMet, taken: st.taken, unanswered: st.unanswered,
       systems: sys.map(function (s) { return { zoneAt: s.zoneAt === null ? null : Math.round(s.zoneAt), window: s.window, rockHits: s.rockHits, legs: s.legs, cps: s.cps.length, cpsHit: s.cps.filter(Boolean).length }; }),
       ships: tu.stats.ships, kills: tu.stats.kills, downed: tu.stats.downed,
       rocks: tu.stats.rocks || 0, rocksDown: tu.stats.rocksDown || 0, rockEnemy: tu.stats.rockEnemy || 0 };
