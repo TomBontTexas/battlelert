@@ -1556,7 +1556,7 @@
     });
     sizeTurret();
     BL.drawRing(tuCtx, { w: tuW, h: tuH, wide: false }, sim, tu, ts);
-    $("tu-jump").innerHTML = "Warp <b>" + (sim.jumpIndex + 1) + "</b> of " + sim.cfg.jumps + " · <b>" + (BL.ENCOUNTERS[sim.shown(sim.jumpIndex)] || enc).name + "</b>";     // (the report until it's found wrong)
+    $("tu-jump").innerHTML = (sim.hasDrive ? "Warp" : "Sortie") + " <b>" + (sim.jumpIndex + 1) + "</b> of " + sim.cfg.jumps + " · <b>" + (BL.ENCOUNTERS[sim.shown(sim.jumpIndex)] || enc).name + "</b>";     // (the report until it's found wrong)
     setText($("tu-phase"), sim.phase === "arrival" ? "Engagement in " + Math.ceil(sim.cfg.arrivalSeconds - sim.t) + " s" :
       sim.phase === "countdown" ? "WARPING IN " + Math.max(1, Math.ceil(sim.jumpAt - sim.t)) : sim.phase === "engage" ? "T+" + mmss(sim.t) : "IN WARP SPACE");
     renderComms();
@@ -2331,6 +2331,13 @@
       ["demands", "Dodging", "late", "sharp"],
       ["guns", "Guns on target", "rarely", "always"],
       ["condition", "Ship condition", "wrecked", "untouched"]
+    ],
+    captain: [
+      ["winloss", "Win/loss", "losses", "wins"],
+      ["efficiency", "Navigation", "lost", "on time"],
+      ["demands", "Command", "loose", "tight"],
+      ["guns", "Guns on target", "rarely", "always"],
+      ["condition", "Ship condition", "wrecked", "untouched"]
     ]
   };
   function profileHtml(p, before, station) {
@@ -2350,16 +2357,15 @@
         if (!BL.career.PLAYABLE[st]) return k.n === 1 ? '<td class="later" colspan="9">' + later[st] + "</td>" : "";
         var ready = BL.career.built(st, k.n);
         if (k.n <= q) return '<td class="q" title="Qualified">✔</td>';
-        if (k.n === target && ready) return '<td class="next" title="Working toward">▶</td>';
+        if (k.n === target && ready && (st !== "captain" || BL.career.canCommand(c, k.n))) return '<td class="next" title="Working toward">▶</td>';
         return '<td class="off">' + (ready ? "" : "·") + "</td>";
       }).join("") + "</tr>";
     }).join("");
-    rows += '<tr><td>Command</td><td class="later" colspan="9">Phase 5: needs all three stations on a class</td></tr>';
     return '<table class="cgrid">' + head + rows + "</table><p class=\"muted small-text\">✔ qualified · ▶ working toward · dot = not built yet</p>";
   }
   function summaryHtml(c) {
     return BL.career.STATIONS.filter(function (s) { return BL.career.PLAYABLE[s]; }).map(function (s) {
-      return "<span>" + BL.career.STATION_NAME[s] + " <b>" + BL.career.rank(c, s) + "</b> · reputation <b>" + c.stations[s].rep + "</b></span>";
+      return "<span>" + (s === "captain" ? "" : BL.career.STATION_NAME[s] + " ") + "<b>" + BL.career.rank(c, s) + "</b> · reputation <b>" + c.stations[s].rep + "</b></span>";
     }).join("") +
       "<span>Rapid sign-offs <b>" + BL.career.signoffsHeld(c) + "</b></span>" +
       "<span>Missions <b>" + sumProfiles(c, "missions") + "</b> (" + sumProfiles(c, "wins") + " won)</span>";
@@ -2416,11 +2422,13 @@
     $("btn-hub-eng").textContent = "Engineer jobs (" + BL.career.offers(career, "engineer").length + ")";
     $("btn-hub-gun").textContent = "Gunner jobs (" + BL.career.offers(career, "gunner").length + ")";
     $("btn-hub-pilot").textContent = "Pilot jobs (" + BL.career.offers(career, "pilot").length + ")";
+    $("btn-hub-cmd").textContent = "Command jobs (" + BL.career.offers(career, "captain").length + ")";
     show("scr-hub");
   }
   $("btn-hub-eng").onclick = function () { click(); showOffers("offers", "engineer"); };
   $("btn-hub-gun").onclick = function () { click(); showOffers("offers", "gunner"); };
   $("btn-hub-pilot").onclick = function () { click(); showOffers("offers", "pilot"); };
+  $("btn-hub-cmd").onclick = function () { click(); showOffers("offers", "captain"); };
   /* Pilot training (training.js): any class the pilot is qualified on (a new pilot: the gunboat). */
   var trainClass = null;
   $("btn-hub-train").onclick = function () {
@@ -2491,6 +2499,7 @@
   function offerHtml(j, i) {
     var cls = BL.classByN(j.n), q = BL.career.qualified(career, j.station), up = j.n > q, rankName = BL.career.STATION_NAME[j.station];
     var tag = up ? '<span class="tag up">' + (q ? "STEP UP" : "FIRST QUALIFICATION") + "</span>" : !j.serious ? '<span class="tag low">REQUALIFYING</span>' : "";
+    if (j.escort) tag += '<span class="tag">ESCORT MISSION</span>';
     // Ship and hull number with the tech level; reputation; then who you'd serve with and the guns.
     // Crew: everyone at the other stations the job names (j.engineer, j.gunner, j.pilot, each
     // { name, who, label, skill }). Gunner jobs name the engineer today; engineer jobs will add
@@ -2501,7 +2510,7 @@
     });
     // A gunner or pilot job also names the gun crew (the same people the mission will roll; at
     // the helm, every gun is crewed).
-    var pilot = j.station === "pilot";
+    var pilot = j.station === "pilot" || j.station === "captain";
     if ((j.station === "gunner" || pilot) && BL.pickGunCrew) BL.pickGunCrew(j.seed, j.classId, pilot).forEach(function (c, k) {
       if (c) crew.push("Gun " + (k + 1) + " " + esc(c.name) + ", " + c.label + " (skill " + Math.round(c.skill * 100) + ")");
     });
@@ -2510,6 +2519,7 @@
     function sec(title, rows) { return rows.length ? '<div class="offer-sec"><div class="offer-sec-h">' + title + "</div>" + rows.map(function (x) { return "<div>" + x + "</div>"; }).join("") + "</div>" : ""; }
     return '<div class="offer' + (up ? " stepup" : "") + '"><h3>' + shipHtml(j.classId, j.ship, j.hull) + " (TL" + j.tl + ")" + tag + "</h3>" +
       '<button class="primary" data-i="' + i + '">Accept</button>' +
+      (j.escort ? '<div class="offer-story">Escort mission: your ' + cls.name.toLowerCase() + " is one of a squadron screening " + (j.classId === "gunboat" ? "the carrier" : "a convoy or a capital ship") + ".</div>" : "") +
       (j.story ? '<div class="offer-story"><b>' + esc(j.title) + "</b> · " + cls.name + " chapter: " + esc(j.chapter) + "</div>" : "") +
       '<div class="meta">Reputation ×' + +(BL.TECH.repMult(j.tl) * (j.serious === false ? BL.career.REQUAL_REP : 1)).toFixed(3) + (j.serious === false ? " (half: requalifying)" : "") + ", max " + BL.career.repFor(j, 100) +
       (up ? " · success qualifies you as " + rankName + "-" + j.n : "") + "</div>" +
@@ -2523,7 +2533,10 @@
     if (mode === "offers") {
       shownJobs = BL.career.offers(career, station);
       $("offers-title").textContent = who + " jobs";
-      $("offers-lede").textContent = (station === "gunner"
+      var cq = BL.career.qualified(career, "captain"), needs = BL.career.commandNeeds(career, cq + 1);
+      $("offers-lede").textContent = station === "captain" ? (
+        "Command postings: you're on the bridge, plotting each system's course and giving the orders; the crew each job names carry them out. A gunboat's commander is its coxswain. On the gunboat and destroyer escort some are escort missions." +
+        (cq >= 9 ? "" : needs.length ? " Command of the " + BL.classByN(cq + 1).name.toLowerCase() + " needs " + needs.join(" and ") + "." : " Command of the " + BL.classByN(cq + 1).name.toLowerCase() + " is open to you.")) : (station === "gunner"
         ? "Postings for gunners at your level. Each lists the ship's guns and names the engineer who'll run your power and the gun crew."
         : station === "pilot"
         ? "Postings for pilots at your level. Each names the engineer who'll run the power and the gun crew who'll work the guns while you fly. Bigger ships turn slower and answer the helm later."
