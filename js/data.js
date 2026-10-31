@@ -886,11 +886,20 @@
     // his own by the captain's standing policy (pilots); the captain's BREAK buttons override it.
     standing: { guns: "free", stance: "balanced", pilot: "hold" },
     guardOnShields: true, guardReact: 2.5,
+    // Orders take time to carry out: a new stance reaches the engineer's board, a new gun order each
+    // gun crew, this many s after the captain gives it for a crewman of skill 100, divided by his
+    // skill (skill 50: twice as long). (Captain.carryOut; the button shows it pending till then.)
+    orderLag: { stance: 4, guns: 3 },
+    // SHIELDS costs the guns: on it the engineer gives the guns and the main gun only this share of
+    // the power they'd ask for (AIEngineer.think), so the captain switches it on for the torpedoes
+    // and off again to shoot.
+    shieldsGuns: 0.15,
+    botShields: 0.6,     // (the test bot orders SHIELDS when they're below this share of full)
     pilots: { evade: { name: "Evade: break for every burst he can", short: "EVADE" }, hold: { name: "Hold course: break only when the shields can't take it", short: "HOLD" },
       steady: { name: "Steady: no breaks, take everything on the shields", short: "STEADY" } },
     pilotList: ["evade", "hold", "steady"],
     // (drive first: after life support the drive charges to be full by the window (its last percent flat out), the rest share what's left)
-    stances: { shields: { name: "Shields first", short: "SHIELDS" }, balanced: { name: "Balanced", short: "BALANCE" }, guns: { name: "Guns first", short: "GUNS" },
+    stances: { shields: { name: "Shields first (the guns get little power)", short: "SHIELDS" }, balanced: { name: "Balanced", short: "BALANCE" }, guns: { name: "Guns first", short: "GUNS" },
       drive: { name: "Drive first", short: "DRIVE" }, main: { name: "Main gun first", short: "MAIN GUN" }, moab: { name: "Planet buster first", short: "MOAB" } },
     // (main: light cruiser and up; drive: ships with a warp drive; moab: the dreadnought's planet buster)
     stanceList: ["balanced", "shields", "guns", "main", "drive", "moab"],

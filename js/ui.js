@@ -1605,9 +1605,9 @@
     // The order bar
     var live = turretActive();
     Array.prototype.forEach.call($("cp-tele").children, function (b) { b.classList.toggle("on", b.dataset.eng === hv.eng); b.disabled = !live; });
-    Array.prototype.forEach.call($("cp-gunord").children, function (b) { b.classList.toggle("on", b.dataset.gun === c.guns); b.disabled = !live; });
+    Array.prototype.forEach.call($("cp-gunord").children, function (b) { b.classList.toggle("on", b.dataset.gun === c.guns); b.classList.toggle("pend", b.dataset.gun === c.guns && c.guns !== c.gunsOn); b.disabled = !live; });
     Array.prototype.forEach.call($("cp-pilot-row").children, function (b) { b.classList.toggle("on", b.dataset.pilot === c.breaks); b.disabled = !live; });
-    Array.prototype.forEach.call($("cp-stance").children, function (b) { b.classList.toggle("on", b.dataset.stance === c.stance); b.disabled = !live; b.hidden = b.dataset.stance === "drive" && sim.isDrop(); });
+    Array.prototype.forEach.call($("cp-stance").children, function (b) { b.classList.toggle("on", b.dataset.stance === c.stance); b.classList.toggle("pend", b.dataset.stance === c.stance && c.stance !== c.stanceOn); b.disabled = !live; b.hidden = b.dataset.stance === "drive" && sim.isDrop(); });
     $("cp-resume").disabled = !live || !hv.own;
     var tg = $("cp-sec-torp");
     setText($("cp-torp-lbl"), cv ? "TORPEDOES · " + cv.in.toFixed(1) + " s" : wv ? "TORPEDOES · " + wv.in.toFixed(1) + " s" : "TORPEDOES");

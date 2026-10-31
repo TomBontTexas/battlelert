@@ -238,6 +238,8 @@
     });
     this.plots = [];
     this.stance = BL.COMMAND.standing.stance; this.guns = BL.COMMAND.standing.guns; this.breaks = BL.COMMAND.standing.pilot;
+    // (stance, guns: what he ordered; stanceOn, gunsOn: what the crew are doing, BL.COMMAND.orderLag s later)
+    this.stanceOn = this.stance; this.gunsOn = this.guns; this.lag = {};
     this.basePriority = m.priority.slice();
     this.stats = { rockHits: 0, calls: 0, breaks: 0, pilotBreaks: 0, breaksMade: 0, taken: 0, unanswered: 0, systems: [],
       wardTorps: 0, wardCalls: 0, covers: 0, covered: 0, wingStops: 0 };
@@ -276,7 +278,7 @@
       w.wing.forEach(function (g) { g.pos = null; });      // (each wingman starts the system on his station)
     }
     this.makeFields();
-    this.applyStance(); this.applyGuns(true);
+    this.applyStance(); this.applyGuns();
   };
   /* The battle view's scale (view units per map unit: the map streams past at rockField.flow view
      units/s at standard, slower on a slow-turning class) and every rock and mine in this system's
@@ -619,26 +621,48 @@
     m.cue("tick");
     return true;
   };
-  Captain.prototype.setStance = function (id) { if (!BL.COMMAND.stances[id]) return; this.stance = id; this.applyStance(); this.m.cue("tick"); };
+  Captain.prototype.setStance = function (id) { if (!BL.COMMAND.stances[id]) return; this.stance = id; this.order("stance"); };
+  // An order takes BL.COMMAND.orderLag s / the crewman's skill to reach him: the engineer for a
+  // stance, each gun crew for a gun order (none if it's what they're doing already).
+  function lagFor(what, skill) { return BL.COMMAND.orderLag[what] / Math.max(0.2, skill || 1); }
+  Captain.prototype.order = function (what) {
+    var m = this.m, t = m.totalT, id = this[what];
+    if (what === "stance") {
+      if (id === this.stanceOn) delete this.lag.stance; else this.lag.stance = t + lagFor("stance", m.turret && m.turret.engineer.skill);
+    } else if (m.turret) m.turret.bats.forEach(function (b) {
+      if (b.order === id) { b.orderTo = null; return; }
+      b.orderTo = id; b.orderAt = t + lagFor("guns", b.crew && b.crew.skill);
+    });
+    m.cue("tick");
+  };
+  // The orders that have reached the crew by now (the gunners answer once every gun has it).
+  Captain.prototype.carryOut = function () {
+    var L = this.lag, m = this.m, t = m.totalT, tu = m.turret;
+    if (L.stance !== undefined && t >= L.stance) { delete L.stance; this.stanceOn = this.stance; this.applyStance(); }
+    if (!tu || this.gunsOn === this.guns && !tu.bats.some(function (b) { return b.orderTo; })) return;
+    tu.bats.forEach(function (b) { if (b.orderTo && t >= b.orderAt) { b.order = b.orderTo; b.orderTo = null; } });
+    var id = this.guns;
+    if (tu.bats.every(function (b) { return b.order === id; }) && this.gunsOn !== id) { this.gunsOn = id; m.say("Gunners: " + BL.GUNNERY.orders[id].ack, "good"); }
+  };
   // The engineer's stance is his priority order: shields first, guns first, the drive first (after
   // life support; the AI engineer then charges it to be full by the window (its last percent flat out), not just with what's left:
   // AIEngineer.think), or as the ship comes.
   Captain.prototype.applyStance = function () {
     var m = this.m, base = this.basePriority.slice(), guns = base.filter(function (id) { var s = m.sys(id); return s && s.kind === "gun"; });
-    m.driveFirst = this.stance === "drive" && !!m.sys("drive");
-    m.mainFirst = this.stance === "main" && !!m.sys("main");       // (main gun first: after life support, charged flat out: AIEngineer.think)
-    m.busterFirst = this.stance === "moab" && !!m.sys("buster");   // (MOAB: the planet buster likewise)
-    var first = this.stance === "shields" ? ["shield"] : this.stance === "guns" ? guns : m.driveFirst ? ["life", "drive"] : m.mainFirst ? ["life", "main"] : m.busterFirst ? ["life", "buster"] : [];
+    var on = this.stanceOn;
+    m.driveFirst = on === "drive" && !!m.sys("drive");
+    m.mainFirst = on === "main" && !!m.sys("main");       // (main gun first: after life support, charged flat out: AIEngineer.think)
+    m.busterFirst = on === "moab" && !!m.sys("buster");   // (MOAB: the planet buster likewise)
+    var first = on === "shields" ? ["shield"] : on === "guns" ? guns : m.driveFirst ? ["life", "drive"] : m.mainFirst ? ["life", "main"] : m.busterFirst ? ["life", "buster"] : [];
     m.setPriority(first.concat(base.filter(function (id) { return first.indexOf(id) < 0; })));
   };
   // The pilot's standing break policy (BL.COMMAND.pilots): EVADE, HOLD or STEADY.
   Captain.prototype.setPilot = function (id) { if (!BL.COMMAND.pilots[id]) return; this.breaks = id; this.m.cue("tick"); };
-  Captain.prototype.setGuns = function (id) { if (!BL.GUNNERY.orders[id]) return; this.guns = id; this.applyGuns(); this.m.cue("tick"); };
-  Captain.prototype.applyGuns = function (quiet) {
-    var tu = this.m.turret, id = this.guns;
+  Captain.prototype.setGuns = function (id) { if (!BL.GUNNERY.orders[id]) return; this.guns = id; this.order("guns"); };
+  Captain.prototype.applyGuns = function () {
+    var tu = this.m.turret, id = this.gunsOn;
     if (!tu) return;
-    tu.bats.forEach(function (b) { b.order = id; });
-    if (!quiet) this.m.say("Gunners: " + BL.GUNNERY.orders[id].ack, "good");
+    tu.bats.forEach(function (b) { if (!b.orderTo) b.order = id; });     // (an order on its way still gets there)
   };
   // Torpedoes at us that no break covers and that haven't landed.
   Captain.prototype.openFish = function () { var h = this.m.helm; return h.fishInAir().filter(function (f) { return f.hold; }); };
@@ -725,6 +749,7 @@
   /* ------------------------------------------------------------- The tick */
   Captain.prototype.step = function (dt) {
     var m = this.m, h = m.helm, K = BL.COMMAND, map = this.map();
+    this.carryOut();
     if (!this.pos) return;
     // The ship moves on the map at her speed, on her compass heading.
     var hdg = h.compass(), v = h.speed * K.scale;
@@ -861,8 +886,11 @@
     if (wv && wv.canCover && wv.in < BL.GUNNERY.torpedo.travel && sh.mj >= (wv.mj + ours) * E.cover && sh.mj >= sh.maxMJ * 0.5) c.cover();
     // The crew act on orders: SHIELDS while there are enemy ships about (else BALANCE), and HUNT
     // (o.suggest: the gun order most of the guns would suggest for this fight, every few seconds).
+    // (SHIELDS costs the guns, so only for the torpedoes: a burst in the air, or the shields below
+    // botShields of full; o.holdShields: all fight)
     if (!this.fixedStance) {
-      var up = m.waves && m.waves.some(function (w) { return !w.dead; }), want = up ? "shields" : "balanced";
+      var up = m.waves && m.waves.some(function (w) { return !w.dead; }), shd = m.sys("shield");
+      var need = o.holdShields || c.openFish().length > 0 || shd.mj < shd.maxMJ * BL.COMMAND.botShields, want = up && need ? "shields" : "balanced";
       if (c.stance !== want && c.stance !== "drive" && c.stance !== "moab") c.setStance(want);
     }
     if (m.turret && !o.suggest && c.guns !== "hunt") c.setGuns("hunt");
@@ -895,7 +923,7 @@
       gunner: { weapons: BL.GUNNERY.loadout[classId], ring: true, arcs: rc.arcs, arcNames: rc.arcNames, helm: true } }, extra));
     var eng = new BL.AIEngineer(0.5, 0.25, m.turret.engineer.skill), bot = new CaptainBot(extra && extra.bot);
     if (extra && extra.noMain) bot.noMain = true;      // (tests: the main gun on standing orders only)
-    if (extra && extra.stance) { m.captain.stance = extra.stance; bot.fixedStance = true; }     // (tests: a standing stance other than balanced, held all mission)
+    if (extra && extra.stance) { m.captain.stance = m.captain.stanceOn = extra.stance; bot.fixedStance = true; }     // (tests: a standing stance other than balanced, held all mission)
     m.beginJump();
     var guard = 0;
     while (m.phase !== "done" && guard++ < BL.TICK_RATE * 60 * 30) {

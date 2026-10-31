@@ -63,7 +63,7 @@
     // On the bridge the engineer guards the shields against what's coming only on the captain's
     // SHIELDS stance; otherwise he just keeps them topping up (BL.COMMAND.standing).
     // (he still reacts once a burst is guardReact s out, too late to charge for it fully)
-    if (m.captain && BL.COMMAND.guardOnShields && m.captain.stance !== "shields" && salvos.next > BL.COMMAND.guardReact) salvos = { next: 99, mj: 0 };
+    if (m.captain && BL.COMMAND.guardOnShields && m.captain.stanceOn !== "shields" && salvos.next > BL.COMMAND.guardReact) salvos = { next: 99, mj: 0 };
 
     var want = {};
     want.life = life.mj < life.maxMJ * 0.9 ? 7 : 3.5;
@@ -81,6 +81,8 @@
     // Main gun: fires whenever full, so feed it hard while there's a target, else let it sit.
     var main = m.sys("main");
     if (main) want.main = wavesUp || m.mainFirst ? main.maxMW : Math.min(main.maxMW, (main.maxMJ - main.mj) / 20);
+    // (the bridge: the captain's SHIELDS stance gives the guns only a share, BL.COMMAND.shieldsGuns)
+    if (m.captain && m.captain.stanceOn === "shields") ship.systems.forEach(function (s) { if ((s.kind === "gun" || s.kind === "main") && want[s.id]) want[s.id] *= BL.COMMAND.shieldsGuns; });
     // Hangar: full power when a call is open or coming soon, else top up slowly.
     ship.systems.forEach(function (s) {
       if (s.kind !== "hangar") return;
