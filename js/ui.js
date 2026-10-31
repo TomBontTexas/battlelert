@@ -1556,7 +1556,7 @@
     });
     sizeTurret();
     BL.drawRing(tuCtx, { w: tuW, h: tuH, wide: false }, sim, tu, ts);
-    $("tu-jump").innerHTML = "Warp <b>" + (sim.jumpIndex + 1) + "</b> of " + sim.cfg.jumps + " · <b>" + (enc.name || "") + "</b>";
+    $("tu-jump").innerHTML = "Warp <b>" + (sim.jumpIndex + 1) + "</b> of " + sim.cfg.jumps + " · <b>" + (BL.ENCOUNTERS[sim.shown(sim.jumpIndex)] || enc).name + "</b>";     // (the report until it's found wrong)
     setText($("tu-phase"), sim.phase === "arrival" ? "Engagement in " + Math.ceil(sim.cfg.arrivalSeconds - sim.t) + " s" :
       sim.phase === "countdown" ? "WARPING IN " + Math.max(1, Math.ceil(sim.jumpAt - sim.t)) : sim.phase === "engage" ? "T+" + mmss(sim.t) : "IN WARP SPACE");
     renderComms();
@@ -2058,7 +2058,7 @@
   var gravFinal = false;
   function showGrav(final) {
     gravFinal = !!final;
-    var n = sim.stats.jumps.length, js = sim.stats.jumps[n - 1], next = final ? null : sim.encounter();
+    var n = sim.stats.jumps.length, js = sim.stats.jumps[n - 1], next = final ? null : BL.ENCOUNTERS[sim.shown(sim.jumpIndex)];
     var dmg = sim.stats.damageReports.filter(function (d) { return d.jump === n; });
     $("grav-title").textContent = final ? (sim.sys("buster") ? "The drop: planet buster away on the " + sim.world + " world" : sim.hasDrive ? "Warp " + n + " of " + sim.cfg.jumps + " complete" : "Sortie " + n + " of " + sim.cfg.jumps + " complete: back aboard the carrier")
       : sim.hasDrive ? "In warp space: warp " + n + " of " + sim.cfg.jumps + " complete" : "Aboard the carrier: sortie " + n + " of " + sim.cfg.jumps + " complete";

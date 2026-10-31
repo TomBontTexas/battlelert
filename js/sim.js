@@ -51,6 +51,7 @@
     // A story mission (story.js) flies the systems its story names. The mine lane needs the gun
     // view, so in the engine room it's a minefield. reports: a line to play in each system.
     if (opts.route) this.route = opts.route.map(function (id) { return id === "sweep" && !opts.gunner ? "minefield" : id; });
+    this.intelKnown = {};                     // (systems where the report turned out wrong: Mission.shown)
     // The bridge's survey of each system (Mission.reported): its own random stream, so the
     // mission's is unchanged.
     if (opts.captain && !this.training) {
@@ -111,6 +112,8 @@
   // The dreadnought's last system is the drop (no warp out): see runDrop.
   // What the pickets reported for system i: on the bridge sometimes wrong (BL.COMMAND.intelWrong).
   Mission.prototype.reported = function (i) { return this.intel ? this.intel[i] : this.route[i]; };
+  // What the bridge believes is in system i: the report until the enemy shows it's wrong.
+  Mission.prototype.shown = function (i) { return this.intelKnown[i] ? this.route[i] : this.reported(i); };
   Mission.prototype.isDrop = function () { return !!this.sys("buster") && this.jumpIndex === this.cfg.jumps - 1; };
   // (the class carries a planet buster: its last system is the drop; usable before the ship is built)
   Mission.prototype.dropping = function () { return this.data.systems.some(function (s) { return s.id === "buster"; }); };
@@ -475,7 +478,7 @@
     // The bridge: the system's first enemy isn't what the pickets reported (Mission.reported).
     // (Tactical names them first, though the bridge doesn't usually hear a wave come in)
     if (this.intel && !typeId && !this.intelSaid && this.reported(this.jumpIndex) !== this.route[this.jumpIndex]) {
-      this.intelSaid = true;
+      this.intelSaid = true; this.intelKnown[this.jumpIndex] = true;
       if (!this.quiet && this.hushed("waveIn")) this.say(fill(this.rng.pick(BL.CHATTER.waveIn), { enemy: wave.name }), "info");
       this.chat("intelWrong", { reported: BL.plural(BL.ENCOUNTERS[this.reported(this.jumpIndex)].enemy), enemies: BL.plural(wave.name) }, "warn");
     }
