@@ -58,7 +58,12 @@
       this.intel = this.route.map(function (id) {
         var others = pool.filter(function (ty) { return ty !== id; });
         return id !== "minefield" && id !== "sweep" && others.length && ir.chance(BL.COMMAND.intelWrong) ? ir.pick(others) : id;
-      });
+      }, this);
+      // (a test mission from the title screen: at least one report wrong, if any system can be)
+      var self = this, can = this.route.map(function (id, i) { return i; }).filter(function (i) { return self.route[i] !== "minefield" && self.route[i] !== "sweep"; });
+      if (opts.test && can.length && !this.intel.some(function (x, i) { return x !== self.route[i]; })) {
+        var k = ir.pick(can); this.intel[k] = ir.pick(pool.filter(function (ty) { return ty !== self.route[k]; }));
+      }
     }
     if (opts.route && this.dropping() && this.route[this.route.length - 1] === "hunters") this.route[this.route.length - 1] = "raiders";     // (no drive hunters at the drop)
     this.reports = opts.reports || [];
