@@ -600,8 +600,11 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 .cp-side .cp-row button.cp-wide { flex-grow: 1.6; }
 .cp-side .cp-row button small { display: none; }
 .cp-side .cp-row button.on { border-color: var(--warn); color: var(--warn); }
-.cp-side .cp-row button.on.pend { border-style: dashed; animation: cp-pend 0.8s steps(2) infinite; }     /* (ordered, not yet carried out: BL.COMMAND.orderLag) */
-@keyframes cp-pend { 50% { opacity: 0.45; } }
+/* An order on its way to the crew (BL.COMMAND.orderLag): the border blinks, the bar fills along the bottom. */
+.cp-tbtns button, .cp-side .cp-row button { position: relative; }
+.cp-tbtns button.on.pend, .cp-side .cp-row button.on.pend { border-style: dashed; animation: cp-pend 0.8s steps(2) infinite; }
+@keyframes cp-pend { 50% { border-color: transparent; } }
+.cp-prog { position: absolute; left: 0; bottom: 0; height: 3px; background: var(--warn); pointer-events: none; }
 .cp-side .cp-jump { min-width: 0; }
 .cp-side button:disabled { opacity: .45; cursor: default; }
 .cp-torps.live .cp-hd { color: var(--bad); }

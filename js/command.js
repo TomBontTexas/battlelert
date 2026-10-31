@@ -239,11 +239,12 @@
     this.plots = [];
     this.stance = BL.COMMAND.standing.stance; this.guns = BL.COMMAND.standing.guns; this.breaks = BL.COMMAND.standing.pilot;
     // (stance, guns: what he ordered; stanceOn, gunsOn: what the crew are doing, BL.COMMAND.orderLag s later)
-    this.stanceOn = this.stance; this.gunsOn = this.guns; this.lag = {};
+    this.stanceOn = this.stance; this.gunsOn = this.guns; this.breaksOn = this.breaks; this.lag = {};
     this.basePriority = m.priority.slice();
     this.stats = { rockHits: 0, calls: 0, breaks: 0, pilotBreaks: 0, breaksMade: 0, taken: 0, unanswered: 0, systems: [],
       wardTorps: 0, wardCalls: 0, covers: 0, covered: 0, wingStops: 0 };
     this.pilot = new CaptainPilot();
+    this.pilotCrew = BL.pickPilot(m.seed, m.data.classId);     // (his name and skill: how fast he takes an order)
     // Escort (BL.COMMAND.escort): the ward's hull carries over from system to system.
     this.escort = m.escort ? this.makeEscort() : null;
     this.station = "ahead"; this.wcall = null;
@@ -625,24 +626,36 @@
   // An order takes BL.COMMAND.orderLag s / the crewman's skill to reach him: the engineer for a
   // stance, each gun crew for a gun order (none if it's what they're doing already).
   function lagFor(what, skill) { return BL.COMMAND.orderLag[what] / Math.max(0.2, skill || 1); }
+  // (lag[what]: { t0: given, at: carried out }; for the guns, when the last gun has it)
   Captain.prototype.order = function (what) {
-    var m = this.m, t = m.totalT, id = this[what];
-    if (what === "stance") {
-      if (id === this.stanceOn) delete this.lag.stance; else this.lag.stance = t + lagFor("stance", m.turret && m.turret.engineer.skill);
-    } else if (m.turret) m.turret.bats.forEach(function (b) {
-      if (b.order === id) { b.orderTo = null; return; }
-      b.orderTo = id; b.orderAt = t + lagFor("guns", b.crew && b.crew.skill);
-    });
+    var m = this.m, t = m.totalT, id = this[what], L = this.lag;
+    if (what !== "guns") {
+      if (id === this[what + "On"]) delete L[what];
+      else L[what] = { t0: t, at: t + lagFor(what, what === "stance" ? m.turret && m.turret.engineer.skill : this.pilotCrew.skill) };
+    } else if (m.turret) {
+      var at = t;
+      m.turret.bats.forEach(function (b) {
+        if (b.order === id) { b.orderTo = null; return; }
+        b.orderTo = id; b.orderAt = t + lagFor("guns", b.crew && b.crew.skill); at = Math.max(at, b.orderAt);
+      });
+      if (at > t) L.guns = { t0: t, at: at }; else delete L.guns;
+    }
     m.cue("tick");
+  };
+  // How far an order is on its way to the crew, 0 to 1 (null: none on its way).
+  Captain.prototype.orderProgress = function (what) {
+    var o = this.lag[what]; if (!o) return null;
+    return Math.min(1, (this.m.totalT - o.t0) / Math.max(0.01, o.at - o.t0));
   };
   // The orders that have reached the crew by now (the gunners answer once every gun has it).
   Captain.prototype.carryOut = function () {
     var L = this.lag, m = this.m, t = m.totalT, tu = m.turret;
-    if (L.stance !== undefined && t >= L.stance) { delete L.stance; this.stanceOn = this.stance; this.applyStance(); }
+    if (L.stance && t >= L.stance.at) { delete L.stance; this.stanceOn = this.stance; this.applyStance(); }
+    if (L.breaks && t >= L.breaks.at) { delete L.breaks; this.breaksOn = this.breaks; }
     if (!tu || this.gunsOn === this.guns && !tu.bats.some(function (b) { return b.orderTo; })) return;
     tu.bats.forEach(function (b) { if (b.orderTo && t >= b.orderAt) { b.order = b.orderTo; b.orderTo = null; } });
     var id = this.guns;
-    if (tu.bats.every(function (b) { return b.order === id; }) && this.gunsOn !== id) { this.gunsOn = id; m.say("Gunners: " + BL.GUNNERY.orders[id].ack, "good"); }
+    if (tu.bats.every(function (b) { return b.order === id; })) { delete L.guns; if (this.gunsOn !== id) { this.gunsOn = id; m.say("Gunners: " + BL.GUNNERY.orders[id].ack, "good"); } }
   };
   // The engineer's stance is his priority order: shields first, guns first, the drive first (after
   // life support; the AI engineer then charges it to be full by the window (its last percent flat out), not just with what's left:
@@ -657,7 +670,7 @@
     m.setPriority(first.concat(base.filter(function (id) { return first.indexOf(id) < 0; })));
   };
   // The pilot's standing break policy (BL.COMMAND.pilots): EVADE, HOLD or STEADY.
-  Captain.prototype.setPilot = function (id) { if (!BL.COMMAND.pilots[id]) return; this.breaks = id; this.m.cue("tick"); };
+  Captain.prototype.setPilot = function (id) { if (!BL.COMMAND.pilots[id]) return; this.breaks = id; this.order("breaks"); };
   Captain.prototype.setGuns = function (id) { if (!BL.GUNNERY.orders[id]) return; this.guns = id; this.order("guns"); };
   Captain.prototype.applyGuns = function () {
     var tu = this.m.turret, id = this.gunsOn;
@@ -701,8 +714,8 @@
   // burst, HOLD only when the shields can't take it, STEADY never; else it's taken.
   Captain.prototype.pilotCall = function () {
     var m = this.m, E = BL.HELM.evade, cv = this.callView();
-    if (!cv || cv.in > E.lateMin || !cv.canBreak || this.breaks === "steady") return;
-    if (this.breaks === "hold" && m.sys("shield").mj >= cv.mj * E.cover) return;
+    if (!cv || cv.in > E.lateMin || !cv.canBreak || this.breaksOn === "steady") return;
+    if (this.breaksOn === "hold" && m.sys("shield").mj >= cv.mj * E.cover) return;
     this.call.done = true; this.stats.pilotBreaks++;
     m.helm.orderBreak(this.openFish(), this.call.ship, this.awayFromRocks(cv.bearing < 0 ? 1 : -1), true);
   };

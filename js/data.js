@@ -687,6 +687,8 @@
       ranks: ["Engineer's Mate", "Petty Officer", "Chief"],
       first: ["Dana", "Ike", "Mara", "Theo", "Priya", "Sol", "Wren", "Kofi", "Lena", "Rafe", "Juno", "Tam", "Ines", "Bo", "Nadia", "Cass"],
       last: ["Reyes", "Okafor", "Lindqvist", "Brandt", "Kowalski", "Haddad", "Moreau", "Tanaka", "Byrne", "Novak", "Silva", "Petrov", "Achebe", "Quinn", "Varga", "Holt"] },
+    // The bridge pilot (BL.pickPilot): skill as the engineer's; names from the engineer's lists.
+    pilot: { ranks: ["Pilot's Mate", "Petty Officer", "Chief"] },
     // How each encounter's enemies look and fly. count = ships per wave (the wave's toughness is
     // split between them); band = the height they hold; sway = side-to-side swing; dive = how far
     // they swoop down now and then.
@@ -887,9 +889,10 @@
     standing: { guns: "free", stance: "balanced", pilot: "hold" },
     guardOnShields: true, guardReact: 2.5,
     // Orders take time to carry out: a new stance reaches the engineer's board, a new gun order each
-    // gun crew, this many s after the captain gives it for a crewman of skill 100, divided by his
-    // skill (skill 50: twice as long). (Captain.carryOut; the button shows it pending till then.)
-    orderLag: { stance: 4, guns: 3 },
+    // gun crew, a new break policy the pilot, this many s after the captain gives it for a crewman of
+    // skill 100, divided by his skill (skill 50: twice as long).
+    // (Captain.carryOut; the button blinks, a bar filling along its bottom, till then.)
+    orderLag: { stance: 4, guns: 3, breaks: 2 },
     // SHIELDS costs the guns: on it the engineer gives the guns and the main gun only this share of
     // the power they'd ask for (AIEngineer.think), so the captain switches it on for the torpedoes
     // and off again to shoot.

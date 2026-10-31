@@ -90,6 +90,17 @@
     return out;
   };
 
+  /* The bridge pilot, picked from the mission seed like the engineer; his name never repeats the
+     engineer's or a gunner's. */
+  BL.pickPilot = function (seed, classId) {
+    var E = BL.GUNNERY.engineer, P = BL.GUNNERY.pilot, r = BL.rng((seed ^ 0x1f83d9ab) >>> 0), used = {};
+    [BL.pickEngineer(seed, classId)].concat(BL.pickGunCrew(seed, classId, true)).forEach(function (c) { c.who.split(" ").forEach(function (w) { used[w] = true; }); });
+    function pick(list) { var x, k = 0; do { x = r.pick(list); } while (used[x] && k++ < 40); used[x] = true; return x; }
+    var range = E.skill[classId] || E.skill.other, skill = Math.round(r.range(range) * 100) / 100, first = pick(E.first), last = pick(E.last);
+    return { name: P.ranks[skill >= 0.85 ? 2 : skill >= 0.7 ? 1 : 0] + " " + first + " " + last, who: first + " " + last, skill: skill,
+      label: skill >= 0.85 ? "sharp" : skill >= 0.7 ? "steady" : skill >= 0.5 ? "green" : "sloppy" };
+  };
+
   /* ---------------------------------------------------------- Player input */
   Turret.prototype.aimAt = function (x) { this.aimX = clamp(x, 0.03, 0.97); this.dir = 0; };
   Turret.prototype.setDir = function (d) { this.dir = d; if (!d) this.aimX = this.x; };

@@ -200,7 +200,10 @@
       }).join(" · ") + (sim.helm ? "." : ". Take a gun and you trade places with its gunner.");
       $("brief-orders").hidden = bats.length < 2 || !!sim.helm;
       $("brief-orders").innerHTML = "<b>Orders:</b> the letter on each gun card is its gunner's order (P point defense, L stop launches, H hunt, F free fire; green = this fight's suggestion). Take a gun and press O to change it.";
-      $("brief-engineer").innerHTML = "Your engineer: <b>" + esc(en.name) + "</b>, " + en.label + " (skill " + Math.round(en.skill * 100) + "). " + ENGINEER_NOTE[en.label];
+      $("brief-engineer").innerHTML = "Your engineer: <b>" + esc(en.name) + "</b>, " + en.label + " (skill " + Math.round(en.skill * 100) + ")." + (sim.captain ? "" : " " + ENGINEER_NOTE[en.label]);
+      var pc = sim.captain && sim.captain.pilotCrew;
+      $("brief-pilot").hidden = !pc;
+      if (pc) $("brief-pilot").innerHTML = "<b>Pilot:</b> " + esc(pc.name) + ", " + pc.label + " (skill " + Math.round(pc.skill * 100) + ").";
     }
     show("scr-briefing");
   }
@@ -547,6 +550,14 @@
   /* -------------------------------------------------------------- Render */
   function clampN(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
   function pct(v) { return (clampN(v, 0, 1) * 100).toFixed(2) + "%"; }
+  // An order on its way to the crew (Captain.orderProgress): the button blinks, a bar filling along its bottom.
+  function orderBar(b, mine, p) {
+    var on = mine && p !== null, i = b.querySelector(".cp-prog");
+    b.classList.toggle("pend", on);
+    if (!on) { if (i) i.remove(); return; }
+    if (!i) { i = document.createElement("i"); i.className = "cp-prog"; b.appendChild(i); }
+    i.style.width = pct(p);
+  }
   function angle(p) { return Math.PI * (1 - clampN(p, 0, 150) / 150); }
   function arc(p0, p1) {
     var a0 = angle(p0), a1 = angle(p1);
@@ -1605,9 +1616,9 @@
     // The order bar
     var live = turretActive();
     Array.prototype.forEach.call($("cp-tele").children, function (b) { b.classList.toggle("on", b.dataset.eng === hv.eng); b.disabled = !live; });
-    Array.prototype.forEach.call($("cp-gunord").children, function (b) { b.classList.toggle("on", b.dataset.gun === c.guns); b.classList.toggle("pend", b.dataset.gun === c.guns && c.guns !== c.gunsOn); b.disabled = !live; });
-    Array.prototype.forEach.call($("cp-pilot-row").children, function (b) { b.classList.toggle("on", b.dataset.pilot === c.breaks); b.disabled = !live; });
-    Array.prototype.forEach.call($("cp-stance").children, function (b) { b.classList.toggle("on", b.dataset.stance === c.stance); b.classList.toggle("pend", b.dataset.stance === c.stance && c.stance !== c.stanceOn); b.disabled = !live; b.hidden = b.dataset.stance === "drive" && sim.isDrop(); });
+    Array.prototype.forEach.call($("cp-gunord").children, function (b) { b.classList.toggle("on", b.dataset.gun === c.guns); orderBar(b, b.dataset.gun === c.guns, c.orderProgress("guns")); b.disabled = !live; });
+    Array.prototype.forEach.call($("cp-pilot-row").children, function (b) { b.classList.toggle("on", b.dataset.pilot === c.breaks); orderBar(b, b.dataset.pilot === c.breaks, c.orderProgress("breaks")); b.disabled = !live; });
+    Array.prototype.forEach.call($("cp-stance").children, function (b) { b.classList.toggle("on", b.dataset.stance === c.stance); orderBar(b, b.dataset.stance === c.stance, c.orderProgress("stance")); b.disabled = !live; b.hidden = b.dataset.stance === "drive" && sim.isDrop(); });
     $("cp-resume").disabled = !live || !hv.own;
     var tg = $("cp-sec-torp");
     setText($("cp-torp-lbl"), cv ? "TORPEDOES · " + cv.in.toFixed(1) + " s" : wv ? "TORPEDOES · " + wv.in.toFixed(1) + " s" : "TORPEDOES");
@@ -1887,9 +1898,10 @@
           "</td><td>" + (t.evasiveMet || 0) + " / " + (t.evasive || 0) + "</td><td>" + j.shielded + " / " + j.salvos + "</td><td>" + j.hullLost + "</td><td>" + j.seconds + "</td></tr>";
       }).join("");
     var en = sim.turret.engineer, crew = sim.turret.bats.map(function (b) { return b.crew; }).filter(Boolean);
-    var rows = [
+    var pc = sim.captain.pilotCrew, rows = [
       ["Engineer", esc(en.name) + ", " + en.label + " (skill " + Math.round(en.skill * 100) + ")"],
       ["Gun crew", crew.map(function (c) { return esc(c.name) + ", " + c.label + " (" + Math.round(c.skill * 100) + ")"; }).join(" · ")],
+      ["Pilot", esc(pc.name) + ", " + pc.label + " (skill " + Math.round(pc.skill * 100) + ")"],
       ["Torpedo bursts", cp.calls + ": " + cp.breaks + " breaks ordered, " + cp.pilotBreaks + " by the pilot on his own (" + cp.breaksMade + " made), " + cp.taken + " taken on the shields, " + cp.unanswered + " with no call"],
       ["Asteroid hits", cp.rockHits]].concat(cpN ? [
       ["Checkpoints", cp.systems.map(function (s) { return s.cpsHit + "/" + s.cps; }).join(" · ") + " (system by system)"]] : []).concat(cp.escort ? [
