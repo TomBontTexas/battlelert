@@ -864,7 +864,7 @@
     // keeps `clear` view units between our shield and her.
     escort: { arrive: 0.9, station: 0.06, near: 0.025, lead: 3, sides: { ahead: 0, port: -90, stbd: 90, astern: 180 },
               cover: 0.55, coverTime: 0.8, squad: [2, 4], wingStop: 0.5, wingRisk: 0.2, wingPerMJ: 0.1, wingHull: 100,
-              aimWard: 0.5, wingSelf: 0.5, gunWard: 0.3, gunWing: 0.3, wardLead: 0.04, wardRadius: 0.025, wingTurn: 60,
+              aimWard: 0.5, wingSelf: 0.5, gunWard: 0.3, gunWing: 0.3, wardLead: 0.04, wardRadius: 0.025, wingTurn: 60, botAstern: 30,
               kinds: { carrier: { name: "carrier", label: "CARRIER", ships: [1, 1], hull: 100, perMJ: 0.03, size: 1.8, width: 0.29 },
                        capital: { name: "capital ship", label: "CAPITAL SHIP", ships: [1, 1], hull: 100, perMJ: 0.03, size: 1.8, width: 0.26 },
                        convoy: { name: "convoy", label: "CONVOY", ships: [3, 5], hull: 100, perMJ: 0.08, gap: 0.015, station: 0.075, size: 0.9, width: 0.42 } }, clear: 0.08 },

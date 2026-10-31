@@ -353,9 +353,10 @@
     // Holding in the zone: slow up to the jump point, stopped once she's past it.
     var past = (this.pos.x - j.x) * Math.sin(hd) + (this.pos.y - j.y) * Math.cos(hd) > 0;
     var hold = past ? "stop" : "deadSlow";
-    // Escort: the pilot keeps station on the carrier until she's at the jump point; then he brings
-    // the gunboat into the recovery zone on its heading, as on any plot.
-    if (this.escort && this.escort.s < this.escort.L) {
+    // Escort: the pilot keeps station on the ward until she's at the jump point; then he brings
+    // the destroyer escort into the warp zone on its heading, as on any plot. A gunboat keeps
+    // station on the carrier to the end: she recovers it only from ASTERN (Captain.asternOk).
+    if (this.escort && (this.escort.s < this.escort.L || this.carrierRecovery())) {
       var sv = this.stationView();
       return { hdg: this.hdgOrder !== null ? this.hdgOrder : sv.hdg, eng: this.engOrder || sv.eng, own: this.hdgOrder !== null || !!this.engOrder, nav: nv, holding: false, station: sv };
     }
@@ -433,7 +434,8 @@
     // Aim a few seconds ahead of the station (she's moving); close in, sail her heading.
     var aim = moving ? along(st, w.hdg, vw * E.lead) : st, hdg = d > near * 0.6 ? bearing(this.pos, aim) : w.hdg;
     // Speed: flat out to catch up from far off; near, her speed plus or minus as the station is ahead or behind.
-    var ahead = (st.x - this.pos.x) * Math.sin(w.hdg * RAD) + (st.y - this.pos.y) * Math.cos(w.hdg * RAD);
+    // (she's stopped, waiting to recover the gunboat: closing on it at all, from wherever it is)
+    var ahead = moving ? (st.x - this.pos.x) * Math.sin(w.hdg * RAD) + (st.y - this.pos.y) * Math.cos(w.hdg * RAD) : d;
     var want = d > 4 * near ? Infinity : Math.max(0, vw + clamp(ahead / near, -1, 1) * Math.max(vw, 2 * K.scale) * 0.6);
     var eng = "full", bestD = Infinity;
     if (want !== Infinity) ["stop", "deadSlow", "cruise", "standard", "full"].forEach(function (id) { var dd = Math.abs(h.gOf(id) * K.scale - want); if (dd < bestD) { bestD = dd; eng = id; } });
@@ -747,8 +749,9 @@
     var steer = "Steer " + BL.hdgText(this.info.jumpHdg);
     // (the squadron must be aboard first, unless her hull is down to the point of leaving it: Mission.runJump)
     var out = m.squadron === "out" && m.ship.hull > m.ship.hullMax * 0.2 ? "Recover gunboats" : null;
-    var why = drive || out || (m.t < m.windowAt() ? "Window in " + Math.ceil(m.windowAt() - m.t) + "s" : !this.inZone() ? "Outside the zone" : !h.inJumpCorridor() ? steer : null);
-    var wait = !this.jumpOrdered ? null : drive || (out && out.toUpperCase()) || (!this.inZone(BL.COMMAND.zoneHold) ? "BACK TO THE ZONE" : !h.inJumpCorridor() ? steer.toUpperCase() : null);
+    var astern = this.carrierRecovery() && !this.asternOk() ? "Station ASTERN" : null;
+    var why = drive || out || (m.t < m.windowAt() ? "Window in " + Math.ceil(m.windowAt() - m.t) + "s" : astern || !this.inZone() ? "Outside the zone" : !h.inJumpCorridor() ? steer : null);
+    var wait = !this.jumpOrdered ? null : drive || (out && out.toUpperCase()) || (astern && "ASTERN OF THE CARRIER") || (!this.inZone(BL.COMMAND.zoneHold) ? "BACK TO THE ZONE" : !h.inJumpCorridor() ? steer.toUpperCase() : null);
     return { ready: !why, why: why, ordered: this.jumpOrdered, wait: wait };
   };
   Captain.prototype.orderJump = function () {
@@ -785,7 +788,11 @@
     }
   };
   // Mission.runJump asks: may the countdown run?
-  Captain.prototype.mayJump = function () { return this.jumpOrdered && this.inZone(BL.COMMAND.zoneHold); };
+  Captain.prototype.mayJump = function () { return this.jumpOrdered && this.inZone(BL.COMMAND.zoneHold) && (!this.carrierRecovery() || this.asternOk()); };
+  // A gunboat escort mission: the carrier recovers the gunboat only from astern of her, on that
+  // station (the pilot keeps it once the station is ordered).
+  Captain.prototype.carrierRecovery = function () { return !!this.escort && !this.m.hasDrive; };
+  Captain.prototype.asternOk = function () { return this.station === "astern" && dist(this.pos, this.stationAt("astern")) <= BL.COMMAND.escort.near * this.map().D * 1.5; };
 
   /* ------------------------------------------------------------- The tick */
   Captain.prototype.step = function (dt) {
@@ -956,6 +963,8 @@
       var mv = c.mainView();
       if (mv && mv.can && Math.abs(norm(m.turret.bearingOf(mv.target.x, mv.target.y))) <= BL.COMMAND.mainSwing.botSwing) c.orderMain();
     }
+    // A gunboat escort: to ASTERN for the carrier's recovery, botAstern s before the window.
+    if (c.carrierRecovery() && c.station !== "astern" && m.windowIn() < BL.COMMAND.escort.botAstern) c.setStation("astern");
     if (c.jumpView().ready && !c.jumpOrdered) c.orderJump();
   };
   BL.runCaptainHeadless = function (seed, classId, tl, idle, extra) {
