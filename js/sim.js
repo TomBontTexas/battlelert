@@ -1152,7 +1152,7 @@
       if (this.ship.hull <= this.ship.hullMax * 0.2 && t >= this.windowAt()) {
         this.squadron = "lost"; this.stats.squadronsLost++;
         var hs = this.sys("hangar"); if (hs) { hs.call = null; hs.name = "Hangar"; hs.short = "HNGR"; hs.mode = "lost"; }
-        this.chat("squadronLeft", null, "bad");
+        this.chat(this.captain ? "squadronLeftC" : "squadronLeft", null, "bad");
       } else {
         if (t >= this.windowAt() && !this.holdSaid) { this.holdSaid = true; this.chat("holdForSquadron", null, "warn"); }
         full = false;

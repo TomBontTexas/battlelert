@@ -972,7 +972,8 @@
     recovered2:  ["Flight deck: squadron recovered. All gunboats aboard.", "Flight deck: arresters caught them. Squadron's home."],
     recoverLate: ["Flight deck: arresters aren't charged! The gunboats are circling.", "Captain: we can't take the squadron aboard, Engineering. Charge those arresters!"],
     holdForSquadron: ["Bridge: holding the warp until the squadron is aboard.", "Captain: we don't leave without our gunboats."],
-    squadronLeft:["Captain: we can't wait for the gunboats. Warping now!", "Bridge: hangar bay destroyed. We have to leave them."],
+    squadronLeft:["Captain: hangar bay destroyed. We have to leave them. Warping now!", "Bridge: hangar bay destroyed. We have to leave them."],
+    squadronLeftC: ["Bridge: hangar bay destroyed. We have to leave them."],     // (on the bridge: the warp is the player's own order)
     intercepted: ["Squadron: we caught that salvo!", "Flight deck: gunboats knocked down a salvo."],
     mineHit:     ["Damage control: mine strike! Hull down {dmg}.", "We clipped a mine! Hull down {dmg}."],
     strike:      ["Tactical: drive strike inbound, {t} s!", "Tactical: hunters are going for the drive. Impact in {t}.", "Tactical: missile on the drive in {t} seconds!"],
