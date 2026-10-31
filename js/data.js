@@ -905,6 +905,9 @@
     // the power they'd ask for (AIEngineer.think), so the captain switches it on for the torpedoes
     // and off again to shoot.
     shieldsGuns: 0.15,
+    // The captain answers for his ship: his ship condition part loses this many times the share of
+    // hull lost (2: half the hull gone, nothing left of the part), so the reputation hit doubles.
+    hullCost: 2,
     botShields: 0.6,     // (the test bot orders SHIELDS when they're below this share of full)
     pilots: { evade: { name: "Evade: break for every burst he can", short: "EVADE" }, hold: { name: "Hold course: break only when the shields can't take it", short: "HOLD" },
       steady: { name: "Steady: no breaks, take everything on the shields", short: "STEADY" } },

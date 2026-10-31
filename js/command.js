@@ -898,7 +898,8 @@
     var made = st.breaks + st.pilotBreaks ? hs.evasiveMet / (st.breaks + st.pilotBreaks) : 1;
     var command = clamp(0.6 * stopped + 0.4 * made, 0, 1);
     r.station = "captain";
-    r.parts = { objective: r.parts.objective, condition: r.parts.condition, navigation: Math.round(25 * nav), command: Math.round(25 * command) };
+    var cond = outcome === "destroyed" ? 0 : Math.max(0, 1 - K.hullCost * (1 - m.ship.hull / m.ship.hullMax));     // (BL.COMMAND.hullCost)
+    r.parts = { objective: r.parts.objective, condition: Math.round(25 * cond), navigation: Math.round(25 * nav), command: Math.round(25 * command) };
     r.raw = r.parts.objective + r.parts.condition + r.parts.navigation + r.parts.command;
     r.score = Math.round(r.raw * Math.pow(1 - m.cfg.lookCostPct / 100, r.looks));
     r.captain = { rockHits: st.rockHits, swarms: st.swarms, calls: st.calls, breaks: st.breaks, pilotBreaks: st.pilotBreaks, breaksMade: hs.evasiveMet, taken: st.taken, unanswered: st.unanswered,
