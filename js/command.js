@@ -840,16 +840,18 @@
   };
 
   /* -------------------------------------------------------------- Test bot
-     Takes the navigator's plot, answers each burst the way the AI captain does at the helm
-     (break when the shields can't take what's in the air, else about half the time), and orders
-     the jump as soon as it's ready. */
-  function CaptainBot() { this.rng = null; }
+     Plays the way an attentive captain does: takes the navigator's plot, leaves the breaks to the
+     pilot's standing policy, holds SHIELDS while there are enemy ships about, puts the guns on
+     HUNT, and orders the warp as soon as it's ready. (Pacing the engines to the window did no
+     better than the plot's.) (opts: the old bot's habits, for comparison: answer, every burst as
+     the AI captain at the helm does; suggest, the gun order the guns would suggest.) */
+  function CaptainBot(opts) { this.rng = null; this.o = opts || {}; }
   BL.CaptainBot = CaptainBot;
   CaptainBot.prototype.think = function (m) {
     var c = m.captain, E = BL.HELM.evade; if (!c) return;
     this.rng = this.rng || BL.rng((m.seed ^ 0x7f4a7c15) >>> 0);
-    var cv = c.callView();
-    if (cv && cv.in < BL.GUNNERY.torpedo.travel + 0.5) {
+    var cv = c.callView(), o = this.o;
+    if (o.answer && cv && cv.in < BL.GUNNERY.torpedo.travel + 0.5) {
       if (cv.canBreak && (m.sys("shield").mj < cv.mj * E.cover || this.rng.chance(E.chance))) c.answer(c.awayFromRocks(cv.bearing < 0 ? 1 : -1));
       else c.answer(0);
     }
@@ -857,13 +859,14 @@
     var wv = c.wardCallView();
     var sh = m.sys("shield"), ours = c.openFish().reduce(function (a, f) { return a + f.mj; }, 0);
     if (wv && wv.canCover && wv.in < BL.GUNNERY.torpedo.travel && sh.mj >= (wv.mj + ours) * E.cover && sh.mj >= sh.maxMJ * 0.5) c.cover();
-    // The crew act on orders: SHIELDS while there are enemy ships about (else BALANCE), and the
-    // gun order most of the guns would suggest for this fight, checked every few seconds.
+    // The crew act on orders: SHIELDS while there are enemy ships about (else BALANCE), and HUNT
+    // (o.suggest: the gun order most of the guns would suggest for this fight, every few seconds).
     if (!this.fixedStance) {
       var up = m.waves && m.waves.some(function (w) { return !w.dead; }), want = up ? "shields" : "balanced";
       if (c.stance !== want && c.stance !== "drive" && c.stance !== "moab") c.setStance(want);
     }
-    if (m.turret && m.totalT >= (this.gunAt || 0)) {
+    if (m.turret && !o.suggest && c.guns !== "hunt") c.setGuns("hunt");
+    if (m.turret && o.suggest && m.totalT >= (this.gunAt || 0)) {
       this.gunAt = m.totalT + 4;
       var votes = {}; m.turret.bats.forEach(function (b) { var o = m.turret.suggestOrder(b).order; votes[o] = (votes[o] || 0) + 1; });
       var best = Object.keys(votes).sort(function (a, b) { return votes[b] - votes[a]; })[0];
@@ -890,7 +893,7 @@
     var rc = BL.GUNNERY.ring.classes[classId];
     var m = new BL.Mission(Object.assign({ seed: seed, quiet: true, classId: classId, tl: tl, helm: true, captain: true,
       gunner: { weapons: BL.GUNNERY.loadout[classId], ring: true, arcs: rc.arcs, arcNames: rc.arcNames, helm: true } }, extra));
-    var eng = new BL.AIEngineer(0.5, 0.25, m.turret.engineer.skill), bot = new CaptainBot();
+    var eng = new BL.AIEngineer(0.5, 0.25, m.turret.engineer.skill), bot = new CaptainBot(extra && extra.bot);
     if (extra && extra.noMain) bot.noMain = true;      // (tests: the main gun on standing orders only)
     if (extra && extra.stance) { m.captain.stance = extra.stance; bot.fixedStance = true; }     // (tests: a standing stance other than balanced, held all mission)
     m.beginJump();
