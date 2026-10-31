@@ -571,9 +571,6 @@
     if (e.type) { e.outcome = "ward"; this.stats.wardTorps++; }
     if (e.type) m.cue("shieldHit");
     if (w.hull <= 0 && m.phase !== "done") m.finish("wardLost");
-    // A carrier down to 20% (as a ship leaves her squadron, Mission.runJump): her hangar bay is gone,
-    // she can't recover the gunboat, and she warps without it.
-    else if (this.carrierRecovery() && w.hull <= w.hullMax * 0.2 && m.phase !== "done") { m.chat("leftBehind", null, "bad"); m.finish("leftBehind"); }
   };
 
   /* ------------------------------------------------------------- Orders */
@@ -826,6 +823,10 @@
       this.leg++;
     }
     this.enemyArea();
+    // A gunboat escort: a carrier down to 20% (as a ship leaves her squadron, Mission.runJump) has lost
+    // her hangar bay; with the gunboat out (not still in her tube) she warps without it.
+    var es = this.escort;
+    if (this.carrierRecovery() && !m.helm.inTube && es.hull > 0 && es.hull <= es.hullMax * 0.2 && m.phase !== "done") { m.chat("leftBehind", null, "bad"); m.finish("leftBehind"); return; }
     // Checkpoints flown through.
     var cur = this.cur, pos = this.pos;
     map.checkpoints.forEach(function (c, i) { if (!cur.cps[i] && dist(pos, c) < c.r) { cur.cps[i] = true; m.cue("tick"); } });
