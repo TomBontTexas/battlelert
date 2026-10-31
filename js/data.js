@@ -897,6 +897,10 @@
     // comes out of it, mult x this system's force in waves (at least min); fly out and half of
     // what's left of it goes back, the other half stays on her. (Captain.step)
     swarm: { mult: 3, min: 3 },
+    // The pickets' survey of each system ahead: on the bridge, wrong this often, naming any other
+    // encounter instead (the enemy itself is the same at every station; only the report is off).
+    // Minefields are always reported right: the mines are on the map. (Mission.reported)
+    intelWrong: 0.2,
     // SHIELDS costs the guns: on it the engineer gives the guns and the main gun only this share of
     // the power they'd ask for (AIEngineer.think), so the captain switches it on for the torpedoes
     // and off again to shoot.

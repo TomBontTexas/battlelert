@@ -142,10 +142,11 @@
     $("brief-lede").textContent = story ? storyText(story.briefing) : sim.hasDrive
       ? "Escort the planet buster's route through " + sim.cfg.jumps + " Azurian-held systems. In each one the warp drive starts empty: keep the ship alive, charge the drive, and the captain warps once the warp window opens."
       : "Gunboats have no warp drive. In each of the carrier's " + sim.cfg.jumps + " systems it launches you into the fight and recovers you when the sortie timer runs out, then carries you through warp space to the next one. Keep the gunboat alive through every sortie.";
-    $("brief-route").innerHTML = sim.route.map(function (id, i) {
+    var reps = sim.route.map(function (x, i) { return sim.reported(i); });     // (the bridge: the pickets' reports, Mission.reported)
+    $("brief-route").innerHTML = reps.map(function (id, i) {
       var e = BL.ENCOUNTERS[id];
       // At the gun: each enemy described the first time it comes up, then just which gun has the edge.
-      if (sim.turret) { var first = sim.route.indexOf(id) === i;
+      if (sim.turret) { var first = reps.indexOf(id) === i;
         return "<li>" + (sim.hasDrive ? "System " : "Sortie ") + (i + 1) + ": <b>" + e.name + "</b>. " + gunnerTip(id, !first) +
           (sim.hasDrive ? " Warp window " + sim.windowFor(i) + " s." : " Recovered after " + sim.windowFor(i) + " s.") + "</li>"; }
       return "<li>" + (sim.hasDrive ? "System " : "Sortie ") + (i + 1) + ": <b>" + e.name + "</b>. " + e.what + ". Tests: " + e.tests.toLowerCase() +
@@ -359,7 +360,7 @@
       refs.auxBtn.onclick = function () { selected = i; toggleAux(id); };
       if (refs.rxBtn) refs.rxBtn.onclick = function (ev) { ev.stopPropagation(); selected = i; moveRx(id); };
     });
-    $("route").innerHTML = sim.route.map(function (r, i) { return '<li data-i="' + i + '">' + (i + 1) + ". " + BL.ENCOUNTERS[r].name + "</li>"; }).join("") +
+    $("route").innerHTML = sim.route.map(function (r, i) { return '<li data-i="' + i + '">' + (i + 1) + ". " + BL.ENCOUNTERS[sim.reported(i)].name + "</li>"; }).join("") +
       (sim.hasDrive ? '<li data-i="' + sim.route.length + '">Azurian world</li>' : '<li data-i="' + sim.route.length + '">Carrier: final recovery</li>');
     $("comms-log").innerHTML = "";
     $("damage-list").innerHTML = '<li class="muted">None</li>';
@@ -1782,7 +1783,7 @@
     if (c.escort) { c.setPlot(i, BL.navPlot(map, plotGOf)); BL.speech.unlock(); sim.beginJump(); running = true; speakNew(); return; }
     plotEd = { i: i, map: map, plot: old ? { pts: old.pts.map(function (p) { return { x: p.x, y: p.y }; }), eng: old.eng.slice() }
       : blankPlot(map) };
-    $("pl-title").textContent = "Plot the course · system " + (i + 1) + " of " + sim.cfg.jumps + " · " + BL.ENCOUNTERS[sim.route[i]].name;
+    $("pl-title").textContent = "Plot the course · system " + (i + 1) + " of " + sim.cfg.jumps + " · " + BL.ENCOUNTERS[sim.reported(i)].name + " (reported)";
     overlay("ov-plot", true);
     plW = 0; drawPlot();
   }
@@ -1894,7 +1895,8 @@
     $("db-jumps").innerHTML = "<tr><th>" + (sim.hasDrive ? "Warp" : "Sortie") + "</th><th>Encounter</th><th>Legs</th><th>In the zone</th><th>Asteroid hits</th><th>Breaks made</th><th>Shielded</th><th>Hull lost</th><th>Seconds</th></tr>" +
       r.jumps.map(function (j, i) {
         var s = cp.systems[i] || {}, t = sim.helm.jumps[i] || {};
-        return "<tr><td>" + (i + 1) + "</td><td>" + BL.ENCOUNTERS[j.encounter].name + "</td><td>" + (s.legs || "") + "</td><td>" + (s.zoneAt === null || s.zoneAt === undefined ? "never" : mmss(s.zoneAt) + " / " + mmss(s.window)) + "</td><td>" + (s.rockHits || 0) +
+        var rp = sim.reported(i), enc = BL.ENCOUNTERS[j.encounter].name + (rp !== j.encounter ? " <small>(reported " + BL.ENCOUNTERS[rp].name + ")</small>" : "");
+        return "<tr><td>" + (i + 1) + "</td><td>" + enc + "</td><td>" + (s.legs || "") + "</td><td>" + (s.zoneAt === null || s.zoneAt === undefined ? "never" : mmss(s.zoneAt) + " / " + mmss(s.window)) + "</td><td>" + (s.rockHits || 0) +
           "</td><td>" + (t.evasiveMet || 0) + " / " + (t.evasive || 0) + "</td><td>" + j.shielded + " / " + j.salvos + "</td><td>" + j.hullLost + "</td><td>" + j.seconds + "</td></tr>";
       }).join("");
     var en = sim.turret.engineer, crew = sim.turret.bats.map(function (b) { return b.crew; }).filter(Boolean);

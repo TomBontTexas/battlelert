@@ -51,6 +51,15 @@
     // A story mission (story.js) flies the systems its story names. The mine lane needs the gun
     // view, so in the engine room it's a minefield. reports: a line to play in each system.
     if (opts.route) this.route = opts.route.map(function (id) { return id === "sweep" && !opts.gunner ? "minefield" : id; });
+    // The bridge's survey of each system (Mission.reported): its own random stream, so the
+    // mission's is unchanged.
+    if (opts.captain && !this.training) {
+      var ir = BL.rng((this.seed ^ 0x9e3779b9) >>> 0), pool = (this.data.encounters || Object.keys(BL.ENCOUNTERS)).filter(function (ty) { return ty !== "minefield" && ty !== "sweep"; });
+      this.intel = this.route.map(function (id) {
+        var others = pool.filter(function (ty) { return ty !== id; });
+        return id !== "minefield" && id !== "sweep" && others.length && ir.chance(BL.COMMAND.intelWrong) ? ir.pick(others) : id;
+      });
+    }
     if (opts.route && this.dropping() && this.route[this.route.length - 1] === "hunters") this.route[this.route.length - 1] = "raiders";     // (no drive hunters at the drop)
     this.reports = opts.reports || [];
     this.jumpIndex = 0;
@@ -95,6 +104,8 @@
   BL.Mission = Mission;
 
   // The dreadnought's last system is the drop (no warp out): see runDrop.
+  // What the pickets reported for system i: on the bridge sometimes wrong (BL.COMMAND.intelWrong).
+  Mission.prototype.reported = function (i) { return this.intel ? this.intel[i] : this.route[i]; };
   Mission.prototype.isDrop = function () { return !!this.sys("buster") && this.jumpIndex === this.cfg.jumps - 1; };
   // (the class carries a planet buster: its last system is the drop; usable before the ship is built)
   Mission.prototype.dropping = function () { return this.data.systems.some(function (s) { return s.id === "buster"; }); };
@@ -279,7 +290,8 @@
     if (this.captain) this.captain.reset();
     if (this.training) { this.trainer = new BL.Trainer(this); this.reportAt = Infinity; this.gunSaid = false; this.spawnedHere = 0; return; }
     this.chat(this.hasDrive ? "arrival" : "launch", { hdg: this.helm && this.helm.jumpHdg !== null ? BL.hdgText(this.helm.jumpHdg) : "" }, "info");
-    this.chat(enc.chat || "briefing", { enemies: BL.plural(enc.enemy), what: enc.what }, "info");
+    var rep = BL.ENCOUNTERS[this.reported(this.jumpIndex)];     // (on the bridge, the pickets' report: Mission.reported)
+    this.chat(rep.chat || "briefing", { enemies: BL.plural(rep.enemy), what: rep.what }, "info");
     this.reportAt = this.reports[this.jumpIndex] ? this.cfg.arrivalSeconds + 4 : Infinity;   // the story's report for this system
     this.gunSaid = false; this.spawnedHere = 0;
   };
