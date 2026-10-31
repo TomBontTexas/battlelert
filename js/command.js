@@ -613,7 +613,7 @@
     var m = this.m, hs = m.sys("hangar");
     if (!hs || !m.data.hangar) return null;
     var sq = m.squadron, full = hs.mj >= hs.maxMJ - 0.5;
-    var can = !hs.call && full && (sq === "aboard" || sq === "out") && (m.phase === "engage" || m.phase === "countdown" && sq === "out");
+    var can = !hs.call && full && !m.hangarGone() && (sq === "aboard" || sq === "out") && (m.phase === "engage" || m.phase === "countdown" && sq === "out");
     return { squadron: sq, pending: !!hs.call, call: hs.call ? hs.call.type : null, can: can, full: full, pct: Math.floor(hs.mj / hs.maxMJ * 100),
       order: sq === "out" ? "recover" : "launch" };
   };

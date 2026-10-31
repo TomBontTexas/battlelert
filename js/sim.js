@@ -611,7 +611,7 @@
       this.ship.gTarget = e.g; this.burnUntil = e.at + e.dur;
       if (this.encounter().mines) this.curBurn = { short: 0, jump: this.jumpIndex + 1 };
     }
-    else if (e.type === "launch" || e.type === "recover") { var hg = this.sys("hangar"); if (hg) hg.call = { until: e.at + e.dur, type: e.type }; }
+    else if (e.type === "launch" || e.type === "recover") { var hg = this.sys("hangar"); if (hg && !this.hangarGone()) hg.call = { until: e.at + e.dur, type: e.type }; }
     else if (e.type === "request") {
       var s = this.sys("gun" + e.gun);
       if (s) {
@@ -955,6 +955,8 @@
       if (tw.hp <= 0) { this.chat("mainKill", { enemy: tw.name }, "good"); this.killWave(tw, 0, true); }
       else this.chat("mainFired", { enemy: tw.name }, "good");
     }
+    // (the hangar bay destroyed: a launch or recovery under way is off, and no one is marked down for it)
+    var hgs = this.sys("hangar"); if (hgs && hgs.call && this.hangarGone()) hgs.call = null;
     for (var i = 0; i < list.length; i++) {
       var s = list[i], q = s.call;
       if (!q) continue;
@@ -997,6 +999,10 @@
   };
   Mission.prototype.holdMW = function (s) { return s.drainMW + s.mj * this.bleedOf(s); };
 
+  // The hull at 20% or less: the hangar bay is destroyed. No launch and no recovery till repairs
+  // in warp space bring her back above it; a squadron that's out is left behind at the warp
+  // (Mission.runJump).
+  Mission.prototype.hangarGone = function () { return !!this.data.hangar && this.ship.hull <= this.ship.hullMax * 0.2; };
   Mission.prototype.hangarMode = function (mode) {
     var s = this.sys("hangar"); if (!s) return;
     s.mode = mode;
