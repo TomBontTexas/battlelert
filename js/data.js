@@ -973,6 +973,7 @@
     recoverLate: ["Flight deck: arresters aren't charged! The gunboats are circling.", "Captain: we can't take the squadron aboard, Engineering. Charge those arresters!"],
     holdForSquadron: ["Bridge: holding the warp until the squadron is aboard.", "Captain: we don't leave without our gunboats."],
     squadronLeft:["Captain: hangar bay destroyed. We have to leave them. Warping now!", "Bridge: hangar bay destroyed. We have to leave them."],
+    leftBehind: ["Carrier: hangar bay destroyed. We have to leave you."],     // (a gunboat escort: the carrier at 20% or less)
     squadronLeftC: ["Bridge: hangar bay destroyed. We have to leave them."],     // (on the bridge: the warp is the player's own order)
     intercepted: ["Squadron: we caught that salvo!", "Flight deck: gunboats knocked down a salvo."],
     mineHit:     ["Damage control: mine strike! Hull down {dmg}.", "We clipped a mine! Hull down {dmg}."],

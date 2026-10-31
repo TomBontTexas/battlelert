@@ -571,6 +571,9 @@
     if (e.type) { e.outcome = "ward"; this.stats.wardTorps++; }
     if (e.type) m.cue("shieldHit");
     if (w.hull <= 0 && m.phase !== "done") m.finish("wardLost");
+    // A carrier down to 20% (as a ship leaves her squadron, Mission.runJump): her hangar bay is gone,
+    // she can't recover the gunboat, and she warps without it.
+    else if (this.carrierRecovery() && w.hull <= w.hullMax * 0.2 && m.phase !== "done") { m.chat("leftBehind", null, "bad"); m.finish("leftBehind"); }
   };
 
   /* ------------------------------------------------------------- Orders */
@@ -893,7 +896,7 @@
     nav = sys.length ? nav / sys.length : 0;
     // Escort: the objective is her: brought home, worth her hull left (a convoy: the merchants that get through).
     var es = c.escort, afloat = es ? es.ships.filter(function (s) { return s.hull > 0; }).length : 0;
-    if (es) r.parts.objective = outcome === "wardLost" ? 0 : Math.round(r.parts.objective * (es.kind === "convoy" ? afloat / es.ships.length : es.hull / es.hullMax));
+    if (es) r.parts.objective = outcome === "wardLost" || outcome === "leftBehind" ? 0 : Math.round(r.parts.objective * (es.kind === "convoy" ? afloat / es.ships.length : es.hull / es.hullMax));
     var hs = m.helm.stats, stopped = m.stats.salvos ? (m.stats.salvosShielded + (tu.stats.downed || 0)) / (m.stats.salvos + (tu.stats.downed || 0)) : 1;
     var made = st.breaks + st.pilotBreaks ? hs.evasiveMet / (st.breaks + st.pilotBreaks) : 1;
     var command = clamp(0.6 * stopped + 0.4 * made, 0, 1);

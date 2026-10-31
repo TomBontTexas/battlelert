@@ -1888,7 +1888,7 @@
     var cpN = 0, cpHit = 0; cp.systems.forEach(function (s) { cpN += s.cps || 0; cpHit += s.cpsHit || 0; });
     if (cpN && cpHit === cpN) good.push("Every checkpoint scouted.");
     $("db-good").textContent = good.join(" ");
-    $("db-worst").textContent = r.outcome === "destroyed" ? "The ship was destroyed." : r.outcome === "dropMissed" ? "The drop window closed before the planet buster was launched." : r.outcome === "wardLost" ? "The " + cp.escort.name + " was lost." :
+    $("db-worst").textContent = r.outcome === "destroyed" ? "The ship was destroyed." : r.outcome === "dropMissed" ? "The drop window closed before the planet buster was launched." : r.outcome === "wardLost" ? "The " + cp.escort.name + " was lost." : r.outcome === "leftBehind" ? "The carrier's hangar bay was destroyed: she warped without you." :
       cpHit < cpN ? "Missed " + (cpN - cpHit) + " of " + cpN + " checkpoints." : cp.rockHits ? "The ship hit asteroids " + cp.rockHits + (cp.rockHits === 1 ? " time." : " times.") :
       onTime < cp.systems.length ? "The ship reached the " + (sim.hasDrive ? "warp" : "recovery") + " zone late in " + (cp.systems.length - onTime) + " of " + cp.systems.length + (sim.hasDrive ? " systems." : " sorties.") :
       cp.unanswered ? cp.unanswered + " torpedo bursts came and went with no call from you (taken on the shields)." : "Nothing went badly wrong.";
@@ -2148,7 +2148,7 @@
     var r = sim.result, d = r.detail;
     show("scr-debrief");
     $("db-title").textContent = r.outcome === "success" ? (r.hasDrive ? (sim.sys("buster") ? "Mission complete: planet buster delivered" : "Mission complete") : "Sortie complete: recovered by the carrier") :
-      r.outcome === "destroyed" ? "Ship destroyed" : r.outcome === "dropMissed" ? "Drop window missed: the planet buster never launched" : r.outcome === "wardLost" ? (r.captain && r.captain.escort ? r.captain.escort.name.replace(/^./, function (x) { return x.toUpperCase(); }) : "Carrier") + " lost" : "Abandoned ship";
+      r.outcome === "destroyed" ? "Ship destroyed" : r.outcome === "dropMissed" ? "Drop window missed: the planet buster never launched" : r.outcome === "wardLost" ? (r.captain && r.captain.escort ? r.captain.escort.name.replace(/^./, function (x) { return x.toUpperCase(); }) : "Carrier") + " lost" : r.outcome === "leftBehind" ? "Left behind: the carrier's hangar bay was destroyed" : "Abandoned ship";
     if (r.testWin) $("db-title").textContent += " (test win)";
     $("db-lede").textContent = (job.test ? "" : BL.shipLabel(job.classId, job.ship, job.hull) + ", " + r.className + ", tech level " + r.tl + " · ") + "Seed " + r.seed + " · " +
       r.jumpsDone + " of " + sim.cfg.jumps + (r.hasDrive ? " warps · " : " sorties · ") + d.minutes + " minutes · hull " + r.hull + " / " + r.hullMax +
@@ -2626,7 +2626,7 @@
   $("btn-registry-back").onclick = function () { click(); showHub(); };
   $("btn-card-back").onclick = function () { click(); showRegistry(); };
 
-  var OUTCOME_NAME = { success: "Success", destroyed: "Destroyed", abandoned: "Abandoned ship", timeout: "Out of time", wardLost: "Escorted ship lost", dropMissed: "Drop window missed" };
+  var OUTCOME_NAME = { success: "Success", destroyed: "Destroyed", abandoned: "Abandoned ship", timeout: "Out of time", wardLost: "Escorted ship lost", leftBehind: "Left behind", dropMissed: "Drop window missed" };
   function showShipCard(e) {
     var c = career, d = BL.shipFor(e.classId, e.tl), cls = BL.classById(e.classId), rec = e.rec;
     var sysOf = function (kind) { return d.systems.filter(function (s) { return s.kind === kind; }); }, one = function (k) { return sysOf(k)[0]; };
