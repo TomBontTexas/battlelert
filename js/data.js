@@ -939,6 +939,8 @@
     hit:         ["Damage control: hull breach! {dmg} damage.", "Damage control: we're hit! Hull down {dmg}.", "That one got through! Hull down {dmg}."],
     surprise:    ["Tactical: unannounced salvo! Sorry, Engineering!", "Tactical: that one came out of nowhere!"],
     killed:      ["Gunner {n}: {enemy} destroyed!", "Tactical: {enemy} breaking up.", "Gunner {n}: splash one {enemy}!"],
+    // (TexasBont's lines: the bridge's report was wrong, Mission.spawnWave; {reported} what the pickets said, {enemies} what came)
+    intelWrong:  ["Captain: So much for the intelligence.", "Captain: Those don't look like {reported}.", "Captain: What are {enemies} doing here?"],
     withdrew:    ["Tactical: {enemy} pulling back.", "Tactical: {enemy} out of range."],
     trip:        ["Failsafe: {sys} tripped offline.", "Failsafe: reactor overheat. {sys} breaker open.", "Failsafe tripped {sys}!"],
     reclose:     ["Failsafe: {sys} breaker closed.", "{sys} back on the reactor."],

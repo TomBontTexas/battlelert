@@ -293,7 +293,7 @@
     var rep = BL.ENCOUNTERS[this.reported(this.jumpIndex)];     // (on the bridge, the pickets' report: Mission.reported)
     this.chat(rep.chat || "briefing", { enemies: BL.plural(rep.enemy), what: rep.what }, "info");
     this.reportAt = this.reports[this.jumpIndex] ? this.cfg.arrivalSeconds + 4 : Infinity;   // the story's report for this system
-    this.gunSaid = false; this.spawnedHere = 0;
+    this.gunSaid = false; this.spawnedHere = 0; this.intelSaid = false;
   };
 
   // Called by the display after the warp space report (or by the harness).
@@ -467,6 +467,13 @@
     }
     this.waves.push(wave);
     this.chat(line || "waveIn", { enemy: wave.name }, "info");
+    // The bridge: the system's first enemy isn't what the pickets reported (Mission.reported).
+    // (Tactical names them first, though the bridge doesn't usually hear a wave come in)
+    if (this.intel && !typeId && !this.intelSaid && this.reported(this.jumpIndex) !== this.route[this.jumpIndex]) {
+      this.intelSaid = true;
+      if (!this.quiet && this.hushed("waveIn")) this.say(fill(this.rng.pick(BL.CHATTER.waveIn), { enemy: wave.name }), "info");
+      this.chat("intelWrong", { reported: BL.plural(BL.ENCOUNTERS[this.reported(this.jumpIndex)].enemy), enemies: BL.plural(wave.name) }, "warn");
+    }
   };
 
   /* ------------------------------------------------------------ The tick */
