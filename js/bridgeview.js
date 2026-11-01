@@ -12,7 +12,7 @@
   BL.navFrame = function (map, plot, w, h, pad, view) {
     pad = pad === undefined ? 18 : pad;
     var xs = [map.start.x, map.jump.x - map.jump.r, map.jump.x + map.jump.r], ys = [map.start.y, map.jump.y - map.jump.r, map.jump.y + map.jump.r];
-    map.rocks.concat(map.clusters).forEach(function (o) { xs.push(o.x - o.r, o.x + o.r); ys.push(o.y - o.r, o.y + o.r); });
+    map.rocks.concat(map.clusters, map.siege ? [map.siege] : []).forEach(function (o) { xs.push(o.x - o.r, o.x + o.r); ys.push(o.y - o.r, o.y + o.r); });
     (plot ? plot.pts : []).forEach(function (p) { xs.push(p.x); ys.push(p.y); });
     var x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs), y0 = Math.min.apply(null, ys), y1 = Math.max.apply(null, ys);
     var span = Math.max(x1 - x0, y1 - y0, 1) * 1.08, s = Math.min(w - 2 * pad, h - 2 * pad) / span;
@@ -60,6 +60,19 @@
         for (var q = 0; q < 9; q++) { var a = (i * 7 + q) * 2.399, rr = l.r * 0.8 * Math.sqrt((q + 0.5) / 9), c2 = P({ x: l.x + Math.cos(a) * rr, y: l.y + Math.sin(a) * rr }); ctx.beginPath(); ctx.arc(c2.x, c2.y, small ? 1 : 1.6, 0, Math.PI * 2); ctx.fill(); }
       });
       if (!small) { var mc = P(mf); ctx.fillStyle = "rgba(240,181,74,.95)"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("MINEFIELD", mc.x, mc.y); }
+    }
+    // A fixed siege line: a red glow fading out to where its fire ends, and four batteries in a row.
+    if (map.siege) {
+      var SL = BL.COMMAND.siegeLine, sg = P(map.siege), rr0 = SL.full * map.D * s, rr1 = SL.none * map.D * s;
+      var grad = ctx.createRadialGradient(sg.x, sg.y, rr0 * 0.5, sg.x, sg.y, rr1);
+      grad.addColorStop(0, "rgba(255,77,77,.28)"); grad.addColorStop(0.45, "rgba(255,77,77,.12)"); grad.addColorStop(1, "rgba(255,77,77,0)");
+      ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(sg.x, sg.y, rr1, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "rgba(255,90,90,.35)"; ctx.lineWidth = 1; ctx.setLineDash([3, 4]);
+      ctx.beginPath(); ctx.arc(sg.x, sg.y, rr1, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+      var bw = Math.max(small ? 3 : 5, map.siege.r * s * 0.5);
+      ctx.fillStyle = "#ff5a5a";
+      for (var bi = 0; bi < 4; bi++) ctx.fillRect(sg.x + (bi - 1.5) * bw * 1.6 - bw / 2, sg.y - bw / 2, bw, bw);
+      if (!small) { ctx.fillStyle = "rgba(255,120,120,.95)"; ctx.textAlign = "center"; ctx.textBaseline = "top"; ctx.fillText("SIEGE LINE", sg.x, sg.y + bw + 4); }
     }
     map.clusters.forEach(function (o) {
       blob(o.lobes || [o], "#b43839", "#2a1214");

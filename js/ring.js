@@ -565,6 +565,9 @@
     // Escort mission: the group picks its target as it arrives (Captain.pickAim): the ward, a
     // wingman, or us (null). It forms up round its target, wherever that is in the view.
     if (wave.aim === undefined) wave.aim = this.m.captain && this.m.captain.escort ? this.m.captain.pickAim(r) : null;
+    // A fixed siege line (BL.COMMAND.siegeLine): its batteries sit at its true bearing from her.
+    var fixed = type === "siege" && this.m.captain && this.m.captain.siegeOn();
+    if (fixed) wave.bearing = this.m.captain.siegeBearing();
     if (wave.bearing === undefined) wave.bearing = look.bearing !== undefined ? look.bearing : this.pickBearing();
     var band = look.ringR || [0.36, 0.44], groupPhase = r.next() * Math.PI * 2, groupPeriod = r.range(look.period);
     var hold = r.range(band) - R.pull, spread = (look.w + 0.05) / hold / RAD;
@@ -579,6 +582,7 @@
         dive: look.dive * 0.5, diveAt: t + 3 + r.next() * 4, diveUntil: 0,
         born: t, state: "enter", ionUntil: 0, flashAt: -9, dead: false, x: 0, y: 0, rot: 0, aim: wave.aim
       };
+      if (fixed) { s.fixed = true; s.still = true; s.slot = home - wave.bearing; s.hold0 = s.hold; }     // (Captain.step keeps it on the line's bearing)
       this.placeShip(s);
       list.push(s); this.ships.push(s);
     }
@@ -633,6 +637,7 @@
     m.events.forEach(function (e) {
       if ((e.type !== "salvo" && e.type !== "strike") || e.done || e.torp) return;
       if (t < e.at - (e.travel || G.torpedo.travel)) return;
+      if (m.siegeSilent(e)) return;           // (a fixed siege line out of range: BL.siegeFire)
       var s = self.shipOf(e);
       if (!s || s.dead || s.state === "leave") { e.done = true; e.cancelled = true; e.visible = false; return; }
       var ion = BL.WEAPONS.ion.ion;

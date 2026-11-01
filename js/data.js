@@ -872,6 +872,19 @@
     // to fly through in order, spread over `along` of the way to the jump point and `side` off it.
     // The navigator's plot keeps `slack` s in hand for each one.
     checkpoints: { classes: ["picket"], n: [2, 4], r: 0.06, along: [0.15, 0.8], side: [0.08, 0.22], slack: 8 },
+    // A siege line (Nov 1, 2026, TexasBont; for now only in the Tests' captain bridge, not escorts):
+    // the one enemy that doesn't move. It sits at one spot in its system, `r` across (x the map's
+    // size): near the straight way to the warp point (place.near of the time: `along` of the way and
+    // `off` to one side), across the straight way to the approach point (place.across, up to
+    // acrossOff off it), or anywhere (up to anyOff off the way). Its guns and torpedoes fire in full
+    // within `full` of her, easing off smoothly to nothing at `none` (BL.siegeFire). On the battle
+    // view its batteries sit at its true bearing, up to `back` view units farther out at long range.
+    // The navigator keeps navR from it while the plot still makes the window. punch: per class, its
+    // fire in range x this (guns faster; torpedoes, all of them sooner), so a siege system is about
+    // as deadly as the old line that fired all the time.
+    siegeLine: { tests: true, place: { near: 0.5, across: 0.3 }, along: [0.3, 0.7], off: [0.08, 0.16], acrossOff: 0.03, anyOff: 0.45,
+                 r: 0.035, full: 0.06, none: 0.4, navR: 0.25, back: 0.12,
+                 punch: { picket: 2, destroyerEscort: 1.75, destroyer: 4, lightCruiser: 8, battleship: 3, dreadnought: 2 } },     // (Nov 1, 2026: captain bot, TL6, three siege systems, hull lost per system as the old line's)
     // Light cruiser and up: MAIN GUN swings the bow onto the biggest ship until the crew fires (at
     // most `timeout` s), then she comes back to the plot; the crew fires it only on that order. Cruiser and up: the
     // captain alone launches and recovers the gunboat squadron (LAUNCH / RECOVER, once the engineer

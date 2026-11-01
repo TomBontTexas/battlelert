@@ -27,6 +27,14 @@
     return { d: dist(p, c), p: p, u: u };
   }
   BL.navBearing = bearing;
+  // A fixed siege line's fire at point p (BL.COMMAND.siegeLine): 1 within `full` of it, easing
+  // off smoothly to 0 at `none`; 1 on a map with no siege line.
+  BL.siegeFire = function (map, p) {
+    var S = BL.COMMAND.siegeLine, s = map && map.siege;
+    if (!s) return 1;
+    var t = clamp((dist(p, s) / map.D - S.full) / (S.none - S.full), 0, 1);
+    return 1 - t * t * (3 - 2 * t);
+  };
 
   /* ------------------------------------------------------------------ The map */
   // One system's map. opts: { window (s), cruiseG, hasDrive }.
@@ -53,9 +61,21 @@
       }
     }
     map.legs = [K.legs[0], K.legs[1] + map.checkpoints.length];     // (a leg more allowed for each checkpoint)
+    // A fixed siege line (opts.siege, BL.COMMAND.siegeLine): near the straight way, across it, or
+    // anywhere; clear of the start and the jump zone. Every area keeps clear of it.
+    if (opts.siege) {
+      var SL = K.siegeLine, roll = r.next(), hb0 = bearing(start, app), sp = null, kind = roll < SL.place.near ? "near" : roll < SL.place.near + SL.place.across ? "across" : "any";
+      for (var ts = 0; ts < 40 && !sp; ts++) {
+        var c0 = kind === "near" ? along(along(start, jb, r.range(SL.along) * D), jb + 90, r.range(SL.off) * D * (r.chance(0.5) ? 1 : -1))
+          : kind === "across" ? along(along(start, hb0, r.range(SL.along) * dist(start, app)), hb0 + 90, r.range([-SL.acrossOff, SL.acrossOff]) * D)
+          : along(along(start, jb, r.range(K.along) * D), jb + 90, r.range([-SL.anyOff, SL.anyOff]) * D);
+        if (dist(c0, start) > (SL.full + K.zone) * D && dist(c0, jump) > (SL.full + K.zone * 1.5) * D) sp = c0;
+      }
+      if (sp) map.siege = { x: sp.x, y: sp.y, r: SL.r * D, kind: kind, lobes: [{ x: sp.x, y: sp.y, r: SL.r * D }] };
+    }
     // Room for an area: every lobe clear of the start, the jump zone and its approach lane, and a
     // lane (K.lane margins) from every lobe already placed, so there's always a way between them.
-    var lobesNow = function () { return [].concat.apply([], map.rocks.concat(map.clusters, map.mines ? [map.mines] : []).map(function (o) { return o.lobes; })); };
+    var lobesNow = function () { return [].concat.apply([], map.rocks.concat(map.clusters, map.mines ? [map.mines] : [], map.siege ? [map.siege] : []).map(function (o) { return o.lobes; })); };
     var clear = function (o) {
       var have = lobesNow(), lane = K.lane * K.margin * D;
       return o.lobes.every(function (l) {
@@ -121,7 +141,14 @@
   BL.inField = function (map, p) { return rockLobes(map).some(function (l) { return dist(l, p) < l.r; }); };
   BL.inMines = function (map, p) { return !!map.mines && map.mines.lobes.some(function (l) { return dist(l, p) < l.r; }); };
   // Every obstacle on the map, with the margin the navigator keeps.
-  function obstacles(map) { var m = BL.COMMAND.margin * map.D; return rockLobes(map).concat(enemyLobes(map)).map(function (o) { return { x: o.x, y: o.y, r: o.r + m }; }); }
+  // (the navigator's plot also keeps navR off a siege line, unless that ring holds the start,
+  // the jump zone or its approach lane: siege)
+  function obstacles(map, siege) {
+    var K = BL.COMMAND, m = K.margin * map.D, out = rockLobes(map).concat(enemyLobes(map)).map(function (o) { return { x: o.x, y: o.y, r: o.r + m }; });
+    var s = map.siege, R = s && K.siegeLine.navR * map.D;
+    if (siege && s && dist(s, map.start) > R * 1.1 && dist(s, map.jump) > R + map.jump.r && segNear(map.approach, map.jump, s).d > R * 1.05) out.push({ x: s.x, y: s.y, r: R });
+    return out;
+  }
   // The first obstacle the segment a-b runs through (with its margin), or null.
   function blocked(map, a, b, obs) {
     var hit = null, best = 2;
@@ -154,15 +181,18 @@
       for (var j = 0; j < pts.length - 1; j++) if (segNear(pts[j], pts[j + 1], c).d < c.r) return false;
       return true;
     }).map(function (c) { return c.n; });
-    return { legs: legs, eta: eta, zoneEta: zoneEta, late: late, rocks: rocks, clusters: clusters, mines: mines, sharp: sharp, count: n, offJump: offJump, lastHdg: lastHdg, cpMiss: cpMiss,
+    // A siege line: the most of its fire the course passes under (BL.siegeFire at its closest point).
+    var siegeFire = 0;
+    if (map.siege) for (var q2 = 0; q2 < pts.length - 1; q2++) siegeFire = Math.max(siegeFire, BL.siegeFire(map, segNear(pts[q2], pts[q2 + 1], map.siege).p));
+    return { legs: legs, eta: eta, zoneEta: zoneEta, late: late, rocks: rocks, clusters: clusters, mines: mines, sharp: sharp, count: n, offJump: offJump, lastHdg: lastHdg, cpMiss: cpMiss, siegeFire: siegeFire,
       minLegs: LG[0], maxLegs: LG[1], ok: n >= LG[0] && n <= LG[1] && !late && !clusters && !offJump, jumpHdg: map.jumpHdg };     // (through asteroids is allowed, with a warning)
   };
   // The navigator's plot: the shortest way round every obstacle (corners of an octagon drawn
   // round each one, so a leg between them stays clear) through each checkpoint in turn to the
   // approach point, then in along the jump heading; 1 to 8 legs (and one more per checkpoint),
   // engines set to arrive in time.
-  BL.navPlot = function (map, gOf, lc) {
-    var K = BL.COMMAND, LG = map.legs || K.legs, obs = obstacles(map), start = { x: map.start.x, y: map.start.y }, goal = { x: map.approach.x, y: map.approach.y }, jp = { x: map.jump.x, y: map.jump.y };
+  BL.navPlot = function (map, gOf, lc, noSiege) {
+    var K = BL.COMMAND, LG = map.legs || K.legs, obs = obstacles(map, !noSiege), start = { x: map.start.x, y: map.start.y }, goal = { x: map.approach.x, y: map.approach.y }, jp = { x: map.jump.x, y: map.jump.y };
     var corners = [];
     obs.forEach(function (o) {
       var R = o.r * 1.04 / Math.cos(Math.PI / 8);
@@ -213,7 +243,7 @@
       pts.splice(li + 1, 0, cand[0] || mid);
     }
     // Too many legs: again, with each leg costing more.
-    if (pts.length - 1 > LG[1] && lc < 0.6) return BL.navPlot(map, gOf, lc * 2.5);
+    if (pts.length - 1 > LG[1] && lc < 0.6) return BL.navPlot(map, gOf, lc * 2.5, noSiege);
     pts = pts.map(function (p) { return { x: p.x, y: p.y }; });
     var plot = { pts: pts, eng: pts.slice(1).map(function () { return "cruise"; }) };
     // Late at cruise: standard from the first leg on, then full, until it fits (on a scouting run
@@ -223,6 +253,7 @@
     ["standard", "full"].forEach(function (eng) {
       for (var k = 0; k < plot.eng.length && late(); k++) plot.eng[k] = eng;
     });
+    if (map.siege && !noSiege && late()) return BL.navPlot(map, gOf, undefined, true);     // (no time to keep clear of a siege line: past it)
     return plot;
   };
 
@@ -234,7 +265,8 @@
     this.maps = m.route.map(function (id, i) {
       var enc = BL.ENCOUNTERS[id] || {};
       return BL.makeNavMap(m.seed, i, { window: m.windowFor(i), cruiseG: h.gOf("cruise"), hasDrive: m.hasDrive, drop: !!m.sys("buster") && i === m.route.length - 1, mines: enc.sweep ? "sweep" : enc.mines ? "minefield" : null,
-        checkpoints: BL.COMMAND.checkpoints.classes.indexOf(m.data.classId) >= 0 });
+        checkpoints: BL.COMMAND.checkpoints.classes.indexOf(m.data.classId) >= 0,
+        siege: id === "siege" && BL.COMMAND.siegeLine.tests && m.test && !m.escort });
     });
     this.plots = [];
     this.stance = BL.COMMAND.standing.stance; this.guns = BL.COMMAND.standing.guns; this.breaks = BL.COMMAND.standing.pilot;
@@ -253,6 +285,11 @@
   // The system she's in (set on arrival: after a jump the display still shows the last one until the next arrival).
   Captain.prototype.map = function () { return this.maps[this.at === undefined ? this.m.jumpIndex : this.at]; };
   Captain.prototype.gOf = function (id) { return this.m.helm.gOf(id); };
+  // A fixed siege line in this system (BL.COMMAND.siegeLine): there is one; its fire at her now
+  // (BL.siegeFire); its bearing from her bow, as the battle view shows it.
+  Captain.prototype.siegeOn = function () { return !!this.pos && !!this.map().siege; };
+  Captain.prototype.siegeK = function () { return this.siegeOn() ? BL.siegeFire(this.map(), this.pos) * (BL.COMMAND.siegeLine.punch[this.m.data.classId] || 1) : 1; };
+  Captain.prototype.siegeBearing = function () { return norm(bearing(this.pos, this.map().siege) - this.m.helm.compass()); };
   // The plot for system i (the display sets it in warp space; the navigator's if none).
   Captain.prototype.setPlot = function (i, plot) { this.plots[i] = { pts: plot.pts.map(function (p) { return { x: p.x, y: p.y }; }), eng: plot.eng.slice() }; };
   Captain.prototype.plotFor = function (i) {
@@ -768,7 +805,7 @@
     var was = this.inCluster; this.inCluster = k;
     if (k >= 0 && was < 0) {
       var enc = m.encounter(), id = m.route[m.jumpIndex];
-      if (!enc.wave) { id = "raiders"; enc = BL.ENCOUNTERS.raiders; }
+      if (!enc.wave || this.map().siege) { id = "raiders"; enc = BL.ENCOUNTERS.raiders; }     // (a siege line doesn't move: raiders swarm out instead)
       var n = Math.max(K.min, Math.round(K.mult * m.force(id))), before = m.nextId, q0 = m.spawnQueue.slice();
       m.queueWaves(n, enc, id, "straggler");
       // (the first comes at once; the rest are queued, and join the swarm as they spawn: Mission.schedule)
@@ -823,6 +860,11 @@
       this.leg++;
     }
     this.enemyArea();
+    // A fixed siege line: its batteries keep to its true bearing, farther out the farther it is.
+    if (map.siege && m.turret) {
+      var sb = this.siegeBearing(), back = K.siegeLine.back * (1 - BL.siegeFire(map, this.pos));
+      m.turret.ships.forEach(function (s) { if (s.fixed && s.state !== "leave") { s.home = sb + s.slot; s.hold = s.hold0 + back; } });
+    }
     // A gunboat escort: a carrier down to 20% (as a ship leaves her squadron, Mission.runJump) has lost
     // her hangar bay; with the gunboat out (not still in her tube) she warps without it.
     var es = this.escort;

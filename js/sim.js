@@ -45,6 +45,7 @@
 
     // Pilot training (training.js): one endless system with no enemies and no jump.
     this.training = !!opts.training;
+    this.test = !!opts.test;                // (a test from the title screen: the captain's fixed siege line, BL.COMMAND.siegeLine)
     if (this.training) this.cfg.jumps = 1, this.cfg.jumpWindowAt = [1e9];
     this.route = this.training ? ["training"] : this.planRoute(!!opts.gunner);
     if (opts.sweep && this.route.length > 1) this.route[1] = "sweep";        // the gunboat tests: sortie 2 sweeps a mine lane
@@ -526,9 +527,11 @@
       // the share of the wave still fighting: its ships at the gun and the helm, its toughness in the engine room
       var alive = w.ships ? w.ships.filter(function (s) { return !s.dead && s.state !== "leave"; }).length / Math.max(1, w.ships.length) : w.hp / w.hpMax;
       if (alive <= 0) return;
+      // (a fixed siege line fires by her distance from it: BL.siegeFire)
+      var near = w.type === "siege" && self.captain && self.captain.siegeOn() ? self.captain.siegeK() : 1;
       enc.guns.forEach(function (g) {
         var spec = G[g[0]], n = Math.ceil(g[1] * alive - 1e-9);
-        for (var k = 0; k < n; k++) if (self.rng.chance(spec.rate * dt)) {
+        for (var k = 0; k < n; k++) if (self.rng.chance(spec.rate * near * dt)) {
           var hit = self.rng.chance(G.hit);
           if (self.turret && self.turret.enemyShot) self.turret.enemyShot(w, g[0], hit);
           // (a group after another ship of the escort: it takes the hit)
@@ -553,6 +556,7 @@
     var t = this.t, keep = [];
     for (var i = 0; i < this.events.length; i++) {
       var e = this.events[i];
+      if (!e.announced && t >= e.announceAt && this.siegeSilent(e)) continue;
       if (!e.announced && t >= e.announceAt) {
         e.announced = true;
         if (e.visible) this.announce(e);
@@ -567,6 +571,15 @@
     this.events = keep;
   };
 
+  // A fixed siege line's salvo (BL.COMMAND.siegeLine): fired, by her distance from the line when
+  // it's first called or launched, at BL.siegeFire's share; a silent one is dropped. true: silent.
+  Mission.prototype.siegeSilent = function (e) {
+    if (e.siegeOk !== undefined || e.type !== "salvo" || !this.captain || !this.captain.siegeOn()) return e.siegeOk === false;
+    var w = this.waves.filter(function (x) { return x.id === e.wave; })[0];
+    e.siegeOk = !w || w.type !== "siege" || this.rng.chance(Math.min(1, this.captain.siegeK()));
+    if (!e.siegeOk) { e.done = true; e.cancelled = true; e.visible = false; }
+    return !e.siegeOk;
+  };
   Mission.prototype.announce = function (e) {
     var lead = Math.max(1, Math.round(e.at - this.t));
     if (e.type === "salvo") {
