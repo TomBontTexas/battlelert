@@ -1783,7 +1783,7 @@
     if (c.escort) { c.setPlot(i, BL.navPlot(map, plotGOf)); BL.speech.unlock(); sim.beginJump(); running = true; speakNew(); return; }
     plotEd = { i: i, map: map, plot: old ? { pts: old.pts.map(function (p) { return { x: p.x, y: p.y }; }), eng: old.eng.slice() }
       : blankPlot(map) };
-    $("pl-title").textContent = "Plot the course · system " + (i + 1) + " of " + sim.cfg.jumps + " · " + BL.ENCOUNTERS[sim.reported(i)].name + " (reported)";
+    $("pl-title").textContent = "Plot the course · system " + (i + 1) + " of " + sim.cfg.jumps + " · " + BL.ENCOUNTERS[sim.reported(i)].name;
     overlay("ov-plot", true);
     plW = 0; drawPlot();
   }
