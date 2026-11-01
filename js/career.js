@@ -147,9 +147,10 @@
     if (c.stations.captain.qualified < n - 1) nd.push("command of the " + BL.classByN(n - 1).name.toLowerCase());
     return nd;
   }
-  // The best rank held, for the title screen: "Engineer-4", or "Engineer-4 · Gunner-1".
+  // The best rank held, short, for the title screen's button: "E4", or "E4 · G1" (Engineer-4,
+  // Gunner-1; C for Command).
   function ranks(c) {
-    var held = STATIONS.filter(function (s) { return qualified(c, s) > 0; }).map(function (s) { return rank(c, s); });
+    var held = STATIONS.filter(function (s) { return qualified(c, s) > 0; }).map(function (s) { return STATION_NAME[s].charAt(0) + qualified(c, s); });
     return held.length ? held.join(" · ") : "Recruit";
   }
   function signoffsTotal(c) { return Math.max(0, highestClass(c) - 2); }
