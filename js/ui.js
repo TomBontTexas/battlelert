@@ -137,6 +137,7 @@
     if (j.test) $("seed-input").value = j.seed;
     var d = sim.data, cls = BL.classById(j.classId);
     $("brief-seed").textContent = "· seed " + j.seed;
+    $("btn-brief-new").hidden = !(j.test && j.captain);     // (the captain test: roll another mission till you find the one to try)
     $("brief-story").hidden = !story;
     if (story) $("brief-story").innerHTML = "<b>" + esc(story.title) + "</b> · " + BL.classByN(j.n).name + " chapter: " + esc(story.chapter) + " · story mission " + story.k + " of 3";
     $("brief-lede").textContent = story ? storyText(story.briefing) : sim.hasDrive
@@ -210,6 +211,8 @@
   }
   $("btn-brief-back").onclick = function () { click(); if (job.test) show("scr-title"); else showOffers(offersMode); };
   $("btn-brief-go").onclick = function () { click(); startMission(); };
+  // The captain test: another mission on the same ship, at random (the briefing, or the first plot).
+  $("btn-brief-new").onclick = function () { click(); startBriefing(captainJob(BL.randomSeed())); };
   $("btn-brief-how").onclick = function () { click(); overlay("ov-how", true); };
 
   /* ------------------------------------------------------------- Mission */
@@ -1784,6 +1787,7 @@
     plotEd = { i: i, map: map, plot: old ? { pts: old.pts.map(function (p) { return { x: p.x, y: p.y }; }), eng: old.eng.slice() }
       : blankPlot(map) };
     $("pl-title").textContent = "Plot the course · system " + (i + 1) + " of " + sim.cfg.jumps + " · " + BL.ENCOUNTERS[sim.reported(i)].name;
+    $("pl-new").hidden = !(job && job.test && i === 0);
     overlay("ov-plot", true);
     plW = 0; drawPlot();
   }
@@ -1860,6 +1864,7 @@
     $("pl-nav").onclick = function () { if (plotEd) plotNav(); this.blur(); };
     $("pl-undo").onclick = function () { if (plotEd) plotUndo(); this.blur(); };
     $("pl-clear").onclick = function () { if (plotEd) plotClear(); this.blur(); };
+    $("pl-new").onclick = function () { this.blur(); overlay("ov-plot", false); plotEd = null; click(); startBriefing(captainJob(BL.randomSeed())); startMission(); };
     $("pl-go").onclick = function () { plotAccept(); };
     window.addEventListener("resize", function () { if (plotEd) { plW = 0; drawPlot(); } });
   })();
