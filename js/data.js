@@ -343,7 +343,7 @@
   // dreadnought x1.1 (TexasBont, after playing the battleship).
   BL.FORCE_ENC = {
     gunboat:         { raiders: 3.6, interceptors: 2.01, frigate: 1.27, minefield: 3.5 },   // interceptors a notch under the AI's even (TexasBont at the gun)
-    picket:          { raiders: 3.39, interceptors: 2.29, frigate: 1.15 },
+    picket:          { raiders: 3.39, interceptors: 2.29, siege: 2.1, frigate: 1.15 },   // siege: Nov 1, 2026 (TexasBont), a siege system costs about what a raider one does
     destroyerEscort: { raiders: 4.37, interceptors: 3.9, frigate: 1.57, hunters: 0.5 },
     destroyer:       { interceptors: 5.04, siege: 5.2, frigate: 2.72, cruiserA: 1.7, hunters: 0.5 },
     lightCruiser:    { raiders: 8.72, siege: 7.3, frigate: 3.55, cruiserA: 2.3, hunters: 0.5 },
