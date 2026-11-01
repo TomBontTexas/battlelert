@@ -625,20 +625,20 @@
     return true;
   };
   Captain.prototype.setStance = function (id) { if (!BL.COMMAND.stances[id]) return; this.stance = id; this.order("stance"); };
-  // An order takes BL.COMMAND.orderLag s / the crewman's skill to reach him: the engineer for a
-  // stance, each gun crew for a gun order (none if it's what they're doing already).
-  function lagFor(what, skill) { return BL.COMMAND.orderLag[what] / Math.max(0.2, skill || 1); }
+  // An order takes BL.COMMAND.orderLag[tech level] s / the crewman's skill to reach him: the
+  // engineer for a stance, each gun crew for a gun order (none if it's what they're doing already).
+  function lagFor(m, skill) { return (BL.COMMAND.orderLag[m.data.tl] || 2) / Math.max(0.2, skill || 1); }
   // (lag[what]: { t0: given, at: carried out }; for the guns, when the last gun has it)
   Captain.prototype.order = function (what) {
     var m = this.m, t = m.totalT, id = this[what], L = this.lag;
     if (what !== "guns") {
       if (id === this[what + "On"]) delete L[what];
-      else L[what] = { t0: t, at: t + lagFor(what, what === "stance" ? m.turret && m.turret.engineer.skill : this.pilotCrew.skill) };
+      else L[what] = { t0: t, at: t + lagFor(m, what === "stance" ? m.turret && m.turret.engineer.skill : this.pilotCrew.skill) };
     } else if (m.turret) {
       var at = t;
       m.turret.bats.forEach(function (b) {
         if (b.order === id) { b.orderTo = null; return; }
-        b.orderTo = id; b.orderAt = t + lagFor("guns", b.crew && b.crew.skill); at = Math.max(at, b.orderAt);
+        b.orderTo = id; b.orderAt = t + lagFor(m, b.crew && b.crew.skill); at = Math.max(at, b.orderAt);
       });
       if (at > t) L.guns = { t0: t, at: at }; else delete L.guns;
     }
