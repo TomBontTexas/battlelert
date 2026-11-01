@@ -1818,7 +1818,7 @@
     if (info.mines) warn.push(["", "Through the minefield: mines to dodge and shoot"]);
     if (info.late) warn.push(["bad", "Arrives after the window: more speed or fewer legs"]);
     if (info.clusters) warn.push(["bad", "Crosses an enemy area"]);
-    if (e.map.siege) warn.push([info.siegeFire > 0.5 ? "" : "ok", info.siegeFire > 0.02 ? "Passes the siege line: " + Math.round(info.siegeFire * 100) + "% of its fire at the closest" : "Clear of the siege line's guns"]);
+    if (BL.siegeSeen(e.map)) warn.push([info.siegeFire > 0.5 ? "" : "ok", info.siegeFire > 0.02 ? "Passes the siege line: " + Math.round(info.siegeFire * 100) + "% of its fire at the closest" : "Clear of the siege line's guns"]);
     if (info.sharp) warn.push(["", "Turn of more than " + K.maxTurn + "° at a waypoint"]);
     if (!warn.some(function (x) { return x[0] !== "ok"; })) warn.unshift(["ok", "✔ Clear course, on time"]);
     $("pl-warn").innerHTML = warn.map(function (x) { return '<div class="' + x[0] + '">' + x[1] + "</div>"; }).join("");

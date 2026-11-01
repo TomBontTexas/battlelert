@@ -479,6 +479,7 @@
     // (Tactical names them first, though the bridge doesn't usually hear a wave come in)
     if (this.intel && !typeId && !this.intelSaid && this.reported(this.jumpIndex) !== this.route[this.jumpIndex]) {
       this.intelSaid = true; this.intelKnown[this.jumpIndex] = true;
+      if (this.captain) { var smap = this.captain.maps[this.jumpIndex]; if (smap.siege) smap.siege.known = true; }     // (BL.siegeSeen)
       if (!this.quiet && this.hushed("waveIn")) this.say(fill(this.rng.pick(BL.CHATTER.waveIn), { enemy: wave.name }), "info");
       this.chat("intelWrong", { reported: BL.plural(BL.ENCOUNTERS[this.reported(this.jumpIndex)].enemy), enemies: BL.plural(wave.name) }, "warn");
     }
