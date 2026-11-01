@@ -45,7 +45,6 @@
 
     // Pilot training (training.js): one endless system with no enemies and no jump.
     this.training = !!opts.training;
-    this.test = !!opts.test;                // (a test from the title screen: the captain's fixed siege line, BL.COMMAND.siegeLine)
     if (this.training) this.cfg.jumps = 1, this.cfg.jumpWindowAt = [1e9];
     this.route = this.training ? ["training"] : this.planRoute(!!opts.gunner);
     if (opts.sweep && this.route.length > 1) this.route[1] = "sweep";        // the gunboat tests: sortie 2 sweeps a mine lane

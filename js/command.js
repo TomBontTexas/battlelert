@@ -266,7 +266,7 @@
       var enc = BL.ENCOUNTERS[id] || {};
       return BL.makeNavMap(m.seed, i, { window: m.windowFor(i), cruiseG: h.gOf("cruise"), hasDrive: m.hasDrive, drop: !!m.sys("buster") && i === m.route.length - 1, mines: enc.sweep ? "sweep" : enc.mines ? "minefield" : null,
         checkpoints: BL.COMMAND.checkpoints.classes.indexOf(m.data.classId) >= 0,
-        siege: id === "siege" && BL.COMMAND.siegeLine.tests && m.test && !m.escort });
+        siege: id === "siege" && !m.escort });
     });
     this.plots = [];
     this.stance = BL.COMMAND.standing.stance; this.guns = BL.COMMAND.standing.guns; this.breaks = BL.COMMAND.standing.pilot;
