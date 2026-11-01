@@ -892,7 +892,7 @@
     // gun crew, a new break policy the pilot, this many s after the captain gives it for a crewman of
     // skill 100, divided by his skill (skill 50: twice as long).
     // (Captain.carryOut; the button blinks, a bar filling along its bottom, till then.)
-    orderLag: { stance: 4, guns: 3, breaks: 2 },
+    orderLag: { stance: 2, guns: 2, breaks: 2 },
     // An enemy area on the map (a red cluster): fly into one (a break, a course order) and a swarm
     // comes out of it, mult x this system's force in waves (at least min); fly out and half of
     // what's left of it goes back, the other half stays on her. (Captain.step)
