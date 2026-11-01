@@ -56,13 +56,13 @@
     // mission's is unchanged.
     if (opts.captain && !this.training) {
       var ir = BL.rng((this.seed ^ 0x9e3779b9) >>> 0), pool = (this.data.encounters || Object.keys(BL.ENCOUNTERS)).filter(function (ty) { return ty !== "minefield" && ty !== "sweep"; });
-      this.intel = this.route.map(function (id) {
-        var others = pool.filter(function (ty) { return ty !== id; });
-        return id !== "minefield" && id !== "sweep" && others.length && ir.chance(BL.COMMAND.intelWrong) ? ir.pick(others) : id;
-      }, this);
-      // (a test mission from the title screen: at least one report wrong, if any system can be)
-      var self = this, can = this.route.map(function (id, i) { return i; }).filter(function (i) { return self.route[i] !== "minefield" && self.route[i] !== "sweep"; });
-      if (opts.test && can.length && !this.intel.some(function (x, i) { return x !== self.route[i]; })) {
+      // One roll per mission: if it's wrong, one system's report names another encounter.
+      // (A test mission from the title screen always has one wrong, if any system can be.)
+      var self = this, can = this.route.map(function (id, i) { return i; }).filter(function (i) {
+        var id = self.route[i]; return id !== "minefield" && id !== "sweep" && pool.some(function (ty) { return ty !== id; });
+      });
+      this.intel = this.route.slice();
+      if (can.length && (ir.chance(BL.COMMAND.intelWrong) || opts.test)) {
         var k = ir.pick(can); this.intel[k] = ir.pick(pool.filter(function (ty) { return ty !== self.route[k]; }));
       }
     }
