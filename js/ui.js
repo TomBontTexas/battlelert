@@ -2718,6 +2718,19 @@
   $("btn-card-back").onclick = function () { click(); showRegistry(); };
 
   var OUTCOME_NAME = { success: "Success", destroyed: "Destroyed", abandoned: "Abandoned ship", timeout: "Out of time", wardLost: "Escorted ship lost", leftBehind: "Left behind", dropMissed: "Drop window missed" };
+  // Column notes on the ship card's guns table: a small i by the heading; tap it to show the note
+  // under the table (tap again to hide).
+  var GUN_INFO = {
+    shots: "<b>Shots:</b> how many shots a full capacitor holds before the gun must wait to recharge.",
+    draw: "<b>Draw:</b> energy per second the gun uses firing as fast as it can; more than its charge rate and it runs dry." };
+  function infoI(k) { return ' <button class="info-i" data-info="' + k + '" aria-label="What this means" title="' + GUN_INFO[k].replace(/<[^>]+>/g, "") + '">i</button>'; }
+  $("card-guns").addEventListener("click", function (ev) {
+    var b = ev.target.closest("button[data-info]"), n = $("card-gun-note");
+    if (!b) return;
+    click();
+    var k = b.dataset.info, open = !n.hidden && n.dataset.k === k;
+    n.hidden = open; n.dataset.k = k; n.innerHTML = GUN_INFO[k];
+  });
   function showShipCard(e) {
     var c = career, d = BL.shipFor(e.classId, e.tl), cls = BL.classById(e.classId), rec = e.rec;
     var sysOf = function (kind) { return d.systems.filter(function (s) { return s.kind === kind; }); }, one = function (k) { return sysOf(k)[0]; };
@@ -2749,15 +2762,15 @@
     var guns = sysOf("gun"), same = guns.every(function (g) { return g.maxMJ === guns[0].maxMJ && g.maxMW === guns[0].maxMW; });
     var mainRow = !mg ? "" : "<tr><td>M</td><td>Main gun</td><td>on the centerline</td><td>points forward</td><td>" + mg.maxMJ + " MJ</td><td>every " +
       (Math.round(mg.maxMJ / mg.maxMW * 10) / 10) + " s</td><td>1</td><td>" + mg.maxMW + " MJ/s</td>" + (same ? "" : "<td>" + cap(mg) + "</td>") + "</tr>";
-    $("card-guns").innerHTML = "<tr><th>#</th><th>Type</th><th>Mount</th><th>Arc</th><th>Per shot</th><th>Rate</th><th>Shots</th><th>Draw</th>" + (same ? "" : "<th>Capacitor</th>") + "</tr>" + mainRow + guns.map(function (g, i) {
+    $("card-gun-note").hidden = true;
+    $("card-guns").innerHTML = "<tr><th>#</th><th>Type</th><th>Mount</th><th>Arc</th><th>Per shot</th><th>Rate</th><th>Shots" + infoI("shots") + "</th><th>Draw" + infoI("draw") + "</th>" + (same ? "" : "<th>Capacitor</th>") + "</tr>" + mainRow + guns.map(function (g, i) {
       var a = ring.arcs[i] || [0, 180, 0], W = BL.WEAPONS[load[i]] || { name: "", shotMJ: 0, interval: 1 }, shot = W.shotMJ * (d.mkCharge || 1), per = 1 / W.interval;
       return "<tr><td>" + (i + 1) + "</td><td>" + W.name + " Mk " + d.mk + "</td><td>" + (ring.arcNames[i] || "") + "</td><td>" + (a[1] >= 180 ? "all round" : 2 * a[1] + "°") + "</td><td>" +
         Math.round(shot) + " MJ</td><td>" + per + "/s</td><td>" + (shot ? Math.floor(g.maxMJ / shot) : "–") + "</td><td>" + Math.round(shot * per) + " MJ/s</td>" + (same ? "" : "<td>" + cap(g) + "</td>") + "</tr>";
     }).join("");
     // Short pieces that never break inside, so a line only wraps between them.
     var nw = function (t) { return '<span class="nw">' + t + "</span>"; };
-    $("card-gun-cap").innerHTML = same && guns.length ? "<div>" + nw((guns.length > 1 ? "Each gun: " : "Gun: ") + cap(guns[0])) + (mg ? " · " + nw("Main gun: " + cap(mg)) : "") + "</div>" +
-      "<div>" + nw("Shots: from a full capacitor") + " · " + nw("Draw: power used firing nonstop") + "</div>" : "";
+    $("card-gun-cap").innerHTML = same && guns.length ? "<div>" + nw((guns.length > 1 ? "Each gun: " : "Gun: ") + cap(guns[0])) + (mg ? " · " + nw("Main gun: " + cap(mg)) : "") + "</div>" : "";
     var ms = rec ? rec.missions.slice().reverse() : [];
     $("card-service").innerHTML = "<tr><th>Date</th><th>Mission</th><th>Systems</th><th>Outcome</th><th>Score</th><th>Ships destroyed</th><th>Hull lost</th></tr>" +
       (ms.length ? ms.map(function (m) {
