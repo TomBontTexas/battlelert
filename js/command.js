@@ -731,19 +731,23 @@
     var m = this.m;
     e.hold = true;
     if (this.call && m.t - this.call.at < BL.HELM.evade.burst && !this.call.done) { this.call.fish.push(e); return; }
-    if (this.call && !this.call.done) { this.call.done = true; this.stats.unanswered++; }
-    this.call = { at: m.t, fish: [e], ship: s, done: false };
+    if (this.call && !this.call.done) this.closeCall();
+    this.call = { at: m.t, fish: [e], ship: s, done: false, could: false };
     this.stats.calls++;
   };
   Captain.prototype.callView = function () {
     var m = this.m, c = this.call, h = m.helm;
     if (!c || c.done) return null;
     var live = c.fish.filter(function (f) { return !f.done && f.hold && f.at > m.t; });
-    if (!live.length) { c.done = true; this.stats.unanswered++; return null; }
-    var land = Math.min.apply(null, live.map(function (f) { return f.at; }));
-    return { n: live.length, in: land - m.t, mj: live.reduce(function (a, f) { return a + f.mj; }, 0), canBreak: h.canBreak(BL.GUNNERY.torpedo.travel) && !(h.evade && m.t < h.evade.until),
+    if (!live.length) { this.closeCall(); return null; }
+    var land = Math.min.apply(null, live.map(function (f) { return f.at; })), can = h.canBreak(BL.GUNNERY.torpedo.travel) && !(h.evade && m.t < h.evade.until);
+    if (can) c.could = true;
+    return { n: live.length, in: land - m.t, mj: live.reduce(function (a, f) { return a + f.mj; }, 0), canBreak: can,
       bearing: c.ship ? norm(c.ship.bearing) : 0 };
   };
+  // A burst landed or was overtaken with no call: unanswered only if a break was ever possible
+  // (a ship that can't break, like the light cruiser, has nothing to call: taken on the shields).
+  Captain.prototype.closeCall = function () { this.call.done = true; if (this.call.could) this.stats.unanswered++; else this.stats.taken++; };
   // dir: -1 break to port, 1 to starboard; 0 = take it on the shields.
   Captain.prototype.answer = function (dir) {
     var m = this.m, h = m.helm, cv = this.callView();
