@@ -820,12 +820,15 @@
      morale: start, a success, a failure, each shipmate killed aboard; in battle a man works at
      his skill times eff[0] (morale 0) to eff[1] (morale 100);
      temper: each temperament's number (0 cautious to 1 aggressive: AIEngineer, Captain.pilotCall,
-     RingTurret.aiBattery). */
+     RingTurret.aiBattery);
+     sign: crew refusals (BL.roster.willSign): last mission's men stay on at morale `stay` or more;
+     the man's roll takes (morale - 50) / `morale` off. */
   BL.ROSTER = {
     pool: { engineer: 12, pilot: 12, gun: 24 }, hire: [0.3, 0.5],
     grow: { served: 0.01, success: 0.01, cap: 0.95 },
     morale: { start: 60, success: 5, failure: -10, killed: -10, eff: [0.9, 1.1] },
     temper: { cautious: 0.2, steady: 0.5, aggressive: 0.8 },
+    sign: { stay: 25, morale: 5 },
     record: 100                                  // missions kept on each man's record
   };
 

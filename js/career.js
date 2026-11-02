@@ -29,6 +29,7 @@
   var NAMES_VERSION = 2;                           // 2 = the historical ship roster (names.js)
   var TL_VERSION = 2;                              // 2 = tech levels 4 to 7 and INS ship names
   var STORY_VERSION = 1;                           // 1 = story missions as job offers (story.js)
+  var REP_VERSION = 2;                             // 2 = reputation that goes up and down, from 50 (REP)
 
   function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
   function today() { var d = new Date(); return d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2) + "-" + ("0" + d.getDate()).slice(-2); }
@@ -44,9 +45,10 @@
       history: [], offersBy: {}, stepUps: {}, offerSeed: BL.randomSeed(),
       ships: {}, namesVersion: NAMES_VERSION, tlVersion: TL_VERSION,
       hulls: {}, nextHull: {},          // hull numbers of ships that replace ones lost in action
-      storyDone: {}, storyVersion: STORY_VERSION      // story missions completed: id -> date
+      storyDone: {}, storyVersion: STORY_VERSION,     // story missions completed: id -> date
+      repVersion: REP_VERSION
     };
-    STATIONS.forEach(function (s) { c.stations[s] = { qualified: 0, rep: 0, failures: {}, realUntil: 0 }; c.profiles[s] = blankProfile(); c.stepUps[s] = 0; });
+    STATIONS.forEach(function (s) { c.stations[s] = { qualified: 0, rep: REP.start, failures: {}, realUntil: 0 }; c.profiles[s] = blankProfile(); c.stepUps[s] = 0; });
     STATIONS.forEach(function (s) { if (PLAYABLE[s]) generateOffers(c, s); });
     return c;
   }
@@ -62,7 +64,7 @@
   function normalize(c) {
     if (!c || c.kind !== "career") throw new Error("This file isn't a Battlelert career.");
     var oldNames = c.namesVersion !== NAMES_VERSION;   // checked before the defaults below fill it in
-    var oldTL = c.tlVersion !== TL_VERSION, oldStory = c.storyVersion !== STORY_VERSION;
+    var oldTL = c.tlVersion !== TL_VERSION, oldStory = c.storyVersion !== STORY_VERSION, oldRep = c.repVersion !== REP_VERSION;
     // Careers from before the gunner station: one engineer offer list and one profile.
     if (!c.offersBy) c.offersBy = { engineer: Array.isArray(c.offers) ? c.offers : [] };
     if (!c.profiles) c.profiles = { engineer: c.profile || blankProfile() };
@@ -99,6 +101,18 @@
     c.tlVersion = TL_VERSION;
     if (!c.storyDone || typeof c.storyDone !== "object") c.storyDone = {};
     if (oldStory) { c.offersBy = {}; c.storyVersion = STORY_VERSION; }   // offers become story missions
+    // Careers from before reputation went up and down: each path from 50, recalculated from the
+    // mission history it holds (outcome and tech level; nothing replayed), oldest first.
+    if (oldRep) {
+      STATIONS.forEach(function (s) { c.stations[s].rep = REP.start; });
+      c.history.slice().reverse().forEach(function (h) {
+        var st = c.stations[h.station || "engineer"]; if (!st) return;
+        var was = st.rep;
+        st.rep = Math.max(0, st.rep + repParts(h.station || "engineer", h.outcome, h.tl, 0, 0).reduce(function (a, p) { return a + p[1]; }, 0));
+        h.rep = st.rep - was;
+      });
+      c.repVersion = REP_VERSION;
+    }
     // Careers from before the ship roster: start the service records from the mission history,
     // and replace offers that still carry the old generic names.
     if (oldNames) {
@@ -316,13 +330,29 @@
     }
     return uniqueShips(out, rng, c);
   }
-  var REQUAL_REP = 0.5;
-  function repFor(job, scorePct) {
-    return Math.round(BL.classByN(job.n).baseRep * (scorePct / 100) * BL.TECH.repMult(job.tl) * (job.serious === false ? REQUAL_REP : 1));
+  /* Reputation: a man's standing on each path (Reputation and crew refusals, Nov 2, 2026). It
+     starts at 50, never goes below 0 and has no top. A mission's outcome counts once (a success
+     gains more at TL5 and TL6: an old beater's success gets talked about; a requalifying job's
+     the same); at command, a squadron left behind and each crewman killed come on top. */
+  var REP = { start: 50, success: 2, tlBonus: { 5: 2, 6: 1 }, failure: -1, destroyed: -2, abandoned: -1,
+    wardLost: -1, dropMissed: -3, squadronLost: -3, killed: -1 };
+  function repFor(job) { return REP.success + (REP.tlBonus[job.tl] || 0); }      // what a success earns
+  // The mission's reputation, part by part: [[what, points], ...].
+  function repParts(station, outcome, tl, squadrons, killed) {
+    var cmd = station === "captain", out = [];
+    if (outcome === "success") { out.push(["success", REP.success]); if (REP.tlBonus[tl]) out.push(["tech level " + tl, REP.tlBonus[tl]]); }
+    else if (outcome === "destroyed") out.push(["ship destroyed", REP.destroyed]);
+    else if (outcome === "abandoned") out.push(["abandoned ship", REP.abandoned]);
+    else if (cmd && outcome === "wardLost") out.push(["escorted ship lost", REP.wardLost]);
+    else if (cmd && outcome === "dropMissed") out.push(["planet buster drop missed", REP.dropMissed]);
+    else out.push(["failed mission", REP.failure]);
+    if (cmd && squadrons) out.push(["squadron left behind", REP.squadronLost * squadrons]);
+    if (cmd && killed) out.push([killed + " crew killed", REP.killed * killed]);
+    return out;
   }
 
   /* ------------------------------------------------------- Mission result
-     Success earns reputation on that path and qualifies you on the class.
+     Every mission moves reputation on that path (repParts); success qualifies you on the class.
      Any two failures at a post (station + class) send you back one class, where you
      requalify with a real mission. Failures on jobs below your class don't count. */
   function applyResult(c, job, r) {
@@ -332,8 +362,6 @@
     var success = r.outcome === "success";
     if (success) {
       if (job.story) { c.storyDone[job.story] = today(); report.storyDone = job.story; }
-      report.rep = repFor(job, r.score);
-      st.rep += report.rep;
       st.failures[post] = 0;
       if (post > st.qualified) { st.qualified = post; report.promoted = true; }
     } else if (post >= st.qualified) {
@@ -378,13 +406,17 @@
     p.missions = n + 1;
     if (success) p.wins++; else p.losses++;
     report.profileAfter = profile(c, job.station);
+    // Command: the roster crew's losses, growth and morale (BL.roster.afterMission); then reputation.
+    if (job.station === "captain" && BL.roster) report.crew = BL.roster.afterMission(c, job, r, { date: today() });
+    report.repParts = repParts(job.station, r.outcome, job.tl, cp && r.detail ? r.detail.squadronsLost || 0 : 0, report.crew ? report.crew.lost.length : 0);
+    var repWas = st.rep;
+    st.rep = Math.max(0, st.rep + report.repParts.reduce(function (a, p) { return a + p[1]; }, 0));
+    report.rep = st.rep - repWas;
     var entry = { date: today(), station: job.station, classId: job.classId, n: job.n, tl: job.tl, ship: job.ship, hull: job.hull || hullOf(c, job),
       seed: job.seed, outcome: r.outcome, score: r.score, rep: report.rep, serious: job.serious, story: job.story, title: job.title };
     c.history.unshift(entry);
     if (c.history.length > 200) c.history.length = 200;
     logService(c, entry, r);
-    // Command: the roster crew's losses, growth and morale (BL.roster.afterMission).
-    if (job.station === "captain" && BL.roster) report.crew = BL.roster.afterMission(c, job, r, entry);
     if (r.outcome === "destroyed" || r.outcome === "abandoned") { retireShip(c, entry); report.shipLost = true; }
     generateOffers(c, job.station);
     refreshCommand(c);
@@ -449,7 +481,7 @@
     fileName: fileName, exportText: exportText, importText: importText,
     qualified: qualified, rank: rank, ranks: ranks, targetClass: targetClass,
     signoffsTotal: signoffsTotal, signoffsHeld: signoffsHeld, signoffOptions: signoffOptions, spendSignoff: spendSignoff,
-    offers: offers, generateOffers: generateOffers, lowerJobs: lowerJobs, repFor: repFor, REQUAL_REP: REQUAL_REP,
+    offers: offers, generateOffers: generateOffers, lowerJobs: lowerJobs, repFor: repFor, REP: REP,
     applyResult: applyResult, profile: profile, serviceRecord: serviceRecord,
     storyComplete: storyComplete, storyLeft: storyLeft
   };

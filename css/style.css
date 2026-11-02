@@ -560,6 +560,8 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 .crew-post.on { border-color: var(--warn); }
 .crew-pick { display: flex; flex-direction: column; gap: 4px; margin: 0 0 6px 18px; }
 .crew-man.on { border-color: var(--good); }
+.crew-man.no { opacity: .6; }
+.crew-man .tag.refused { color: var(--bad); }
 .crew-post .tag, .crew-man .tag { font-size: 12px; color: var(--muted); }
 .reg-filter { display: inline-flex; gap: 8px; align-items: center; margin: 4px 0 8px; }
 .reg-class { margin: 10px 0; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-2); }

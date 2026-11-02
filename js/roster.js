@@ -68,26 +68,45 @@
   // Gunboat engineers and pilots come from the better end (GUNNERY.engineer.skill.gunboat), as today.
   function fits(m, classId) { return m.post === "gun" || classId !== "gunboat" || m.skill >= BL.GUNNERY.engineer.skill.gunboat[0]; }
 
+  /* Will he sign on with this captain for this job? (Crew refusals, Nov 2, 2026.) Asked once per
+     job (job.asked); the same job asks the same dice. A man who served with him last time stays
+     on, unless his morale is below BL.ROSTER.sign.stay; anyone else rolls: the captain's d100 +
+     his command reputation against the man's d100 + skill - (morale - 50) / 5; the captain must
+     roll higher. */
+  function aboardLast(c, id) { var l = ensure(c).last || {}; return l.engineer === id || l.pilot === id || (l.guns || []).indexOf(id) >= 0; }
+  function willSign(c, job, m) {
+    var asked = job.asked = job.asked || {}, S = BL.ROSTER.sign;
+    if (asked[m.id] !== undefined) return asked[m.id];
+    if (aboardLast(c, m.id) && m.morale >= S.stay) return (asked[m.id] = true);
+    var rng = BL.rng(((job.seed * 31 + m.id * 7919) ^ 0x2545f491) >>> 0 || 1);
+    var cap = rng.int([1, 100]) + (c.stations.captain.rep || 0), him = rng.int([1, 100]) + m.skill * 100 - (m.morale - 50) / S.morale;
+    return (asked[m.id] = cap > him);
+  }
   /* The crew a job suggests: the men who served with the captain last time first, then the best
-     available whose skill fits the class (then anyone left). { engineer: id, pilot: id, guns: [id, ...] } */
-  function suggest(c, job) {
-    var cr = ensure(c), used = {}, last = cr.last || {};
+     available whose skill fits the class (then anyone left). sign: only men who sign on (willSign);
+     if every man at a post refuses, a green new hire joins the pool and signs on.
+     { engineer: id, pilot: id, guns: [id, ...] } */
+  function suggest(c, job, sign) {
+    var cr = ensure(c), used = {}, last = cr.last || {}, hireRng = null;
     function pick(post, lastId) {
-      var lm = lastId && man(c, lastId);
-      if (lm && lm.post === post && !used[lm.id] && fits(lm, job.classId)) { used[lm.id] = true; return lm.id; }
-      var pool = cr.men.filter(function (m) { return m.post === post && !used[m.id]; }).sort(function (a, b) { return b.skill - a.skill || a.id - b.id; });
-      var best = pool.filter(function (m) { return fits(m, job.classId); })[0] || pool[0];
-      if (best) used[best.id] = true;
-      return best ? best.id : null;
+      var lm = lastId && man(c, lastId), pool = cr.men.filter(function (m) { return m.post === post && !used[m.id]; }).sort(function (a, b) { return b.skill - a.skill || a.id - b.id; });
+      var order = (lm && lm.post === post && !used[lm.id] && fits(lm, job.classId) ? [lm] : [])
+        .concat(pool.filter(function (m) { return m !== lm && fits(m, job.classId); }), pool.filter(function (m) { return m !== lm && !fits(m, job.classId); }));
+      for (var i = 0; i < order.length; i++) if (!sign || willSign(c, job, order[i])) { used[order[i].id] = true; return order[i].id; }
+      if (!sign) return null;
+      hireRng = hireRng || BL.rng((job.seed ^ 0x51633e2d) >>> 0 || 1);
+      var g = newMan(cr, hireRng, post, hireRng.range(BL.ROSTER.hire));
+      (job.asked = job.asked || {})[g.id] = true; used[g.id] = true;
+      return g.id;
     }
     var out = { engineer: pick("engineer", last.engineer), pilot: pick("pilot", last.pilot), guns: [] };
     for (var i = 0; i < gunCount(job.classId); i++) out.guns.push(pick("gun", (last.guns || [])[i]));
     return out;
   }
   // The job's crew: what the captain picked on the crew screen (job.crewIds), else the suggestion;
-  // any man since lost is replaced by the suggestion's.
-  function crewOf(c, job) {
-    var s = suggest(c, job), p = job.crewIds;
+  // any man since lost is replaced by the suggestion's. sign: as suggest.
+  function crewOf(c, job, sign) {
+    var s = suggest(c, job, sign), p = job.crewIds;
     if (!p) return s;
     var out = { engineer: man(c, p.engineer) ? p.engineer : s.engineer, pilot: man(c, p.pilot) ? p.pilot : s.pilot, guns: [] };
     for (var i = 0; i < s.guns.length; i++) out.guns.push(p.guns && man(c, p.guns[i]) ? p.guns[i] : s.guns[i]);
@@ -136,5 +155,5 @@
   }
 
   BL.roster = { POSTS: POSTS, POST_NAME: POST_NAME, ensure: ensure, man: man, view: view, suggest: suggest, crewOf: crewOf,
-    forMission: forMission, available: available, afterMission: afterMission, gunCount: gunCount, fits: fits };
+    forMission: forMission, available: available, willSign: willSign, afterMission: afterMission, gunCount: gunCount, fits: fits };
 })(typeof window !== "undefined" ? window : globalThis);

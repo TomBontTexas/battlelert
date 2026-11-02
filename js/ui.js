@@ -133,7 +133,7 @@
     var story = j.story && BL.storyMission(j.story);
     // A Command job: the crew from the roster (the crew screen's picks, else the suggestion).
     var rcrew = null;
-    if (j.captain && !j.test && career && BL.roster) { j.crewUsed = BL.roster.crewOf(career, j); rcrew = BL.roster.forMission(career, j.crewUsed); }
+    if (j.captain && !j.test && career && BL.roster) { j.crewUsed = BL.roster.crewOf(career, j, true); rcrew = BL.roster.forMission(career, j.crewUsed); }
     sim = new BL.Mission({ seed: j.seed, crew: rcrew, classId: j.classId, tl: j.tl, gunner: guns, helm: !!j.helm, captain: !!j.captain, escort: !!j.escort, test: !!j.test, sweep: j.test && j.classId === "gunboat" && !!guns && !j.escort,
       route: story ? story.systems : null, reports: story ? story.reports.map(storyText) : null,
       world: story ? ((story.briefing || "").match(/(industrial|military|transportation) world/) || [])[1] : null });
@@ -168,7 +168,7 @@
     d.systems.forEach(function (s) {
       html.push("<div><span>" + s.name + "</span> " + s.maxMJ + " MJ, up to " + s.maxMW + " MW</div>");
     });
-    if (!j.test) html.push("<div><span>Reputation if perfect</span> up to " + BL.career.repFor(j, 100) + "</div>");
+    if (!j.test) html.push("<div><span>Reputation for a success</span> +" + BL.career.repFor(j) + "</div>");
     $("brief-ship").innerHTML = html.join("");
     // The approved art: the gunboat carries its hull number, bigger classes their hull letters.
     $("brief-art").innerHTML = BL.ART ? (j.classId === "gunboat" ? BL.ART.gunboat(/^PT-/.test(j.ship) ? j.ship : "PT") : BL.ART.warship(j.classId, j.test ? "" : j.hull || BL.hullNumber(j.classId, j.ship))) : "";
@@ -213,7 +213,7 @@
     show("scr-briefing");
   }
   // A roster man's temperament and morale (Command jobs; the skill shown is his skill in battle, morale included).
-  function tmLine(p) { return p && p.temper ? ", " + p.temper + ", morale " + p.morale : ""; }
+  function tmLine(p) { return p && p.temper ? ", " + p.temper + " temper, morale " + p.morale : ""; }
   $("btn-brief-back").onclick = function () { click(); if (job.test) show("scr-title"); else if (job.captain && BL.roster) showCrew(job); else showOffers(offersMode); };
   $("btn-brief-go").onclick = function () { click(); startMission(); };
   // The captain test: another mission on the same ship, at random (the briefing, or the first plot).
@@ -2209,15 +2209,14 @@
     $("btn-db-again").hidden = $("btn-db-new").hidden = $("btn-db-title").hidden = !job.test;
   }
 
+  function signed(n) { return (n > 0 ? "+" : n < 0 ? "−" : "") + Math.abs(n); }
   function renderCareerReport(r) {
     var st = career.stations[job.station], rows = [], story = job.story && BL.storyMission(job.story);
     if (story) rows.push('<p class="story-line"><b>' + esc(story.title) + ".</b> " + esc(storyText(r.outcome === "success" ? story.after : story.lost)) + "</p>");
     if (story && r.outcome === "success" && story.n === 9) rows.push('<p class="big-line promo">' + BL.career.STATION_NAME[job.station] + " storyline complete.</p>");
-    if (r.outcome === "success") {
-      rows.push('<p class="big-line">Reputation earned: <b>+' + report.rep + "</b> (" + BL.career.STATION_NAME[job.station].toLowerCase() + " path, now " + st.rep + ")</p>");
-      rows.push('<p class="muted">' + BL.classByN(job.n).baseRep + " base for a " + r.className.toLowerCase() + " × score " + r.score + "% × " + +BL.TECH.repMult(job.tl).toFixed(2) + " for tech level " + job.tl +
-        (job.serious === false ? " × " + BL.career.REQUAL_REP + " requalifying" : "") + "</p>");
-    } else rows.push('<p class="big-line">No reputation and no promotion for a failed mission.</p>');
+    rows.push('<p class="big-line">Reputation: <b>' + signed(report.rep) + "</b> (" + BL.career.STATION_NAME[job.station].toLowerCase() + " path, now " + st.rep + ")</p>");
+    rows.push('<p class="muted">' + report.repParts.map(function (p) { return p[0] + " " + signed(p[1]); }).join(", ") + (st.rep === 0 && report.rep > report.repParts.reduce(function (a, p) { return a + p[1]; }, 0) ? " (reputation never goes below 0)" : "") + "</p>");
+    if (r.outcome !== "success") rows.push('<p class="big-line">No promotion for a failed mission.</p>');
     if (report.promoted) rows.push('<p class="big-line promo">Qualified: ' + BL.career.rank(career, job.station) + " (" + r.className + ")</p>");
     if (report.failuresAtPost === 1) rows.push('<p class="big-line">Failure 1 of 2 at this post. A second failure here sends you back a class.</p>');
     if (report.sentBack) rows.push('<p class="big-line demo">Second failure at this post: sent back to ' + (report.qualifiedAfter ? BL.career.rank(career, job.station) : "the gunboat, unqualified") +
@@ -2433,7 +2432,7 @@
     $("hub-grid").innerHTML = gridHtml(career);
     var last = career.history[0];
     $("hub-last").textContent = last ? "Last mission: " + BL.career.STATION_NAME[last.station || "engineer"].toLowerCase() + " aboard " + BL.shipLabel(last.classId, last.ship, last.hull) + " (TL" + last.tl + "), " +
-      (last.outcome === "success" ? "success, +" + last.rep + " reputation" : last.outcome) + "." : "No missions yet. Your first job offers are waiting.";
+      last.outcome + ", " + signed(last.rep || 0) + " reputation." : "No missions yet. Your first job offers are waiting.";
     $("btn-hub-eng").textContent = "Engineer jobs (" + BL.career.offers(career, "engineer").length + ")";
     $("btn-hub-gun").textContent = "Gunner jobs (" + BL.career.offers(career, "gunner").length + ")";
     $("btn-hub-pilot").textContent = "Pilot jobs (" + BL.career.offers(career, "pilot").length + ")";
@@ -2535,7 +2534,7 @@
   // A Command job's crew: the roster's suggestion (BL.roster.crewOf), each man by post.
   function rosterCrew(j) {
     var ids = BL.roster.crewOf(career, j), R = BL.roster;
-    function line(post, id) { var m = R.man(career, id); if (!m) return null; var v = R.view(m); return post + " " + esc(v.name) + ", " + v.label + " (skill " + Math.round(v.skill * 100) + "), " + v.temper + ", morale " + v.morale; }
+    function line(post, id) { var m = R.man(career, id); if (!m) return null; var v = R.view(m); return post + " " + esc(v.name) + ", " + v.label + " (skill " + Math.round(v.skill * 100) + "), " + v.temper + " temper, morale " + v.morale; }
     return [line("Engineer", ids.engineer), line("Pilot", ids.pilot)].concat(ids.guns.map(function (id, k) { return line("Gun " + (k + 1), id); })).filter(Boolean)
       .concat(['<span class="muted">Suggested from your crew pool; you can change any post before the briefing.</span>']);
   }
@@ -2548,7 +2547,7 @@
       '<button class="primary" data-i="' + i + '">Accept</button>' +
       (j.escort ? '<div class="offer-story">Escort mission: your ' + cls.name.toLowerCase() + " is one of a squadron screening " + (j.classId === "gunboat" ? "the carrier" : "a convoy or a capital ship") + ".</div>" : "") +
       (j.story ? '<div class="offer-story"><b>' + esc(j.title) + "</b> · " + cls.name + " chapter: " + esc(j.chapter) + "</div>" : "") +
-      '<div class="meta">Reputation ×' + +(BL.TECH.repMult(j.tl) * (j.serious === false ? BL.career.REQUAL_REP : 1)).toFixed(3) + (j.serious === false ? " (half: requalifying)" : "") + ", max " + BL.career.repFor(j, 100) +
+      '<div class="meta">Reputation +' + BL.career.repFor(j) + " on success" +
       (up ? " · success qualifies you as " + rankName + "-" + j.n : "") + "</div>" +
       sec("Crew", crew) + sec("Armament", arms) + "</div>";
   }
@@ -2593,7 +2592,7 @@
      who can take it and swap one in. A man already on another gun trades places. */
   var crewJob = null, crewOpen = -1;
   function manLine(v) {
-    return esc(v.name) + ' <span class="tag">' + v.label + " (skill " + Math.round(v.skill * 100) + ") · " + v.temper + " · morale " + v.morale + " · " +
+    return esc(v.name) + ' <span class="tag">' + v.label + " (skill " + Math.round(v.skill * 100) + ") · " + v.temper + " temper · morale " + v.morale + " · " +
       (v.missions ? v.missions + " mission" + (v.missions === 1 ? "" : "s") + ", " + v.wins + " success" + (v.wins === 1 ? "" : "es") + " · " + v.ships.length + " ship" + (v.ships.length === 1 ? "" : "s") : "no missions yet") + "</span>";
   }
   function crewPosts() {
@@ -2601,18 +2600,18 @@
     return [{ post: "engineer", name: "Engineer", id: ids.engineer }, { post: "pilot", name: "Pilot", id: ids.pilot }].concat(ids.guns.map(function (id, k) { return { post: "gun", name: "Gun " + (k + 1), id: id, k: k }; }));
   }
   function showCrew(j) {
-    crewJob = j; j.crewIds = BL.roster.crewOf(career, j); crewOpen = -1;
+    crewJob = j; j.crewIds = BL.roster.crewOf(career, j, true); crewOpen = -1;     // (the suggestion asks each man: BL.roster.willSign)
     renderCrew(); show("scr-crew");
   }
   function renderCrew() {
     var j = crewJob, posts = crewPosts();
-    $("crew-lede").textContent = BL.shipLabel(j.classId, j.ship, j.hull) + " (TL" + j.tl + "). The job suggests this crew from your crew pool. Tap a post to choose another man for it. Skill grows with every mission a man serves; morale rises with successes and falls with failures and shipmates lost; if the ship is destroyed, each man's chance of surviving is his skill.";
+    $("crew-lede").textContent = BL.shipLabel(j.classId, j.ship, j.hull) + " (TL" + j.tl + "). The job suggests this crew from your crew pool. Tap a post to choose another man for it; a man you ask may refuse to sign on with you (the better he is, the likelier, and your command reputation helps). Skill grows with every mission a man serves; morale rises with successes and falls with failures and shipmates lost; if the ship is destroyed, each man's chance of surviving is his skill.";
     $("crew-posts").innerHTML = posts.map(function (p, i) {
       var m = BL.roster.man(career, p.id), html = '<button class="crew-post' + (crewOpen === i ? " on" : "") + '" data-p="' + i + '"><b>' + p.name + "</b><span>" + (m ? manLine(BL.roster.view(m)) : "(nobody)") + "</span></button>";
       if (crewOpen === i) html += '<div class="crew-pick">' + BL.roster.available(career, p.post).map(function (v) {
-        var where = posts.filter(function (q) { return q.id === v.id; })[0];
-        return '<button class="crew-man' + (v.id === p.id ? " on" : "") + '" data-p="' + i + '" data-id="' + v.id + '"><span>' + manLine(v) + "</span>" +
-          (where && where !== p ? '<span class="tag">now on ' + where.name + "</span>" : "") + (BL.roster.fits(BL.roster.man(career, v.id), j.classId) ? "" : '<span class="tag">below the gunboat standard</span>') + "</button>";
+        var where = posts.filter(function (q) { return q.id === v.id; })[0], no = (j.asked || {})[v.id] === false;
+        return '<button class="crew-man' + (v.id === p.id ? " on" : "") + (no ? " no" : "") + '" data-p="' + i + '" data-id="' + v.id + '"><span>' + manLine(v) + "</span>" +
+          (where && where !== p ? '<span class="tag">now on ' + where.name + "</span>" : "") + (no ? '<span class="tag refused">refused this job</span>' : "") + (BL.roster.fits(BL.roster.man(career, v.id), j.classId) ? "" : '<span class="tag">below the gunboat standard</span>') + "</button>";
       }).join("") + "</div>";
       return html;
     }).join("");
@@ -2624,7 +2623,9 @@
     function put(q, v) { if (q.post === "gun") ids.guns[q.k] = v; else ids[q.post] = v; }
     if (b.dataset.id) {
       var id = +b.dataset.id, p = posts[i], other = posts.filter(function (q) { return q.id === id && q !== p; })[0];
-      if (other) put(other, p.id);      // (a man already on another gun trades places)
+      // (a man already on another gun trades places; anyone else is asked: BL.roster.willSign)
+      if (!other && id !== p.id && !BL.roster.willSign(career, crewJob, BL.roster.man(career, id))) { renderCrew(); return; }
+      if (other) put(other, p.id);
       put(p, id); crewOpen = -1;
     } else crewOpen = crewOpen === i ? -1 : i;
     renderCrew();
@@ -2643,7 +2644,7 @@
     $("rec-history").innerHTML = "<tr><th>Date</th><th>Station</th><th>Ship</th><th>Class</th><th>Tech</th><th>Outcome</th><th>Score</th><th>Reputation</th></tr>" +
       (c.history.length ? c.history.map(function (h) {
         return "<tr><td>" + h.date + "</td><td>" + BL.career.STATION_NAME[h.station || "engineer"] + "</td><td>" + esc(h.ship) + (h.title ? "<br><i>" + esc(h.title) + "</i>" : "") + "</td><td>" + BL.classById(h.classId).name + "</td><td>" + h.tl + "</td><td>" + h.outcome +
-          "</td><td>" + h.score + "</td><td>" + (h.rep ? "+" + h.rep : "0") + "</td></tr>";
+          "</td><td>" + h.score + "</td><td>" + signed(h.rep || 0) + "</td></tr>";
       }).join("") : '<tr><td colspan="8" class="muted">No missions yet.</td></tr>');
     // Command: the crewmen killed in action (js/roster.js).
     var kia = c.crew && c.crew.kia || [];
