@@ -2595,15 +2595,13 @@
     return esc(v.name) + ' <span class="tag">' + v.label + " (skill " + Math.round(v.skill * 100) + ") · " + v.temper + " temper · morale " + v.morale + " · " +
       (v.missions ? v.missions + " mission" + (v.missions === 1 ? "" : "s") + ", " + v.wins + " success" + (v.wins === 1 ? "" : "es") + " · " + v.ships.length + " ship" + (v.ships.length === 1 ? "" : "s") : "no missions yet") + "</span>";
   }
-  // A man's sign-on roll for this job, its parts in full (BL.roster.willSign keeps them in job.rolls).
+  // A man's answer for this job: signed on, refused, or not asked yet (BL.roster.rollOf).
   function rollTag(j, id) {
     var a = (j.asked || {})[id], r = BL.roster.rollOf(career, j, id);
     if (!r) return '<span class="tag">not asked yet</span>';
     if (r.stay) return '<span class="tag signed">stayed on from your last mission (no roll)</span>';
     if (r.hire) return '<span class="tag signed">new hire, signed on (no roll)</span>';
-    var mor = r.mor >= 0 ? " − morale " + r.mor : " + morale " + (-r.mor);
-    return '<span class="tag ' + (a ? "signed" : "refused") + '">' + (a ? "signed on" : "refused") + ": you " + r.capRoll + " + rep " + r.rep + " = " + r.cap +
-      " vs him " + r.hisRoll + " + skill " + r.skill + mor + " = " + r.him + "</span>";
+    return a ? '<span class="tag signed">signed on</span>' : '<span class="tag refused">refused this job</span>';
   }
   function crewPosts() {
     var ids = crewJob.crewIds;
@@ -2615,7 +2613,7 @@
   }
   function renderCrew() {
     var j = crewJob, posts = crewPosts();
-    $("crew-lede").textContent = BL.shipLabel(j.classId, j.ship, j.hull) + " (TL" + j.tl + "). The job suggests this crew from your crew pool. Tap a post to choose another man for it; a man you ask may refuse to sign on with you. Each man asked rolls once for this job: your d100 + your command reputation against his d100 + his skill − (morale − 50) ÷ 5, and you must roll higher. The job asks the best men first and stops at the first who signs on, so the men below him haven't been asked yet. A man gains a point of skill for every successful mission; morale rises with successes and falls with failures and shipmates lost; if the ship is destroyed, each man's chance of surviving is his skill.";
+    $("crew-lede").textContent = BL.shipLabel(j.classId, j.ship, j.hull) + " (TL" + j.tl + "). The job suggests this crew from your crew pool. Tap a post to choose another man for it; a man you ask may refuse to sign on with you (the better he is, the likelier, and your command reputation helps). The job asks the best men first and stops at the first who signs on, so the men below him haven't been asked yet. A man gains a point of skill for every successful mission; morale rises with successes and falls with failures and shipmates lost; if the ship is destroyed, each man's chance of surviving is his skill.";
     $("crew-posts").innerHTML = posts.map(function (p, i) {
       var m = BL.roster.man(career, p.id), html = '<button class="crew-post' + (crewOpen === i ? " on" : "") + '" data-p="' + i + '"><b>' + p.name + "</b><span>" + (m ? manLine(BL.roster.view(m)) + " " + rollTag(j, m.id) : "(nobody)") + "</span></button>";
       if (crewOpen === i) html += '<div class="crew-pick">' + BL.roster.available(career, p.post).map(function (v) {
