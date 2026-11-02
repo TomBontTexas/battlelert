@@ -29,7 +29,7 @@
   var NAMES_VERSION = 2;                           // 2 = the historical ship roster (names.js)
   var TL_VERSION = 2;                              // 2 = tech levels 4 to 7 and INS ship names
   var STORY_VERSION = 1;                           // 1 = story missions as job offers (story.js)
-  var REP_VERSION = 2;                             // 2 = reputation that goes up and down, from 50 (REP)
+  var REP_VERSION = 3;                             // 2 = reputation that goes up and down, from 50 (REP); 3 = a success +1
 
   function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
   function today() { var d = new Date(); return d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2) + "-" + ("0" + d.getDate()).slice(-2); }
@@ -334,7 +334,7 @@
      starts at 50, never goes below 0 and has no top. A mission's outcome counts once (a success
      gains more at TL5 and TL6: an old beater's success gets talked about; a requalifying job's
      the same); at command, a squadron left behind and each crewman killed come on top. */
-  var REP = { start: 50, success: 2, tlBonus: { 5: 2, 6: 1 }, failure: -1, destroyed: -2, abandoned: -1,
+  var REP = { start: 50, success: 1, tlBonus: { 5: 2, 6: 1 }, failure: -1, destroyed: -2, abandoned: -1,
     wardLost: -1, dropMissed: -3, squadronLost: -3, killed: -1 };
   function repFor(job) { return REP.success + (REP.tlBonus[job.tl] || 0); }      // what a success earns
   // The mission's reputation, part by part: [[what, points], ...].
