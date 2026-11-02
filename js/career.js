@@ -383,6 +383,8 @@
     c.history.unshift(entry);
     if (c.history.length > 200) c.history.length = 200;
     logService(c, entry, r);
+    // Command: the roster crew's losses, growth and morale (BL.roster.afterMission).
+    if (job.station === "captain" && BL.roster) report.crew = BL.roster.afterMission(c, job, r, entry);
     if (r.outcome === "destroyed" || r.outcome === "abandoned") { retireShip(c, entry); report.shipLost = true; }
     generateOffers(c, job.station);
     refreshCommand(c);

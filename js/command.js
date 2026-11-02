@@ -283,7 +283,7 @@
     this.stats = { rockHits: 0, calls: 0, breaks: 0, pilotBreaks: 0, breaksMade: 0, taken: 0, unanswered: 0, systems: [],
       wardTorps: 0, wardCalls: 0, covers: 0, covered: 0, wingStops: 0, swarms: 0 };
     this.pilot = new CaptainPilot();
-    this.pilotCrew = BL.pickPilot(m.seed, m.data.classId);     // (his name and skill: how fast he takes an order)
+    this.pilotCrew = (m.crewSet && m.crewSet.pilot) || BL.pickPilot(m.seed, m.data.classId);     // (his name and skill: how fast he takes an order)
     // Escort (BL.COMMAND.escort): the ward's hull carries over from system to system.
     this.escort = m.escort ? this.makeEscort() : null;
     this.station = "ahead"; this.wcall = null;
@@ -765,7 +765,11 @@
   Captain.prototype.pilotCall = function () {
     var m = this.m, E = BL.HELM.evade, cv = this.callView();
     if (!cv || cv.in > E.lateMin || !cv.canBreak || this.breaksOn === "steady") return;
-    if (this.breaksOn === "hold" && m.sys("shield").mj >= cv.mj * E.cover) return;
+    // (his temperament, BL.ROSTER.temper: an aggressive pilot breaks sooner under HOLD, a cautious
+    // one later, and under EVADE a cautious one lets a burst the shields easily take come in)
+    var tk = this.pilotCrew.temperK === undefined ? 0.5 : this.pilotCrew.temperK, sh = m.sys("shield").mj;
+    if (this.breaksOn === "hold" && sh >= cv.mj * E.cover * (0.5 + tk)) return;
+    if (this.breaksOn === "evade" && tk < 0.5 && sh >= cv.mj * E.cover * 2) return;
     this.call.done = true; this.stats.pilotBreaks++;
     m.helm.orderBreak(this.openFish(), this.call.ship, this.awayFromRocks(cv.bearing < 0 ? 1 : -1), true);
   };
@@ -1030,7 +1034,7 @@
     var rc = BL.GUNNERY.ring.classes[classId];
     var m = new BL.Mission(Object.assign({ seed: seed, quiet: true, classId: classId, tl: tl, helm: true, captain: true,
       gunner: { weapons: BL.GUNNERY.loadout[classId], ring: true, arcs: rc.arcs, arcNames: rc.arcNames, helm: true } }, extra));
-    var eng = new BL.AIEngineer(0.5, 0.25, m.turret.engineer.skill), bot = new CaptainBot(extra && extra.bot);
+    var en = m.turret.engineer, eng = new BL.AIEngineer(en.temperK === undefined ? 0.5 : en.temperK, 0.25, en.skill), bot = new CaptainBot(extra && extra.bot);
     if (extra && extra.noMain) bot.noMain = true;      // (tests: the main gun on standing orders only)
     if (extra && extra.stance) { m.captain.stance = m.captain.stanceOn = extra.stance; bot.fixedStance = true; }     // (tests: a standing stance other than balanced, held all mission)
     m.beginJump();

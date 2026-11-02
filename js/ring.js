@@ -27,7 +27,7 @@
     });
     // At the helm (opts.helm) the player holds no gun: a crewman works every one of them.
     this.crewAll = !!opts.helm;
-    var crew = BL.pickGunCrew(m.seed, m.data.classId, this.crewAll);
+    var crew = m.crewSet && m.crewSet.guns ? m.crewSet.guns : BL.pickGunCrew(m.seed, m.data.classId, this.crewAll);
     this.bats.forEach(function (b, i) { b.crew = crew[i] || null; });
     this.pilot = cls.pilot || null;            // main gun ships: the AI pilot turns the bow onto the big target
     this.heading = 0;                          // degrees the ship has turned (the starfield turns with it)
@@ -930,7 +930,7 @@
       var dx = target.x - b.x, dy = target.y - b.y, along = dx * b.nx + dy * b.ny, off = Math.abs(dx * b.ny - dy * b.nx);
       var rad = target.w ? Math.max(target.w, target.h) * 0.45 : 0.024;
       if (cw) { var d = Math.hypot(dx, dy), miss = Math.abs(norm(self.bearingOf(target.x, target.y) + b.aiJitter - b.phi));
-        aligned = along > 0 && miss * RAD * d < rad * lerp(C.loose); }
+        aligned = along > 0 && miss * RAD * d < rad * lerp(C.loose) * (cw.temperK === undefined ? 1 : 0.7 + 0.6 * cw.temperK); }     // (an aggressive crew fires on a rougher aim, a cautious one waits: BL.ROSTER.temper)
       else aligned = along > 0 && off < rad * (0.6 + 0.6 * skill);
     }
     b.firing = aligned && gun.mj >= b.w.shotMJ;

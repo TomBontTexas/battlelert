@@ -29,7 +29,7 @@
     this.rng = BL.rng((m.seed ^ 0x5bd1e995) >>> 0);
     this.ships = []; this.torps = []; this.bolts = []; this.effects = [];
     this.nextId = 1;
-    this.engineer = BL.pickEngineer(m.seed, m.data.classId);
+    this.engineer = (m.crewSet && m.crewSet.engineer) || BL.pickEngineer(m.seed, m.data.classId);
     this.stats = { shots: 0, hits: 0, torpHits: 0, torps: 0, downed: 0, ships: 0, kills: 0, damage: 0, dryTime: 0, calls: 0, hullTorps: 0,
       ptFired: 0, ptHits: 0, ptDowned: 0, ptMissed: 0, firingTime: 0, liveTime: 0 };
     this.ptTorps = []; this.pt = [];
