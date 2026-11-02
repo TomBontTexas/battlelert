@@ -816,7 +816,7 @@
      career, made at its first Command job. Skills 0 to 1 as the stations' crews (engineers and
      pilots from GUNNERY.engineer.skill.other, gun crews from GUNNERY.crew.skill).
      pool: men per post; hire: a green new hire's skill (one joins for each man killed);
-     grow: skill added per mission served, and more for a success, up to cap;
+     grow: skill added per mission served, and for a success, up to cap;
      morale: start, a success, a failure, each shipmate killed aboard; in battle a man works at
      his skill times eff[0] (morale 0) to eff[1] (morale 100);
      temper: each temperament's number (0 cautious to 1 aggressive: AIEngineer, Captain.pilotCall,
@@ -825,7 +825,7 @@
      the man's roll takes (morale - 50) / `morale` off. */
   BL.ROSTER = {
     pool: { engineer: 12, pilot: 12, gun: 24 }, hire: [0.3, 0.5],
-    grow: { served: 0.01, success: 0.01, cap: 0.95 },
+    grow: { served: 0, success: 0.01, cap: 0.95 },     // (one point for a success: TexasBont, Nov 2, 2026)
     morale: { start: 60, success: 5, failure: -10, killed: -10, eff: [0.9, 1.1] },
     temper: { cautious: 0.2, steady: 0.5, aggressive: 0.8 },
     sign: { stay: 25, morale: 5 },

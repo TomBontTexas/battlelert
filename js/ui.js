@@ -2605,7 +2605,7 @@
   }
   function renderCrew() {
     var j = crewJob, posts = crewPosts();
-    $("crew-lede").textContent = BL.shipLabel(j.classId, j.ship, j.hull) + " (TL" + j.tl + "). The job suggests this crew from your crew pool. Tap a post to choose another man for it; a man you ask may refuse to sign on with you (the better he is, the likelier, and your command reputation helps). Skill grows with every mission a man serves; morale rises with successes and falls with failures and shipmates lost; if the ship is destroyed, each man's chance of surviving is his skill.";
+    $("crew-lede").textContent = BL.shipLabel(j.classId, j.ship, j.hull) + " (TL" + j.tl + "). The job suggests this crew from your crew pool. Tap a post to choose another man for it; a man you ask may refuse to sign on with you (the better he is, the likelier, and your command reputation helps). A man gains a point of skill for every successful mission; morale rises with successes and falls with failures and shipmates lost; if the ship is destroyed, each man's chance of surviving is his skill.";
     $("crew-posts").innerHTML = posts.map(function (p, i) {
       var m = BL.roster.man(career, p.id), html = '<button class="crew-post' + (crewOpen === i ? " on" : "") + '" data-p="' + i + '"><b>' + p.name + "</b><span>" + (m ? manLine(BL.roster.view(m)) : "(nobody)") + "</span></button>";
       if (crewOpen === i) html += '<div class="crew-pick">' + BL.roster.available(career, p.post).map(function (v) {
