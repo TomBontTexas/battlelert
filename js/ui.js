@@ -2721,8 +2721,8 @@
   function showShipCard(e) {
     var c = career, d = BL.shipFor(e.classId, e.tl), cls = BL.classById(e.classId), rec = e.rec;
     var sysOf = function (kind) { return d.systems.filter(function (s) { return s.kind === kind; }); }, one = function (k) { return sysOf(k)[0]; };
-    $("card-title").innerHTML = shipHtml(e.classId, e.ship, e.hull);
-    $("card-lede").innerHTML = cls.name + " · tech level " + e.tl + " · " +
+    $("card-title").innerHTML = shipHtml(e.classId, e.ship, e.hull) + " (TL" + e.tl + ")";
+    $("card-lede").innerHTML = cls.name + " · " +
       (rec && rec.lost ? '<span class="lost-note">Lost in action ' + rec.lost + "</span>" : rec ? "In service" : "In service; you haven't served aboard her");
     $("card-art").innerHTML = e.classId === "gunboat" ? BL.ART.gunboat(e.ship) : BL.ART.warship(e.classId, e.hull);
     var rows = [], rx = d.reactors, helm = BL.HELM.classes[e.classId];
