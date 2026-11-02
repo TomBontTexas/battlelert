@@ -685,8 +685,28 @@
     // Gunboats draw from the better end: they are the easy first job.
     engineer: { skill: { gunboat: [0.6, 0.95], other: [0.3, 0.95] },
       ranks: ["Engineer's Mate", "Petty Officer", "Chief"],
-      first: ["Dana", "Ike", "Mara", "Theo", "Priya", "Sol", "Wren", "Kofi", "Lena", "Rafe", "Juno", "Tam", "Ines", "Bo", "Nadia", "Cass"],
-      last: ["Reyes", "Okafor", "Lindqvist", "Brandt", "Kowalski", "Haddad", "Moreau", "Tanaka", "Byrne", "Novak", "Silva", "Petrov", "Achebe", "Quinn", "Varga", "Holt"] },
+      // Every crewman's names, drawn from the Dallas–Fort Worth population: Texas's common given
+      // names (SSA state lists) and the area's common surnames, in rough proportion to its people.
+      // The captain's crew pool never gives two men the same first or last name (js/roster.js).
+      first: ["Michael", "Christopher", "Joshua", "Daniel", "David", "James", "Matthew", "Jose", "Juan", "Carlos", "Luis", "Jesus",
+        "Anthony", "Andrew", "Brandon", "Justin", "Tyler", "Jacob", "Ryan", "Kevin", "Eric", "Jonathan", "Robert", "John", "William",
+        "Marcus", "Cody", "Derrick", "Jorge", "Miguel", "Alejandro", "Diego", "Adrian", "Isaiah", "Jamal", "Darnell", "Terrell",
+        "Hung", "Minh", "Raj", "Arjun", "Sanjay", "Chidi", "Tunde", "Kwame", "Wei", "Jin", "Omar", "Ali", "Travis", "Dustin", "Hector",
+        "Ricardo", "Javier", "Mateo", "Santiago", "Noah", "Liam", "Elijah", "Caleb",
+        "Jessica", "Ashley", "Amanda", "Sarah", "Jennifer", "Brittany", "Stephanie", "Maria", "Elizabeth", "Lauren", "Samantha",
+        "Megan", "Rachel", "Hannah", "Emily", "Vanessa", "Andrea", "Monica", "Alejandra", "Gabriela", "Guadalupe", "Leticia",
+        "Yesenia", "Destiny", "Jasmine", "Tiffany", "Keisha", "Aaliyah", "Linh", "Mai", "Priya", "Anjali", "Grace", "Sofia",
+        "Isabella", "Kayla", "Courtney", "Crystal", "Olivia", "Ximena"],
+      last: ["Garcia", "Hernandez", "Martinez", "Rodriguez", "Lopez", "Gonzalez", "Perez", "Sanchez", "Ramirez", "Torres", "Flores",
+        "Rivera", "Gomez", "Diaz", "Cruz", "Morales", "Reyes", "Gutierrez", "Ortiz", "Chavez", "Ramos", "Vasquez", "Castillo",
+        "Mendoza", "Jimenez", "Salazar", "Herrera", "Medina", "Aguilar", "Vargas", "Guerrero", "Delgado",
+        "Smith", "Johnson", "Williams", "Brown", "Jones", "Davis", "Miller", "Wilson", "Moore", "Taylor", "Anderson", "Thomas",
+        "Jackson", "White", "Harris", "Martin", "Thompson", "Robinson", "Lewis", "Walker", "Hall", "Allen", "Young", "King",
+        "Wright", "Scott", "Green", "Baker", "Adams", "Nelson", "Carter", "Mitchell", "Roberts", "Turner", "Phillips", "Campbell",
+        "Parker", "Evans", "Edwards", "Collins", "Stewart", "Morris", "Murphy", "Cook", "Rogers", "Washington", "Brooks", "Coleman",
+        "Jenkins", "Bell", "Hughes", "Price", "Henderson", "Patterson", "Simmons", "Fletcher", "Dawson",
+        "Nguyen", "Tran", "Le", "Pham", "Patel", "Shah", "Kim", "Lee", "Park", "Chen", "Wang", "Huang", "Singh", "Reddy",
+        "Okafor", "Adeyemi", "Mensah", "Tesfaye"] },
     // The bridge pilot (BL.pickPilot): skill as the engineer's; names from the engineer's lists.
     pilot: { ranks: ["Pilot's Mate", "Petty Officer", "Chief"] },
     // How each encounter's enemies look and fly. count = ships per wave (the wave's toughness is

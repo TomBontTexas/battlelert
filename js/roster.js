@@ -25,12 +25,17 @@
   }
   function skillRange(post) { return post === "gun" ? BL.GUNNERY.crew.skill : BL.GUNNERY.engineer.skill.other; }
 
-  // A new man for the pool; his first and last names never both match a man already in it.
+  // A first and a last name (BL.GUNNERY.engineer, Dallas–Fort Worth names) that no man in men has.
+  function newName(men, rng) {
+    var E = BL.GUNNERY.engineer, tf = {}, tl = {};
+    men.forEach(function (m) { tf[m.first] = true; tl[m.last] = true; });
+    var fs = E.first.filter(function (n) { return !tf[n]; }), ls = E.last.filter(function (n) { return !tl[n]; });
+    return { first: rng.pick(fs.length ? fs : E.first), last: rng.pick(ls.length ? ls : E.last) };
+  }
+  // A new man for the pool; no man already in it shares his first name or his last name.
   function newMan(cr, rng, post, skill) {
-    var E = BL.GUNNERY.engineer, taken = {}, first, last, k = 0;
-    cr.men.forEach(function (m) { taken[m.first + " " + m.last] = true; });
-    do { first = rng.pick(E.first); last = rng.pick(E.last); } while (taken[first + " " + last] && k++ < 200);
-    var man = { id: cr.nextId++, post: post, first: first, last: last, skill: r2(skill), temper: rng.pick(TEMPERS),
+    var n = newName(cr.men, rng);
+    var man = { id: cr.nextId++, post: post, first: n.first, last: n.last, skill: r2(skill), temper: rng.pick(TEMPERS),
       morale: BL.ROSTER.morale.start, missions: 0, wins: 0, ships: [], record: [], joined: today() };
     cr.men.push(man);
     return man;
@@ -45,10 +50,18 @@
     return n;
   }
   // The career's pool, made the first time a Command job needs it (careers from before stage 2 too).
+  // (names: 2 = the Dallas–Fort Worth names; older pools are renamed once, every man unique.)
   function ensure(c) {
-    if (c.crew && c.crew.men) return c.crew;
+    if (c.crew && c.crew.men) {
+      if (c.crew.names !== 2) {
+        var nr = BL.rng(((c.offerSeed || 1) ^ 0x7f4a7c15) >>> 0 || 1), done = [];
+        c.crew.men.forEach(function (m) { var n = newName(done, nr); m.first = n.first; m.last = n.last; done.push(m); });
+        c.crew.names = 2;
+      }
+      return c.crew;
+    }
     var R = BL.ROSTER, rng = BL.rng(((c.offerSeed || 1) ^ 0x3c6ef372) >>> 0 || 1);
-    var cr = c.crew = { men: [], nextId: 1, kia: [], last: null };
+    var cr = c.crew = { men: [], nextId: 1, kia: [], last: null, names: 2 };
     POSTS.forEach(function (p) { for (var i = 0; i < R.pool[p]; i++) newMan(cr, rng, p, rng.range(skillRange(p))); });
     return cr;
   }

@@ -2667,11 +2667,13 @@
     var j = crewJob, posts = crewPosts();
     $("crew-lede").textContent = BL.shipLabel(j.classId, j.ship, j.hull) + " (TL" + j.tl + "). The job suggests this crew from your crew pool. Tap a post to choose another man for it; a man you ask may refuse to sign on with you (the better he is, the likelier, and your command reputation helps). The job asks the best men first and stops at the first who signs on, so the men below him haven't been asked yet. A man gains a point of skill for every successful mission; morale rises with successes and falls with failures and shipmates lost; if the ship is destroyed, each man's chance of surviving is his skill.";
     $("crew-posts").innerHTML = posts.map(function (p, i) {
-      var m = BL.roster.man(career, p.id), html = '<button class="crew-post' + (crewOpen === i ? " on" : "") + '" data-p="' + i + '"><b>' + p.name + "</b><span>" + (m ? manLine(BL.roster.view(m)) + " " + rollTag(j, m.id) : "(nobody)") + "</span></button>";
+      // (while its list is open, the post row doesn't repeat the man highlighted in the list)
+      var m = BL.roster.man(career, p.id), html = '<button class="crew-post' + (crewOpen === i ? " on" : "") + '" data-p="' + i + '"><b>' + p.name + "</b>" +
+        (crewOpen === i ? '<span class="tag">tap a man below, or tap here to close</span>' : m ? "<span>" + manLine(BL.roster.view(m)) + '</span><span class="crew-tags">' + rollTag(j, m.id) + "</span>" : "<span>(nobody)</span>") + "</button>";
       if (crewOpen === i) html += '<div class="crew-pick">' + BL.roster.available(career, p.post).map(function (v) {
         var where = posts.filter(function (q) { return q.id === v.id; })[0], no = (j.asked || {})[v.id] === false;
-        return '<button class="crew-man' + (v.id === p.id ? " on" : "") + (no ? " no" : "") + '" data-p="' + i + '" data-id="' + v.id + '"><span>' + manLine(v) + "</span>" +
-          (where && where !== p ? '<span class="tag">now on ' + where.name + "</span>" : "") + (where && where !== p ? "" : rollTag(j, v.id)) + (BL.roster.fits(BL.roster.man(career, v.id), j.classId) ? "" : '<span class="tag">below the gunboat standard</span>') + "</button>";
+        return '<button class="crew-man' + (v.id === p.id ? " on" : "") + (no ? " no" : "") + '" data-p="' + i + '" data-id="' + v.id + '"><span>' + manLine(v) + '</span><span class="crew-tags">' +
+          (where && where !== p ? '<span class="tag">now on ' + where.name + "</span>" : "") + (where && where !== p ? "" : rollTag(j, v.id)) + (BL.roster.fits(BL.roster.man(career, v.id), j.classId) ? "" : '<span class="tag">below the gunboat standard</span>') + "</span></button>";
       }).join("") + "</div>";
       return html;
     }).join("");
