@@ -139,9 +139,9 @@
     // A Command job: the crew from the roster (the crew screen's picks, else the suggestion).
     var rcrew = null;
     if (j.captain && !j.test && career && BL.roster) { j.crewUsed = BL.roster.crewOf(career, j, true); rcrew = BL.roster.forMission(career, j.crewUsed); }
-    sim = new BL.Mission({ seed: j.seed, crew: rcrew, classId: j.classId, tl: j.tl, gunner: guns, helm: !!j.helm, captain: !!j.captain, escort: !!j.escort, test: !!j.test, sweep: j.test && j.classId === "gunboat" && !!guns && !j.escort,
+    sim = new BL.Mission({ seed: j.seed, crew: rcrew, classId: j.classId, tl: j.tl, gunner: guns, helm: !!j.helm, captain: !!j.captain, escort: !!j.escort, escortKind: j.escortKind || null, test: !!j.test, sweep: j.test && j.classId === "gunboat" && !!guns && !j.escort,
       route: story ? story.systems : null, reports: story ? story.reports.map(storyText) : null,
-      world: story ? ((story.briefing || "").match(/(industrial|military|transportation) world/) || [])[1] : null });
+      world: story ? ((story.briefing || "").match(/(industrial|military|transportation|reclamation) world/) || [])[1] : null });
     if (j.test) $("seed-input").value = j.seed;
     var d = sim.data, cls = BL.classById(j.classId);
     $("brief-seed").textContent = "· seed " + j.seed;
@@ -2597,7 +2597,7 @@
     function sec(title, rows) { return rows.length ? '<div class="offer-sec"><div class="offer-sec-h">' + title + "</div>" + rows.map(function (x) { return "<div>" + x + "</div>"; }).join("") + "</div>" : ""; }
     return '<div class="offer' + (up ? " stepup" : "") + '"><h3>' + shipHtml(j.classId, j.ship, j.hull) + " (TL" + j.tl + ")" + tag + "</h3>" +
       '<button class="primary" data-i="' + i + '">Accept</button>' +
-      (j.escort ? '<div class="offer-story">Escort mission: your ' + cls.name.toLowerCase() + " is one of a squadron screening " + (j.classId === "gunboat" ? "the carrier" : "a convoy or a capital ship") + ".</div>" : "") +
+      (j.escort ? '<div class="offer-story">Escort mission: your ' + cls.name.toLowerCase() + " is one of a squadron screening " + (j.classId === "gunboat" ? "the carrier" : j.escortKind === "convoy" ? "a convoy" : j.escortKind === "capital" ? "a capital ship" : "a convoy or a capital ship") + ".</div>" : "") +
       (j.story ? '<div class="offer-story"><b>' + esc(j.title) + "</b> · " + cls.name + " chapter: " + esc(j.chapter) + "</div>" : "") +
       '<div class="meta">Reputation +' + BL.career.repFor(j) + " on success" +
       (up ? " · success qualifies you as " + rankName + "-" + j.n : "") + "</div>" +

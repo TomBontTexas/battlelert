@@ -2,7 +2,8 @@
 /* Story missions, built by tools/build_story.py from the storyline files (don't edit by hand).
    BL.STORY[station] = 27 missions, three per ship class: id, n (class), k (1-3), title, chapter,
    briefing, systems (three encounter ids), after (success), lost (failure), reports (lines the
-   game plays, one as the ship arrives in each system). {hero} and {ship} are filled in by the game. */
+   game plays, one as the ship arrives in each system), escort (Captain path: carrier, convoy or
+   capital). {hero} and {ship} are filled in by the game. */
 (function (root) {
   "use strict";
   var BL = root.BL = root.BL || {};
@@ -1466,6 +1467,524 @@
    "lost": "Drive hunters and capital ships prevented the planet-buster strike.",
    "reports": [
     "Tactical: Drive hunters approaching."
+   ]
+  }
+ ],
+ "captain": [
+  {
+   "id": "captain-1-1",
+   "n": 1,
+   "k": 1,
+   "title": "Keep Her Astern",
+   "chapter": "First Blood",
+   "briefing": "Commodore Rusk: Raiders have found the carrier's launch corridor. Your gunboat will screen her through three sorties while the formation advances. Keep the attackers off her; she recovers you only from astern, so be there when the sortie ends. Vale's note is blunt: a screen that chases glory leaves the ship it was sent to protect exposed.",
+   "systems": [
+    "raiders",
+    "interceptors",
+    "raiders"
+   ],
+   "after": "The carrier held her course and took {ship} aboard from astern. Vale's report praised the crew for staying with the assignment when the interceptors tried to draw them away.",
+   "lost": "The carrier was lost with her launch corridor still under attack.",
+   "reports": [
+    "Tactical: Raiders on the launch corridor.",
+    "Engineering: Power stable."
+   ],
+   "escort": "carrier"
+  },
+  {
+   "id": "captain-1-2",
+   "n": 1,
+   "k": 2,
+   "title": "Open Water",
+   "chapter": "First Blood",
+   "briefing": "Captain Vale: The fleet needs a passage through an Azurian mine lane. Your gunboat will make three sorties to help open it. Hold to the plotted approach and give your gunner time to work; the larger ships will follow the route you leave them. There is no credit for reaching the far side if the lane remains unsafe.",
+   "systems": [
+    "minefield",
+    "sweep",
+    "minefield"
+   ],
+   "after": "The route was cleared for the ships following the carrier group. Vale noted that {hero} brought the boat back with the mission complete and the fleet's approach usable.",
+   "lost": "The mine lane remained unsafe, and the fleet could not use the planned passage.",
+   "reports": [
+    "Tactical: Mine contacts marked ahead.",
+    "Damage control: Hull holding."
+   ]
+  },
+  {
+   "id": "captain-1-3",
+   "n": 1,
+   "k": 3,
+   "title": "The Screen Holds",
+   "chapter": "First Blood",
+   "briefing": "Commodore Rusk: Azurian interceptors are striking the gunboats assigned to protect our carrier group. Take {ship} through three sorties against the attackers. Do not let them pull you beyond the formation; the carrier must remain clear to launch and recover the boats still in the fight. Vale reminds you that the men who return are part of the result.",
+   "systems": [
+    "interceptors",
+    "interceptors",
+    "raiders"
+   ],
+   "after": "{ship} returned to the carrier after the attacks broke against the screen. Vale's note called the result a sound command: the crew completed the assignment and came home together.",
+   "lost": "The attackers broke the gunboat screen and left the carrier group exposed.",
+   "reports": [
+    "Tactical: Interceptors crossing our bow.",
+    "Engineering: Drive output holding."
+   ]
+  },
+  {
+   "id": "captain-2-1",
+   "n": 2,
+   "k": 1,
+   "title": "The Unmarked Field",
+   "chapter": "Beyond the Line",
+   "briefing": "Commodore Rusk: Scout the approach beyond the current line. Our reports on this route are thin and some of them are old. Plot through every checkpoint in each system, see for yourself what waits there, and reach the warp zone on time. A clean report is useful; a corrected one may save the ships behind you.",
+   "systems": [
+    "raiders",
+    "minefield",
+    "interceptors"
+   ],
+   "after": "The picket ship came home with the route surveyed and the minefield charted. Rusk ordered the warning sent ahead of the fleet.",
+   "lost": "The scouting run failed, leaving the fleet without a reliable report on the approach.",
+   "reports": [
+    "Navigation: Checkpoint route plotted.",
+    "Tactical: Mine contacts ahead."
+   ]
+  },
+  {
+   "id": "captain-2-2",
+   "n": 2,
+   "k": 2,
+   "title": "Count the Fires",
+   "chapter": "Beyond the Line",
+   "briefing": "Captain Vale: Azurian ships have been sighted near a route the fleet may need. In each system, take the picket through every checkpoint before the warp zone and report the enemy positions. Do not chase a contact beyond the plotted route. The fleet needs a picture of the whole approach, not one impressive fragment of it.",
+   "systems": [
+    "frigate",
+    "siege",
+    "raiders"
+   ],
+   "after": "The fleet received a clear account of the frigate group and the siege line. Vale praised the report for showing where the enemy stood, not merely where the picket had fought.",
+   "lost": "The fleet advanced without a current picture of the enemy positions.",
+   "reports": [
+    "Tactical: Frigate group holding position.",
+    "Navigation: Checkpoints complete."
+   ]
+  },
+  {
+   "id": "captain-2-3",
+   "n": 2,
+   "k": 3,
+   "title": "The Long Return",
+   "chapter": "Beyond the Line",
+   "briefing": "Commodore Rusk: An Azurian patrol is moving across the route to our next operating area. Scout all three systems, clear every checkpoint, and bring back its heading and strength. Keep the ship out of a prolonged fight. Your assignment is to find the patrol and bring the information home.",
+   "systems": [
+    "interceptors",
+    "cruiserA",
+    "minefield"
+   ],
+   "after": "The patrol's position and the minefield were reported before the picket left the route. Rusk said the fleet could now choose its passage with its eyes open.",
+   "lost": "The patrol remained unlocated, and the fleet had to proceed without the scouting report.",
+   "reports": [
+    "Tactical: Cruiser group ahead.",
+    "Engineering: Drive charging."
+   ]
+  },
+  {
+   "id": "captain-3-1",
+   "n": 3,
+   "k": 1,
+   "title": "The Convoy Line",
+   "chapter": "Holding the Line",
+   "briefing": "Commodore Rusk: A convoy of merchant ships must cross three enemy-held systems to reach the fleet. Your squadron will screen it. Keep your destroyer escort between the convoy and the attackers, then warp out with the merchants when the window opens. Raiders can be endured; a broken formation cannot. Their arrival matters more than your tally of enemy ships.",
+   "systems": [
+    "raiders",
+    "interceptors",
+    "siege"
+   ],
+   "after": "The convoy reached the fleet with its ships intact. Vale's note said the escort did its job: the merchants arrived together.",
+   "lost": "The convoy was destroyed before it could reach the fleet.",
+   "reports": [
+    "Tactical: Raiders closing on the convoy.",
+    "Engineering: Shields holding."
+   ],
+   "escort": "convoy"
+  },
+  {
+   "id": "captain-3-2",
+   "n": 3,
+   "k": 2,
+   "title": "A Screen for the Heavy",
+   "chapter": "Holding the Line",
+   "briefing": "Captain Vale: An Imperial capital ship is crossing an exposed route while her drive charges. Your squadron will screen her through three systems. Keep the enemy off her long enough for the warp window, and keep your station close. If the capital ship is lost, the mission is lost with her; the fleet cannot replace her on this route.",
+   "systems": [
+    "frigate",
+    "siege",
+    "hunters"
+   ],
+   "after": "The capital ship cleared the route and warped out under escort. Vale called the formation work disciplined and the result worth the risk.",
+   "lost": "The capital ship was destroyed before she could leave the route.",
+   "reports": [
+    "Tactical: Drive hunters turning toward the capital ship.",
+    "Damage control: Hull holding."
+   ],
+   "escort": "capital"
+  },
+  {
+   "id": "captain-3-3",
+   "n": 3,
+   "k": 3,
+   "title": "Open the Passage",
+   "chapter": "Holding the Line",
+   "briefing": "Commodore Rusk: Enemy ships are holding a narrow passage needed by the advancing formation. Our scouting of it is incomplete. Take your destroyer escort through the three systems, break the pressure on the route, and warp out when the drive is ready. There is no convoy on this assignment. Keep the ship intact enough to report what defended the passage.",
+   "systems": [
+    "minefield",
+    "cruiserA",
+    "siege"
+   ],
+   "after": "The enemy screen gave way and the formation had a usable passage. Rusk noted that the escort returned with both the route and its report intact.",
+   "lost": "The enemy held the passage, and the formation could not use the planned route.",
+   "reports": [
+    "Tactical: Cruiser group blocking the route.",
+    "Engineering: Both batteries charged."
+   ]
+  },
+  {
+   "id": "captain-4-1",
+   "n": 4,
+   "k": 1,
+   "title": "Three Bearings",
+   "chapter": "Into Enemy Space",
+   "briefing": "Commodore Rusk: Raiders have been covering this route, and they do not stay where our pickets last saw them. Take {ship} through the three-system approach, plot clear of the worst of the fields, and open the way for the ships following. You have three gun batteries. Do not mistake more guns for more time.",
+   "systems": [
+    "raiders",
+    "frigate",
+    "siege"
+   ],
+   "after": "The raiders withdrew and the fleet's passage remained open. Rusk's report credited the course and the timing as much as the firepower.",
+   "lost": "The destroyer failed to clear the approach, and the fleet's passage closed.",
+   "reports": [
+    "Navigation: Course plotted around the field.",
+    "Engineering: Auxiliary bank available."
+   ]
+  },
+  {
+   "id": "captain-4-2",
+   "n": 4,
+   "k": 2,
+   "title": "Reserve Margin",
+   "chapter": "Into Enemy Space",
+   "briefing": "Captain Vale: A siege line is holding the only route through this system group. Keep the destroyer moving while the batteries work, and keep enough power in hand to leave when the warp window opens. The auxiliary bank gives you a reserve, not permission to spend it carelessly. The fleet needs the route after this ship has gone.",
+   "systems": [
+    "siege",
+    "interceptors",
+    "frigate"
+   ],
+   "after": "The siege line broke and the destroyer cleared the route before the window closed. Vale praised the crew for keeping the ship's options open through the final engagement.",
+   "lost": "The siege line held, and the destroyer could not open the route.",
+   "reports": [
+    "Tactical: Interceptors approaching from astern.",
+    "Engineering: Auxiliary bank engaged."
+   ]
+  },
+  {
+   "id": "captain-4-3",
+   "n": 4,
+   "k": 3,
+   "title": "Pressure Point",
+   "chapter": "Into Enemy Space",
+   "briefing": "Commodore Rusk: Azurian forces are concentrating around a gap in their screen. Take the destroyer through all three systems and strike the weakest point before reinforcements arrive. Plot around the enemy areas rather than through them. The fleet can exploit a gap only if your ship reaches it in fighting condition.",
+   "systems": [
+    "minefield",
+    "raiders",
+    "cruiserA"
+   ],
+   "after": "The destroyer reached the gap and the enemy screen lost its hold on the route. Rusk said the fleet could now advance through the opening.",
+   "lost": "The enemy concentration sealed the gap before the fleet could use it.",
+   "reports": [
+    "Navigation: Minefield marked on the plotted route.",
+    "Tactical: Cruiser group turning toward us."
+   ]
+  },
+  {
+   "id": "captain-5-1",
+   "n": 5,
+   "k": 1,
+   "title": "Bow First",
+   "chapter": "The Spearpoint",
+   "briefing": "Commodore Rusk: An Azurian frigate group is blocking the approach to the fleet's next position. Bring the light cruiser along the plotted course and give the main gun a clear bow-on opportunity. The weapon can break the formation, but it cannot fire through a turn you have not finished. Keep the warp window in view while you make the opening.",
+   "systems": [
+    "frigate",
+    "cruiserA",
+    "siege"
+   ],
+   "after": "The main gun broke the enemy formation and the light cruiser reached the warp zone. Rusk reported the passage open for the ships behind it.",
+   "lost": "The enemy formation held the route, and the light cruiser could not open a passage.",
+   "reports": [
+    "Tactical: Frigate group in the approach.",
+    "Engineering: Main gun charged."
+   ]
+  },
+  {
+   "id": "captain-5-2",
+   "n": 5,
+   "k": 2,
+   "title": "One Clear Window",
+   "chapter": "The Spearpoint",
+   "briefing": "Captain Vale: Our scouting of this route is old; expect to find what the reports missed. Bring the ship around the enemy's flank and swing the main gun on when the target crosses the bow. Do not trade the warp window for a second shot. One clean strike that lets the ship leave is better than a perfect firing position after the route closes.",
+   "systems": [
+    "raiders",
+    "cruiserA",
+    "interceptors"
+   ],
+   "after": "The light cruiser struck through the opening and warped out before the screen closed. Vale noted that the captain left with the mission accomplished, not with one more shot to his credit.",
+   "lost": "The cruiser screen closed the route before the light cruiser could leave.",
+   "reports": [
+    "Navigation: Flank route plotted.",
+    "Tactical: Target crossing the bow."
+   ]
+  },
+  {
+   "id": "captain-5-3",
+   "n": 5,
+   "k": 3,
+   "title": "Hard Contact",
+   "chapter": "The Spearpoint",
+   "briefing": "Commodore Rusk: Azurian ships are testing the fleet's forward line. Take the light cruiser into the engagement, use the main gun against the strongest threat, and keep the ship's course clear for withdrawal. The enemy will try to draw your bow away from the fight. Decide which contact matters before the firing window appears.",
+   "systems": [
+    "interceptors",
+    "frigate",
+    "battleshipA"
+   ],
+   "after": "The forward line held and the light cruiser withdrew on schedule. Rusk's report noted that the main gun was used where it changed the engagement.",
+   "lost": "The Azurian attack forced the forward line back, and the light cruiser was lost with it.",
+   "reports": [
+    "Tactical: Battleship group in range.",
+    "Engineering: Main gun charged."
+   ]
+  },
+  {
+   "id": "captain-6-1",
+   "n": 6,
+   "k": 1,
+   "title": "Launch on Contact",
+   "chapter": "Deep Strike",
+   "briefing": "Commodore Rusk: An Azurian frigate group is exposed beyond the outer screen. Launch the gunboat squadron to strike while the cruiser holds the route, then recover it before the warp window. Keep the boats' return in your plan from the start. A raid that leaves its own squadron behind has not finished its assignment.",
+   "systems": [
+    "frigate",
+    "minefield",
+    "raiders"
+   ],
+   "after": "The gunboats returned to the hangar and the cruiser left the route with the raid complete. Rusk praised the recovery as part of the operation, not an afterthought.",
+   "lost": "The raid failed, and the cruiser never brought her squadron home.",
+   "reports": [
+    "Tactical: Frigate group breaking formation.",
+    "Engineering: Launchers charged."
+   ]
+  },
+  {
+   "id": "captain-6-2",
+   "n": 6,
+   "k": 2,
+   "title": "Hold the Recovery",
+   "chapter": "Deep Strike",
+   "briefing": "Captain Vale: Drive hunters will press the cruiser while the gunboats are out. Keep the route open long enough to recover the squadron, and watch the hangar's condition. If the hangar is wrecked before the boats return, they will be left behind when the cruiser warps. The enemy knows exactly what that choice costs.",
+   "systems": [
+    "interceptors",
+    "hunters",
+    "siege"
+   ],
+   "after": "The hangar remained usable and the squadron returned before the cruiser warped out. Vale's assessment named every recovered boat as part of the ship's survival.",
+   "lost": "The drive hunters broke the cruiser, and her squadron went down with the raid.",
+   "reports": [
+    "Damage control: Hangar reports damage.",
+    "Tactical: Drive hunters closing."
+   ]
+  },
+  {
+   "id": "captain-6-3",
+   "n": 6,
+   "k": 3,
+   "title": "The Last Boat In",
+   "chapter": "Deep Strike",
+   "briefing": "Commodore Rusk: An Azurian cruiser group is covering the route out of this system. Use the gunboats to draw its fire and disrupt the screen, but recover them before the cruiser commits to the warp. The squadron gives you reach; the cruiser remains responsible for bringing its crews home. Keep the withdrawal route plotted while the boats are engaged.",
+   "systems": [
+    "cruiserA",
+    "raiders",
+    "frigate"
+   ],
+   "after": "The last gunboat cleared the hangar before the cruiser reached the warp zone. Rusk noted that the squadron's attack and recovery formed one successful operation.",
+   "lost": "The cruiser group held the route, and the raid ended with the cruiser lost.",
+   "reports": [
+    "Tactical: Cruiser group turning toward the gunboats.",
+    "Engineering: Arresters charged."
+   ]
+  },
+  {
+   "id": "captain-7-1",
+   "n": 7,
+   "k": 1,
+   "title": "Hunters at the Drive",
+   "chapter": "The Price of Victory",
+   "briefing": "Commodore Rusk: Drive hunters are targeting the heavy cruiser's warp drive as it charges. Keep the ship on the plotted route and let point defense meet them when they close. The fleet needs this passage, but the ship must still be able to leave it. Do not let the chase pull you away from the warp zone.",
+   "systems": [
+    "hunters",
+    "siege",
+    "frigate"
+   ],
+   "after": "The drive hunters failed to stop the charge and the heavy cruiser cleared the route. Rusk said the point defense bought the time the ship needed.",
+   "lost": "The drive hunters and their escorts stopped the heavy cruiser in enemy space.",
+   "reports": [
+    "Tactical: Drive hunters closing on the stern.",
+    "Engineering: CIWS charged."
+   ]
+  },
+  {
+   "id": "captain-7-2",
+   "n": 7,
+   "k": 2,
+   "title": "Close the Gap",
+   "chapter": "The Price of Victory",
+   "briefing": "Captain Vale: The fleet's line has a gap where raiders and drive hunters can reach the charging ships. Take the heavy cruiser across the opening, protect your drive, and hold the route until the line reforms. Point defense can meet the hunters; your course must keep the ship between the threat and the fleet.",
+   "systems": [
+    "raiders",
+    "hunters",
+    "cruiserA"
+   ],
+   "after": "The gap closed and the charging ships warped out behind the heavy cruiser. Vale praised the decision to hold the position until the line was whole.",
+   "lost": "The enemy forced the fleet to abandon the route before the line could reform.",
+   "reports": [
+    "Tactical: Raiders crossing the gap.",
+    "Damage control: Hull holding."
+   ]
+  },
+  {
+   "id": "captain-7-3",
+   "n": 7,
+   "k": 3,
+   "title": "Varkesh's Feint",
+   "chapter": "The Price of Victory",
+   "briefing": "Commodore Rusk: Admiral Varkesh has sent a fast attack toward our warp drive while a cruiser group threatens the route. The feint is meant to draw the heavy cruiser out of position. Keep point defense on the hunters and decide whether the cruiser group can be allowed to pass. The fleet is watching what you protect first.",
+   "systems": [
+    "interceptors",
+    "hunters",
+    "cruiserA"
+   ],
+   "after": "The heavy cruiser held its route and the fleet escaped Varkesh's feint. Rusk said the report showed a captain who could see the whole formation.",
+   "lost": "Varkesh's attack forced the fleet off the planned route and stopped its withdrawal.",
+   "reports": [
+    "Tactical: Cruiser group closing.",
+    "Navigation: Zone bearing confirmed."
+   ]
+  },
+  {
+   "id": "captain-8-1",
+   "n": 8,
+   "k": 1,
+   "title": "Second Reactor",
+   "chapter": "Breaking the Defense",
+   "briefing": "Commodore Rusk: Take your place in the Imperial line and hold it through the engagement. Our pickets could not see all of this route; expect the enemy to have dug in somewhere. Your ship has two reactors, but the line depends on where you send the power and the fire. Break the enemy's position without leaving the ships beside you exposed.",
+   "systems": [
+    "battleshipA",
+    "siege",
+    "cruiserA"
+   ],
+   "after": "The enemy line broke and the Imperial formation held together. Rusk credited the battleship's place in the line as much as its guns.",
+   "lost": "The Imperial line broke before the battleship could clear the route.",
+   "reports": [
+    "Tactical: Battleship group forming ahead.",
+    "Engineering: Both reactors stable."
+   ]
+  },
+  {
+   "id": "captain-8-2",
+   "n": 8,
+   "k": 2,
+   "title": "The Line Holds",
+   "chapter": "Breaking the Defense",
+   "briefing": "Captain Vale: The Azurians are pressing the fleet's flank while a siege line pins the center. Keep the battleship in the fight and turn enough fire toward the flank to stop the collapse. The second reactor gives the ship endurance, not permission to act alone. Your place in the line is part of the fleet's defense.",
+   "systems": [
+    "siege",
+    "raiders",
+    "battleshipA"
+   ],
+   "after": "The flank held until the center cleared the siege line. Vale's note said the battleship stayed where its presence mattered.",
+   "lost": "The Azurian attack broke the flank and forced the fleet to abandon its position.",
+   "reports": [
+    "Tactical: Raiders on the flank.",
+    "Engineering: Reactor output balanced."
+   ]
+  },
+  {
+   "id": "captain-8-3",
+   "n": 8,
+   "k": 3,
+   "title": "A Measured Withdrawal",
+   "chapter": "Breaking the Defense",
+   "briefing": "Commodore Rusk: The fleet must withdraw through three enemy-held systems while the battleship covers the rear. Plot around the siege line, keep the enemy off the ships ahead, and leave when the warp window opens. The enemy will try to make you stay for one more exchange. The fleet's survival is the objective; the battleship is its shield only while it can still move.",
+   "systems": [
+    "frigate",
+    "siege",
+    "hunters"
+   ],
+   "after": "The fleet cleared the route and the battleship warped out with the rear intact. Rusk recorded the withdrawal as a fleet success, not a retreat in name only.",
+   "lost": "The battleship failed to cover the withdrawal, and the rear of the fleet was lost in enemy space.",
+   "reports": [
+    "Navigation: Withdrawal course plotted.",
+    "Tactical: Drive hunters astern."
+   ]
+  },
+  {
+   "id": "captain-9-1",
+   "n": 9,
+   "k": 1,
+   "title": "The Fourth Target",
+   "chapter": "Judgment",
+   "briefing": "Commodore Rusk: The target is an Azurian reclamation world that restores damaged ships to the Nest's fleets. The dreadnought carries the fourth planet buster. Plot through the three defended systems, keep the ship able to reach the drop zone, and release the weapon within the window. The strike will cripple their recovery network. Nothing in the report will make the world empty.",
+   "systems": [
+    "cruiserA",
+    "battleshipA",
+    "siege"
+   ],
+   "after": "The planet buster struck the reclamation world, the fourth Azurian world destroyed in the campaign. Vale's final note recorded the fleet's success and the lives that could not be brought home.",
+   "lost": "The defenders stopped the dreadnought before it could deliver the planet buster.",
+   "reports": [
+    "Tactical: Battleship group closing.",
+    "Engineering: Three reactors stable."
+   ]
+  },
+  {
+   "id": "captain-9-2",
+   "n": 9,
+   "k": 2,
+   "title": "Wreckage of Victory",
+   "chapter": "Judgment",
+   "briefing": "Captain Vale: Varkesh's defenders are using the wreckage around the reclamation world to close your approach. Keep the route clear, keep the warp drive whole until the final system, and hold the ship in the drop zone when the window opens. The planet buster ends the reclamation world. It does not end the war.",
+   "systems": [
+    "hunters",
+    "frigate",
+    "battleshipA"
+   ],
+   "after": "The dreadnought delivered the planet buster to the reclamation world. The strike ended the Nest's major recovery center, while the war and its human cost went on.",
+   "lost": "Drive hunters and capital ships forced the dreadnought away before the strike.",
+   "reports": [
+    "Tactical: Drive hunters approaching.",
+    "Damage control: Hull holding."
+   ]
+  },
+  {
+   "id": "captain-9-3",
+   "n": 9,
+   "k": 3,
+   "title": "The Cost of Judgment",
+   "chapter": "Judgment",
+   "briefing": "Commodore Rusk: The reclamation world is defended by a battleship group and a siege line across its approach. Bring the dreadnought to the drop zone before the window closes. The destruction will deny the Nest a place to restore its fleet; the order remains yours to carry out.",
+   "systems": [
+    "minefield",
+    "battleshipA",
+    "siege"
+   ],
+   "after": "The fourth planet buster destroyed the reclamation world. Rusk's report marked the objective complete; Vale's note remembered what the fleet had paid to deliver it.",
+   "lost": "The siege line held, and the dreadnought turned away without releasing the planet buster.",
+   "reports": [
+    "Navigation: Drop zone approach plotted.",
+    "Tactical: Siege line ahead."
    ]
   }
  ]

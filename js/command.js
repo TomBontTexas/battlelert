@@ -427,7 +427,9 @@
   var WING_SIDES = ["port", "stbd", "astern", "ahead"];
   Captain.prototype.makeEscort = function () {
     var m = this.m, E = BL.COMMAND.escort, r = BL.rng((Math.imul(m.seed, 0x9e3779b1) ^ 0x51ed270b) >>> 0 || 1); r.next();
-    var kind = !m.hasDrive ? "carrier" : r.chance(0.5) ? "convoy" : "capital", W = E.kinds[kind], n = r.int(W.ships), ships = [];
+    var kind = !m.hasDrive ? "carrier" : r.chance(0.5) ? "convoy" : "capital", W, n, ships = [];
+    if (m.hasDrive && (m.escortKind === "convoy" || m.escortKind === "capital")) kind = m.escortKind;     // (a story mission's own)
+    W = E.kinds[kind]; n = r.int(W.ships);
     // A convoy sails two abreast, `gap` x the map's size apart.
     // (a, c: rows ahead and places across, in Captain.placeWard's gaps)
     var rows = Math.ceil(n / 2);

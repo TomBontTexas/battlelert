@@ -28,7 +28,7 @@
 
   var NAMES_VERSION = 2;                           // 2 = the historical ship roster (names.js)
   var TL_VERSION = 2;                              // 2 = tech levels 4 to 7 and INS ship names
-  var STORY_VERSION = 1;                           // 1 = story missions as job offers (story.js)
+  var STORY_VERSION = 2;                           // 1 = story missions as job offers (story.js); 2 = the Captain storyline
   var REP_VERSION = 3;                             // 2 = reputation that goes up and down, from 50 (REP); 3 = a success +1
 
   function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
@@ -100,7 +100,10 @@
     }
     c.tlVersion = TL_VERSION;
     if (!c.storyDone || typeof c.storyDone !== "object") c.storyDone = {};
-    if (oldStory) { c.offersBy = {}; c.storyVersion = STORY_VERSION; }   // offers become story missions
+    if (oldStory) {      // offers become story missions (version 2: only the command offers change)
+      if ((c.storyVersion || 0) < 1) c.offersBy = {}; else delete c.offersBy.captain;
+      c.storyVersion = STORY_VERSION;
+    }
     // Careers from before reputation went up and down: each path from 50, recalculated from the
     // mission history it holds (outcome and tech level; nothing replayed), oldest first.
     if (oldRep) {
@@ -197,7 +200,11 @@
       if (BL.pickEngineer) job.engineer = BL.pickEngineer(job.seed, cls.id);
       if (BL.pickPilot) job.pilot = BL.pickPilot(job.seed, cls.id);
     }
-    if (story) { job.story = story.id; job.title = story.title; job.chapter = story.chapter; }
+    if (story) {
+      job.story = story.id; job.title = story.title; job.chapter = story.chapter;
+      // (a Captain story mission says whether it's an escort, and of what: carrier, convoy or capital ship)
+      if (station === "captain") { job.escort = !!story.escort; job.escortKind = story.escort || null; }
+    }
     return job;
   }
 
@@ -214,10 +221,11 @@
     return BL.STORY[station].filter(function (m) { return m.n === n && !c.storyDone[m.id]; });
   }
   function storyOffers(c, station, rng) {
-    var q = qualified(c, station), out = [];
+    var q = qualified(c, station), out = [], cmd = station === "captain";
     var classes = q >= 1 ? [q, q + 1] : [1];
     classes.forEach(function (n) {
       if (!BL.classByN(n) || !built(station, n)) return;
+      if (cmd && n > q && !canCommand(c, n)) return;      // (command of a class: the command ladder, canCommand)
       var left = storyLeft(c, station, n);
       left.forEach(function (m, i) { out.push(makeJob(rng, station, n, i === 0 ? lowTL(n) : anyTL(rng, n), true, m)); });
       if (!left.length && n > q && !storyComplete(c, station)) {
@@ -225,6 +233,11 @@
         out.push(makeJob(rng, station, n, anyTL(rng, n)));
       }
     });
+    // Command: the class you command has no story left and the next isn't open yet: plain jobs on it.
+    if (cmd && q >= 1 && !out.some(function (j) { return j.n === q; }) && !out.some(function (j) { return j.n > q; })) {
+      out.push(makeJob(rng, station, q, lowTL(q)));
+      for (var i = rng.int([1, 2]); i > 0; i--) out.push(makeJob(rng, station, q, anyTL(rng, q)));
+    }
     return out;
   }
   function offers(c, station) { return c.offersBy[station] || []; }

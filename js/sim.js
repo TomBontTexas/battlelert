@@ -88,7 +88,7 @@
     // Command (opts.captain): the player is the captain; an NPC pilot flies the helm; see command.js.
     // opts.escort: an escort mission (a gunboat squadron screens the carrier each sortie, a
     // destroyer escort squadron a convoy or capital ship each system; Captain, BL.COMMAND.escort).
-    this.escort = !!opts.escort;
+    this.escort = !!opts.escort; this.escortKind = opts.escortKind || null;     // (a story mission names the ward: carrier, convoy or capital)
     this.captain = opts.captain && this.helm ? new BL.Captain(this) : null;
     this.trainer = null;                    // made on arrival (the helm's heading is set then)
     this.stats = {
