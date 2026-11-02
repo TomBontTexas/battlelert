@@ -1770,6 +1770,7 @@
       if (!b) return;
       b.blur();
       if (!c || !c.pos || !turretActive()) return;
+      if (b.dataset.drop) { dropTo(b.dataset.drop, +b.dataset.gun); return; }     // (before data-gun: the STATIONS gun buttons carry it too)
       if (b.dataset.turn) courseBy(+b.dataset.turn);
       else if (b.id === "cp-resume") c.resumePlot();
       else if (b.dataset.eng) c.orderEngines(b.dataset.eng);
@@ -1784,7 +1785,6 @@
       else if (b.id === "cp-hangar") c.orderHangar();
       else if (b.id === "cp-jump") c.orderJump();
       else if (b.id === "cp-drop") dropPick = !dropPick && c.canDrop();
-      else if (b.dataset.drop) dropTo(b.dataset.drop, +b.dataset.gun);
     }
     $("cp-side").addEventListener("click", bridgeClick);
     // The map: a tap steers for that point (a course of the captain's own); a drag pans it, two
