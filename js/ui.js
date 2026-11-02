@@ -2597,9 +2597,8 @@
   }
   // A man's sign-on roll for this job, its parts in full (BL.roster.willSign keeps them in job.rolls).
   function rollTag(j, id) {
-    var a = (j.asked || {})[id], r = (j.rolls || {})[id];
-    if (a === undefined) return '<span class="tag">not asked yet</span>';
-    if (!r) return a ? '<span class="tag signed">signed on</span>' : '<span class="tag refused">refused this job</span>';
+    var a = (j.asked || {})[id], r = BL.roster.rollOf(career, j, id);
+    if (!r) return '<span class="tag">not asked yet</span>';
     if (r.stay) return '<span class="tag signed">stayed on from your last mission (no roll)</span>';
     if (r.hire) return '<span class="tag signed">new hire, signed on (no roll)</span>';
     var mor = r.mor >= 0 ? " − morale " + r.mor : " + morale " + (-r.mor);

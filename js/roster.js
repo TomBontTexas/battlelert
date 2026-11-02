@@ -74,15 +74,30 @@
      his command reputation against the man's d100 + skill - (morale - 50) / 5; the captain must
      roll higher. The dice and their parts are kept in job.rolls for the crew screen. */
   function aboardLast(c, id) { var l = ensure(c).last || {}; return l.engineer === id || l.pilot === id || (l.guns || []).indexOf(id) >= 0; }
-  function willSign(c, job, m) {
-    var asked = job.asked = job.asked || {}, rolls = job.rolls = job.rolls || {}, S = BL.ROSTER.sign;
-    if (asked[m.id] !== undefined) return asked[m.id];
-    if (aboardLast(c, m.id) && m.morale >= S.stay) { rolls[m.id] = { stay: true }; return (asked[m.id] = true); }
+  function roll(c, job, m) {
+    var S = BL.ROSTER.sign;
+    if (aboardLast(c, m.id) && m.morale >= S.stay) return { stay: true, ok: true };
     var rng = BL.rng(((job.seed * 31 + m.id * 7919) ^ 0x2545f491) >>> 0 || 1);
     var r = { capRoll: rng.int([1, 100]), rep: c.stations.captain.rep || 0, hisRoll: rng.int([1, 100]), skill: Math.round(m.skill * 100), mor: Math.round((m.morale - 50) / S.morale * 10) / 10 };
     r.cap = r.capRoll + r.rep; r.him = Math.round((r.hisRoll + m.skill * 100 - (m.morale - 50) / S.morale) * 10) / 10;
-    rolls[m.id] = r;
-    return (asked[m.id] = r.cap > r.him);
+    r.ok = r.cap > r.him;
+    return r;
+  }
+  function willSign(c, job, m) {
+    var asked = job.asked = job.asked || {}, rolls = job.rolls = job.rolls || {};
+    if (asked[m.id] !== undefined) return asked[m.id];
+    var r = rolls[m.id] = roll(c, job, m);
+    return (asked[m.id] = r.ok);
+  }
+  // A man's roll for the crew screen: as kept, or (jobs asked before the rolls were kept) the same
+  // dice again from the job's seed. A yes the dice don't give was a green hire. null: not asked yet.
+  function rollOf(c, job, id) {
+    var a = (job.asked || {})[id], m = man(c, id);
+    if (a === undefined || !m) return null;
+    var r = (job.rolls || {})[id];
+    if (r) return r;
+    r = roll(c, job, m);
+    return r.ok === a ? r : a ? { hire: true } : r;
   }
   /* The crew a job suggests: the men who served with the captain last time first, then the best
      available whose skill fits the class (then anyone left). sign: only men who sign on (willSign);
@@ -157,5 +172,5 @@
   }
 
   BL.roster = { POSTS: POSTS, POST_NAME: POST_NAME, ensure: ensure, man: man, view: view, suggest: suggest, crewOf: crewOf,
-    forMission: forMission, available: available, willSign: willSign, afterMission: afterMission, gunCount: gunCount, fits: fits };
+    forMission: forMission, available: available, willSign: willSign, rollOf: rollOf,afterMission: afterMission, gunCount: gunCount, fits: fits };
 })(typeof window !== "undefined" ? window : globalThis);
