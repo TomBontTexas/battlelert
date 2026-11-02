@@ -72,15 +72,17 @@
      job (job.asked); the same job asks the same dice. A man who served with him last time stays
      on, unless his morale is below BL.ROSTER.sign.stay; anyone else rolls: the captain's d100 +
      his command reputation against the man's d100 + skill - (morale - 50) / 5; the captain must
-     roll higher. */
+     roll higher. The dice and their parts are kept in job.rolls for the crew screen. */
   function aboardLast(c, id) { var l = ensure(c).last || {}; return l.engineer === id || l.pilot === id || (l.guns || []).indexOf(id) >= 0; }
   function willSign(c, job, m) {
-    var asked = job.asked = job.asked || {}, S = BL.ROSTER.sign;
+    var asked = job.asked = job.asked || {}, rolls = job.rolls = job.rolls || {}, S = BL.ROSTER.sign;
     if (asked[m.id] !== undefined) return asked[m.id];
-    if (aboardLast(c, m.id) && m.morale >= S.stay) return (asked[m.id] = true);
+    if (aboardLast(c, m.id) && m.morale >= S.stay) { rolls[m.id] = { stay: true }; return (asked[m.id] = true); }
     var rng = BL.rng(((job.seed * 31 + m.id * 7919) ^ 0x2545f491) >>> 0 || 1);
-    var cap = rng.int([1, 100]) + (c.stations.captain.rep || 0), him = rng.int([1, 100]) + m.skill * 100 - (m.morale - 50) / S.morale;
-    return (asked[m.id] = cap > him);
+    var r = { capRoll: rng.int([1, 100]), rep: c.stations.captain.rep || 0, hisRoll: rng.int([1, 100]), skill: Math.round(m.skill * 100), mor: Math.round((m.morale - 50) / S.morale * 10) / 10 };
+    r.cap = r.capRoll + r.rep; r.him = Math.round((r.hisRoll + m.skill * 100 - (m.morale - 50) / S.morale) * 10) / 10;
+    rolls[m.id] = r;
+    return (asked[m.id] = r.cap > r.him);
   }
   /* The crew a job suggests: the men who served with the captain last time first, then the best
      available whose skill fits the class (then anyone left). sign: only men who sign on (willSign);
@@ -96,7 +98,7 @@
       if (!sign) return null;
       hireRng = hireRng || BL.rng((job.seed ^ 0x51633e2d) >>> 0 || 1);
       var g = newMan(cr, hireRng, post, hireRng.range(BL.ROSTER.hire));
-      (job.asked = job.asked || {})[g.id] = true; used[g.id] = true;
+      (job.asked = job.asked || {})[g.id] = true; (job.rolls = job.rolls || {})[g.id] = { hire: true }; used[g.id] = true;
       return g.id;
     }
     var out = { engineer: pick("engineer", last.engineer), pilot: pick("pilot", last.pilot), guns: [] };
