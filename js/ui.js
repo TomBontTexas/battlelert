@@ -154,7 +154,7 @@
         (sim.sys("buster") && i === sim.cfg.jumps - 1 ? ". The drop: no warp out. The planet buster must be launched from the drop zone within " + sim.cfg.dropLate + " s of the window opening " + sim.windowFor(i) + " s after arrival, or the mission fails."
           : sim.hasDrive ? ". Warp window opens " + sim.windowFor(i) + " s after arrival." : ". The carrier recovers you " + sim.windowFor(i) + " s after launch.") + "</li>";
     }).join("") + (sim.sys("buster") ? "<li>The target: an Azurian " + sim.world + " world. Drop the planet buster on it.</li>" : "");
-    $("brief-ship-title").textContent = "Your ship: " + (j.test ? cls.name : BL.shipLabel(j.classId, j.ship, j.hull) + ", " + cls.name) + ", tech level " + j.tl;
+    $("brief-ship-title").textContent = "Your ship: " + (j.test ? cls.name : BL.shipLabel(j.classId, j.ship, j.hull)) + " (TL" + j.tl + ")";
     var html = [
       d.reactors.length > 1 ? "<div><span>Reactors</span> " + d.reactors.map(function (x) { return x.name + " " + x.mw + " MW"; }).join(", ") + "</div>"
         : "<div><span>Reactor safe output</span> " + d.reactorMW + " MW</div>",
@@ -324,7 +324,7 @@
     buildReactors();
     caps.classList.toggle("dense", DISPLAY.length >= 8);
     $("trip-order").classList.toggle("trip-two", DISPLAY.length >= 8);
-    $("hd-station").textContent = "Main Engineering · " + (job.test ? sim.data.className : BL.shipLabel(job.classId, job.ship, job.hull) + " (" + sim.data.className + ")") + " · tech level " + sim.data.tl;
+    $("hd-station").textContent = "Main Engineering · " + (job.test ? sim.data.className : BL.shipLabel(job.classId, job.ship, job.hull)) + " (TL" + sim.data.tl + ")";
     $("jump-label").textContent = sim.hasDrive ? "WARP" : "RECOVERY";
     $("auxbank").hidden = !sim.hasAux() || multiRx();
     document.body.classList.toggle("no-aux", !sim.hasAux());
@@ -808,7 +808,7 @@
   function toggleWide() { settings.wideView = !settings.wideView; saveSettings(); applyView(); click(); }
   function buildTurret() {
     var tu = sim.turret, w = tu.w;
-    $("tu-station").textContent = "Gunnery · " + (job.test ? sim.data.className : BL.shipLabel(job.classId, job.ship, job.hull) + " (" + sim.data.className + ")") + " · tech level " + sim.data.tl;
+    $("tu-station").textContent = "Gunnery · " + (job.test ? sim.data.className : BL.shipLabel(job.classId, job.ship, job.hull)) + " (TL" + sim.data.tl + ")";
     $("tu-rec-label").textContent = sim.hasDrive ? "WARP" : "RECOVERY";
     lastJolt = 0;
     $("tu-keys").textContent = (tu.ring ? "→ clockwise · ← counterclockwise" : "← → slide") + " · Space fire (hold) · " + (tu.ring ? "W wide view · " : "") + (tu.firesMain ? "M main gun · " : "") + (tu.bats.length > 1 ? "1–" + tu.bats.length + " switch guns · O orders · " : sim.data.torpedoes ? "1 2 torpedoes · " : "") +
@@ -836,7 +836,7 @@
     $("hm-launch").hidden = true;
     if (helm) {
       $("tu-tubes").hidden = true; $("btn-tu-main").hidden = true;
-      $("tu-station").textContent = (sim.training ? "Pilot training · " : "Helm · ") + (job.test ? sim.data.className : BL.shipLabel(job.classId, job.ship, job.hull) + " (" + sim.data.className + ")") + " · tech level " + sim.data.tl;
+      $("tu-station").textContent = (sim.training ? "Pilot training · " : "Helm · ") + (job.test ? sim.data.className : BL.shipLabel(job.classId, job.ship, job.hull)) + " (TL" + sim.data.tl + ")";
       $("tu-keys").textContent = "← → wheel · 0 midships · ↑ ↓ both engines · Q A port · P L starboard · + − 1 G · T autopilot · [ ] course 1° · E warn engineering · Space launch · Esc pause · Drag the wheel · Tap the telegraph · Tap the compass for autopilot · Right strip: course on autopilot, wheel by hand";
       buildHelm();
       if (sim.captain) buildBridge();
@@ -1420,7 +1420,7 @@
     $("tu-helm").hidden = $("hm-wheel").hidden = $("hm-strip").hidden = true;
     $("scr-turret").classList.remove("helm"); $("scr-turret").classList.add("captain");
     $("cp-side").hidden = $("cp-mapbox").hidden = false; $("cp-orders").hidden = true;      // (every order is in the BRIDGE column)
-    $("tu-station").textContent = "Bridge · " + (job.test ? sim.data.className : BL.shipLabel(job.classId, job.ship, job.hull) + " (" + sim.data.className + ")") + " · tech level " + sim.data.tl;
+    $("tu-station").textContent = "Bridge · " + (job.test ? sim.data.className : BL.shipLabel(job.classId, job.ship, job.hull)) + " (TL" + sim.data.tl + ")";
     var hasMain = !!sim.sys("main"), hasHangar = !!(sim.sys("hangar") && sim.data.hangar);
     $("tu-keys").textContent = "← → course 10° (Shift 1°) · R resume plot · ↑ ↓ engines · Z break port · X take it · C break starboard · " + (hasMain ? "M main gun · " : "") + (hasHangar ? "L launch / recover · " : "") + (sim.helm.canBreak(BL.GUNNERY.torpedo.travel) ? "B pilot · " : "") + "G gunners · S engineer · E warn engineering · J warp · V swap map · + − F zoom · Esc pause · Tap the compass or the map to steer";
     // Light cruiser and up: MAIN GUN; cruiser and up: LAUNCH / RECOVER the squadron.
