@@ -826,7 +826,7 @@
   BL.ROSTER = {
     pool: { engineer: 12, pilot: 12, gun: 24 }, hire: [0.3, 0.5],
     grow: { served: 0, success: 0.01, cap: 0.95 },     // (one point for a success: TexasBont, Nov 2, 2026)
-    morale: { start: 60, success: 5, failure: -10, killed: -10, eff: [0.9, 1.1] },
+    morale: { start: 60, success: 5, failure: -10, killed: -10, replaced: -1, eff: [0.9, 1.1] },
     temper: { cautious: 0.2, steady: 0.5, aggressive: 0.8 },
     sign: { stay: 25, morale: 5 },
     record: 100                                  // missions kept on each man's record

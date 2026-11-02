@@ -706,3 +706,8 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
   font: italic 700 0.75em/1 Georgia, serif; vertical-align: middle; cursor: pointer; }
 .info-i:hover, .info-i:focus-visible { background: var(--charge-dim); }
 .info-note { margin: 0.4em 0; padding: 0.5em 0.7em; border-left: 3px solid var(--charge); background: var(--panel-2); color: var(--text); }
+/* The bridge's STATIONS list (dropping down): engine room, helm and each gun, wrapping. */
+.cp-drop-pick { flex-wrap: wrap; }
+.cp-side .cp-drop-pick button { flex: 1 1 30%; }
+#cp-drop.on { background: #3a2f66; border-color: var(--aux); }
+.cp-back { border-color: var(--warn); color: var(--warn); }

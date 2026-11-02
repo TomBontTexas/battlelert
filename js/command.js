@@ -287,6 +287,9 @@
     // Escort (BL.COMMAND.escort): the ward's hull carries over from system to system.
     this.escort = m.escort ? this.makeEscort() : null;
     this.station = "ahead"; this.wcall = null;
+    // Dropping down: where he is off the bridge (null, "engine", "helm", "gun"), whether he has
+    // been this mission, and the men he took a station from.
+    this.away = null; this.dropped = false; this.replacedMen = []; this.aside = null;
   }
   BL.Captain = Captain;
   // The system she's in (set on arrival: after a jump the display still shows the last one until the next arrival).
@@ -741,7 +744,7 @@
     var live = c.fish.filter(function (f) { return !f.done && f.hold && f.at > m.t; });
     if (!live.length) { this.closeCall(); return null; }
     var land = Math.min.apply(null, live.map(function (f) { return f.at; })), can = h.canBreak(BL.GUNNERY.torpedo.travel) && !(h.evade && m.t < h.evade.until);
-    if (can) c.could = true;
+    if (can && !this.away) c.could = true;      // (off the bridge he can't call it: not unanswered)
     return { n: live.length, in: land - m.t, mj: live.reduce(function (a, f) { return a + f.mj; }, 0), canBreak: can,
       bearing: c.ship ? norm(c.ship.bearing) : 0 };
   };
@@ -846,6 +849,52 @@
   Captain.prototype.carrierRecovery = function () { return !!this.escort && !this.m.hasDrive; };
   Captain.prototype.asternOk = function () { return this.station === "astern" && dist(this.pos, this.stationAt("astern")) <= BL.COMMAND.escort.near * this.map().D * 1.5; };
 
+  /* ------------------------------------------------------------- Dropping down
+     (Approved Nov 2, 2026.) The captain leaves the bridge to run one station himself: the engine
+     room, the helm or a gun. The man there stands aside till he's back. Meanwhile the bridge gives
+     no new orders (the crew keep his standing ones: the pilot flies the plot, the engineer his
+     stance, the guns their order) and only the captain warps. The cost, once a mission: -1
+     command reputation (BL.career) and -1 morale to each man he replaced (BL.roster). */
+  Captain.prototype.canDrop = function () { var p = this.m.phase; return !this.away && !!this.pos && (p === "arrival" || p === "engage" || p === "countdown"); };
+  Captain.prototype.dropTo = function (where, gun) {
+    var m = this.m, tu = m.turret;
+    if (!this.canDrop()) return false;
+    if (where === "gun") {
+      var b = tu.bats[gun]; if (!b) return false;
+      this.replaced(b.crew); this.aside = b.crew; b.crew = null;
+      tu.crewAll = false; tu.sel = gun; b.firing = false; b.dir = 0; b.aimRel = b.rel;
+      tu.bats.forEach(function (x) { x.seek = null; });
+    } else if (where === "helm") this.replaced(this.pilotCrew);
+    else if (where === "engine") this.replaced(tu.engineer);
+    else return false;
+    this.away = where; this.dropped = true;
+    m.cue("toggle");
+    return true;
+  };
+  // At the guns he can trade to another gun (RingTurret.select): its man is replaced too.
+  Captain.prototype.takeGun = function (i) {
+    var tu = this.m.turret, b = tu.bats[i], man = b && b.crew;
+    if (this.away !== "gun" || !b || !tu.select(i)) return false;
+    this.replaced(man);
+    return true;
+  };
+  Captain.prototype.replaced = function (man) {
+    if (!man || this.replacedMen.some(function (x) { return x === man || (man.id !== undefined && x.id === man.id); })) return;
+    this.replacedMen.push(man);
+  };
+  // Back to the bridge: the man who stood aside takes his station again.
+  Captain.prototype.toBridge = function () {
+    var m = this.m, tu = m.turret, self = this;
+    if (!this.away) return false;
+    if (this.away === "gun") {
+      tu.bats.forEach(function (b) { b.firing = false; b.dir = 0; b.seek = null; if (!b.crew) { b.crew = self.aside; b.aiNext = m.totalT + 0.5; b.aiTarget = null; } });
+      tu.crewAll = true; tu.sel = 0; this.aside = null;
+    }
+    this.away = null;
+    m.cue("toggle");
+    return true;
+  };
+
   /* ------------------------------------------------------------- The tick */
   Captain.prototype.step = function (dt) {
     var m = this.m, h = m.helm, K = BL.COMMAND, map = this.map();
@@ -900,7 +949,7 @@
     // Asteroids: inside a field the rocks stream through the battle view (RingTurret.dropRock).
     this.inRock = BL.inField(map, this.pos); this.inMines = BL.inMines(map, this.pos);
     this.runSwing();
-    if (m.phase !== "done") this.pilot.think(m, this);
+    if (m.phase !== "done" && this.away !== "helm") this.pilot.think(m, this);     // (at the helm the captain flies her)
   };
   // A rock touched the shield (ring.js; it lands like a mine, shields first).
   Captain.prototype.rockStruck = function () { this.stats.rockHits++; if (this.cur) this.cur.rockHits++; };
@@ -966,7 +1015,10 @@
     r.captain = { rockHits: st.rockHits, swarms: st.swarms, calls: st.calls, breaks: st.breaks, pilotBreaks: st.pilotBreaks, breaksMade: hs.evasiveMet, taken: st.taken, unanswered: st.unanswered,
       systems: sys.map(function (s) { return { zoneAt: s.zoneAt === null ? null : Math.round(s.zoneAt), window: s.window, rockHits: s.rockHits, legs: s.legs, cps: s.cps.length, cpsHit: s.cps.filter(Boolean).length }; }),
       ships: tu.stats.ships, kills: tu.stats.kills, downed: tu.stats.downed,
-      rocks: tu.stats.rocks || 0, rocksDown: tu.stats.rocksDown || 0, rockEnemy: tu.stats.rockEnemy || 0 };
+      rocks: tu.stats.rocks || 0, rocksDown: tu.stats.rocksDown || 0, rockEnemy: tu.stats.rockEnemy || 0,
+      // (dropping down: whether he did, and the men he replaced: roster ids for their morale, names for the debrief)
+      dropped: c.dropped, replaced: c.replacedMen.map(function (x) { return x.id; }).filter(function (id) { return id !== undefined; }),
+      replacedNames: c.replacedMen.map(function (x) { return x.name; }) };
     if (c.escort) {
       r.captain.escort = { kind: es.kind, name: es.W.name, hull: Math.round(100 * es.hull / es.hullMax), ships: es.ships.length, afloat: afloat, torps: st.wardTorps, calls: st.wardCalls, covers: st.covers, covered: st.covered,
         squad: es.wing.length + 1, wingLost: es.wing.filter(function (g) { return g.hull <= 0; }).length, wingStops: st.wingStops,

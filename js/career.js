@@ -333,12 +333,13 @@
   /* Reputation: a man's standing on each path (Reputation and crew refusals, Nov 2, 2026). It
      starts at 50, never goes below 0 and has no top. A mission's outcome counts once (a success
      gains more at TL5 and TL6: an old beater's success gets talked about; a requalifying job's
-     the same); at command, a squadron left behind and each crewman killed come on top. */
+     the same); at command, a squadron left behind, each crewman killed and dropping down to a
+     station (once a mission) come on top. */
   var REP = { start: 50, success: 1, tlBonus: { 5: 2, 6: 1 }, failure: -1, destroyed: -2, abandoned: -1,
-    wardLost: -1, dropMissed: -3, squadronLost: -3, killed: -1 };
+    wardLost: -1, dropMissed: -3, squadronLost: -3, killed: -1, droppedDown: -1 };
   function repFor(job) { return REP.success + (REP.tlBonus[job.tl] || 0); }      // what a success earns
   // The mission's reputation, part by part: [[what, points], ...].
-  function repParts(station, outcome, tl, squadrons, killed) {
+  function repParts(station, outcome, tl, squadrons, killed, dropped) {
     var cmd = station === "captain", out = [];
     if (outcome === "success") { out.push(["success", REP.success]); if (REP.tlBonus[tl]) out.push(["tech level " + tl, REP.tlBonus[tl]]); }
     else if (outcome === "destroyed") out.push(["ship destroyed", REP.destroyed]);
@@ -348,6 +349,7 @@
     else out.push(["failed mission", REP.failure]);
     if (cmd && squadrons) out.push(["squadron left behind", REP.squadronLost * squadrons]);
     if (cmd && killed) out.push([killed + " crew killed", REP.killed * killed]);
+    if (cmd && dropped) out.push(["dropped down to a station", REP.droppedDown]);
     return out;
   }
 
@@ -393,6 +395,7 @@
       p.efficiency = avg(p.efficiency, (r.parts.navigation || 0) / 25);
       p.demands = avg(p.demands, (r.parts.command || 0) / 25);
       p.guns = avg(p.guns || 0, cp.ships ? cp.kills / cp.ships : 0);
+      p.delegation = avg(p.delegation === undefined ? 1 : p.delegation, cp.dropped ? 0 : 1);     // (the share of missions he stayed on the bridge)
     } else if (hm) {
       var asked = hm.orders + hm.requests + hm.evasive + hm.disobeyed;
       p.efficiency = avg(p.efficiency, asked ? (hm.ordersMet + hm.requestsMet + hm.evasiveMet) / asked : 1);
@@ -408,7 +411,7 @@
     report.profileAfter = profile(c, job.station);
     // Command: the roster crew's losses, growth and morale (BL.roster.afterMission); then reputation.
     if (job.station === "captain" && BL.roster) report.crew = BL.roster.afterMission(c, job, r, { date: today() });
-    report.repParts = repParts(job.station, r.outcome, job.tl, cp && r.detail ? r.detail.squadronsLost || 0 : 0, report.crew ? report.crew.lost.length : 0);
+    report.repParts = repParts(job.station, r.outcome, job.tl, cp && r.detail ? r.detail.squadronsLost || 0 : 0, report.crew ? report.crew.lost.length : 0, cp && cp.dropped);
     var repWas = st.rep;
     st.rep = Math.max(0, st.rep + report.repParts.reduce(function (a, p) { return a + p[1]; }, 0));
     report.rep = st.rep - repWas;
@@ -471,7 +474,8 @@
       efficiency: p.efficiency,
       demands: p.demands,
       condition: p.condition,
-      guns: p.guns || 0
+      guns: p.guns || 0,
+      delegation: p.delegation === undefined ? 1 : p.delegation
     };
   }
 

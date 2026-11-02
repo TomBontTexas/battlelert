@@ -18,6 +18,11 @@
   var gravShown = false, doneShown = false, lastAlarm = 0, lastTs = 0, acc = 0;
   var career = BL.career.load(), job = null, report = null, offersMode = "offers";
   var aiEngineer = null;                  // runs the power while the player is at a gun
+  // Dropping down (the captain): the station he's at off the bridge (null on the bridge, "engine",
+  // "helm" or "gun"), and the bridge's list of stations open.
+  var cpAt = null, dropPick = false;
+  // The helm's screen (the pilot station, or the bridge built on it), not the gun's.
+  function helmUi() { return !!(sim && sim.helm) && cpAt !== "gun"; }
 
   /* ------------------------------------------------------------ Settings */
   function loadSettings() {
@@ -231,6 +236,7 @@
     else { buildConsole(); show("scr-console"); }
     gravShown = false; doneShown = false; paused = false; looking = false;
     lastLogKey = ""; lastDamageLen = -1; lastSpoken = 0; selected = 0; acc = 0;
+    cpAt = null; dropPick = false;
     if (sim.captain) { openPlot(); return; }     // the bridge: plot the first system's course, then drop out of warp space
     sim.beginJump();
     running = true;
@@ -331,6 +337,7 @@
     caps.classList.toggle("dense", DISPLAY.length >= 8);
     $("trip-order").classList.toggle("trip-two", DISPLAY.length >= 8);
     $("hd-station").textContent = "Main Engineering · " + (job.test ? sim.data.className : BL.shipLabel(job.classId, job.ship, job.hull)) + " (TL" + sim.data.tl + ")";
+    $("btn-bridge").hidden = cpAt !== "engine";
     $("jump-label").textContent = sim.hasDrive ? "WARP" : "RECOVERY";
     $("auxbank").hidden = !sim.hasAux() || multiRx();
     document.body.classList.toggle("no-aux", !sim.hasAux());
@@ -488,7 +495,9 @@
     }
     if (!$("ov-tests").hidden) { if (ev.key === "Escape") overlay("ov-tests", false); return; }
     if (!$("ov-plot").hidden) { plotKey(ev); return; }
-    if (inTurret() && sim && ev.target.tagName !== "INPUT" && ev.target.tagName !== "SELECT") { if (sim.captain) bridgeKey(ev); else if (sim.helm) helmKey(ev); else turretKey(ev, true); return; }
+    // B at a station the captain dropped down to: back to the bridge.
+    if (cpAt && sim && (ev.key === "b" || ev.key === "B") && !ev.repeat && inMission() && $("ov-grav").hidden && !paused) { ev.preventDefault(); backToBridge(); return; }
+    if (inTurret() && sim && ev.target.tagName !== "INPUT" && ev.target.tagName !== "SELECT") { if (sim.captain && !cpAt) bridgeKey(ev); else if (helmUi()) helmKey(ev); else turretKey(ev, true); return; }
     if (!inConsole() || !sim || ev.target.tagName === "INPUT") return;
     if (!$("ov-grav").hidden) { if (ev.key === "Enter") $("btn-grav-go").click(); return; }
     var k = ev.key;
@@ -519,7 +528,7 @@
     if (sim && running && !paused && $("ov-grav").hidden) {
       acc += dt;
       var n = 0;
-      while (acc >= sim.dt && n < 10) { if (aiEngineer) aiEngineer.think(sim); sim.step(); acc -= sim.dt; n++; }
+      while (acc >= sim.dt && n < 10) { if (aiEngineer && cpAt !== "engine") aiEngineer.think(sim); sim.step(); acc -= sim.dt; n++; }
       if (n >= 10) acc = 0;
     }
     if (sim && inConsole()) { render(); sounds(ts); phaseCheck(); }
@@ -536,6 +545,7 @@
   }
 
   function phaseCheck() {
+    if (cpAt && (sim.phase === "gravspace" || sim.phase === "done")) backToBridge();     // (warp space and the end find the captain on the bridge)
     if (sim.phase === "gravspace" && !gravShown) {
       gravShown = true;
       flashJump();
@@ -781,8 +791,10 @@
     });
   }
 
+  var lastLogBox = null;
   function renderComms() {
-    var box = sim.turret ? $("tu-comms") : $("comms-log"), lines = sim.turret ? 6 : 9;
+    var con = inConsole(), box = con ? $("comms-log") : $("tu-comms"), lines = con ? 9 : 6;
+    if (box !== lastLogBox) { lastLogBox = box; lastLogKey = ""; }     // (the captain changing screens: fill the new one)
     speakNew();
     var log = sim.log, last = log[log.length - 1];
     var key = log.length + ":" + (last ? last.t + last.text : "");
@@ -802,12 +814,12 @@
   /* Wide view (W, ring view only): the side panels give way to an overlay and the battle fills
      the screen, turned a quarter turn so the bow points right. Standard view is the default;
      the choice is remembered. */
-  function wideOn() { return !!(settings.wideView && sim && sim.turret && sim.turret.ring && !sim.helm); }
+  function wideOn() { return !!(settings.wideView && sim && sim.turret && sim.turret.ring && !helmUi()); }
   function applyView() {
     var wide = wideOn();
     $("scr-turret").classList.toggle("wide", wide);
     $("tu-hud").hidden = !wide;
-    $("btn-tu-view").hidden = !(sim && sim.turret && sim.turret.ring) || !!(sim && sim.helm);
+    $("btn-tu-view").hidden = !(sim && sim.turret && sim.turret.ring) || helmUi();
     $("btn-tu-view").textContent = wide ? "Standard view (W)" : "Wide view (W)";
     tuSize = 0; sizeTurret();
   }
@@ -828,10 +840,10 @@
     showToggles();
     $("hud-guns").innerHTML = tu.bats.length > 1 ? tu.bats.map(function (b, i) { return '<button data-i="' + i + '">' + b.gunNo + " " + b.w.short + "</button>"; }).join("") : "";
     applyView();
-    $("tu-comms").innerHTML = "";
+    $("tu-comms").innerHTML = ""; lastLogKey = "";
     keysHeld = {}; setFireBtn(false);
     // The helm: its panel and wheel replace the gun panel; the gun buttons go.
-    var helm = !!sim.helm;
+    var helm = helmUi();
     // The helm's ship panel: the main gun's charge (the gunner sees it on the MAIN GUN button).
     $("tu-mainrow").hidden = !(helm && sim.turret.firesMain);
     $("tu-gunside").hidden = helm; $("tu-helm").hidden = !helm; $("hm-wheel").hidden = !helm; $("hm-strip").hidden = !helm;
@@ -840,12 +852,15 @@
     $("cp-side").hidden = $("cp-mapbox").hidden = $("cp-orders").hidden = true; $("scr-turret").classList.remove("captain");
     $("btn-tu-call").hidden = $("btn-tu-fire").hidden = helm;
     $("hm-launch").hidden = true;
+    $("btn-tu-bridge").hidden = !cpAt;
+    if (cpAt === "gun") $("tu-keys").textContent = "B back to the bridge · " + $("tu-keys").textContent.replace(" · O orders", "");
     if (helm) {
       $("tu-tubes").hidden = true; $("btn-tu-main").hidden = true;
       $("tu-station").textContent = (sim.training ? "Pilot training · " : "Helm · ") + (job.test ? sim.data.className : BL.shipLabel(job.classId, job.ship, job.hull)) + " (TL" + sim.data.tl + ")";
       $("tu-keys").textContent = "← → wheel · 0 midships · ↑ ↓ both engines · Q A port · P L starboard · + − 1 G · T autopilot · [ ] course 1° · E warn engineering · Space launch · Esc pause · Drag the wheel · Tap the telegraph · Tap the compass for autopilot · Right strip: course on autopilot, wheel by hand";
+      if (cpAt) $("tu-keys").textContent = "B back to the bridge · " + $("tu-keys").textContent;
       buildHelm();
-      if (sim.captain) buildBridge();
+      if (sim.captain && !cpAt) buildBridge();
     }
   }
   /* On-screen switches: clicking a gun on the view takes it (off by default, so a stray click
@@ -876,7 +891,7 @@
   }
   function selectBattery(i) {
     var tu = sim.turret, held = tu.firing;
-    if (!tu.select(i)) return;
+    if (!(sim.captain ? sim.captain.takeGun(i) : tu.select(i))) return;     // (the captain at the guns: the man there is replaced)
     if (held || keysHeld.fire) tu.trigger(true);      // keep firing with the new gun if FIRE is held
     tu.setDir(keyDir());
     showBattery();
@@ -892,7 +907,7 @@
     var side = Math.floor(Math.max(120, Math.min(box.clientWidth, box.clientHeight)));
     var w = wideOn() ? Math.floor(Math.max(120, box.clientWidth)) : side, h = wideOn() ? side : side;
     // At the helm the view fills its whole column, top to bottom (the battle stays centered).
-    if (sim && sim.helm) { w = Math.floor(Math.max(120, box.clientWidth - 2)); h = Math.floor(Math.max(120, box.clientHeight - 2)); }
+    if (sim && helmUi()) { w = Math.floor(Math.max(120, box.clientWidth - 2)); h = Math.floor(Math.max(120, box.clientHeight - 2)); }
     if (side === tuSize && w === tuW && h === tuH && tuCtx) return;
     tuSize = side; tuW = w; tuH = h;
     cv.style.width = w + "px"; cv.style.height = h + "px";
@@ -916,8 +931,8 @@
 
   var lastJolt = 0;
   function renderTurret(ts) {
-    if (sim.captain) { renderBridge(ts); return; }
-    if (sim.helm) { renderHelm(ts); return; }
+    if (sim.captain && !cpAt) { renderBridge(ts); return; }
+    if (helmUi()) { renderHelm(ts); return; }
     var tu = sim.turret, ship = sim.ship, gun = tu.gun(), w = tu.w, enc = sim.encounter() || {};
     // A hull hit shakes the whole station, not just the view.
     tu.effects.forEach(function (f) {
@@ -944,7 +959,7 @@
     setCls($("tu-charge"), "tu-lvl" + (gun.mj < w.shotMJ ? " low" : ""));
     setText($("tu-mj"), Math.floor(gun.mj) + " / " + gun.maxMJ + " MJ");
     var nShots = Math.floor(gun.mj / w.shotMJ);
-    setText($("tu-shots"), nShots + (nShots === 1 ? " shot · " : " shots · ") + w.shotMJ + " MJ each");
+    setText($("tu-shots"), nShots + (nShots === 1 ? " shot · " : " shots · ") + fmt(w.shotMJ) + " MJ each");
     // Hit rate on this gun this mission: yours, and its crew's when they've had the gun.
     var bt = tu.bat(), accHtml = '<div>you <b>' + rate(bt.hits, bt.shots) + "</b> " + frac(bt.hits, bt.shots) + "</div>" +
       (tu.bats.length > 1 ? '<div class="ai">crew ' + rate(bt.aiHits, bt.aiShots) + " " + frac(bt.aiHits, bt.aiShots) + "</div>" : "");
@@ -1084,7 +1099,7 @@
       else if (k === "1" || k === "2") { ev.preventDefault(); tu.launchPT(+k - 1); }
     }
   }
-  document.addEventListener("keyup", function (ev) { if (inTurret() && sim && !sim.helm) turretKey(ev, false); });
+  document.addEventListener("keyup", function (ev) { if (inTurret() && sim && !helmUi()) turretKey(ev, false); });
   window.addEventListener("blur", function () { if (sim && sim.turret && inTurret()) releaseTurret(); });
 
   // Mouse on the view: the turret follows the pointer; hold the button to fire.
@@ -1134,7 +1149,7 @@
     cv.addEventListener("pointerdown", function (ev) {
       // At the helm: tap the compass tape to steer to the heading tapped, on autopilot. (The
       // tape only shows the ship's heading: the course is set on the strip at the right.)
-      if (sim && sim.helm) {
+      if (sim && helmUi()) {
         if (turretActive()) {
           var cr = cv.getBoundingClientRect(), hd = BL.compassAt(ev.clientX - cr.left, ev.clientY - cr.top), hm = sim.helm;
           if (hd !== null) {
@@ -1163,7 +1178,7 @@
       } else startDrag(cv, ev);
     });
     cv.addEventListener("pointermove", function (ev) {
-      if (sim && sim.helm) {
+      if (sim && helmUi()) {
         var cd = compassDrag;
         if (cd && cd.id === ev.pointerId && Math.abs(ev.clientX - cd.x) >= 6) cd.moved = true;   // a slide isn't a tap
         return;
@@ -1211,7 +1226,7 @@
     $("hm-nudge-dn").addEventListener("click", function () { if (sim && sim.helm && turretActive()) { sim.helm.nudgeCourse(-1); click(); } });
     function mouseUp(ev) {
       if (compassDrag && compassDrag.id === ev.pointerId) {
-        if (!compassDrag.moved && sim && sim.helm && turretActive()) { if (sim.captain) sim.captain.orderCourse(compassDrag.tap); else sim.helm.setAuto(true, compassDrag.tap); }
+        if (!compassDrag.moved && sim && sim.helm && turretActive()) { if (sim.captain && !cpAt) sim.captain.orderCourse(compassDrag.tap); else sim.helm.setAuto(true, compassDrag.tap); }
         compassDrag = null;
       }
       if (ev.pointerType === "mouse") { if (sim && sim.turret && !keysHeld.fire) { sim.turret.trigger(false); setFireBtn(false); } } else endDrag(ev);
@@ -1446,6 +1461,10 @@
     var esc = !!sim.captain.escort;
     $("cp-station-grp").hidden = $("cp-cover").hidden = !esc;
     $("cp-station").innerHTML = esc ? STATION_LIST.map(function (id, k) { return '<button data-station="' + id + '" title="Keep station ' + STATION_NAME[id] + " (" + (k + 1) + ')">' + STATION_SHORT[id] + "</button>"; }).join("") : "";
+    // STATIONS (D): drop down to the engine room, the helm or a gun (E, H, the gun's number).
+    dropPick = false;
+    $("cp-drop-pick").innerHTML = '<button data-drop="engine" title="Run the engine room yourself (E)">ENGINE <small>(E)</small></button><button data-drop="helm" title="Take the helm yourself (H)">HELM <small>(H)</small></button>' +
+      sim.turret.bats.map(function (b, i) { return '<button data-drop="gun" data-gun="' + i + '" title="Take Gun ' + b.gunNo + " yourself (" + b.gunNo + ')">GUN ' + b.gunNo + " <small>(" + b.gunNo + ")</small></button>"; }).join("");
     setHtml($("cp-resume"), "RESUME <small>(R)</small>");
     $("cp-resume").title = esc ? "Back to your station (R)" : "Back to the plotted course (R)";
   }
@@ -1651,6 +1670,8 @@
         : (hgv.order === "recover" ? "RECOVER" : "LAUNCH") + (hgv.full ? " <small>(L)</small>" : " " + hgv.pct + "%"));
     }
     $("cp-warn").disabled = !live || sim.totalT < h.warnReadyAt;
+    $("cp-drop").disabled = !live || !c.canDrop(); $("cp-drop").classList.toggle("on", dropPick);
+    $("cp-drop-pick").hidden = !dropPick || !live;
     var jb = $("cp-jump");
     jb.disabled = !live || !jv.ready || jv.ordered || sim.phase === "countdown";
     jb.classList.toggle("ready", jv.ready && !jv.ordered);
@@ -1675,6 +1696,26 @@
       "<span>Ships destroyed</span><b>" + (g.kills || 0) + " / " + (g.ships || 0) + "</b><span>Torpedoes shot down</span><b>" + (g.downed || 0) + " / " + (g.torps || 0) + "</b>" +
       (cs.rockHits ? '<span class="bad">Asteroid hits</span><b>' + cs.rockHits + "</b>" : ""));
   }
+  /* Dropping down: the captain leaves the bridge for a station's own screen (the engine room's
+     console, the helm, or the gun he takes); BRIDGE (B) brings him back. Captain.dropTo. */
+  function dropTo(where, gun) {
+    var c = sim.captain;
+    dropPick = false;
+    if (!c || cpAt || !turretActive() || !c.dropTo(where, gun)) return;
+    cpAt = where; click();
+    if (where === "engine") { buildConsole(); $("btn-bridge").hidden = false; show("scr-console"); }
+    else { buildTurret(); show("scr-turret"); tuSize = 0; sizeTurret(); }
+  }
+  function backToBridge() {
+    var c = sim && sim.captain;
+    if (!c || !cpAt) return;
+    if (cpAt === "gun") releaseTurret();
+    c.toBridge(); cpAt = null; $("btn-bridge").hidden = true;
+    buildTurret(); show("scr-turret"); tuSize = 0; sizeTurret();
+    if (running) click();
+  }
+  $("btn-bridge").onclick = function () { backToBridge(); this.blur(); };
+  $("btn-tu-bridge").onclick = function () { backToBridge(); this.blur(); };
   // The captain's course, `d` degrees from the course he has ordered (or the heading she's on).
   function courseBy(d) { var c = sim.captain; c.orderCourse((c.hdgOrder !== null ? c.hdgOrder : Math.round(sim.helm.compass())) + d); }
   function engineStep(dir) {
@@ -1689,9 +1730,15 @@
   function bridgeKey(ev) {
     if (!$("ov-grav").hidden) { if (ev.key === "Enter") $("btn-grav-go").click(); return; }
     var k = ev.key, kl = k.length === 1 ? k.toLowerCase() : k, c = sim.captain;
+    if (k === "Escape" && dropPick && !paused) { ev.preventDefault(); dropPick = false; return; }
     if (k === "Escape") { ev.preventDefault(); if (paused) resume(); else pause(); return; }
     if (paused) { if (k === " ") { ev.preventDefault(); resume(); } return; }
     if (!turretActive() || !c.pos) return;
+    // The STATIONS list open: E the engine room, H the helm, a number that gun.
+    if (dropPick && !ev.repeat && (kl === "e" || kl === "h" || (k >= "1" && k <= "9" && +k <= sim.turret.bats.length))) {
+      ev.preventDefault(); dropTo(kl === "e" ? "engine" : kl === "h" ? "helm" : "gun", +k - 1); return;
+    }
+    if (kl === "d" && !ev.repeat) { ev.preventDefault(); dropPick = !dropPick && c.canDrop(); return; }
     if (k === "ArrowLeft") courseBy(ev.shiftKey ? -1 : -10);
     else if (k === "ArrowRight") courseBy(ev.shiftKey ? 1 : 10);
     else if (kl === "r") c.resumePlot();
@@ -1736,6 +1783,8 @@
       else if (b.id === "cp-main") c.orderMain();
       else if (b.id === "cp-hangar") c.orderHangar();
       else if (b.id === "cp-jump") c.orderJump();
+      else if (b.id === "cp-drop") dropPick = !dropPick && c.canDrop();
+      else if (b.dataset.drop) dropTo(b.dataset.drop, +b.dataset.gun);
     }
     $("cp-side").addEventListener("click", bridgeClick);
     // The map: a tap steers for that point (a course of the captain's own); a drag pans it, two
@@ -1917,7 +1966,8 @@
       ["Gun crew", crew.map(function (c) { return esc(c.name) + ", " + c.label + " (" + Math.round(c.skill * 100) + ")"; }).join(" · ")],
       ["Pilot", esc(pc.name) + ", " + pc.label + " (skill " + Math.round(pc.skill * 100) + ")"],
       ["Torpedo bursts", cp.calls + ": " + cp.breaks + " breaks ordered, " + cp.pilotBreaks + " by the pilot on his own (" + cp.breaksMade + " made), " + cp.taken + " taken on the shields, " + cp.unanswered + " with no call"],
-      ["Asteroid hits", cp.rockHits], ["Enemy areas flown into", cp.swarms || 0]].concat(cpN ? [
+      ["Asteroid hits", cp.rockHits], ["Enemy areas flown into", cp.swarms || 0]].concat(cp.dropped ? [
+      ["Dropped down", "you took a station yourself; stood aside: " + (cp.replacedNames.map(esc).join(", ") || "nobody") + " (once a mission: −1 command reputation, −1 morale to each man replaced)"]] : []).concat(cpN ? [
       ["Checkpoints", cp.systems.map(function (s) { return s.cpsHit + "/" + s.cps; }).join(" · ") + " (system by system)"]] : []).concat(cp.escort ? [
       [cp.escort.kind === "convoy" ? "Convoy at the end" : (cp.escort.kind === "capital" ? "Capital ship" : "Carrier") + " hull at the end",
         (cp.escort.kind === "convoy" ? cp.escort.afloat + " of " + cp.escort.ships + " merchants through, hull " : "") + cp.escort.hull + "%"],
@@ -2126,6 +2176,7 @@
      AI gunner works it under that order. Until you pick, it follows the suggestion for each
      fight (the letter shows green). */
   function cycleOrder(i) {
+    if (sim.captain) return;           // (the guns' order is given from the bridge)
     var tu = sim.turret, b = tu.bats[i], list = BL.GUNNERY.orderList;
     var cur = tu.orderFor(b).order, next = list[(list.indexOf(cur) + 1) % list.length];
     tu.setOrder(b, next);
@@ -2351,7 +2402,8 @@
       ["efficiency", "Navigation", "lost", "on time"],
       ["demands", "Command", "loose", "tight"],
       ["guns", "Guns on target", "rarely", "always"],
-      ["condition", "Ship condition", "wrecked", "untouched"]
+      ["condition", "Ship condition", "wrecked", "untouched"],
+      ["delegation", "Delegation", "hands-on", "delegates"]
     ]
   };
   function profileHtml(p, before, station) {

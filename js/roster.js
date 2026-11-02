@@ -141,7 +141,8 @@
 
   /* After a Command mission: the ship destroyed, each man survives with a chance equal to his
      skill; the dead leave the pool (Killed in action) and green hires take their places. The
-     survivors gain skill and morale (or lose morale), and their records grow.
+     survivors gain skill and morale (or lose morale; a man whose station the captain took loses
+     one more), and their records grow.
      Returns { lost: [{ name, post }], hired: n }. */
   function afterMission(c, job, r, entry) {
     var cr = ensure(c), R = BL.ROSTER, ids = job.crewUsed;
@@ -161,6 +162,8 @@
       if (m.ships.indexOf(ship) < 0) m.ships.push(ship);
       m.skill = r2(Math.min(R.grow.cap, Math.max(m.skill, m.skill + R.grow.served + (success ? R.grow.success : 0))));
       m.morale = Math.round(clamp(m.morale + (success ? R.morale.success : R.morale.failure) + R.morale.killed * lost.length, 0, 100));
+      // (dropping down: the captain took his station, once a mission)
+      if (r.captain && (r.captain.replaced || []).indexOf(m.id) >= 0) m.morale = Math.round(clamp(m.morale + R.morale.replaced, 0, 100));
     });
     lost.forEach(function (x) {
       cr.kia.unshift({ name: name(x.m), post: x.m.post, at: x.at, ship: ship, date: entry.date });
