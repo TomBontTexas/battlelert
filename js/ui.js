@@ -2423,7 +2423,7 @@
     $("hub-summary").innerHTML = summaryHtml(career);
     $("hub-grid").innerHTML = gridHtml(career);
     var last = career.history[0];
-    $("hub-last").textContent = last ? "Last mission: " + BL.career.STATION_NAME[last.station || "engineer"].toLowerCase() + " aboard " + last.ship + " (" + BL.classById(last.classId).name + ", tech level " + last.tl + "), " +
+    $("hub-last").textContent = last ? "Last mission: " + BL.career.STATION_NAME[last.station || "engineer"].toLowerCase() + " aboard " + BL.shipLabel(last.classId, last.ship, last.hull) + " (TL" + last.tl + "), " +
       (last.outcome === "success" ? "success, +" + last.rep + " reputation" : last.outcome) + "." : "No missions yet. Your first job offers are waiting.";
     $("btn-hub-eng").textContent = "Engineer jobs (" + BL.career.offers(career, "engineer").length + ")";
     $("btn-hub-gun").textContent = "Gunner jobs (" + BL.career.offers(career, "gunner").length + ")";
