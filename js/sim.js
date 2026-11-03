@@ -53,6 +53,8 @@
     // A story mission (story.js) flies the systems its story names. The mine lane needs the gun
     // view, so in the engine room it's a minefield. reports: a line to play in each system.
     if (opts.route) this.route = opts.route.map(function (id) { return id === "sweep" && !opts.gunner ? "minefield" : id; });
+    // A squadron fights its map's targets (command.js Squadron): no minefield systems for it yet.
+    if (opts.flag && opts.captain) this.route = this.route.map(function (id) { return id === "minefield" || id === "sweep" ? "raiders" : id; });
     this.intelKnown = {};                     // (systems where the report turned out wrong: Mission.shown)
     // The bridge's survey of each system (Mission.reported): its own random stream, so the
     // mission's is unchanged.
@@ -187,7 +189,8 @@
   // Jump window (or carrier recovery) for system i; a minefield shortens it: the captain wants out.
   Mission.prototype.windowFor = function (i) {
     var w = this.cfg.jumpWindowAt[Math.min(i, this.cfg.jumpWindowAt.length - 1)], enc = BL.ENCOUNTERS[this.route[i]];
-    return Math.round(w * ((enc && enc.windowScale) || 1));
+    // (a squadron's map is BL.COMMAND.squad.map.window x bigger, and its window that much longer)
+    return Math.round(w * ((enc && enc.windowScale) || 1) * (this.flag ? BL.COMMAND.squad.map.window : 1));
   };
 
   /* ---------------------------------------------------------- Player input */
@@ -348,6 +351,7 @@
         encounter: this.route[this.stats.jumps.length] });
     }
     this.jumpIndex = this.cfg.jumps - 1;
+    this.testWinning = true;      // (a squadron's objectives don't count against a test win: Mission.finish)
     this.finish("success");
     var r = this.result;
     Object.keys(r.parts).forEach(function (k) { r.parts[k] = Math.round(25 * pct / 100); });
@@ -355,6 +359,8 @@
   };
 
   Mission.prototype.finish = function (outcome) {
+    // (a squadron that warped on leaving a system's objective standing has failed its mission)
+    if (this.flag && outcome === "success" && !this.testWinning && this.captain && this.captain.sqMissed()) outcome = "objectiveMissed";
     this.phase = "done";
     this.closeOverloadRun();
     this.result = this.captain ? BL.scoreCaptain(this, outcome) : this.helm ? BL.scoreHelm(this, outcome) : this.turret ? BL.scoreGunner(this, outcome) : BL.score(this, outcome);
@@ -372,8 +378,6 @@
     // Our ship's tech level: the forces are set for tech level 6 (the gunboat's 4); an older ship
     // meets fewer of them, a newer one more (BL.TECH.forceStep a level), so lower tech is harder
     // but not hopeless.
-    // A squadron meets the squadron's size times a lone ship's enemy (BL.COMMAND.squad.force); a field stays as thick.
-    if (this.flag && id !== "minefield") f *= (BL.COMMAND.squad.size[c] || 4) * BL.COMMAND.squad.force;
     return c === "gunboat" ? f : f * (1 + BL.TECH.forceStep * (this.data.tl - 6));
   };
   // Under 1, it's the chance a wave comes at all when one is due (the system's first always comes).
@@ -389,12 +393,13 @@
     // Once the jump window has been open a while, the enemy breaks off (drive hunters at once),
     // so a drive that can't keep up never stalls the mission forever.
     var cutoff = this.windowAt() + (enc.breakOff === undefined ? this.cfg.breakOff : enc.breakOff);
-    if (!enc.mines && !enc.sweep && t >= this.nextWaveAt && t < cutoff) {
+    // (a squadron: its enemies are the map's targets, Captain.runSquad, not waves on a timer)
+    if (!enc.mines && !enc.sweep && t >= this.nextWaveAt && t < cutoff && !this.flag) {
       this.queueWaves(this.forceCount(), enc);
       this.nextWaveAt = t + r.range(enc.waveEvery);
     }
     // Stragglers: light waves of another encounter type that join the fight (frigate groups).
-    if (enc.stragglers && t >= this.nextStragglerAt && t < cutoff) {
+    if (enc.stragglers && t >= this.nextStragglerAt && t < cutoff && !this.flag) {
       // (no drive-hunter stragglers at the drop)
       var stys = this.isDrop() ? enc.stragglers.types.filter(function (ty) { return ty !== "hunters"; }) : enc.stragglers.types;
       for (var q = this.forceCount(), qi = 0; qi < q; qi++) { var sty = r.pick(stys); this.queueWaves(1, BL.ENCOUNTERS[sty], sty, "straggler", qi); }
@@ -907,7 +912,7 @@
     var t = this.t, self = this;
     this.waves = this.waves.filter(function (w) {
       if (w.dead) return false;
-      if (t > w.lastAt + 3) { self.chat("withdrew", { enemy: w.name }, "info"); return false; }
+      if (t > w.lastAt + 3) { if (!w.quiet) self.chat("withdrew", { enemy: w.name }, "info"); return false; }     // (quiet: a map target's wave, renewed while it fights on)
       return true;
     });
   };

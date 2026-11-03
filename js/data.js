@@ -908,34 +908,55 @@
               kinds: { carrier: { name: "carrier", label: "CARRIER", ships: [1, 1], hull: 100, perMJ: 0.03, size: 1.8, width: 0.29 },
                        capital: { name: "capital ship", label: "CAPITAL SHIP", ships: [1, 1], hull: 100, perMJ: 0.03, size: 1.8, width: 0.26 },
                        convoy: { name: "convoy", label: "CONVOY", ships: [3, 5], hull: 100, perMJ: 0.08, gap: 0.015, station: 0.075, size: 0.9, width: 0.42 } }, clear: 0.08 },
-    // (LINE AHEAD, trail: each ship keeps her distance back along the flagship's own track, so the
-    // column turns each corner where she did: TexasBont, Nov 2, 2026.)
-    // Squadrons (approved Nov 2, 2026; stage 1, the Squadron test): the squadron commander plots
-    // the course and gives squadron orders; his flag captain (the test bot) runs the flagship; the
-    // other ships are lighter sims with our class's hull, shields and guns, each under an AI
-    // captain. `size`: ships per class, the flagship included. Formation slots, round the flagship:
-    // [degrees off her bow, distance in station gaps]; a gap keeps `clear` view units between two
-    // ships' shields (at least `gap` x the map's size). An order reaches a captain `lag` s / his
-    // skill later. Each enemy system comes `force` x the squadron's size as strong as a lone ship's.
-    // A ship's guns do `fire` x our own guns' best damage a second to a ship within reach of hers
-    // (x 0.6 + 0.4 x her captain's skill); her shields recharge at `shield` x our charger's rating;
-    // she shoots down `selfDown` of the torpedoes at her. SCREEN: a ship on our side of a burst at
-    // us shoots down `guard` of it. ATTACK (destroyer): for `time` s every ship closes on the
-    // target and fires `mult` x as hard (`abreast` x more from LINE ABREAST), taking `risk` x the
-    // fire; once every `every` s. Temper: [aggressive, steady, cautious] x her distance, fire, risk.
-    // (Nov 2, 2026, squadron test bot, TL5 to 7, 36 missions: force 0.9 wins 20, with no orders 17; at fire 0.18 the other
-    // ships kill about as many enemy ships each as the flagship's crew does.)
+    // Squadrons (approved Nov 2, 2026; the Squadron test). Revised Nov 2, 2026 (TexasBont liked all
+    // four sample screens): the squadron fights on the map. Each system has enemy targets with places,
+    // headings and gun arcs on a larger map (`window` x a lone ship's warp window, so the map is that
+    // much bigger); the commander sends his ships to them, singly or together, or to a spot; fire is
+    // decided by which guns bear and range, so crossing the T and an L-shaped ambush work. The
+    // flagship's own fight is the battle view: a target that fires on her comes in there as its wave.
+    // Distances are in seconds at our cruise speed. `size`: ships per class, the flagship included.
+    // Formations (the ships not sent anywhere, round the flagship): slots [degrees off her bow,
+    // station gaps]; LINE AHEAD (trail) follows her own track round every corner (TexasBont, Nov 2,
+    // 2026). A gap keeps `clear` view units between two ships' shields (at least `gap` x the map).
+    // Ships sent together to a spot line up there the same way: in line ahead broadsides to the
+    // nearest enemy, in line abreast bows on. An order reaches a captain `lag` s / his skill later.
+    // Temper: [aggressive, steady, cautious] x her distance, fire, risk.
+    // map: `sensor` our ships see that far; a reported target is off by up to `reportOff`;
+    // `close`: a ship sent to a target closes to that share of her gun range and then keeps it on
+    // her beam; `range` our ships' gun range; each gun that bears does `gunDps` x our guns' best
+    // damage a second (x 0.6 + 0.4 x her captain's skill); each enemy gun that bears does `enemyDps`
+    // MJ a second (shields first, then hull at our hullPerMJ); her shields recharge at `shield` x our
+    // charger. HOLD FIRE: a ship holds until an enemy is inside `ambush` of her range, and till she
+    // fires only an enemy that close sees her. Per system: one objective (the depot) and `targets`
+    // others, `unknown` of them not in the pickets' report. Kinds: `enc` the encounter its ships
+    // are in the battle view; `hp`; `speed` x our cruise (0: fixed); `hunt`: goes for our nearest
+    // ship it sees, standing off at `standOff` of its range; `patrol`: holds its course, turning its
+    // broadside to a ship in range; `guns` [[degrees off its bow, half the arc, guns, lead only]]
+    // ("lead": only the column's lead ship's, masked for the rest); `range`.
+    // A system's objective must be destroyed before the squadron warps on, or the mission fails
+    // (objectiveMissed). (Nov 2, 2026: each target three waves' worth; the flagship's crew and the
+    // ships near her made short work of anything smaller.)
+    // (Headless, squadron test bot, TL5 to 7, 18 missions: 11 won (2 flagships lost, 5 objectives missed),
+    // 2.4 of 4 ships home; with no orders, every ship in formation: none won, the objective almost never reached.)
     squad: { size: { gunboat: 6, picket: 4, destroyerEscort: 4, destroyer: 4, lightCruiser: 4, cruiser: 4, heavyCruiser: 4, battleship: 3, dreadnought: 2 },
              test: ["destroyer"],
              formations: {
-               abreast: { name: "Line abreast", short: "LINE ABREAST", slots: [[-90, 1], [90, 1], [-90, 2], [90, 2], [-90, 3]] },
                ahead: { name: "Line ahead", short: "LINE AHEAD", slots: [[180, 1], [180, 2], [180, 3], [180, 4], [180, 5]], trail: true },
-               screen: { name: "Screen round the flagship", short: "SCREEN ROUND THE FLAG", slots: [[0, 1], [-90, 1], [90, 1], [180, 1], [-45, 1.6]], guard: true } },
-             formationList: ["abreast", "ahead", "screen"], start: "abreast",
-             gap: 0.03, clear: 0.06, lag: 2, force: 0.9, fire: 0.18, shield: 0.5, selfDown: 0.5, guard: 0.5, tick: 0.5, hire: [0.4, 0.95],
-             attack: { time: 15, every: 45, mult: 1.6, abreast: 1.25, risk: 1.3 },
+               abreast: { name: "Line abreast", short: "LINE ABREAST", slots: [[-90, 1], [90, 1], [-90, 2], [90, 2], [-90, 3]] } },
+             formationList: ["ahead", "abreast"], start: "ahead",
+             gap: 0.03, clear: 0.06, lag: 2, tick: 0.5, hire: [0.4, 0.95],
              temper: { aggressive: [0.85, 1.1, 1.1], steady: [1, 1, 1], cautious: [1.2, 0.9, 0.85] },
-             ranks: ["Lieutenant", "Lieutenant Commander", "Commander"] },
+             ranks: ["Lieutenant", "Lieutenant Commander", "Commander"],
+             map: { window: 1.5, sensor: 55, reportOff: 10, range: 16, close: 0.75, gunDps: 0.1, enemyDps: 3, shield: 0.08, ambush: 0.6,
+                    targets: [3, 4], unknown: [1, 2], letters: "ABCDEFGH",
+                    kinds: {
+                      depot: { name: "Supply depot", enc: "siege", hp: 720, speed: 0, objective: true, guns: [[0, 180, 3]], range: 12 },
+                      siege: { name: "Siege battery", enc: "siege", hp: 600, speed: 0, ships: 4, guns: [[0, 180, 6]], range: 20 },
+                      raiders: { name: "Raider pack", enc: "raiders", hp: 450, speed: 1.4, hunt: true, standOff: 0.6, guns: [[0, 45, 6]], range: 13 },
+                      interceptors: { name: "Interceptor flight", enc: "interceptors", hp: 240, speed: 1.9, hunt: true, standOff: 0.5, guns: [[0, 45, 4]], range: 10 },
+                      frigate: { name: "Frigate group", enc: "frigate", hp: 900, speed: 0.7, patrol: true, guns: [[0, 30, 2, "lead"], [90, 60, 4], [-90, 60, 4]], range: 18 },
+                      hunters: { name: "Drive hunters", enc: "hunters", hp: 300, speed: 1.7, hunt: true, standOff: 0.7, guns: [[0, 180, 3]], range: 11 } },
+                    pick: ["siege", "raiders", "interceptors", "frigate", "hunters", "raiders"] } },
     // A picket's scouting run (the captain's path): `n` checkpoints of radius `r` (x the map's size)
     // to fly through in order, spread over `along` of the way to the jump point and `side` off it.
     // The navigator's plot keeps `slack` s in hand for each one.

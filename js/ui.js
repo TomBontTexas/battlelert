@@ -210,7 +210,7 @@
     if (sqv) $("brief-squad").innerHTML = "<b>The squadron:</b> " + (sqv.ships.length + 1) + " " + cls.name.toLowerCase() + "s in " + BL.COMMAND.squad.formations[sqv.form].name.toLowerCase() + ". " +
       "Flag captain: " + esc(sqv.flag.name) + ", " + sqv.flag.label + " (skill " + Math.round(sqv.flag.skill * 100) + "), " + sqv.flag.temper + " temper. " +
       sqv.ships.map(function (x) { return "Ship " + x.no + ": " + esc(x.cap.name) + ", " + x.cap.label + " (" + Math.round(x.cap.skill * 100) + "), " + x.cap.temper; }).join(" · ") +
-      ". An order takes each captain a few seconds to carry out, longer the lower his skill. Enemy groups go after any ship of the squadron.";
+      ". Each system's map shows the enemy's targets: destroy its objective, the supply depot, before the squadron warps on, or the mission fails. Send ships to targets or spots on the map; an order takes each captain a few seconds to carry out, longer the lower his skill.";
     $("brief-sweep").hidden = sim.route.indexOf("sweep") < 0;
     if (gunner) {
       var en = sim.turret.engineer;
@@ -252,7 +252,7 @@
     BL.speech.unlock();
     var en0 = sim.turret && sim.turret.engineer;     // (a roster engineer's temperament: BL.ROSTER.temper)
     // A squadron: you start as its commander; the flag captain (the captain test bot) runs the flagship.
-    cmdView = !!sim.flag; flagBot = sim.flag ? new BL.CaptainBot({ noJump: true }) : null;
+    cmdView = !!sim.flag; flagBot = sim.flag ? new BL.CaptainBot({ noJump: true }) : null; sqSel = []; sqTgt = null;
     aiEngineer = en0 ? new BL.AIEngineer(en0.temperK === undefined ? 0.5 : en0.temperK, 0.25, en0.skill) : null;
     lastTuDamage = -1;
     if (sim.turret) { buildTurret(); show("scr-turret"); sizeTurret(); }
@@ -1508,7 +1508,7 @@
     $("cp-sec-torp").hidden = cmd; $("cp-teles").hidden = cmd; $("cp-warn").hidden = cmd; $("cp-drop").hidden = cmd; $("cp-ship-grp").hidden = cmd || !shipGrp;
     if (cmd) dropPick = false;
     $("tu-station").textContent = (cmd ? "Squadron · " : sq ? "Flag bridge · " : "Bridge · ") + (job.test ? sim.data.className : BL.shipLabel(job.classId, job.ship, job.hull)) + " (TL" + sim.data.tl + ")";
-    $("tu-keys").textContent = cmd ? "← → course 10° (Shift 1°) · R resume plot · ↑ ↓ engines · O formation · T target · A attack · 2 to " + sim.captain.escort.n + " detach / rejoin that ship · J warp · D flag bridge · V swap map · + − F zoom · Esc pause · Tap the compass or the map to steer"
+    $("tu-keys").textContent = cmd ? "← → course 10° (Shift 1°) · R resume plot · ↑ ↓ engines · 1 to " + sim.captain.escort.n + " select a ship · A all · then tap a target or a spot on the map · Z recall · X hold fire · C clear · O formation · J warp · D flag bridge · V swap map · + − F zoom · Esc pause"
       : bridgeKeys + (sq ? " · Q back to the squadron" : "");
     lastBridgeBox = {};
   }
@@ -1522,33 +1522,141 @@
     if (!sim.flag || cmdView || cpAt) return;
     cmdView = true; click(); applyCmd();
   }
-  // The squadron's box: the formation and target, each ship's line (tap to detach or call back), TARGET, ATTACK, FLAG BRIDGE.
+  // The squadron's box: the formation, a warning, the flagship's line and each ship's (tap to
+  // select; then tap a target or a spot on the map to send them), RECALL / HOLD FIRE / CLEAR for
+  // the ships selected, the card of a target tapped with none selected, SPEED, FLAG BRIDGE.
+  // (sqSel: ship numbers selected, 1 the flagship; sqTgt: the target whose card is up)
+  var sqSel = [], sqTgt = null;
   function renderSquad(live) {
     var c = sim.captain, v = c.squadView(), Q = BL.COMMAND.squad;
     if (!v || !cmdView) return;
-    var tw = v.target, av = v.attack, home = 1 + v.ships.filter(function (x) { return x.live; }).length, an = tw ? c.aimName(tw) : null;
+    var home = 1 + v.ships.filter(function (x) { return x.live; }).length;
+    sqSel = sqSel.filter(function (n) { return n === 1 || v.ships.some(function (x) { return x.no === n && x.live; }); });
     setText($("cp-sq-hd"), "SQUADRON · " + home + " of " + (v.ships.length + 1));
-    // (two short lines: the formation, then the target and who it's after)
-    cpLine("cp-sq-ln", "<b>" + Q.formations[v.form].short + "</b>");
-    cpLine("cp-sq-ln2", tw ? "Target <b>" + esc(tw.name) + "</b>" + (an ? " on " + (an === "Flag" ? "the flagship" : "ship " + an) : "") : "No target");
-    var pendForm = v.ships.some(function (x) { return x.order === "form"; });
+    var left = c.sqGroups().length, obj = c.sqGroups().filter(function (T) { return T.K.objective; }).length;
+    cpLine("cp-sq-ln", "<b>" + Q.formations[v.form].short + "</b> · " + left + " target" + (left === 1 ? "" : "s") + " left" + (obj ? " · objective standing" : " · <span style='color:#3dff7a'>objective down</span>"));
+    cpLine("cp-sq-ln2", v.alert ? "⚠ " + esc(v.alert) : "");
+    var pendForm = v.ships.some(function (x) { return x.pend; });
     Array.prototype.forEach.call($("cp-sq-form").children, function (b) { b.classList.toggle("on", b.dataset.form === v.form); b.classList.toggle("pend", b.dataset.form === v.form && pendForm); b.disabled = !live; });
-    // The flagship first (her flag captain, hull and shields; her drive is on WARP), then each ship (tap to detach or call back).
-    var sh = sim.sys("shield"), fh = Math.round(100 * sim.ship.hull / sim.ship.hullMax);
-    var flagLn = '<div class="cp-sq-flag" title="The flagship: ' + esc(v.flag.name) + ', your flag captain"><b>1</b> ' + esc(v.flag.last) + " " + fh + "%<br><span>flagship · shields " + Math.round(100 * sh.mj / sh.maxMJ) + "%</span>" +
-      '<i class="' + (fh < 35 ? "low" : "") + '" style="width:' + fh + '%"></i></div>';
-    var eng = c.helmView().eng;
-    ["cp-sq-speed1", "cp-sq-speed2"].forEach(function (id) { Array.prototype.forEach.call($(id).children, function (b) { b.classList.toggle("on", b.dataset.eng === eng); b.disabled = !live; }); });
+    // (the flagship's line: her flag captain, hull and shields, what she's doing)
+    var sh = sim.sys("shield"), fh = Math.round(100 * sim.ship.hull / sim.ship.hullMax), fg = c.flagGo, fT = fg && fg.kind === "target" ? c.sqTargets[fg.id] : null;
+    var fdo = fT ? "→ " + fT.letter + " " + fT.K.name.toLowerCase() : fg ? "→ a spot" : "flagship · on " + (c.helmView().own ? "your course" : "the plot");
+    var flagLn = '<button data-sel="1" class="flagrow' + (sqSel.indexOf(1) >= 0 ? " sel" : "") + '" title="The flagship: ' + esc(v.flag.name) + ', your flag captain. Tap to select her (1)"' + (live ? "" : " disabled") + "><b>1</b> " + esc(v.flag.last) + " " + fh + "% · sh " + Math.round(100 * sh.mj / sh.maxMJ) + "%<br><span>" + fdo + "</span>" +
+      '<i class="' + (fh < 35 ? "low" : "") + '" style="width:' + fh + '%"></i></button>';
     cpHtml("cp-sq-ships", flagLn + v.ships.map(function (x) {
-      var h = Math.round(x.hull * 100);
-      return '<button data-det="' + x.no + '" class="' + (x.live ? "" : "lost") + (x.task === "detach" ? " det" : "") + (x.order === "task" ? " pend" : "") + '" title="' + esc(x.cap.name) + ", " + x.cap.label + " (skill " + Math.round(x.cap.skill * 100) + "), " + x.cap.temper + " temper" +
-        (x.live ? ". Tap to " + (x.task === "detach" ? "call her back to her station" : "detach her after the target") + " (" + x.no + ")" : "") + '"' + (x.live && live ? "" : " disabled") + "><b>" + x.no + "</b> " + esc(x.cap.last) + (x.live ? " " + h + "%" : "") + "<br><span>" + x.doing + "</span>" +
+      var h = Math.round(x.hull * 100), sel = sqSel.indexOf(x.no) >= 0;
+      return '<button data-sel="' + x.no + '" class="' + (x.live ? "" : "lost") + (sel ? " sel" : "") + (x.pend ? " pend" : "") + '" title="' + esc(x.cap.name) + ", " + x.cap.label + " (skill " + Math.round(x.cap.skill * 100) + "), " + x.cap.temper + " temper" +
+        (x.live ? ". Tap to select her (" + x.no + ")" : "") + '"' + (x.live && live ? "" : " disabled") + "><b>" + x.no + "</b> " + esc(x.cap.last) + (x.live ? " " + h + "%" : "") + "<br><span>" + esc(x.doing) + "</span>" +
         (x.live ? '<i class="' + (h < 35 ? "low" : "") + '" style="width:' + h + '%"></i>' : "") + "</button>";
     }).join(""));
-    $("cp-sq-target").disabled = !live || !c.sqGroups().length;
-    var ab = $("cp-sq-attack");
-    ab.hidden = !av; if (av) { ab.disabled = !live || !av.can; ab.classList.toggle("ready", !!av.can); setHtml(ab, av.on ? "ATTACKING " + Math.ceil(av.left) + "s" : av.wait ? "ATTACK " + Math.ceil(av.wait) + "s" : "ATTACK <small>(A)</small>"); }
+    var any = sqSel.length > 0;
+    cpLine("cp-sq-hint", any ? "Ship" + (sqSel.length > 1 ? "s " : " ") + sqSel.join(", ") + ": tap a target or a spot on the map" : "Tap ships to select, then a target or a spot on the map");
+    $("cp-sq-selrow").hidden = !any;
+    ["cp-sq-recall", "cp-sq-hold", "cp-sq-clear"].forEach(function (id) { $(id).disabled = !live; });
+    var holding = sqSel.length && sqSel.every(function (n) { var x = v.ships.filter(function (s) { return s.no === n; })[0]; return x && x.hold; });
+    setHtml($("cp-sq-hold"), holding ? "OPEN FIRE" : "HOLD FIRE");
+    // The target card: what it is, how strong, what it's firing on, who's sent, and the guns that bear each way.
+    var T = !any && sqTgt !== null ? c.sqTargets[sqTgt] : null;
+    $("cp-sq-card").hidden = !T;
+    if (T) {
+      var tv = c.targetView(T);
+      cpHtml("cp-sq-card", "<b>" + tv.letter + " · " + esc(tv.name) + "</b>" + (tv.objective ? " · objective" : "") + "<br>" +
+        (tv.dead ? "Destroyed" : (tv.seen ? "Seen" : tv.known ? "Pickets' report" : "Not in the report") + " · " + (tv.known ? tv.pct + "% strength" : "strength unknown") + "<br>" +
+        (tv.known ? (tv.moves ? "Moves" : "Fixed") + " · " + tv.guns + " guns · range " + tv.range + "<br>" : "") +
+        (tv.on ? "Firing on " + tv.on + "<br>" : "") + "Sent: " + (tv.sent.length ? "ship" + (tv.sent.length > 1 ? "s " : " ") + tv.sent.join(", ") : "none") +
+        (tv.seen ? '<br>Guns bearing: <span class="num ours">' + tv.ours + '</span> vs <span class="num theirs">' + tv.theirs + "</span>" : "")));
+    }
+    var eng = c.helmView().eng;
+    ["cp-sq-speed1", "cp-sq-speed2"].forEach(function (id) { Array.prototype.forEach.call($(id).children, function (b) { b.classList.toggle("on", b.dataset.eng === eng); b.disabled = !live; }); });
     $("cp-sq-bridge").disabled = !live || !c.canDrop();
+  }
+  // Selecting ships (1 the flagship) and sending them.
+  function sqToggle(no) { var i = sqSel.indexOf(no); if (i >= 0) sqSel.splice(i, 1); else sqSel.push(no); sqTgt = null; click(); }
+  function sqAll() { var c = sim.captain; sqSel = [1].concat(c.sqLive().map(function (g) { return g.no; })); click(); }
+  function sqSend(T) {
+    var c = sim.captain, nos = sqSel.filter(function (n) { return n !== 1; });
+    if (nos.length) c.sendTo(nos, T.id);
+    if (sqSel.indexOf(1) >= 0) c.flagTo({ kind: "target", id: T.id });
+    sqSel = []; sqTgt = T.id;
+  }
+  function sqSpot(p) {
+    var c = sim.captain, nos = sqSel.filter(function (n) { return n !== 1; }), grp = c.sendSpot(nos, p);
+    if (sqSel.indexOf(1) >= 0) c.flagTo({ kind: "spot", spot: grp, k: grp.n++ });
+    sqSel = [];
+  }
+  function sqRecall() { var c = sim.captain; c.recall(sqSel.filter(function (n) { return n !== 1; })); if (sqSel.indexOf(1) >= 0) c.resumePlot(); sqSel = []; }
+  function sqHold() {
+    var c = sim.captain, nos = sqSel.filter(function (n) { return n !== 1; }), v = c.squadView();
+    var all = nos.length && nos.every(function (n) { var x = v.ships.filter(function (s) { return s.no === n; })[0]; return x && x.hold; });
+    c.setHold(nos, !all);
+  }
+  // The targets on a map (frame fr): a glyph for each kind where it shows (solid when our ships
+  // see it, dashed from the report or where it was last seen, "?" an unknown contact), its letter
+  // (and name and strength in the big map), and for one we see or have picked, its gun range and
+  // the arcs its guns bear through, and its heading. plan: the plotting screen (the report only).
+  function drawTargets(ctx, fr, list, big, c, plan) {
+    var cs = c.cs(), mono = "ui-monospace, Menlo, Consolas, monospace";
+    list.forEach(function (T) {
+      var at = plan ? T.rep : c.shownAt(T), p = fr.toPx(at), sel = !plan && sqTgt === T.id, s = big ? 7 : 5;
+      ctx.font = "600 " + (big ? 11 : 10) + "px " + mono; ctx.textAlign = "left"; ctx.textBaseline = "middle";
+      if (T.dead) {
+        ctx.strokeStyle = "rgba(255,107,107,.35)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(p.x - s, p.y - s); ctx.lineTo(p.x + s, p.y + s); ctx.moveTo(p.x + s, p.y - s); ctx.lineTo(p.x - s, p.y + s); ctx.stroke();
+        ctx.fillStyle = "rgba(255,179,168,.45)"; ctx.fillText(T.letter, p.x + s + 4, p.y); return;
+      }
+      var known = !T.unknown || (!plan && (T.seen || T.last));
+      if (!known) {
+        ctx.strokeStyle = "#9aa6b2"; ctx.lineWidth = 1.2; ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.arc(p.x, p.y, s + 4, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+        ctx.fillStyle = "#9aa6b2"; ctx.textAlign = "center"; ctx.fillText("?", p.x, p.y + 1);
+        if (sel) { ctx.strokeStyle = "#ffd666"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(p.x, p.y, s + 9, 0, Math.PI * 2); ctx.stroke(); }
+        return;
+      }
+      var solid = !plan && T.seen, R = T.K.range * cs;
+      if (solid || sel) {
+        ctx.strokeStyle = "rgba(255,107,107,.35)"; ctx.lineWidth = 1; ctx.setLineDash([4, 5]); ctx.beginPath(); ctx.arc(p.x, p.y, R * fr.s, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+        T.K.guns.forEach(function (g) {
+          if (g[1] >= 180) return;
+          ctx.fillStyle = "rgba(255,90,70,.10)"; ctx.strokeStyle = "rgba(255,107,107,.4)"; ctx.beginPath(); ctx.moveTo(p.x, p.y);
+          for (var k = 0; k <= 10; k++) { var q = fr.toPx(BL.alongMap(at, T.hdg + g[0] - g[1] + 2 * g[1] * k / 10, R)); ctx.lineTo(q.x, q.y); }
+          ctx.closePath(); ctx.fill(); ctx.stroke();
+        });
+      }
+      ctx.strokeStyle = "#ff6b6b"; ctx.fillStyle = "#ff6b6b"; ctx.lineWidth = 1.5; if (!solid) ctx.setLineDash([3, 2]);
+      var kind = T.kind;
+      function tri(x, y, r) { ctx.beginPath(); ctx.moveTo(x, y - r); ctx.lineTo(x + r, y + r); ctx.lineTo(x - r, y + r); ctx.closePath(); solid ? ctx.fill() : ctx.stroke(); }
+      if (kind === "depot") { ctx.beginPath(); ctx.moveTo(p.x, p.y - s - 2); ctx.lineTo(p.x + s + 2, p.y); ctx.lineTo(p.x, p.y + s + 2); ctx.lineTo(p.x - s - 2, p.y); ctx.closePath(); solid ? ctx.fill() : ctx.stroke(); }
+      else if (kind === "siege") [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(function (q) { var x = p.x + q[0] * s * 0.6 - s * 0.45, y = p.y + q[1] * s * 0.6 - s * 0.45; solid ? ctx.fillRect(x, y, s * 0.9, s * 0.9) : ctx.strokeRect(x, y, s * 0.9, s * 0.9); });
+      else if (kind === "raiders") { tri(p.x - s, p.y + 2, s * 0.6); tri(p.x + s, p.y + 2, s * 0.6); tri(p.x, p.y - s * 0.6, s * 0.6); }
+      else if (kind === "interceptors") { tri(p.x - s * 0.6, p.y, s * 0.5); tri(p.x + s * 0.6, p.y, s * 0.5); }
+      else if (kind === "frigate") { for (var f = -1; f <= 1; f++) { var fp = fr.toPx(BL.alongMap(at, T.hdg, f * 0.02 * c.map().D)); ctx.beginPath(); ctx.arc(fp.x, fp.y, f === 1 ? s * 0.75 : s * 0.55, 0, Math.PI * 2); solid ? ctx.fill() : ctx.stroke(); } }
+      else { [[-1, 0], [1, 0], [0, -1]].forEach(function (q) { ctx.beginPath(); ctx.arc(p.x + q[0] * s * 0.8, p.y + q[1] * s * 0.8, s * 0.4, 0, Math.PI * 2); solid ? ctx.fill() : ctx.stroke(); }); }
+      ctx.setLineDash([]);
+      if (solid && T.K.speed) { var hp2 = fr.toPx(BL.alongMap(at, T.hdg, 0.05 * c.map().D)); ctx.strokeStyle = "#ff6b6b"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(hp2.x, hp2.y); ctx.stroke(); }
+      if (sel) { ctx.strokeStyle = "#ffd666"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(p.x, p.y, s + 9, 0, Math.PI * 2); ctx.stroke(); }
+      ctx.fillStyle = T.K.objective ? "#ffd666" : "#ffb3a8";
+      ctx.fillText(T.letter + (big ? " · " + T.K.name.toUpperCase() + (plan ? "" : " " + Math.round(100 * T.hp / T.hpMax) + "%") + (T.K.objective ? " · OBJECTIVE" : "") : ""), p.x + s + 6, p.y - (big ? 2 : 0));
+      if (big && !solid && !plan) { ctx.fillStyle = "#8899a8"; ctx.fillText(T.seen ? "" : T.last ? "last seen" : "reported", p.x + s + 6, p.y + 12); }
+    });
+  }
+  // The squadron on the bridge map: our sensor range round the flagship, the targets, the fire
+  // (ours teal, theirs red), each ship with her number and her order's line, the ones selected ringed.
+  function drawSquadMap(ctx, fr, big) {
+    var c = sim.captain, es = c.escort, M = BL.COMMAND.squad.map, cs = c.cs(), fp = fr.toPx(c.pos), mono = "ui-monospace, Menlo, Consolas, monospace";
+    ctx.strokeStyle = "rgba(76,195,238,.35)"; ctx.lineWidth = 1; ctx.setLineDash([7, 7]); ctx.beginPath(); ctx.arc(fp.x, fp.y, M.sensor * cs * fr.s, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+    drawTargets(ctx, fr, c.sqTargets || [], big, c, false);
+    es.fx.forEach(function (f) { var a = fr.toPx(f.a), b = fr.toPx(f.b); ctx.strokeStyle = f.foe ? "rgba(255,107,107,.75)" : "rgba(127,216,200,.8)"; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); });
+    function orderLine(from, goal) { var q = fr.toPx(goal); ctx.strokeStyle = "rgba(127,216,200,.6)"; ctx.lineWidth = 1.2; ctx.setLineDash([5, 5]); ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(q.x, q.y); ctx.stroke(); ctx.setLineDash([]); }
+    if (c.flagGo) { var fgoal = c.goalOf(null, c.pos); if (fgoal) orderLine(fp, fgoal); }
+    ctx.font = "600 " + (big ? 11 : 10) + "px " + mono; ctx.textAlign = "left"; ctx.textBaseline = "middle";
+    es.wing.forEach(function (g) {
+      if (g.hull <= 0) return;
+      var at = c.wingPos(g), gp = fr.toPx(at), o = c.orderOf(g);
+      if (o.kind !== "form") orderLine(gp, c.goalOf(g, at));
+      BL.drawMapShip(ctx, gp, g.pos ? g.hdg : es.hdg, big ? 9 : 6, g.hold ? "#9aa6b2" : "#7fd8c8");
+      if (sqSel.indexOf(g.no) >= 0) { ctx.strokeStyle = "#ffd666"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(gp.x, gp.y, big ? 13 : 10, 0, Math.PI * 2); ctx.stroke(); }
+      ctx.fillStyle = "rgba(207,227,255,.95)"; ctx.fillText("" + g.no, gp.x + 9, gp.y - 8);
+    });
+    if (sqSel.indexOf(1) >= 0) { ctx.strokeStyle = "#ffd666"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(fp.x, fp.y, big ? 14 : 11, 0, Math.PI * 2); ctx.stroke(); }
+    ctx.fillStyle = "#ffd666"; ctx.fillText("1", fp.x + 10, fp.y - 9);
   }
   var lastBridgeBox = {}, canBreakEver = true;
   var STATION_LIST = ["ahead", "port", "stbd", "astern"], STATION_SHORT = { ahead: "AHEAD", port: "PORT", stbd: "STBD", astern: "ASTERN" },
@@ -1593,7 +1701,8 @@
     if (!c.pos) return;
     // Escort: her ships (blue hulls on her heading: a carrier or capital ship long, merchants short,
     // a lost one dim), the wingmen on their stations, and our station (a ring).
-    if (c.escort && c.escort.pos) {
+    if (c.escort && c.escort.flag && c.pos) drawSquadMap(ctx, fr, big);
+    else if (c.escort && c.escort.pos) {
       var es = c.escort, a = es.hdg * Math.PI / 180, conv = es.kind === "convoy";
       es.ships.forEach(function (s) {
         var sp2 = fr.toPx(s.pos), L = (big ? 16 : 11) * (conv ? 0.55 : es.kind === "capital" ? 1.1 : 1);
@@ -1680,7 +1789,7 @@
     drawBridgeMap(hv);
     // HELM: what she's steering (the captain's own course, the main gun, the station or the plot), her heading and speed.
     // (four short lines, so nothing runs off the narrow column)
-    cpLine("cp-helm-ln", "Steer <b>" + hdg3(hv.hdg) + "</b> " + (hv.own ? "yours" : hv.attack ? "attack" : hv.main ? "main gun" : hv.station ? "station" : "plot"));
+    cpLine("cp-helm-ln", "Steer <b>" + hdg3(hv.hdg) + "</b> " + (hv.own ? "yours" : hv.sent ? "sent" : hv.main ? "main gun" : hv.station ? "station" : "plot"));
     cpLine("cp-hdg-ln", "Hdg " + hdg3(h.compass()) + " · " + fmtG(h.speed) + " G");
     // NAVIGATION: asteroids or a minefield first; the escort's station and ward; in the zone; else the leg and the next turn. Then the window (and a scouting run's checkpoints).
     var wi = sim.windowIn(), win = wi > 0 ? "Window " + mmss(wi) : "Window open";
@@ -1831,9 +1940,11 @@
       var sqn = c.escort.n;
       if (kl === "d" && !ev.repeat) toFlagBridge();
       else if (kl === "o" && !ev.repeat) c.setFormation(cycle(BL.COMMAND.squad.formationList, c.escort.form, 1));
-      else if (kl === "t" && !ev.repeat) c.cycleTarget();
-      else if (kl === "a" && !ev.repeat) c.orderAttack();
-      else if (k >= "2" && k <= "9" && +k <= sqn && !ev.repeat) c.toggleDetach(+k);
+      else if (k >= "1" && k <= "9" && +k <= sqn && !ev.repeat) sqToggle(+k);
+      else if (kl === "a" && !ev.repeat) sqAll();
+      else if (kl === "z" && !ev.repeat && sqSel.length) { sqRecall(); click(); }
+      else if (kl === "x" && !ev.repeat && sqSel.length) { sqHold(); click(); }
+      else if (kl === "c" && !ev.repeat) { sqSel = []; sqTgt = null; click(); }
       else if (k === "ArrowLeft") courseBy(ev.shiftKey ? -1 : -10);
       else if (k === "ArrowRight") courseBy(ev.shiftKey ? 1 : 10);
       else if (kl === "r") c.resumePlot();
@@ -1884,9 +1995,10 @@
       if (b.dataset.drop) { dropTo(b.dataset.drop, +b.dataset.gun); return; }     // (before data-gun: the STATIONS gun buttons carry it too)
       // A squadron: the commander's orders; the flag captain's buttons are his while you command.
       if (b.dataset.form) { c.setFormation(b.dataset.form); return; }
-      if (b.dataset.det) { c.toggleDetach(+b.dataset.det); return; }
-      if (b.id === "cp-sq-target") { c.cycleTarget(); return; }
-      if (b.id === "cp-sq-attack") { c.orderAttack(); return; }
+      if (b.dataset.sel) { sqToggle(+b.dataset.sel); return; }
+      if (b.id === "cp-sq-recall") { sqRecall(); click(); return; }
+      if (b.id === "cp-sq-hold") { sqHold(); click(); return; }
+      if (b.id === "cp-sq-clear") { sqSel = []; click(); return; }
       if (b.id === "cp-sq-bridge") { toFlagBridge(); return; }
       if (b.id === "cp-sq-back") { toSquadron(); return; }
       if (sim.flag && cmdView && (b.dataset.gun || b.dataset.stance || b.dataset.pilot || b.dataset.brk !== undefined)) return;
@@ -1936,7 +2048,18 @@
       if (Object.keys(ptrs).length < 2) pinch = null;
       var c = sim && sim.captain;
       if (!p || p.moved || ev.type !== "pointerup" || !c || !c.pos || !turretActive()) return;
-      var t = mapFrame(mv.clientWidth, mv.clientHeight).toMap(p.at.x, p.at.y);
+      var fr0 = mapFrame(mv.clientWidth, mv.clientHeight), t = fr0.toMap(p.at.x, p.at.y);
+      // A squadron's commander: a tap on a target sends the ships selected to it (with none
+      // selected, it opens the target's card); on open space it sends them there; with none
+      // selected and no target there, it steers the flagship as on the bridge.
+      if (sim.flag && cmdView) {
+        var hit = null, hd = 22;
+        c.sqGroups().forEach(function (T) { var q = fr0.toPx(c.shownAt(T)); var d = Math.hypot(q.x - p.at.x, q.y - p.at.y); if (d < hd) { hd = d; hit = T; } });
+        if (hit && sqSel.length) { sqSend(hit); click(); return; }
+        if (hit) { sqTgt = sqTgt === hit.id ? null : hit.id; click(); return; }
+        if (sqSel.length) { sqSpot(t); click(); return; }
+        sqTgt = null;
+      }
       c.orderCourse(BL.navBearing(c.pos, t));
     }
     mv.addEventListener("pointerup", mapUp); mv.addEventListener("pointercancel", mapUp);
@@ -1960,12 +2083,21 @@
     if (c.escort && !c.escort.flag) { c.setPlot(i, BL.navPlot(map, plotGOf)); BL.speech.unlock(); sim.beginJump(); running = true; speakNew(); return; }
     plotEd = { i: i, map: map, plot: old ? { pts: old.pts.map(function (p) { return { x: p.x, y: p.y }; }), eng: old.eng.slice() }
       : blankPlot(map) };
-    $("pl-title").textContent = "Plot the course · system " + (i + 1) + " of " + sim.cfg.jumps + " · " + BL.ENCOUNTERS[sim.reported(i)].name;
+    $("pl-title").textContent = sim.flag ? "Plan the attack · system " + (i + 1) + " of " + sim.cfg.jumps : "Plot the course · system " + (i + 1) + " of " + sim.cfg.jumps + " · " + BL.ENCOUNTERS[sim.reported(i)].name;
+    $("pl-squad").hidden = !sim.flag;
     $("pl-new").hidden = !(job && job.test && i === 0);
     overlay("ov-plot", true);
     plW = 0; drawPlot();
   }
   function plotGOf(id) { return sim.helm.gOf(id); }
+  // The plotting screen's squadron list: each ship and her order for this system.
+  function drawPlotSquad() {
+    var c = sim.captain, pre = c.preOrders[plotEd.i], ts = c.sqMaps[plotEd.i];
+    $("pl-squad").innerHTML = '<div class="ps-hd">YOUR SHIPS · tap to send one to a target</div>' + c.sqLive().map(function (g) {
+      var T = pre[g.no] !== undefined ? ts[pre[g.no]] : null;
+      return '<button data-pre="' + g.no + '"><b>' + g.no + "</b> " + esc(g.cap.last) + " → " + (T ? T.letter + " " + T.K.name.toLowerCase() : "in formation") + "</button>";
+    }).join("") + '<div class="muted small-text">The objective is the depot (gold). The flagship flies your course. "?" are contacts the pickets missed.</div>';
+  }
   // A new plot: straight to the approach point, then in along the jump heading.
   function blankPlot(m) { return { pts: [{ x: m.start.x, y: m.start.y }, { x: m.approach.x, y: m.approach.y }, { x: m.jump.x, y: m.jump.y }], eng: ["cruise", "cruise"] }; }
   function drawPlot() {
@@ -1973,7 +2105,9 @@
     var box = $("pl-mapbox"), cv = $("pl-map"), dpr = window.devicePixelRatio || 1, w = box.clientWidth, hh = box.clientHeight, e = plotEd, K = BL.COMMAND;
     if (w && hh && (w !== plW || hh !== plH || !plCtx)) { plW = w; plH = hh; cv.width = Math.round(w * dpr); cv.height = Math.round(hh * dpr); plCtx = cv.getContext("2d"); plCtx.setTransform(dpr, 0, 0, dpr, 0, 0); }
     var info = BL.plotInfo(e.map, e.plot, plotGOf);
-    if (plCtx) BL.drawNavMap(plCtx, plW, plH, e.map, e.plot, { frame: BL.navFrame(e.map, null, plW, plH, 18), info: info });
+    var pfr = BL.navFrame(e.map, null, plW, plH, 18);
+    if (plCtx) BL.drawNavMap(plCtx, plW, plH, e.map, e.plot, { frame: pfr, info: info });
+    if (plCtx && sim.flag) { drawTargets(plCtx, pfr, sim.captain.sqMaps[e.i], true, sim.captain, true); drawPlotSquad(); }
     // The legs: heading, time, engine order (tap to change).
     $("pl-legs").innerHTML = info.legs.map(function (l, k) {
       var t = l.len / Math.max(0.1, plotGOf(l.eng) * K.scale);
@@ -2031,6 +2165,14 @@
       for (var k = 1; k < pts.length - 1; k++) { var q = f.toPx(pts[k]); if (Math.hypot(q.x - x, q.y - y) < 16) { plotRemove(k); ev.preventDefault(); return; } }
       plotAdd(f.toMap(x, y)); ev.preventDefault();
     });
+    // A squadron: each ship's order for this system (tap to send her to the next target in the report).
+    $("pl-squad").addEventListener("click", function (ev) {
+      var b = ev.target.closest("button[data-pre]"); if (!b || !plotEd || !sim.flag) return;
+      var c = sim.captain, pre = c.preOrders[plotEd.i], no = +b.dataset.pre, known = c.sqMaps[plotEd.i].filter(function (T) { return !T.unknown; });
+      var k = pre[no] === undefined ? -1 : known.map(function (T) { return T.id; }).indexOf(pre[no]);
+      if (k + 1 < known.length) pre[no] = known[k + 1].id; else delete pre[no];
+      BL.audio.play("tick"); drawPlot();
+    });
     $("pl-legs").addEventListener("click", function (ev) {
       var b = ev.target.closest("button[data-leg]"); if (!b || !plotEd) return;
       var k = +b.dataset.leg; plotEd.plot.eng[k] = cycle(["cruise", "standard", "full"], plotEd.plot.eng[k], 1); BL.audio.play("tick"); drawPlot();
@@ -2060,7 +2202,10 @@
   // The warp space report's squadron line: each ship's hull (a squadron only).
   function squadLine() {
     var v = sim.flag && sim.captain.squadView();
-    return v ? "<li>Squadron: " + v.ships.map(function (x) { return "ship " + x.no + " " + (x.live ? Math.round(x.hull * 100) + "%" : x.doing); }).join(", ") + "</li>" : "";
+    if (!v) return "";
+    var ts = sim.captain.sqTargets || [], down = ts.filter(function (T) { return T.dead; }).length, obj = ts.filter(function (T) { return T.K.objective; })[0];
+    return "<li>Squadron: " + v.ships.map(function (x) { return "ship " + x.no + " " + (x.live ? Math.round(x.hull * 100) + "%" : x.doing); }).join(", ") + "</li>" +
+      "<li>Targets destroyed: " + down + " of " + ts.length + (obj ? " · the objective (" + obj.letter + ") " + (obj.dead ? "destroyed" : "still standing") : "") + "</li>";
   }
   function debriefCaptain(r) {
     var cp = r.captain, d = r.detail, K = BL.COMMAND, good = [];
@@ -2075,7 +2220,7 @@
     if (cpN && cpHit === cpN) good.push("Every checkpoint scouted.");
     $("db-good").textContent = good.join(" ");
     var sqLost = cp.squad ? cp.squad.lost + cp.squad.left : 0;
-    $("db-worst").textContent = r.outcome === "destroyed" ? "The ship was destroyed." : sqLost ? "The squadron lost " + sqLost + " of its " + cp.squad.n + " ships." : r.outcome === "dropMissed" ? "The drop window closed before the planet buster was launched." : r.outcome === "wardLost" ? "The " + cp.escort.name + " was lost." : r.outcome === "leftBehind" ? "The carrier's hangar bay was destroyed: she warped without you." :
+    $("db-worst").textContent = r.outcome === "destroyed" ? "The ship was destroyed." : r.outcome === "objectiveMissed" ? "The squadron warped on leaving the objective standing in " + sim.captain.sqMissed() + (sim.captain.sqMissed() === 1 ? " system." : " systems.") : sqLost ? "The squadron lost " + sqLost + " of its " + cp.squad.n + " ships." : r.outcome === "dropMissed" ? "The drop window closed before the planet buster was launched." : r.outcome === "wardLost" ? "The " + cp.escort.name + " was lost." : r.outcome === "leftBehind" ? "The carrier's hangar bay was destroyed: she warped without you." :
       cpHit < cpN ? "Missed " + (cpN - cpHit) + " of " + cpN + " checkpoints." : cp.rockHits ? "The ship hit asteroids " + cp.rockHits + (cp.rockHits === 1 ? " time." : " times.") :
       onTime < cp.systems.length ? "The ship reached the " + (sim.hasDrive ? "warp" : "recovery") + " zone late in " + (cp.systems.length - onTime) + " of " + cp.systems.length + (sim.hasDrive ? " systems." : " sorties.") :
       cp.unanswered && !(cp.squad && !cp.squad.flagBridge) ? cp.unanswered + " torpedo bursts came and went with no call from you (taken on the shields)." : "Nothing went badly wrong.";     // (a squadron: the break calls were the flag captain's)
@@ -2103,8 +2248,7 @@
       ["Squadron", cp.squad.home + " of " + cp.squad.n + " ships home" + (cp.squad.lost ? ", " + cp.squad.lost + " lost" : "") + (cp.squad.left ? ", " + cp.squad.left + " left behind" : "")],
       ["Flag captain", esc(cp.squad.flag) + (cp.squad.flagBridge ? " (you took his bridge: once a mission −1 squadron reputation, −1 morale to him)" : "")],
       ["Captains", cp.squad.ships.map(function (x) { return "Ship " + x.no + " " + esc(x.name) + ": " + (x.left ? "left behind" : x.hull > 0 ? "hull " + x.hull + "%" : "lost") + ", " + x.kills + " kills"; }).join(" · ")],
-      ["Squadron orders", cp.squad.attacks + " attack runs; in SCREEN the ships shot down " + cp.squad.guards + " torpedoes at the flagship"],
-      ["Enemy ships destroyed by the other ships", cp.squad.kills]] : []).concat([
+      ["Targets destroyed", cp.squad.targetsDown + " of " + cp.squad.targets + " (objectives " + cp.squad.objectivesDown + " of " + cp.squad.objectives + "); " + cp.squad.kills + " finished off by the other ships"]] : []).concat([
       ["Enemy ships destroyed by your crew", cp.kills + " / " + cp.ships],
       ["Torpedoes shot down", cp.downed],
       ["Hull lost", d.hullLost],
@@ -2342,7 +2486,7 @@
     var r = sim.result, d = r.detail;
     show("scr-debrief");
     $("db-title").textContent = r.outcome === "success" ? (r.hasDrive ? (sim.sys("buster") ? "Mission complete: planet buster delivered" : "Mission complete") : "Sortie complete: recovered by the carrier") :
-      r.outcome === "destroyed" ? "Ship destroyed" : r.outcome === "dropMissed" ? "Drop window missed: the planet buster never launched" : r.outcome === "wardLost" ? (r.captain && r.captain.escort ? r.captain.escort.name.replace(/^./, function (x) { return x.toUpperCase(); }) : "Carrier") + " lost" : r.outcome === "leftBehind" ? "Left behind: the carrier's hangar bay was destroyed" : "Abandoned ship";
+      r.outcome === "destroyed" ? "Ship destroyed" : r.outcome === "dropMissed" ? "Drop window missed: the planet buster never launched" : r.outcome === "wardLost" ? (r.captain && r.captain.escort ? r.captain.escort.name.replace(/^./, function (x) { return x.toUpperCase(); }) : "Carrier") + " lost" : r.outcome === "leftBehind" ? "Left behind: the carrier's hangar bay was destroyed" : r.outcome === "objectiveMissed" ? "Objective missed: the squadron warped on with it still standing" : "Abandoned ship";
     if (r.testWin) $("db-title").textContent += " (test win)";
     $("db-lede").textContent = (job.test ? "" : BL.shipLabel(job.classId, job.ship, job.hull) + " (TL" + r.tl + ") · ") + "Seed " + r.seed + " · " +
       r.jumpsDone + " of " + sim.cfg.jumps + (r.hasDrive ? " warps · " : " sorties · ") + d.minutes + " minutes · hull " + r.hull + " / " + r.hullMax +
@@ -2910,7 +3054,7 @@
   $("btn-registry-back").onclick = function () { click(); showHub(); };
   $("btn-card-back").onclick = function () { click(); showRegistry(); };
 
-  var OUTCOME_NAME = { success: "Success", destroyed: "Destroyed", abandoned: "Abandoned ship", timeout: "Out of time", wardLost: "Escorted ship lost", leftBehind: "Left behind", dropMissed: "Drop window missed" };
+  var OUTCOME_NAME = { success: "Success", destroyed: "Destroyed", abandoned: "Abandoned ship", timeout: "Out of time", wardLost: "Escorted ship lost", leftBehind: "Left behind", dropMissed: "Drop window missed", objectiveMissed: "Objective missed" };
   // Column notes on the ship card's guns table: a small i by the heading; tap it to show the note
   // under the table (tap again to hide).
   var GUN_INFO = {
