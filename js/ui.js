@@ -124,7 +124,7 @@
     startBriefing(squadronJob(seed > 0 ? seed : BL.randomSeed()));
   };
   // Another mission of the same test (the captain's or the squadron's).
-  function testJob(seed) { return job && job.flag ? squadronJob(seed) : captainJob(seed); }
+  function bridgeTestJob(seed) { return job && job.flag ? squadronJob(seed) : captainJob(seed); }
   function gunnerJob(seed) { return { test: true, station: "gunner", classId: "gunboat", n: 1, tl: 4, ship: "Gunboat", seed: seed, weapon: settings.gunPick || "pulse" }; }
   $("gun-pick").value = BL.WEAPONS[settings.gunPick] ? settings.gunPick : "pulse";
   $("gun-pick").onchange = function () { settings.gunPick = this.value; saveSettings(); };
@@ -243,7 +243,7 @@
   $("btn-brief-back").onclick = function () { click(); if (job.test) show("scr-title"); else if (job.captain && BL.roster) showCrew(job); else showOffers(offersMode); };
   $("btn-brief-go").onclick = function () { click(); startMission(); };
   // The captain test: another mission on the same ship, at random (the briefing, or the first plot).
-  $("btn-brief-new").onclick = function () { click(); startBriefing(testJob(BL.randomSeed())); };
+  $("btn-brief-new").onclick = function () { click(); startBriefing(bridgeTestJob(BL.randomSeed())); };
   $("btn-brief-how").onclick = function () { click(); overlay("ov-how", true); };
 
   /* ------------------------------------------------------------- Mission */
@@ -2038,7 +2038,7 @@
     $("pl-nav").onclick = function () { if (plotEd) plotNav(); this.blur(); };
     $("pl-undo").onclick = function () { if (plotEd) plotUndo(); this.blur(); };
     $("pl-clear").onclick = function () { if (plotEd) plotClear(); this.blur(); };
-    $("pl-new").onclick = function () { this.blur(); overlay("ov-plot", false); plotEd = null; click(); startBriefing(testJob(BL.randomSeed())); startMission(); };
+    $("pl-new").onclick = function () { this.blur(); overlay("ov-plot", false); plotEd = null; click(); startBriefing(bridgeTestJob(BL.randomSeed())); startMission(); };
     $("pl-go").onclick = function () { plotAccept(); };
     window.addEventListener("resize", function () { if (plotEd) { plW = 0; drawPlot(); } });
   })();
