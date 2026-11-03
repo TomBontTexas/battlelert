@@ -671,6 +671,8 @@
     (this.sqLeave || []).forEach(function (g) { if (g.hull > 0) { g.left = true; g.hull = 0; } });
     this.sqLeave = null;
     es.pos = { x: this.pos.x, y: this.pos.y }; es.hdg = map.start.hdg;
+    // (the flagship's track for LINE AHEAD: it starts as a straight line astern of her)
+    es.trail = [{ x: this.pos.x, y: this.pos.y }, along(this.pos, es.hdg + 180, 8 * (es.stD || BL.COMMAND.squad.gap * map.D))];
     // (a station gap keeps two ships' shields `clear` apart in the battle view)
     es.stD = Math.max(Q.gap * map.D, this.kView ? (2 * Math.max(R.rx, R.ry) + Q.clear) / this.kView : 0);
     es.target = null; es.attackUntil = 0; es.attackReady = 0;
@@ -681,9 +683,32 @@
   Captain.prototype.capK = function (g) { return 0.6 + 0.4 * (g && g.cap ? g.cap.skill : 1); };
   Captain.prototype.capT = function (g) { return BL.COMMAND.squad.temper[g.cap.temper] || [1, 1, 1]; };
   // Her slot in formation `form` round the flagship (a cautious captain keeps farther off).
+  // In LINE AHEAD (a trail formation) it's that far back along the flagship's own track, on the
+  // heading she had there, so the column follows her round every corner.
   Captain.prototype.slotAt = function (g, form) {
     var es = this.escort, F = BL.COMMAND.squad.formations[form || es.form], sl = F.slots[g.slot % F.slots.length];
-    return along(es.pos || this.pos, es.hdg + sl[0], sl[1] * (es.stD || BL.COMMAND.squad.gap * this.map().D) * this.capT(g)[0]);
+    var far = sl[1] * (es.stD || BL.COMMAND.squad.gap * this.map().D) * this.capT(g)[0];
+    if (F.trail && es.trail && es.trail.length > 1) return this.trailAt(far);
+    return along(es.pos || this.pos, es.hdg + sl[0], far);
+  };
+  // The point `far` map units back along the flagship's track, with the heading she had there.
+  Captain.prototype.trailAt = function (far) {
+    var tr = this.escort.trail, a = this.pos, left = far;
+    for (var i = 0; i < tr.length; i++) {
+      var b = tr[i], L = dist(a, b);
+      if (L >= left && L > 1e-9) { var u = left / L, p = { x: a.x + (b.x - a.x) * u, y: a.y + (b.y - a.y) * u }; p.hdg = bearing(b, a); return p; }
+      left -= L; if (L > 1e-9) var lastH = bearing(b, a); a = b;
+    }
+    var q = along(a, (lastH === undefined ? this.escort.hdg : lastH) + 180, left); q.hdg = lastH === undefined ? this.escort.hdg : lastH;
+    return q;
+  };
+  // Lay the flagship's track (newest first): a point every tenth of a station gap, as long as the longest column.
+  Captain.prototype.layTrail = function () {
+    var es = this.escort, step = es.stD * 0.1, tr = es.trail;
+    if (!tr) return;
+    if (dist(this.pos, tr[0]) >= step) tr.unshift({ x: this.pos.x, y: this.pos.y });
+    var keep = 8 * es.stD, tot = 0;
+    for (var i = 1; i < tr.length; i++) { tot += dist(tr[i - 1], tr[i]); if (tot > keep) { tr.length = i + 1; break; } }
   };
   Captain.prototype.sqLive = function () { return this.escort.wing.filter(function (g) { return g.hull > 0; }); };
   // An order to a captain: it reaches him lag / his skill s from now.
@@ -804,7 +829,7 @@
   // sent after); their shields recharge; every BL.COMMAND.squad.tick s each fires on a ship.
   Captain.prototype.runSquad = function (dt) {
     var m = this.m, es = this.escort, Q = BL.COMMAND.squad, t = m.totalT, tu = m.turret, R = tu.R, self = this;
-    es.pos = { x: this.pos.x, y: this.pos.y }; es.hdg = m.helm.compass();
+    es.pos = { x: this.pos.x, y: this.pos.y }; es.hdg = m.helm.compass(); this.layTrail();
     var rate = Q.shield * m.sys("shield").maxMW, fight = m.phase === "engage" || m.phase === "countdown";
     if (this.sqDps === null) {
       var dps = 0, reach = 0;
@@ -828,7 +853,7 @@
       if (mid) goal = along(goal, bearing(goal, g.pos || goal), es.stD * 0.8);     // (close in, not into it)
       if (mid && dist(goal, es.pos) < es.stD) goal = along(es.pos, bearing(es.pos, goal), es.stD);     // (nor onto the flagship's shield)
       if (!g.pos) { g.pos = self.slotAt(g, g.form); g.hdg = es.hdg; }
-      var d = dist(g.pos, goal), want = d > near ? bearing(g.pos, goal) : es.hdg, k = self.capK(g);
+      var d = dist(g.pos, goal), want = d > near ? bearing(g.pos, goal) : goal.hdg !== undefined ? goal.hdg : es.hdg, k = self.capK(g);
       g.hdg = to360(g.hdg + clamp(norm(want - g.hdg), -BL.COMMAND.escort.wingTurn * k * dt, BL.COMMAND.escort.wingTurn * k * dt));
       var v = vmax * (0.8 + 0.2 * k);
       if (d > near) g.pos = along(g.pos, g.hdg, Math.min(d, v * dt * Math.max(0.2, Math.cos(norm(want - g.hdg) * RAD))));

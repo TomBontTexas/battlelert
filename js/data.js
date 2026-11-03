@@ -908,6 +908,8 @@
               kinds: { carrier: { name: "carrier", label: "CARRIER", ships: [1, 1], hull: 100, perMJ: 0.03, size: 1.8, width: 0.29 },
                        capital: { name: "capital ship", label: "CAPITAL SHIP", ships: [1, 1], hull: 100, perMJ: 0.03, size: 1.8, width: 0.26 },
                        convoy: { name: "convoy", label: "CONVOY", ships: [3, 5], hull: 100, perMJ: 0.08, gap: 0.015, station: 0.075, size: 0.9, width: 0.42 } }, clear: 0.08 },
+    // (LINE AHEAD, trail: each ship keeps her distance back along the flagship's own track, so the
+    // column turns each corner where she did: TexasBont, Nov 2, 2026.)
     // Squadrons (approved Nov 2, 2026; stage 1, the Squadron test): the squadron commander plots
     // the course and gives squadron orders; his flag captain (the test bot) runs the flagship; the
     // other ships are lighter sims with our class's hull, shields and guns, each under an AI
@@ -927,7 +929,7 @@
              test: ["destroyer"],
              formations: {
                abreast: { name: "Line abreast", short: "LINE ABREAST", slots: [[-90, 1], [90, 1], [-90, 2], [90, 2], [-90, 3]] },
-               ahead: { name: "Line ahead", short: "LINE AHEAD", slots: [[180, 1], [180, 2], [180, 3], [180, 4], [180, 5]] },
+               ahead: { name: "Line ahead", short: "LINE AHEAD", slots: [[180, 1], [180, 2], [180, 3], [180, 4], [180, 5]], trail: true },
                screen: { name: "Screen round the flagship", short: "SCREEN ROUND THE FLAG", slots: [[0, 1], [-90, 1], [90, 1], [180, 1], [-45, 1.6]], guard: true } },
              formationList: ["abreast", "ahead", "screen"], start: "abreast",
              gap: 0.03, clear: 0.06, lag: 2, force: 0.9, fire: 0.18, shield: 0.5, selfDown: 0.5, guard: 0.5, tick: 0.5, hire: [0.4, 0.95],
