@@ -46,7 +46,13 @@
     "Gunner 7":       { pitch: 0.96, rate: 1.2,  order: 22 },
     "Gunner 8":       { pitch: 1.01, rate: 1.2,  order: 23 },
     "Engineering":    { pitch: 0.97, rate: 1.15, order: 24 },
-    "Crew":           { pitch: 1.0,  rate: 1.1,  order: 25 }
+    "Crew":           { pitch: 1.0,  rate: 1.1,  order: 25 },
+    // A squadron's other ships (Captain.sqSay): radio voices, a little quicker.
+    "Ship 2":         { pitch: 1.04, rate: 1.2,  order: 26 },
+    "Ship 3":         { pitch: 0.94, rate: 1.2,  order: 27 },
+    "Ship 4":         { pitch: 1.0,  rate: 1.25, order: 28 },
+    "Ship 5":         { pitch: 0.97, rate: 1.2,  order: 29 },
+    "Ship 6":         { pitch: 1.06, rate: 1.2,  order: 30 }
   };
   var SPEAKERS = Object.keys(PROFILE).sort(function (a, b) { return PROFILE[a].order - PROFILE[b].order; });
 
@@ -105,7 +111,7 @@
     var m = /^([^:]{2,20}):\s*(.*)$/.exec(text);
     var speaker = m && PROFILE[m[1]] ? m[1] : "Crew";
     var words = m && PROFILE[m[1]] ? m[2] : text;
-    if (/^Gunner \d/.test(speaker)) words = speaker + ", " + words;   // which gun matters
+    if (/^(Gunner|Ship) \d/.test(speaker)) words = speaker + ", " + words;   // which gun (or ship) matters
     words = words.replace(/(\d+(?:\.\d+)?) s\b/g, "$1 seconds")
                  .replace(/(\d+(?:\.\d+)?) MW\b/g, "$1 megawatts")
                  .replace(/(\d+(?:\.\d+)?) MJ\b/g, "$1 megajoules")

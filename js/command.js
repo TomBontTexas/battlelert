@@ -602,6 +602,7 @@
     g.hull = Math.max(0, g.hull - d);
     if (g.hull > 0) return;
     m.cue("hullHit");
+    if (this.escort.flag) this.sqSay("sqLost", null, { n: g.no }, "bad", true);
     this.rng = this.rng || BL.rng((m.seed ^ 0x3c6ef372) >>> 0);
     m.waves.forEach(function (w) {
       if (w.aim !== i) return;
@@ -674,6 +675,8 @@
     return { flag: true, kind: "squadron", W: { name: "squadron", label: "SQUADRON" }, ships: [], wing: wing, hull: 0, hullMax: 0, pos: null, hdg: 0,
       form: Q.start, target: null, attackReady: 0, attackUntil: 0, n: n, alert: null, fx: [] };
   };
+  // The targets' [strength, gunfire] for our class (BL.COMMAND.squad.map.classK).
+  Captain.prototype.sqK = function () { return BL.COMMAND.squad.map.classK[this.m.data.classId] || [1, 1]; };
   // Seconds at our cruise speed, in map units.
   Captain.prototype.cs = function () { return this.m.helm.gOf("cruise") * BL.COMMAND.scale; };
   /* A system's targets: the objective (the depot) somewhere off the straight way, then `targets`
@@ -681,6 +684,7 @@
      of them aren't in the pickets' report. Moving ones start heading roughly toward the start. */
   Captain.prototype.makeTargets = function (map, i) {
     var M = BL.COMMAND.squad.map, r = BL.rng(((this.m.seed ^ Math.imul(0x7feb352d, i + 3)) >>> 0) || 1), D = map.D, cs = this.cs(), out = [];
+    var hk = this.sqK()[0];
     var hb = bearing(map.start, map.jump), x0 = Math.min(map.start.x, map.jump.x) - 0.25 * D, x1 = Math.max(map.start.x, map.jump.x) + 0.25 * D,
       y0 = Math.min(map.start.y, map.jump.y) - 0.25 * D, y1 = Math.max(map.start.y, map.jump.y) + 0.25 * D;
     function ok(p, gap) {
@@ -689,7 +693,7 @@
       return out.every(function (t) { return dist(t.pos, p) > gap * D; });
     }
     function add(kind, p) {
-      var K = M.kinds[kind], hp = Math.round(K.hp * BL.enemyTlFactor(r.pick([5, 6])));
+      var K = M.kinds[kind], hp = Math.round(K.hp * hk * BL.enemyTlFactor(r.pick([5, 6])));
       var hdg = K.speed ? to360(bearing(p, map.start) + r.range([-60, 60])) : 0, off = r.range([0, M.reportOff]) * cs;
       out.push({ id: out.length, letter: M.letters[out.length], kind: kind, K: K, pos: { x: p.x, y: p.y }, hdg: hdg, hp: hp, hpMax: hp,
         rep: along(p, r.next() * 360, off), unknown: false, seen: false, last: null, dead: false, victim: null, hunt: null, wave: null, reserve: 0, waves: 0, by: null });
@@ -865,11 +869,16 @@
       g.pend = g.pend.filter(function (p) {
         if (t < p.at) return true;
         if (p.what === "form") g.form = p.v;
-        else if (p.what === "order") { g.order = p.v; g.task = p.v.kind === "form" ? "form" : "detach"; }
-        else if (p.what === "hold") g.hold = p.v;
+        else if (p.what === "order") {
+          g.order = p.v; g.task = p.v.kind === "form" ? "form" : "detach";
+          var oT = p.v.kind === "target" ? self.sqTargets[p.v.id] : null;
+          if (oT) self.sqSay("sqAck", g, { L: oT.letter, the: self.sqThe(oT) }); else self.sqSay(p.v.kind === "spot" ? "sqAckSpot" : "sqAckForm", g);
+        }
+        else if (p.what === "hold") { g.hold = p.v; if (p.v) self.sqSay("sqAckHold", g); }
         return false;
       });
       g.sh = Math.min(g.shMax, g.sh + rate * dt);
+      if (g.shDown && g.sh > 0.5 * g.shMax) g.shDown = false;
       if (!g.pos) { var s0 = self.slotAt(g, g.form); g.pos = { x: s0.x, y: s0.y }; g.hdg = es.hdg; }
       var goal = self.goalOf(g, g.pos), d = dist(g.pos, goal), k = self.capK(g);
       var want = d > near ? bearing(g.pos, goal) : goal.hdg !== undefined ? goal.hdg : es.hdg;
@@ -884,6 +893,11 @@
     this.sqGroups().forEach(function (T) {
       var seenNow = ours.some(function (o) { return dist(o.pos, T.pos) <= M.sensor * cs; });
       if (seenNow) { T.seen = true; T.last = { x: T.pos.x, y: T.pos.y }; } else if (T.seen) T.seen = false;
+      if (seenNow && !T.spotted) {
+        T.spotted = true;
+        var sp0 = ours.reduce(function (a, o) { return !a || dist(o.pos, T.pos) < dist(a.pos, T.pos) ? o : a; }, null), wv = { L: T.letter, what: self.sqWhat(T) };
+        if (sp0.g) self.sqSay(T.unknown ? "sqUnknown" : "sqContact", sp0.g, wv); else self.sqSay(T.unknown ? "sqUnknownT" : "sqContactT", null, wv);
+      }
       // (a ship holding fire is hidden from it until it's within `ambush` of its range)
       var vis = ours.filter(function (o) { return !(o.g && o.g.hold) || dist(o.pos, T.pos) <= M.ambush * T.K.range * cs; });
       var inR = vis.filter(function (o) { return dist(o.pos, T.pos) <= T.K.range * cs; });
@@ -901,7 +915,7 @@
           vis.forEach(function (o) { var dd = dist(o.pos, T.pos); if (dd < M.sensor * 1.2 * cs && dd < pd) { pd = dd; prey = o; } });
           var pno = prey ? (prey.g ? prey.g.no : 0) : null;
           // (warn the commander when a pack turns on one of his ships out on her own)
-          if (pno && pno !== T.hunt && !ours.some(function (o) { return o !== prey && dist(o.pos, prey.pos) < M.range * cs; })) es.alert = { at: t, text: T.letter + " · " + T.K.name + " turning on ship " + pno };
+          if (pno && pno !== T.hunt && !ours.some(function (o) { return o !== prey && dist(o.pos, prey.pos) < M.range * cs; })) { es.alert = { at: t, text: T.letter + " · " + T.K.name + " turning on ship " + pno }; self.sqSay("sqHunted", prey.g, { L: T.letter, what: self.sqWhat(T) }, "warn"); }
           T.hunt = pno;
           if (prey) { want = bearing(T.pos, prey.pos); if (pd < T.K.standOff * T.K.range * cs) sp = 0; }
         } else if (T.K.patrol && victim) {
@@ -920,8 +934,14 @@
       // on top of its wave's torpedoes in the battle view.
       if (fight && victim && t >= (T.fireAt || 0)) {
         T.fireAt = t + Q.tick;
-        var ng = self.enemyGunsOn(T, victim.pos), mj = ng * M.enemyDps * Q.tick * Math.sqrt(Math.max(0, T.hp / T.hpMax));
-        if (ng) { if (victim.g) self.sqHit(victim.i, mj); else m.gunHit(mj); es.fx.push({ at: t, a: { x: T.pos.x, y: T.pos.y }, b: { x: victim.pos.x, y: victim.pos.y }, foe: true }); }
+        var ng = self.enemyGunsOn(T, victim.pos), mj = ng * M.enemyDps * self.sqK()[1] * Q.tick * Math.sqrt(Math.max(0, T.hp / T.hpMax));
+        if (ng) {
+          if (victim.g) {
+            if (t - (victim.g.hitAt === undefined ? -99 : victim.g.hitAt) > Q.radio.fresh) self.sqSay("sqUnderFire", victim.g, { L: T.letter, what: self.sqWhat(T) });
+            victim.g.hitAt = t; self.sqHit(victim.i, mj);
+          } else m.gunHit(mj);
+          es.fx.push({ at: t, a: { x: T.pos.x, y: T.pos.y }, b: { x: victim.pos.x, y: victim.pos.y }, foe: true });
+        }
       }
       if (T.wave) { T.hp = T.reserve + Math.max(0, T.wave.hp); self.steerWave(T); }
     });
@@ -936,7 +956,7 @@
         if (T.wave || dist(self.pos, T.pos) > M.range * cs) return;
         var ng = self.gunsBear(self.pos, fh, T.pos); if (ng && ng * 10 - dist(self.pos, T.pos) / cs > fs) { fs = ng * 10 - dist(self.pos, T.pos) / cs; fb = T; }
       });
-      if (fb) { es.fx.push({ at: t, a: { x: this.pos.x, y: this.pos.y }, b: { x: fb.pos.x, y: fb.pos.y } }); if (this.hitTarget(fb, this.gunsBear(this.pos, fh, fb.pos) * this.sqGun * Q.tick)) fb.by = 1; }
+      if (fb) { es.fx.push({ at: t, a: { x: this.pos.x, y: this.pos.y }, b: { x: fb.pos.x, y: fb.pos.y } }); if (this.hitTarget(fb, this.gunsBear(this.pos, fh, fb.pos) * this.sqGun * Q.tick)) { fb.by = 1; this.sqSay("sqKillT", null, { L: fb.letter }, "good", true); } }
     }
     es.wing.forEach(function (g) {
       if (g.hull <= 0 || !fight || t < g.fireAt) return;
@@ -949,11 +969,27 @@
         if (sc > score) { score = sc; best = T; }
       });
       if (!best) return;
-      if (g.hold) { if (dist(g.pos, best.pos) > M.ambush * R) return; g.hold = false; }
+      if (g.hold) { if (dist(g.pos, best.pos) > M.ambush * R) return; g.hold = false; self.sqSay("sqAmbush", g, { L: best.letter }); }
+      else if (g.firingOn !== best.id) self.sqSay("sqEngage", g, { L: best.letter, the: self.sqThe(best) });
+      g.firingOn = best.id;
       var dmg = self.gunsBear(g.pos, g.hdg, best.pos) * self.sqGun * Q.tick * self.capK(g) * self.capT(g)[1];
       es.fx.push({ at: t, a: { x: g.pos.x, y: g.pos.y }, b: { x: best.pos.x, y: best.pos.y } });
-      if (self.hitTarget(best, dmg)) { g.kills++; self.stats.sqKills++; best.by = g.no; }
+      if (self.hitTarget(best, dmg)) { g.kills++; self.stats.sqKills++; best.by = g.no; self.sqSay("sqKill", g, { L: best.letter, name: best.K.name.toLowerCase() }, "good", true); }
     });
+    // How hot the fight is (targets firing on us, and ships of ours below half hull under fire now);
+    // a hot one, the captains talk to each other.
+    this.sqHot = this.sqGroups().filter(function (T) { return fight && T.victim !== null; }).length +
+      this.sqLive().filter(function (g) { return g.hull < 0.5 * g.hullMax && t - (g.hitAt === undefined ? -99 : g.hitAt) < 3; }).length;
+    var RQ = Q.radio;
+    if (fight && !m.quiet && this.sqHot >= RQ.cross[0] && t >= (this.sqCrossAt || 0)) {
+      this.sqRng = this.sqRng || BL.rng(((m.seed ^ 0x2545f491) >>> 0) || 1);
+      this.sqCrossAt = t + this.sqRng.range(RQ.cross[1]);
+      var hurt = es.wing.filter(function (g) { return g.hull > 0 && t - (g.hitAt === undefined ? -99 : g.hitAt) < 3; }), live = this.sqLive();
+      if (hurt.length && live.length > 1) {
+        var who = hurt[Math.floor(this.sqRng.next() * hurt.length)], by = live.filter(function (g) { return g !== who; });
+        this.sqSay("sqCross", by[Math.floor(this.sqRng.next() * by.length)], { other: RQ.call[who.no] || "ship " + who.no });
+      } else if (live.length) this.sqSay("sqBusy", live[Math.floor(this.sqRng.next() * live.length)]);
+    }
     es.fx = es.fx.filter(function (f) { return t - f.at < 0.4; });
     if (es.alert && t - es.alert.at > 10) es.alert = null;
   };
@@ -968,7 +1004,7 @@
   };
   Captain.prototype.sinkTarget = function (T) {
     T.dead = true; T.hp = 0; this.disengage(T);
-    this.stats.targetsDown++; if (T.K.objective) this.stats.objectivesDown++;
+    this.stats.targetsDown++; if (T.K.objective) { this.stats.objectivesDown++; this.sqSay("sqObjective", null, null, "good", true); }
     this.m.cue("kill");
   };
   // A target firing on the flagship comes into the battle view as its wave (its encounter's ships,
@@ -1029,8 +1065,36 @@
     if (!g || g.hull <= 0) return;
     mj *= this.capT(g)[2];
     var took = Math.min(g.sh, mj); g.sh -= took;
+    if (g.sh < 1 && !g.shDown) { g.shDown = true; this.sqSay("sqShieldsDown", g, null, "warn"); }
     if (mj > took) this.wingDamage(i, (mj - took) * this.m.data.hullPerMJ);
+    if (g.hull > 0 && g.hull <= 0.25 * g.hullMax && !g.saidLow) { g.saidLow = g.saidHalf = true; this.sqSay("sqHullLow", g, null, "warn", true); }
+    else if (g.hull > 0 && g.hull <= 0.5 * g.hullMax && !g.saidHalf) { g.saidHalf = true; this.sqSay("sqHullHalf", g, null, "warn"); }
   };
+  /* Squadron radio (Nov 2, 2026): the captains' calls (BL.CHATTER sq...; {ship} is "Ship n"),
+     the more of them the hotter the fight. A routine call waits a gap after the last one (shorter
+     the more targets are firing on us and ships are hurt: BL.COMMAND.squad.radio) and the ship's
+     own gap; a `must` call (a hull failing, a ship lost, the objective down) always goes out. */
+  Captain.prototype.sqSay = function (key, g, vars, kind, must) {
+    var m = this.m, t = m.totalT, R = BL.COMMAND.squad.radio, lines = BL.CHATTER[key];
+    if (m.quiet || !lines || !lines.length) return;
+    if (!must) {
+      var h = this.sqHot || 0, gap = h >= 3 ? R.gap[2] : h >= 1 ? R.gap[1] : R.gap[0];
+      if (t - (this.sqSaidAt === undefined ? -99 : this.sqSaidAt) < gap) return;
+      if (g && t - (g.saidAt === undefined ? -99 : g.saidAt) < R.shipGap) return;
+    }
+    this.sqRng = this.sqRng || BL.rng(((m.seed ^ 0x2545f491) >>> 0) || 1);
+    var v = Object.assign({ ship: g ? "Ship " + g.no : "" }, vars || {});
+    this.sqLines = this.sqLines || {};
+    var pick = this.sqRng.pick(lines);
+    if (pick === this.sqLines[key] && lines.length > 1) pick = lines[(lines.indexOf(pick) + 1) % lines.length];     // (not the same line twice running)
+    this.sqLines[key] = pick;
+    var line = pick.replace(/\{(\w+)\}/g, function (x, k) { return v[k] !== undefined ? v[k] : x; });
+    this.sqSaidAt = t; if (g) g.saidAt = t;
+    m.say(line, kind || "info"); m.cue("chatter");
+  };
+  // A target in a call: "a raider pack", "drive hunters"; "the raider pack".
+  Captain.prototype.sqWhat = function (T) { var n = T.K.name.toLowerCase(); return /s$/.test(n) ? n : (/^[aeiou]/.test(n) ? "an " : "a ") + n; };
+  Captain.prototype.sqThe = function (T) { return "the " + T.K.name.toLowerCase(); };
   // A battle-view point on the map (the inverse of Captain.toView).
   Captain.prototype.fromView = function (x, y) {
     var R = this.m.turret.R, k = this.kView || 1, dx = x - R.cx, dy = R.cy - y;
@@ -1304,7 +1368,8 @@
   };
   // A gunboat escort mission: the carrier recovers the gunboat only from astern of her, on that
   // station (the pilot keeps it once the station is ordered).
-  Captain.prototype.carrierRecovery = function () { return !!this.escort && !this.m.hasDrive; };
+  // (a gunboat squadron has no carrier: it warps out from the zone like any other)
+  Captain.prototype.carrierRecovery = function () { return !!this.escort && !this.escort.flag && !this.m.hasDrive; };
   Captain.prototype.asternOk = function () { return this.station === "astern" && dist(this.pos, this.stationAt("astern")) <= BL.COMMAND.escort.near * this.map().D * 1.5; };
 
   /* ------------------------------------------------------------- Dropping down

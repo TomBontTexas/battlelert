@@ -112,10 +112,16 @@
     var seed = parseInt($("seed-input").value, 10);
     startBriefing(captainJob(seed > 0 ? seed : BL.randomSeed()));
   };
-  // The Squadron test (approved Nov 2, 2026; stage 1): a destroyer squadron of 4. You command it:
-  // plot its course and give the squadron orders; your flag captain runs the flagship (command.js Squadron).
+  // The Squadron test (approved Nov 2, 2026; stage 1): a squadron of any class (BL.COMMAND.squad.test,
+  // its size by class). You command it: plot its course and give the squadron orders; your flag
+  // captain runs the flagship (command.js Squadron).
+  BL.COMMAND.squad.test.forEach(function (id) { var o = document.createElement("option"); o.value = id; o.textContent = BL.classById(id).name; $("sq-pick").appendChild(o); });
+  $("sq-pick").value = BL.COMMAND.squad.test.indexOf(settings.sqPick) >= 0 ? settings.sqPick : "destroyer";
+  function sqCount() { $("sq-n").textContent = (BL.COMMAND.squad.size[$("sq-pick").value] || 4) + " ships"; }
+  sqCount();
+  $("sq-pick").onchange = function () { settings.sqPick = this.value; saveSettings(); sqCount(); };
   function squadronJob(seed) {
-    var id = BL.COMMAND.squad.test[0], c = BL.classById(id);
+    var id = $("sq-pick").value, c = BL.classById(id);
     return { test: true, station: "squadron", classId: id, n: c.n, tl: BL.TECH.base(id), ship: c.name, seed: seed, helm: true, captain: true, flag: true };
   }
   $("btn-squadron").onclick = function () {

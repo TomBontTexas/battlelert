@@ -939,7 +939,7 @@
     // (Headless, squadron test bot, TL5 to 7, 18 missions: 11 won (2 flagships lost, 5 objectives missed),
     // 2.4 of 4 ships home; with no orders, every ship in formation: none won, the objective almost never reached.)
     squad: { size: { gunboat: 6, picket: 4, destroyerEscort: 4, destroyer: 4, lightCruiser: 4, cruiser: 4, heavyCruiser: 4, battleship: 3, dreadnought: 2 },
-             test: ["destroyer"],
+             test: ["gunboat", "picket", "destroyerEscort", "destroyer", "lightCruiser", "cruiser", "heavyCruiser", "battleship", "dreadnought"],
              formations: {
                ahead: { name: "Line ahead", short: "LINE AHEAD", slots: [[180, 1], [180, 2], [180, 3], [180, 4], [180, 5]], trail: true },
                abreast: { name: "Line abreast", short: "LINE ABREAST", slots: [[-90, 1], [90, 1], [-90, 2], [90, 2], [-90, 3]] } },
@@ -947,6 +947,11 @@
              gap: 0.03, clear: 0.06, lag: 2, tick: 0.5, hire: [0.4, 0.95],
              temper: { aggressive: [0.85, 1.1, 1.1], steady: [1, 1, 1], cautious: [1.2, 0.9, 0.85] },
              ranks: ["Lieutenant", "Lieutenant Commander", "Commander"],
+             // The captains' radio (Captain.sqSay): seconds between routine calls [calm, a target
+             // firing on us or a ship hurt, 3 or more], a ship's own gap, a hit counts as new after
+             // `fresh` s quiet; captains talk to each other with `cross[0]` or more firing or hurt,
+             // every cross[1] s; what they call each other.
+             radio: { gap: [6, 3, 1.5], shipGap: 4, fresh: 8, cross: [2, [7, 12]], call: { 2: "Two", 3: "Three", 4: "Four", 5: "Five", 6: "Six" } },
              map: { window: 1.5, sensor: 55, reportOff: 10, range: 16, close: 0.75, gunDps: 0.1, enemyDps: 3, shield: 0.08, ambush: 0.6,
                     targets: [3, 4], unknown: [1, 2], letters: "ABCDEFGH",
                     kinds: {
@@ -956,7 +961,14 @@
                       interceptors: { name: "Interceptor flight", enc: "interceptors", hp: 240, speed: 1.9, hunt: true, standOff: 0.5, guns: [[0, 45, 4]], range: 10 },
                       frigate: { name: "Frigate group", enc: "frigate", hp: 900, speed: 0.7, patrol: true, guns: [[0, 30, 2, "lead"], [90, 60, 4], [-90, 60, 4]], range: 18 },
                       hunters: { name: "Drive hunters", enc: "hunters", hp: 300, speed: 1.7, hunt: true, standOff: 0.7, guns: [[0, 180, 3]], range: 11 } },
-                    pick: ["siege", "raiders", "interceptors", "frigate", "hunters", "raiders"] } },
+                    pick: ["siege", "raiders", "interceptors", "frigate", "hunters", "raiders"],
+                    // Per class, [target strength, target gunfire] x the destroyer squadron's: strength
+                    // by the squadron's guns (ships x guns), gunfire by one ship's hull and shields, so
+                    // every class's fights last about as long as a destroyer squadron's.
+                    // (Headless, squadron test bot, TL5 to 7, 18 missions each, wins: gunboat 12, picket 10, destroyer
+                    // escort 9, destroyer 11, light cruiser 11, cruiser 12, heavy cruiser 12, battleship 10, dreadnought 9.)
+                    classK: { gunboat: [0.25, 0.43], picket: [0.25, 0.57], destroyerEscort: [0.45, 0.65], destroyer: [1, 1], lightCruiser: [1.2, 1.1],
+                              cruiser: [2, 1.5], heavyCruiser: [2.8, 2.2], battleship: [2.6, 2.8], dreadnought: [1.4, 3.2] } } },
     // A picket's scouting run (the captain's path): `n` checkpoints of radius `r` (x the map's size)
     // to fly through in order, spread over `along` of the way to the jump point and `side` off it.
     // The navigator's plot keeps `slack` s in hand for each one.
@@ -1136,6 +1148,29 @@
     helmReq:     ["Gunner {n}: Captain, nothing in my arc. Target {side}."],     // to the captain, who orders the helm
     jumpNoticeH: ["Navigation: warp window in {t} s. Warp heading {hdg}."],     // reports; the captain orders the heading
     jumpHeading: ["Navigation: drive's full. We're off the warp heading."],
+    // The squadron's radio (Nov 2, 2026; Captain.sqSay): the wing captains ({ship}: "Ship 2"), {L} a target's letter,
+    // {what} "a raider pack", {the} "the raider pack", {name} "raider pack", {other} another ship ("Three").
+    sqAck:       ["{ship}: aye, going after {L}.", "{ship}: copy, {the} at {L}.", "{ship}: on my way to {L}."],
+    sqAckSpot:   ["{ship}: aye, moving to the spot.", "{ship}: copy, on my way."],
+    sqAckForm:   ["{ship}: rejoining the formation.", "{ship}: aye, falling in."],
+    sqAckHold:   ["{ship}: holding fire. We'll wait for them.", "{ship}: aye, guns cold till they're close."],
+    sqContact:   ["{ship}: contact, {what} at {L}!", "{ship}: eyes on {L}. It's {what}."],
+    sqUnknown:   ["{ship}: that unknown contact at {L} is {what}!", "{ship}: {L} is {what}. The pickets missed it."],
+    sqContactT:  ["Tactical: contact, {what} at {L}."],
+    sqUnknownT:  ["Tactical: the unknown contact at {L} is {what}."],
+    sqEngage:    ["{ship}: engaging {L}.", "{ship}: guns on {L}. Firing!", "{ship}: {the} is in range. Opening fire."],
+    sqAmbush:    ["{ship}: they walked right into it. Weapons free!", "{ship}: now! Open fire on {L}!"],
+    sqUnderFire: ["{ship}: taking fire from {L}!", "{ship}: {L} is shooting at us!", "{ship}: under fire!"],
+    sqHunted:    ["{ship}: {L} is coming for me!", "{ship}: I've got {what} on my tail!"],
+    sqShieldsDown: ["{ship}: shields are down!", "{ship}: we've lost our shields!"],
+    sqHullHalf:  ["{ship}: hull at half. We're hurting.", "{ship}: we're taking a beating out here."],
+    sqHullLow:   ["{ship}: she can't take much more!", "{ship}: hull's failing! We need help!"],
+    sqKill:      ["{ship}: {L} destroyed!", "{ship}: scratch one {name}!", "{ship}: {L} is breaking up!"],
+    sqKillT:     ["Tactical: {L} destroyed.", "Tactical: {L} breaking up."],
+    sqLost:      ["Tactical: we lost ship {n}!", "Tactical: ship {n} is gone!"],
+    sqObjective: ["Tactical: the depot is down! Objective complete."],
+    sqCross:     ["{ship}: {other}, you've got one on you!", "{ship}: hang on, {other}, I'm coming!", "{ship}: {other}, watch your flank!", "{ship}: {other}, get out of there!"],
+    sqBusy:      ["{ship}: they're everywhere!", "{ship}: keep it together, people!", "{ship}: this is getting hot!"],
     warnEng:     ["Engineering: standing by for your burn.", "Engineering: understood, power's ready for the engines.", "Engineering: copy, Helm. Engines get first call."]
   };
 
