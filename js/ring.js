@@ -651,7 +651,7 @@
       if (aim !== null && aim !== undefined && e.type === "strike") { e.done = true; e.cancelled = true; e.visible = false; return; }
       if (ward) { e.ward = true; e.wardShip = cp.wardPick(self.rng); cp.wardLaunched(e, s); }
       else if (wing !== null) { e.wing = wing; cp.wingLaunched(e); }
-      else if (m.helm && e.type === "salvo") m.helm.torpedoLaunched(e, s);       // Tactical reports it; the captain: break, or take it
+      else if (m.helm && e.type === "salvo") { m.helm.torpedoLaunched(e, s); if (cp && cp.escort && cp.escort.flag) cp.flagGuard(e, s); }       // Tactical reports it; the captain: break, or take it (a squadron in SCREEN may shoot it down)
       var hitB = s.bearing + (self.rng.next() - 0.5) * 24, hit = ward ? cp.wardView(e.wardShip) : wing !== null ? cp.wingView(wing) : self.rim(hitB);
       var nose = { x: s.x - Math.sin(s.rot) * s.h / 2, y: s.y + Math.cos(s.rot) * s.h / 2 };
       var torp = { id: self.nextId++, ev: e, x0: nose.x, y0: nose.y, x1: hit.x, y1: hit.y, hitB: hitB, t0: t, t1: e.at, x: nose.x, y: nose.y, weak: !!e.ionized,
@@ -670,7 +670,7 @@
     });
     // Torpedoes at the ward follow the ship they're aimed at (she and we both move); a wingman
     // guarding that side shoots one down on its way (Captain.wingGuard).
-    if (m.captain && m.captain.wardAlive()) {
+    if (m.captain && m.captain.escort && (m.captain.wardAlive() || m.captain.escort.flag)) {
       var cp2 = m.captain;
       this.torps.slice().forEach(function (tp) {
         var e = tp.ev;
@@ -892,14 +892,17 @@
         if (d < best) { best = d; target = s; rel = rr; }
       });
     }
+    // A squadron (command.js Squadron): the commander's target first; then a group after us before
+    // one after another ship of the squadron.
+    var sqe = m.captain && m.captain.escort && m.captain.escort.flag ? m.captain.escort : null, sqT = sqe ? sqe.target : null;
     function ships(matched, penalty) {
       self.ships.forEach(function (s) {
         if (s.dead || s.state === "leave") return;
         var rr = self.inReachOf(b, s.x, s.y); if (rr === null) return;
         seen.push([s, rr]);
         var good = b.w.best.indexOf(s.type) >= 0;
-        if (matched && !good) return;
-        var d = Math.abs(norm(rr - b.rel)) / 180 + (good ? 0 : penalty);
+        if (matched && !good && !(sqT !== null && s.wave === sqT)) return;
+        var d = Math.abs(norm(rr - b.rel)) / 180 + (good ? 0 : penalty) + (sqe ? (s.wave === sqT ? -0.6 : s.aim !== null && s.aim !== undefined ? 0.25 : 0) : 0);
         if (d < best) { best = d; target = s; rel = rr; }
       });
     }

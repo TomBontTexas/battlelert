@@ -436,7 +436,7 @@
     if (wave) wave.hp -= dealt;
     if (s.hp > 0.001) return;
     s.dead = true;
-    if (mine || this.crewAll) bump(this, "kills");
+    if ((mine || this.crewAll) && !this.byWing) bump(this, "kills");     // (byWing: another ship of the squadron's guns, Captain.runSquad)
     if (s.chargeAt > m.t && this.rng.chance(0.6)) m.chat("chargeStopped", null, "good");
     this.effects.push({ type: "boom", x: s.x, y: s.y, at: m.totalT, size: s.w });
     var rest = wave ? wave.ships.filter(function (x) { return !x.dead; }).length : 0;

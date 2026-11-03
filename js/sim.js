@@ -89,6 +89,8 @@
     // opts.escort: an escort mission (a gunboat squadron screens the carrier each sortie, a
     // destroyer escort squadron a convoy or capital ship each system; Captain, BL.COMMAND.escort).
     this.escort = !!opts.escort; this.escortKind = opts.escortKind || null;     // (a story mission names the ward: carrier, convoy or capital)
+    // opts.flag: a squadron mission (the Squadron test): we're the flagship of a squadron (Captain, BL.COMMAND.squad).
+    this.flag = !!opts.flag && !!opts.captain;
     this.captain = opts.captain && this.helm ? new BL.Captain(this) : null;
     this.trainer = null;                    // made on arrival (the helm's heading is set then)
     this.stats = {
@@ -370,6 +372,8 @@
     // Our ship's tech level: the forces are set for tech level 6 (the gunboat's 4); an older ship
     // meets fewer of them, a newer one more (BL.TECH.forceStep a level), so lower tech is harder
     // but not hopeless.
+    // A squadron meets the squadron's size times a lone ship's enemy (BL.COMMAND.squad.force); a field stays as thick.
+    if (this.flag && id !== "minefield") f *= (BL.COMMAND.squad.size[c] || 4) * BL.COMMAND.squad.force;
     return c === "gunboat" ? f : f * (1 + BL.TECH.forceStep * (this.data.tl - 6));
   };
   // Under 1, it's the chance a wave comes at all when one is due (the system's first always comes).

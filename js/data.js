@@ -908,6 +908,32 @@
               kinds: { carrier: { name: "carrier", label: "CARRIER", ships: [1, 1], hull: 100, perMJ: 0.03, size: 1.8, width: 0.29 },
                        capital: { name: "capital ship", label: "CAPITAL SHIP", ships: [1, 1], hull: 100, perMJ: 0.03, size: 1.8, width: 0.26 },
                        convoy: { name: "convoy", label: "CONVOY", ships: [3, 5], hull: 100, perMJ: 0.08, gap: 0.015, station: 0.075, size: 0.9, width: 0.42 } }, clear: 0.08 },
+    // Squadrons (approved Nov 2, 2026; stage 1, the Squadron test): the squadron commander plots
+    // the course and gives squadron orders; his flag captain (the test bot) runs the flagship; the
+    // other ships are lighter sims with our class's hull, shields and guns, each under an AI
+    // captain. `size`: ships per class, the flagship included. Formation slots, round the flagship:
+    // [degrees off her bow, distance in station gaps]; a gap keeps `clear` view units between two
+    // ships' shields (at least `gap` x the map's size). An order reaches a captain `lag` s / his
+    // skill later. Each enemy system comes `force` x the squadron's size as strong as a lone ship's.
+    // A ship's guns do `fire` x our own guns' best damage a second to a ship within reach of hers
+    // (x 0.6 + 0.4 x her captain's skill); her shields recharge at `shield` x our charger's rating;
+    // she shoots down `selfDown` of the torpedoes at her. SCREEN: a ship on our side of a burst at
+    // us shoots down `guard` of it. ATTACK (destroyer): for `time` s every ship closes on the
+    // target and fires `mult` x as hard (`abreast` x more from LINE ABREAST), taking `risk` x the
+    // fire; once every `every` s. Temper: [aggressive, steady, cautious] x her distance, fire, risk.
+    // (Nov 2, 2026, squadron test bot, TL5 to 7, 36 missions: force 0.9 wins 20, with no orders 17; at fire 0.18 the other
+    // ships kill about as many enemy ships each as the flagship's crew does.)
+    squad: { size: { gunboat: 6, picket: 4, destroyerEscort: 4, destroyer: 4, lightCruiser: 4, cruiser: 4, heavyCruiser: 4, battleship: 3, dreadnought: 2 },
+             test: ["destroyer"],
+             formations: {
+               abreast: { name: "Line abreast", short: "ABREAST", slots: [[-90, 1], [90, 1], [-90, 2], [90, 2], [-90, 3]] },
+               ahead: { name: "Line ahead", short: "LINE AHEAD", slots: [[180, 1], [180, 2], [180, 3], [180, 4], [180, 5]] },
+               screen: { name: "Screen round the flagship", short: "SCREEN", slots: [[0, 1], [-90, 1], [90, 1], [180, 1], [-45, 1.6]], guard: true } },
+             formationList: ["abreast", "ahead", "screen"], start: "abreast",
+             gap: 0.03, clear: 0.06, lag: 2, force: 0.9, fire: 0.18, shield: 0.5, selfDown: 0.5, guard: 0.5, tick: 0.5, hire: [0.4, 0.95],
+             attack: { time: 15, every: 45, mult: 1.6, abreast: 1.25, risk: 1.3 },
+             temper: { aggressive: [0.85, 1.1, 1.1], steady: [1, 1, 1], cautious: [1.2, 0.9, 0.85] },
+             ranks: ["Lieutenant", "Lieutenant Commander", "Commander"] },
     // A picket's scouting run (the captain's path): `n` checkpoints of radius `r` (x the map's size)
     // to fly through in order, spread over `along` of the way to the jump point and `side` off it.
     // The navigator's plot keeps `slack` s in hand for each one.
