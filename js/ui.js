@@ -1594,14 +1594,31 @@
   // see it, dashed from the report or where it was last seen, "?" an unknown contact), its letter
   // (and name and strength in the big map), and for one we see or have picked, its gun range and
   // the arcs its guns bear through, and its heading. plan: the plotting screen (the report only).
-  function drawTargets(ctx, fr, list, big, c, plan) {
+  // occ: the boxes of what's already written on the map (BL.drawNavMap's labels); each label goes
+  // in the first clear place round its target (right, left, above, below), on a dark backing, so no
+  // text lands on other text.
+  function drawTargets(ctx, fr, list, big, c, plan, occ) {
     var cs = c.cs(), mono = "ui-monospace, Menlo, Consolas, monospace";
+    occ = occ || [];
+    list.forEach(function (T) { var q = fr.toPx(plan ? T.rep : c.shownAt(T)), r = (big ? 7 : 5) + 5; occ.push({ x0: q.x - r, y0: q.y - r, x1: q.x + r, y1: q.y + r }); });
+    function place(lines, p, r) {
+      ctx.font = "600 " + (big ? 11 : 10) + "px " + mono; ctx.textAlign = "left"; ctx.textBaseline = "top";
+      var lh = big ? 13 : 12, wd = Math.max.apply(null, lines.map(function (l) { return ctx.measureText(l[0]).width; })), ht = lines.length * lh;
+      var cands = [[p.x + r + 6, p.y - ht / 2], [p.x - r - 6 - wd, p.y - ht / 2], [p.x - wd / 2, p.y - r - 6 - ht], [p.x - wd / 2, p.y + r + 6],
+        [p.x + r + 6, p.y - r - ht], [p.x + r + 6, p.y + r], [p.x - r - 6 - wd, p.y - r - ht], [p.x - r - 6 - wd, p.y + r]];
+      function over(b) { return occ.reduce(function (a, o) { return a + Math.max(0, Math.min(b.x1, o.x1) - Math.max(b.x0, o.x0)) * Math.max(0, Math.min(b.y1, o.y1) - Math.max(b.y0, o.y0)); }, 0); }
+      var best = null, bo = Infinity;
+      cands.forEach(function (cd) { var b = { x0: cd[0] - 3, y0: cd[1] - 2, x1: cd[0] + wd + 3, y1: cd[1] + ht + 2 }, o = over(b); if (o < bo) { bo = o; best = b; } });
+      ctx.fillStyle = "rgba(5,8,12,.78)"; ctx.fillRect(best.x0, best.y0, best.x1 - best.x0, best.y1 - best.y0);
+      lines.forEach(function (l, i) { ctx.fillStyle = l[1]; ctx.fillText(l[0], best.x0 + 3, best.y0 + 2 + i * lh); });
+      occ.push(best);
+    }
     list.forEach(function (T) {
       var at = plan ? T.rep : c.shownAt(T), p = fr.toPx(at), sel = !plan && sqTgt === T.id, s = big ? 7 : 5;
       ctx.font = "600 " + (big ? 11 : 10) + "px " + mono; ctx.textAlign = "left"; ctx.textBaseline = "middle";
       if (T.dead) {
         ctx.strokeStyle = "rgba(255,107,107,.35)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(p.x - s, p.y - s); ctx.lineTo(p.x + s, p.y + s); ctx.moveTo(p.x + s, p.y - s); ctx.lineTo(p.x - s, p.y + s); ctx.stroke();
-        ctx.fillStyle = "rgba(255,179,168,.45)"; ctx.fillText(T.letter, p.x + s + 4, p.y); return;
+        place([[T.letter, "rgba(255,179,168,.5)"]], p, s); return;
       }
       var known = !T.unknown || (!plan && (T.seen || T.last));
       if (!known) {
@@ -1632,17 +1649,19 @@
       ctx.setLineDash([]);
       if (solid && T.K.speed) { var hp2 = fr.toPx(BL.alongMap(at, T.hdg, 0.05 * c.map().D)); ctx.strokeStyle = "#ff6b6b"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(hp2.x, hp2.y); ctx.stroke(); }
       if (sel) { ctx.strokeStyle = "#ffd666"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(p.x, p.y, s + 9, 0, Math.PI * 2); ctx.stroke(); }
-      ctx.fillStyle = T.K.objective ? "#ffd666" : "#ffb3a8";
-      ctx.fillText(T.letter + (big ? " · " + T.K.name.toUpperCase() + (plan ? "" : " " + Math.round(100 * T.hp / T.hpMax) + "%") + (T.K.objective ? " · OBJECTIVE" : "") : ""), p.x + s + 6, p.y - (big ? 2 : 0));
-      if (big && !solid && !plan) { ctx.fillStyle = "#8899a8"; ctx.fillText(T.seen ? "" : T.last ? "last seen" : "reported", p.x + s + 6, p.y + 12); }
+      var lines = [[T.letter + (big ? " · " + T.K.name.toUpperCase() + (plan ? "" : " " + Math.round(100 * T.hp / T.hpMax) + "%") + (T.K.objective ? " · OBJECTIVE" : "") : ""), T.K.objective ? "#ffd666" : "#ffb3a8"]];
+      if (big && !solid && !plan) lines.push([T.last ? "last seen" : "reported", "#8899a8"]);
+      place(lines, p, s + 4);
     });
   }
   // The squadron on the bridge map: our sensor range round the flagship, the targets, the fire
   // (ours teal, theirs red), each ship with her number and her order's line, the ones selected ringed.
-  function drawSquadMap(ctx, fr, big) {
+  function drawSquadMap(ctx, fr, big, occ) {
     var c = sim.captain, es = c.escort, M = BL.COMMAND.squad.map, cs = c.cs(), fp = fr.toPx(c.pos), mono = "ui-monospace, Menlo, Consolas, monospace";
     ctx.strokeStyle = "rgba(76,195,238,.35)"; ctx.lineWidth = 1; ctx.setLineDash([7, 7]); ctx.beginPath(); ctx.arc(fp.x, fp.y, M.sensor * cs * fr.s, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
-    drawTargets(ctx, fr, c.sqTargets || [], big, c, false);
+    occ = occ || [];
+    [fp].concat(es.wing.filter(function (g) { return g.hull > 0; }).map(function (g) { return fr.toPx(c.wingPos(g)); })).forEach(function (q) { occ.push({ x0: q.x - 12, y0: q.y - 16, x1: q.x + 20, y1: q.y + 12 }); });
+    drawTargets(ctx, fr, c.sqTargets || [], big, c, false, occ);
     es.fx.forEach(function (f) { var a = fr.toPx(f.a), b = fr.toPx(f.b); ctx.strokeStyle = f.foe ? "rgba(255,107,107,.75)" : "rgba(127,216,200,.8)"; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); });
     function orderLine(from, goal) { var q = fr.toPx(goal); ctx.strokeStyle = "rgba(127,216,200,.6)"; ctx.lineWidth = 1.2; ctx.setLineDash([5, 5]); ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(q.x, q.y); ctx.stroke(); ctx.setLineDash([]); }
     if (c.flagGo) { var fgoal = c.goalOf(null, c.pos); if (fgoal) orderLine(fp, fgoal); }
@@ -1697,11 +1716,13 @@
     if (w !== cpMapW || hh !== cpMapH || !cpMapCtx) { cpMapW = w; cpMapH = hh; cv.width = Math.round(w * dpr); cv.height = Math.round(hh * dpr); cpMapCtx = cv.getContext("2d"); cpMapCtx.setTransform(dpr, 0, 0, dpr, 0, 0); }
     var map = c.map(), plot = c.plots[c.at === undefined ? sim.jumpIndex : c.at] || null, ctx = cpMapCtx;      // (only a course that has been plotted)
     var fr = mapFrame(w, hh);
-    BL.drawNavMap(ctx, w, hh, map, plot, { small: !big, frame: fr, pos: c.pos, hdg: sim.helm.compass(), leg: c.leg, info: c.info, steer: hv ? hv.hdg : null, cpHit: c.cur ? c.cur.cps : null });
+    // (labels: what the map writes, and the corner readout, so a squadron's target labels keep clear of it)
+    var labels = [{ x0: 0, y0: 0, x1: big ? 380 : 270, y1: big ? 60 : 46 }];
+    BL.drawNavMap(ctx, w, hh, map, plot, { small: !big, frame: fr, pos: c.pos, hdg: sim.helm.compass(), leg: c.leg, info: c.info, steer: hv ? hv.hdg : null, cpHit: c.cur ? c.cur.cps : null, labels: labels });
     if (!c.pos) return;
     // Escort: her ships (blue hulls on her heading: a carrier or capital ship long, merchants short,
     // a lost one dim), the wingmen on their stations, and our station (a ring).
-    if (c.escort && c.escort.flag && c.pos) drawSquadMap(ctx, fr, big);
+    if (c.escort && c.escort.flag && c.pos) drawSquadMap(ctx, fr, big, labels);
     else if (c.escort && c.escort.pos) {
       var es = c.escort, a = es.hdg * Math.PI / 180, conv = es.kind === "convoy";
       es.ships.forEach(function (s) {
@@ -2106,8 +2127,9 @@
     if (w && hh && (w !== plW || hh !== plH || !plCtx)) { plW = w; plH = hh; cv.width = Math.round(w * dpr); cv.height = Math.round(hh * dpr); plCtx = cv.getContext("2d"); plCtx.setTransform(dpr, 0, 0, dpr, 0, 0); }
     var info = BL.plotInfo(e.map, e.plot, plotGOf);
     var pfr = BL.navFrame(e.map, null, plW, plH, 18);
-    if (plCtx) BL.drawNavMap(plCtx, plW, plH, e.map, e.plot, { frame: pfr, info: info });
-    if (plCtx && sim.flag) { drawTargets(plCtx, pfr, sim.captain.sqMaps[e.i], true, sim.captain, true); drawPlotSquad(); }
+    var plabels = [];
+    if (plCtx) BL.drawNavMap(plCtx, plW, plH, e.map, e.plot, { frame: pfr, info: info, labels: plabels });
+    if (plCtx && sim.flag) { drawTargets(plCtx, pfr, sim.captain.sqMaps[e.i], true, sim.captain, true, plabels); drawPlotSquad(); }
     // The legs: heading, time, engine order (tap to change).
     $("pl-legs").innerHTML = info.legs.map(function (l, k) {
       var t = l.len / Math.max(0.1, plotGOf(l.eng) * K.scale);

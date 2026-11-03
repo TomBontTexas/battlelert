@@ -26,9 +26,19 @@
   };
 
   // opts: { pos, hdg (the ship), leg (the leg she's on), info (BL.plotInfo), small (the bridge
-  // panel), steer (the heading the helm is steering), frame (reuse) }.
+  // panel), steer (the heading the helm is steering), frame (reuse), labels (a list: each piece of
+  // text drawn adds its box { x0, y0, x1, y1 }, so labels drawn after can keep clear: BL.textBox) }.
+  // The box a piece of text takes, by the context's font, alignment and baseline.
+  BL.textBox = function (ctx, str, x, y) {
+    var wd = ctx.measureText(str).width, ht = parseFloat((/(\d+(?:\.\d+)?)px/.exec(ctx.font) || [0, 12])[1]);
+    var x0 = ctx.textAlign === "center" ? x - wd / 2 : ctx.textAlign === "right" || ctx.textAlign === "end" ? x - wd : x;
+    var y0 = ctx.textBaseline === "top" ? y : ctx.textBaseline === "middle" ? y - ht / 2 : y - ht;
+    return { x0: x0, y0: y0, x1: x0 + wd, y1: y0 + ht };
+  };
   BL.drawNavMap = function (ctx, w, h, map, plot, opts) {
     opts = opts || {};
+    // (every piece of text it writes goes in `boxes`, so a leg's label, and labels drawn after, keep clear)
+    var fill0 = ctx.fillText, boxes = opts.labels || []; ctx.fillText = function (str, x, y) { boxes.push(BL.textBox(ctx, str, x, y)); fill0.call(ctx, str, x, y); };
     var f = opts.frame || BL.navFrame(map, plot, w, h, opts.small ? 10 : 18), P = f.toPx, s = f.s, small = !!opts.small;
     ctx.clearRect(0, 0, w, h);
     ctx.fillStyle = "#05080c"; ctx.fillRect(0, 0, w, h);
@@ -126,7 +136,14 @@
       if (!small && lg) {     // the leg's heading beside its middle
         var mx = (a2.x + b2.x) / 2, my = (a2.y + b2.y) / 2, nx = -(b2.y - a2.y), ny = b2.x - a2.x, nl = Math.hypot(nx, ny) || 1;
         ctx.fillStyle = "rgba(200,225,255,.95)"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-        ctx.fillText((k2 + 1) + ": " + BL.hdgText(lg.hdg), mx + nx / nl * 16, my + ny / nl * 16);
+        // (beside its middle on whichever side, near or a little farther, is clear of what's written already)
+        var lt = (k2 + 1) + ": " + BL.hdgText(lg.hdg), lx = mx + nx / nl * 16, ly = my + ny / nl * 16;
+        [16, -16, 30, -30, 46, -46].some(function (d) {
+          var bx = BL.textBox(ctx, lt, mx + nx / nl * d, my + ny / nl * d);
+          if (boxes.some(function (o) { return Math.min(bx.x1, o.x1) - Math.max(bx.x0, o.x0) > 0 && Math.min(bx.y1, o.y1) - Math.max(bx.y0, o.y0) > 0; })) return false;
+          lx = mx + nx / nl * d; ly = my + ny / nl * d; return true;
+        });
+        ctx.fillText(lt, lx, ly);
       }
     }
     pts.forEach(function (p, i) {
@@ -148,6 +165,7 @@
       }
       drawShip(ctx, sp, opts.hdg || 0, small ? 7 : 11, "#ffd666");
     }
+    delete ctx.fillText;
   };
   BL.drawMapShip = function (ctx, c, hdg, len, color) { drawShip(ctx, c, hdg, len, color); };
   function drawShip(ctx, c, hdg, len, color) {
