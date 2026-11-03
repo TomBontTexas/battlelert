@@ -1550,7 +1550,7 @@
         (x.live ? '<i class="' + (h < 35 ? "low" : "") + '" style="width:' + h + '%"></i>' : "") + "</button>";
     }).join(""));
     var any = sqSel.length > 0;
-    cpLine("cp-sq-hint", any ? "Ship" + (sqSel.length > 1 ? "s " : " ") + sqSel.join(", ") + ": tap a target or a spot on the map" : "Tap ships to select, then a target or a spot on the map");
+    cpLine("cp-sq-hint", any ? "Ship" + (sqSel.length > 1 ? "s " : " ") + sqSel.join(", ") + ": tap a target or a spot on the map" : "Tap ships (here or on the map), then a target or a spot");
     $("cp-sq-selrow").hidden = !any;
     ["cp-sq-recall", "cp-sq-hold", "cp-sq-clear"].forEach(function (id) { $(id).disabled = !live; });
     var holding = sqSel.length && sqSel.every(function (n) { var x = v.ships.filter(function (s) { return s.no === n; })[0]; return x && x.hold; });
@@ -2074,8 +2074,13 @@
       // selected, it opens the target's card); on open space it sends them there; with none
       // selected and no target there, it steers the flagship as on the bridge.
       if (sim.flag && cmdView) {
-        var hit = null, hd = 22;
+        var hit = null, hd = 22, ship = null, sd = 20;
         c.sqGroups().forEach(function (T) { var q = fr0.toPx(c.shownAt(T)); var d = Math.hypot(q.x - p.at.x, q.y - p.at.y); if (d < hd) { hd = d; hit = T; } });
+        // (one of our ships under the tap, nearer than any target: select her, or drop her, as her line does)
+        [{ no: 1, at: c.pos }].concat(c.sqLive().map(function (g) { return { no: g.no, at: c.wingPos(g) }; })).forEach(function (o) {
+          var q = fr0.toPx(o.at), d = Math.hypot(q.x - p.at.x, q.y - p.at.y); if (d < sd) { sd = d; ship = o.no; }
+        });
+        if (ship !== null && (!hit || sd <= hd)) { sqToggle(ship); return; }
         if (hit && sqSel.length) { sqSend(hit); click(); return; }
         if (hit) { sqTgt = sqTgt === hit.id ? null : hit.id; click(); return; }
         if (sqSel.length) { sqSpot(t); click(); return; }
