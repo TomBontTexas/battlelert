@@ -625,6 +625,12 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 .cp-torps.live .cp-hd { color: var(--bad); }
 /* A squadron's ships on the bridge: one line each (tap one to detach it or call it back) */
 .cp-sq-ships { display: flex; flex-direction: column; gap: 2px; }
+/* (the squadron box never cuts its words off: its lines wrap, its formation buttons stack) */
+#cp-sq .cp-ln { white-space: normal; overflow: visible; }
+.cp-side .cp-row.cp-sq-stack { flex-direction: column; }
+.cp-side .cp-row.cp-sq-stack button { flex: 0 0 auto; white-space: normal; }
+.cp-sq-ships button, .cp-sq-ships .cp-sq-flag { white-space: normal !important; line-height: 1.3; }
+.cp-sq-ships span { color: var(--muted); }
 .cp-sq-ships .cp-sq-flag { color: var(--text); position: relative; padding: 2px 6px 4px; border: 1px solid var(--line); border-radius: 6px; font-family: var(--mono); font-size: 11px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cp-sq-ships .cp-sq-flag b { color: var(--warn); font-weight: 600; }
 .cp-sq-ships .cp-sq-flag i { position: absolute; left: 0; bottom: 0; height: 2px; background: var(--good); }

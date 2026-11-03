@@ -1528,19 +1528,21 @@
     if (!v || !cmdView) return;
     var tw = v.target, av = v.attack, home = 1 + v.ships.filter(function (x) { return x.live; }).length, an = tw ? c.aimName(tw) : null;
     setText($("cp-sq-hd"), "SQUADRON · " + home + " of " + (v.ships.length + 1));
-    cpLine("cp-sq-ln", "<b>" + Q.formations[v.form].short + "</b> · " + (tw ? "Target <b>" + esc(tw.name) + "</b>" + (an ? " on " + (an === "Flag" ? "flag" : "ship " + an) : "") : "No target"));
+    // (two short lines: the formation, then the target and who it's after)
+    cpLine("cp-sq-ln", "<b>" + Q.formations[v.form].short + "</b>");
+    cpLine("cp-sq-ln2", tw ? "Target <b>" + esc(tw.name) + "</b>" + (an ? " on " + (an === "Flag" ? "the flagship" : "ship " + an) : "") : "No target");
     var pendForm = v.ships.some(function (x) { return x.order === "form"; });
     Array.prototype.forEach.call($("cp-sq-form").children, function (b) { b.classList.toggle("on", b.dataset.form === v.form); b.classList.toggle("pend", b.dataset.form === v.form && pendForm); b.disabled = !live; });
     // The flagship first (her flag captain, hull and shields; her drive is on WARP), then each ship (tap to detach or call back).
     var sh = sim.sys("shield"), fh = Math.round(100 * sim.ship.hull / sim.ship.hullMax);
-    var flagLn = '<div class="cp-sq-flag" title="The flagship: ' + esc(v.flag.name) + ', your flag captain"><b>1</b> ' + esc(v.flag.last) + " " + fh + "% · sh " + Math.round(100 * sh.mj / sh.maxMJ) + "%" +
+    var flagLn = '<div class="cp-sq-flag" title="The flagship: ' + esc(v.flag.name) + ', your flag captain"><b>1</b> ' + esc(v.flag.last) + " " + fh + "%<br><span>flagship · shields " + Math.round(100 * sh.mj / sh.maxMJ) + "%</span>" +
       '<i class="' + (fh < 35 ? "low" : "") + '" style="width:' + fh + '%"></i></div>';
     var eng = c.helmView().eng;
     ["cp-sq-speed1", "cp-sq-speed2"].forEach(function (id) { Array.prototype.forEach.call($(id).children, function (b) { b.classList.toggle("on", b.dataset.eng === eng); b.disabled = !live; }); });
     cpHtml("cp-sq-ships", flagLn + v.ships.map(function (x) {
       var h = Math.round(x.hull * 100);
       return '<button data-det="' + x.no + '" class="' + (x.live ? "" : "lost") + (x.task === "detach" ? " det" : "") + (x.order === "task" ? " pend" : "") + '" title="' + esc(x.cap.name) + ", " + x.cap.label + " (skill " + Math.round(x.cap.skill * 100) + "), " + x.cap.temper + " temper" +
-        (x.live ? ". Tap to " + (x.task === "detach" ? "call her back to her station" : "detach her after the target") + " (" + x.no + ")" : "") + '"' + (x.live && live ? "" : " disabled") + "><b>" + x.no + "</b> " + esc(x.cap.last) + " " + (x.live ? h + "% · " + x.doing : x.doing) +
+        (x.live ? ". Tap to " + (x.task === "detach" ? "call her back to her station" : "detach her after the target") + " (" + x.no + ")" : "") + '"' + (x.live && live ? "" : " disabled") + "><b>" + x.no + "</b> " + esc(x.cap.last) + (x.live ? " " + h + "%" : "") + "<br><span>" + x.doing + "</span>" +
         (x.live ? '<i class="' + (h < 35 ? "low" : "") + '" style="width:' + h + '%"></i>' : "") + "</button>";
     }).join(""));
     $("cp-sq-target").disabled = !live || !c.sqGroups().length;

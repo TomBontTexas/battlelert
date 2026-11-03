@@ -926,9 +926,9 @@
     squad: { size: { gunboat: 6, picket: 4, destroyerEscort: 4, destroyer: 4, lightCruiser: 4, cruiser: 4, heavyCruiser: 4, battleship: 3, dreadnought: 2 },
              test: ["destroyer"],
              formations: {
-               abreast: { name: "Line abreast", short: "ABREAST", slots: [[-90, 1], [90, 1], [-90, 2], [90, 2], [-90, 3]] },
+               abreast: { name: "Line abreast", short: "LINE ABREAST", slots: [[-90, 1], [90, 1], [-90, 2], [90, 2], [-90, 3]] },
                ahead: { name: "Line ahead", short: "LINE AHEAD", slots: [[180, 1], [180, 2], [180, 3], [180, 4], [180, 5]] },
-               screen: { name: "Screen round the flagship", short: "SCREEN", slots: [[0, 1], [-90, 1], [90, 1], [180, 1], [-45, 1.6]], guard: true } },
+               screen: { name: "Screen round the flagship", short: "SCREEN ROUND THE FLAG", slots: [[0, 1], [-90, 1], [90, 1], [180, 1], [-45, 1.6]], guard: true } },
              formationList: ["abreast", "ahead", "screen"], start: "abreast",
              gap: 0.03, clear: 0.06, lag: 2, force: 0.9, fire: 0.18, shield: 0.5, selfDown: 0.5, guard: 0.5, tick: 0.5, hire: [0.4, 0.95],
              attack: { time: 15, every: 45, mult: 1.6, abreast: 1.25, risk: 1.3 },
