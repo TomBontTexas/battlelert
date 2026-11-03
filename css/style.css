@@ -625,6 +625,10 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 .cp-torps.live .cp-hd { color: var(--bad); }
 /* A squadron's ships on the bridge: one line each (tap one to detach it or call it back) */
 .cp-sq-ships { display: flex; flex-direction: column; gap: 2px; }
+.cp-sq-ships .cp-sq-flag { color: var(--text); position: relative; padding: 2px 6px 4px; border: 1px solid var(--line); border-radius: 6px; font-family: var(--mono); font-size: 11px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cp-sq-ships .cp-sq-flag b { color: var(--warn); font-weight: 600; }
+.cp-sq-ships .cp-sq-flag i { position: absolute; left: 0; bottom: 0; height: 2px; background: var(--good); }
+.cp-sq-ships .cp-sq-flag i.low { background: var(--bad); }
 .cp-sq-ships button { position: relative; text-align: left; min-height: 26px; padding: 2px 5px 4px; font-family: var(--mono); font-size: 11px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cp-sq-ships button b { color: var(--warn); font-weight: 600; }
 .cp-sq-ships button.det { border-color: var(--warn); }
@@ -634,6 +638,7 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 .cp-sq-ships button.pend { border-style: dashed; }
 /* The telegraphs: three columns, meters and a readout over each */
 .cp-teles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px 5px; flex-shrink: 0; }
+.cp-teles[hidden] { display: none; }
 .cp-teles .cp-lbl { font-size: 10px; text-align: center; overflow: hidden; }
 .cp-meters { display: flex; gap: 2px; height: 62px; justify-content: center; }
 .cp-m { flex: 1 1 0; max-width: 14px; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 1px; }

@@ -6,7 +6,7 @@
 <meta name="copyright" content="© 2011–2026 Tom Bont. All rights reserved.">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Battlelert</title>
-<link rel="stylesheet" href="css/style.css?b=5aaf290f">
+<link rel="stylesheet" href="css/style.css?b=c094e344">
 </head>
 <body>
 
@@ -335,6 +335,8 @@
         <div class="cp-ln" id="cp-sq-ln"></div>
         <div class="cp-row" id="cp-sq-form"></div>
         <div class="cp-sq-ships" id="cp-sq-ships"></div>
+        <div class="cp-hd">SPEED</div>
+        <div class="cp-row" id="cp-sq-speed1"></div><div class="cp-row" id="cp-sq-speed2"></div>
         <div class="cp-row"><button id="cp-sq-target" title="Every ship fires on the next enemy group; after the last, none (T)">TARGET <small>(T)</small></button><button id="cp-sq-attack" class="cp-wide" title="The whole squadron runs in on the target and fires everything, then forms up again (A)">ATTACK <small>(A)</small></button></div>
         <div class="cp-row"><button id="cp-sq-bridge" class="cp-wide" title="Drop down to the flagship's bridge and captain her yourself (D). Once a mission it costs 1 squadron reputation and 1 morale to the flag captain.">FLAG BRIDGE <small>(D)</small></button></div>
       </div>
@@ -690,7 +692,7 @@
       <tr><td>J</td><td>Order the warp: the squadron goes together once every ship has formed up</td></tr>
       <tr><td>D / Q</td><td>Drop down to the flagship's bridge and captain her yourself / back to commanding the squadron</td></tr>
       <tr><td>V, + − / F, Esc</td><td>Swap the map and the battle view, zoom, pause, as on the bridge</td></tr>
-      <tr><td>Mouse / touch</td><td>The SQUADRON box at the left: the formation buttons, one line per ship (tap it to detach her or call her back), TARGET, ATTACK and FLAG BRIDGE; tap the map or the compass to steer the squadron</td></tr>
+      <tr><td>Mouse / touch</td><td>The SQUADRON box at the left: the formation buttons, the flagship's line and one line per ship (tap it to detach her or call her back), SPEED (the squadron's engine order), TARGET, ATTACK and FLAG BRIDGE; tap the map or the compass to steer the squadron</td></tr>
     </table>
     <div class="menu"><button id="btn-options-close" class="primary">Done</button></div>
   </div>
@@ -775,9 +777,9 @@
       <li><b>Score.</b> Objective and ship condition (the captain answers for his ship: every bit of hull lost costs twice what it does at the other stations), navigation (in the warp zone by the window, no asteroid hits) and command (the shields and guns against the torpedoes, and the breaks made, yours and the pilot's).</li>
     </ol>
     <h2>Commanding a squadron</h2>
-    <p>A squadron commander directs his captains as a captain directs his crew. To try it: title screen, <b>Tests</b>, <b>Squadron</b>: a squadron of 4 destroyers (the career's squadron jobs come later). You plot the squadron's course in warp space as on the bridge, and steer it the same way; your flag captain runs the flagship (the ship in the middle of the battle view): her engineer's stance, her gunners and her pilot, which the telegraphs still show. The other three ships, each under her own captain, keep their places round her. The briefing names every captain with his skill and temper: an order reaches a captain a few seconds after you give it (about 2 s at the best, longer the lower his skill; the order blinks until it gets there), and a cautious captain keeps a little farther off and fights a little more carefully, an aggressive one closer and harder. Enemy groups go after any ship of the squadron alike and fire only at her; when one of your ships is lost, the groups after her pick another.</p>
+    <p>A squadron commander directs his captains as a captain directs his crew. To try it: title screen, <b>Tests</b>, <b>Squadron</b>: a squadron of 4 destroyers (the career's squadron jobs come later). You plot the squadron's course in warp space as on the bridge, and steer it the same way; your flag captain runs the flagship (the ship in the middle of the battle view): her engineer's stance, her gunners and her pilot. So in command you see only what's yours: the SQUADRON box, with the flagship's line first (her hull and shields) and SPEED, the squadron's engine order (↑ ↓ too); her telegraphs come back when you take the flag bridge. The other three ships, each under her own captain, keep their places round her. The briefing names every captain with his skill and temper: an order reaches a captain a few seconds after you give it (about 2 s at the best, longer the lower his skill; the order blinks until it gets there), and a cautious captain keeps a little farther off and fights a little more carefully, an aggressive one closer and harder. Enemy groups go after any ship of the squadron alike and fire only at her; when one of your ships is lost, the groups after her pick another.</p>
     <ol class="tight">
-      <li><b>The SQUADRON box</b> shows the formation, the target, and one line per ship: her number, her captain, her hull and what she's doing (on station, forming up, detached, attack run, lost). In the battle view each ship has her shield ring, a hull bar and her number; on the map they're the small teal ships.</li>
+      <li><b>The SQUADRON box</b> shows the formation, the target, the flagship (1: her flag captain, hull and shields), and one line per ship: her number, her captain, her hull and what she's doing (on station, forming up, detached, attack run, lost). In the battle view each ship has her shield ring, a hull bar and her number; on the map they're the small teal ships.</li>
       <li><b>Formation</b> (O). <b>LINE ABREAST</b> spreads the ships to either side of the flagship, every gun bearing ahead; <b>LINE AHEAD</b> puts them in a column astern of her; <b>SCREEN</b> puts one ahead and one on each beam, and a ship on the side a burst comes from shoots down about half of the torpedoes at the flagship.</li>
       <li><b>Target</b> (T). Every ship, the flagship's gunners too, fires first on the target group's ships within reach (red corner marks in the battle view); with no target each captain picks his own, a group after his own ship first. Point the squadron at the group after the ship in most trouble.</li>
       <li><b>Attack</b> (A, destroyers). For 15 s the squadron runs in on the target: the other ships close on it and fire half again as hard (more in line abreast), and take more fire doing it; the flagship runs at it at flank if it's one of the groups round her. Then they form up again. Once every 45 s.</li>
@@ -813,6 +815,6 @@
 <script src="js/career.js?b=cf0e2c4a"></script>
 <script src="js/speech.js?b=a8bbd298"></script>
 <script src="js/audio.js?b=7bd9e9f9"></script>
-<script src="js/ui.js?b=0bcbcbfc"></script>
+<script src="js/ui.js?b=39d2b56f"></script>
 </body>
 </html>

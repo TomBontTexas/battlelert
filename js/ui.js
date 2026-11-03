@@ -1491,6 +1491,9 @@
     setHtml($("cp-resume"), "RESUME <small>(R)</small>");
     $("cp-resume").title = esc ? "Back to your station (R)" : "Back to the plotted course (R)";
     // A squadron: the formation buttons; then the commander's view or the flagship's bridge.
+    // (SPEED: the squadron's engine order, flank at the top left down to stop)
+    var spd = BRIDGE_ENG.slice().reverse().map(function (id) { var p = h.preset(id); return '<button data-eng="' + id + '" title="Squadron speed: all ' + p.name.toLowerCase() + ' (↑ ↓)">' + p.short + "</button>"; });
+    $("cp-sq-speed1").innerHTML = sim.flag ? spd.slice(0, 3).join("") : ""; $("cp-sq-speed2").innerHTML = sim.flag ? spd.slice(3).join("") : "";
     $("cp-sq-form").innerHTML = sim.flag ? K.squad.formationList.map(function (id) { return '<button data-form="' + id + '" title="' + K.squad.formations[id].name + ' (O)">' + K.squad.formations[id].short + "</button>"; }).join("") : "";
     bridgeKeys = $("tu-keys").textContent; shipGrp = !$("cp-ship-grp").hidden;
     applyCmd();
@@ -1502,7 +1505,7 @@
   function applyCmd() {
     var sq = !!sim.flag, cmd = sq && cmdView;
     $("cp-sq").hidden = !cmd; $("cp-sq-back-row").hidden = !sq || cmd;
-    $("cp-sec-torp").hidden = cmd; $("cp-warn").hidden = cmd; $("cp-drop").hidden = cmd; $("cp-ship-grp").hidden = cmd || !shipGrp;
+    $("cp-sec-torp").hidden = cmd; $("cp-teles").hidden = cmd; $("cp-warn").hidden = cmd; $("cp-drop").hidden = cmd; $("cp-ship-grp").hidden = cmd || !shipGrp;
     if (cmd) dropPick = false;
     $("tu-station").textContent = (cmd ? "Squadron · " : sq ? "Flag bridge · " : "Bridge · ") + (job.test ? sim.data.className : BL.shipLabel(job.classId, job.ship, job.hull)) + " (TL" + sim.data.tl + ")";
     $("tu-keys").textContent = cmd ? "← → course 10° (Shift 1°) · R resume plot · ↑ ↓ engines · O formation · T target · A attack · 2 to " + sim.captain.escort.n + " detach / rejoin that ship · J warp · D flag bridge · V swap map · + − F zoom · Esc pause · Tap the compass or the map to steer"
@@ -1528,7 +1531,13 @@
     cpLine("cp-sq-ln", "<b>" + Q.formations[v.form].short + "</b> · " + (tw ? "Target <b>" + esc(tw.name) + "</b>" + (an ? " on " + (an === "Flag" ? "flag" : "ship " + an) : "") : "No target"));
     var pendForm = v.ships.some(function (x) { return x.order === "form"; });
     Array.prototype.forEach.call($("cp-sq-form").children, function (b) { b.classList.toggle("on", b.dataset.form === v.form); b.classList.toggle("pend", b.dataset.form === v.form && pendForm); b.disabled = !live; });
-    cpHtml("cp-sq-ships", v.ships.map(function (x) {
+    // The flagship first (her flag captain, hull and shields; her drive is on WARP), then each ship (tap to detach or call back).
+    var sh = sim.sys("shield"), fh = Math.round(100 * sim.ship.hull / sim.ship.hullMax);
+    var flagLn = '<div class="cp-sq-flag" title="The flagship: ' + esc(v.flag.name) + ', your flag captain"><b>1</b> ' + esc(v.flag.last) + " " + fh + "% · sh " + Math.round(100 * sh.mj / sh.maxMJ) + "%" +
+      '<i class="' + (fh < 35 ? "low" : "") + '" style="width:' + fh + '%"></i></div>';
+    var eng = c.helmView().eng;
+    ["cp-sq-speed1", "cp-sq-speed2"].forEach(function (id) { Array.prototype.forEach.call($(id).children, function (b) { b.classList.toggle("on", b.dataset.eng === eng); b.disabled = !live; }); });
+    cpHtml("cp-sq-ships", flagLn + v.ships.map(function (x) {
       var h = Math.round(x.hull * 100);
       return '<button data-det="' + x.no + '" class="' + (x.live ? "" : "lost") + (x.task === "detach" ? " det" : "") + (x.order === "task" ? " pend" : "") + '" title="' + esc(x.cap.name) + ", " + x.cap.label + " (skill " + Math.round(x.cap.skill * 100) + "), " + x.cap.temper + " temper" +
         (x.live ? ". Tap to " + (x.task === "detach" ? "call her back to her station" : "detach her after the target") + " (" + x.no + ")" : "") + '"' + (x.live && live ? "" : " disabled") + "><b>" + x.no + "</b> " + esc(x.cap.last) + " " + (x.live ? h + "% · " + x.doing : x.doing) +
