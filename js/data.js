@@ -997,6 +997,8 @@
              view: 2.5, tick: 0.5, hire: [0.4, 0.95],
              temper: { aggressive: [0.85, 1.1, 1.1], steady: [1, 1, 1], cautious: [1.2, 0.9, 0.85] },
              ranks: ["Lieutenant", "Lieutenant Commander", "Commander"],
+             // (a gunboat is commanded by her coxswain, whatever his skill: TexasBont, Nov 4, 2026)
+             skipper: { gunboat: ["coxswain", "Coxswain"] },
              // The captains' radio (Captain.sqSay): seconds between routine calls [calm, a target
              // firing on us or a ship hurt, 3 or more], a ship's own gap, a hit counts as new after
              // `fresh` s quiet; captains talk to each other with `cross[0]` or more firing or hurt,

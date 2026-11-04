@@ -15,7 +15,8 @@
   function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
   function r2(v) { return Math.round(v * 100) / 100; }
   function size(classId) { return BL.COMMAND.squad.size[classId] || 4; }
-  function rankOf(s) { var R = BL.COMMAND.squad.ranks; return R[s >= 0.85 ? 2 : s >= 0.65 ? 1 : 0]; }
+  // (a gunboat's skipper is her coxswain, BL.COMMAND.squad.skipper)
+  function rankOf(s, classId) { var Q = BL.COMMAND.squad; return (Q.skipper[classId] || [])[1] || Q.ranks[s >= 0.85 ? 2 : s >= 0.65 ? 1 : 0]; }
   function labelOf(s) { return s >= 0.85 ? "sharp" : s >= 0.7 ? "steady" : s >= 0.5 ? "green" : "sloppy"; }
 
   function all(c) { var P = c.captains, out = []; Object.keys(P.byClass).forEach(function (k) { out = out.concat(P.byClass[k]); }); return out; }
@@ -48,7 +49,7 @@
   }
   function pool(c, classId) { return ensure(c, classId).byClass[classId]; }
   function captain(c, id) { ensure(c); var a = all(c); for (var i = 0; i < a.length; i++) if (a[i].id === id) return a[i]; return null; }
-  function name(m) { return rankOf(m.skill) + " " + m.first + " " + m.last; }
+  function name(m) { return rankOf(m.skill, m.classId) + " " + m.first + " " + m.last; }
   function view(m) {
     return { id: m.id, name: name(m), who: m.first + " " + m.last, last: m.last, skill: m.skill, label: labelOf(m.skill), temper: m.temper,
       morale: m.morale, missions: m.missions, wins: m.wins, out: m.out || 0, ships: m.ships.slice() };
@@ -56,7 +57,7 @@
   // The captain as he works in battle: his skill moved by morale (BL.CAPTAINS.morale.eff).
   function inBattle(m) {
     var e = BL.CAPTAINS.morale.eff, s = r2(clamp(m.skill * (e[0] + (e[1] - e[0]) * m.morale / 100), 0, 1));
-    return { id: m.id, name: rankOf(s) + " " + m.first + " " + m.last, who: m.first + " " + m.last, last: m.last, skill: s, label: labelOf(s), temper: m.temper, morale: m.morale };
+    return { id: m.id, name: rankOf(s, m.classId) + " " + m.first + " " + m.last, who: m.first + " " + m.last, last: m.last, skill: s, label: labelOf(s), temper: m.temper, morale: m.morale };
   }
 
   /* Will he serve under this commander for this job? As the crew's refusals (roster.js): asked

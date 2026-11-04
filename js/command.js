@@ -665,7 +665,7 @@
     function pick(list, used) { var free = list.filter(function (x) { return !used[x]; }), x = r.pick(free.length ? free : list); used[x] = true; return x; }
     function captain() {
       var s = Math.round(r.range(Q.hire) * 100) / 100, first = pick(E.first, taken.first), last = pick(E.last, taken.last);
-      var rank = Q.ranks[s >= 0.85 ? 2 : s >= 0.65 ? 1 : 0];
+      var rank = (Q.skipper[m.data.classId] || [])[1] || Q.ranks[s >= 0.85 ? 2 : s >= 0.65 ? 1 : 0];
       return { name: rank + " " + first + " " + last, who: first + " " + last, last: last, skill: s, temper: r.pick(["cautious", "steady", "aggressive"]),
         label: s >= 0.85 ? "sharp" : s >= 0.7 ? "steady" : s >= 0.5 ? "green" : "sloppy" };
     }

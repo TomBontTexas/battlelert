@@ -145,6 +145,14 @@
   $("btn-how").onclick = function () { BL.audio.init(); click(); overlay("ov-how", true); };
   $("btn-how-close").onclick = function () { click(); overlay("ov-how", false); };
 
+  // What a squadron's skippers are called: captains, or a gunboat squadron's coxswains
+  // (BL.COMMAND.squad.skipper). cap(classId, "Flag captain") -> "Flag coxswain".
+  function cap(classId, text) {
+    var k = BL.COMMAND.squad.skipper[classId];
+    return k ? text.replace(/captain/g, k[0]).replace(/Captain/g, k[1]) : text;
+  }
+  // (after "flag coxswain" his rank isn't said again)
+  function noCox(classId, name) { var k = BL.COMMAND.squad.skipper[classId]; return k ? String(name).replace(new RegExp("^" + k[1] + " "), "") : name; }
   /* ------------------------------------------------------------ Briefing */
   function startBriefing(j) {
     job = j; overlay("ov-tests", false);
@@ -209,7 +217,7 @@
     $("brief-buster").hidden = !sim.sys("buster");
     var gunner = !!sim.turret;
     $("brief-eng").hidden = gunner; $("brief-gun").hidden = !gunner;
-    $("brief-station").textContent = sim.flag ? "Your post: squadron commander (you plot the squadron's course and give its orders; your flag captain runs the flagship)" : sim.captain ? "Your post: the bridge (you plot the course and give the orders; your crew carry them out)" : sim.helm ? "Your station: the helm (the " + sim.helm.who.toLowerCase() + " gives the orders; the engineer runs the power)" :
+    $("brief-station").textContent = sim.flag ? cap(j.classId, "Your post: squadron commander (you plot the squadron's course and give its orders; your flag captain runs the flagship)") : sim.captain ? "Your post: the bridge (you plot the course and give the orders; your crew carry them out)" : sim.helm ? "Your station: the helm (the " + sim.helm.who.toLowerCase() + " gives the orders; the engineer runs the power)" :
       gunner ? "Your station: Gun 1 (the engineer runs the power)" : "Your station: Main Engineering";
     $("brief-helm").hidden = !sim.helm || !!sim.captain;
     $("brief-captain").hidden = !sim.captain || sim.flag;
@@ -217,10 +225,10 @@
     var sqv = sim.flag && sim.captain.squadView();
     $("brief-squad").hidden = !sqv;
     if (sqv) $("brief-squad").innerHTML = "<b>The squadron:</b> " + (sqv.ships.length + 1) + " " + cls.name.toLowerCase() + "s in " + BL.COMMAND.squad.formations[sqv.form].name.toLowerCase() + ". " +
-      "1 " + esc(sqv.flagName) + ", the flagship: flag captain " + esc(sqv.flag.name) + ", " + sqv.flag.label + " (skill " + Math.round(sqv.flag.skill * 100) + "), " + sqv.flag.temper + " temper. " +
+      "1 " + esc(sqv.flagName) + ", the flagship: " + cap(j.classId, "flag captain ") + esc(noCox(j.classId, sqv.flag.name)) + ", " + sqv.flag.label + " (skill " + Math.round(sqv.flag.skill * 100) + "), " + sqv.flag.temper + " temper. " +
       sqv.ships.map(function (x) { return x.no + " " + esc(x.name) + ": " + esc(x.cap.name) + ", " + x.cap.label + " (" + Math.round(x.cap.skill * 100) + "), " + x.cap.temper; }).join(" · ") +
       (sim.sys("buster") ? ". Get through to the drop zone at the end of system " + sim.cfg.jumps + " and drop the planet buster; fight only what gets in the way. Fortress ships guard the drop zone." :
-      ". Each system's map shows the enemy's targets: destroy its objective, the supply depot, before the squadron warps on, or the mission fails.") + " Send ships to targets or spots on the map; an order takes each captain a few seconds to carry out, longer the lower his skill.";
+      ". Each system's map shows the enemy's targets: destroy its objective, the supply depot, before the squadron warps on, or the mission fails.") + cap(j.classId, " Send ships to targets or spots on the map; an order takes each captain a few seconds to carry out, longer the lower his skill.");
     $("brief-sweep").hidden = sim.route.indexOf("sweep") < 0;
     if (gunner) {
       var en = sim.turret.engineer;
@@ -1568,7 +1576,7 @@
     // (the flagship's line: her flag captain, hull and shields, what she's doing)
     var sh = sim.sys("shield"), fh = Math.round(100 * sim.ship.hull / sim.ship.hullMax), fg = c.flagGo, fT = fg && fg.kind === "target" ? c.sqTargets[fg.id] : null;
     var fdo = fT ? "→ " + fT.letter + " " + fT.K.name.toLowerCase() : fg ? "→ a spot" : "flagship · on " + (c.helmView().own ? "your course" : "the plot");
-    var flagLn = '<button data-sel="1" class="flagrow' + (sqSel.indexOf(1) >= 0 ? " sel" : "") + '" title="The flagship: ' + esc(v.flag.name) + ', your flag captain. Tap to select her (1)"' + (live ? "" : " disabled") + "><b>1</b> " + esc(v.flagName) + " " + fh + "% · sh " + Math.round(100 * sh.mj / sh.maxMJ) + "%<br><span>" + fdo + "</span>" +
+    var flagLn = '<button data-sel="1" class="flagrow' + (sqSel.indexOf(1) >= 0 ? " sel" : "") + '" title="The flagship: ' + esc(v.flag.name) + ", your " + cap(sim.data.classId, "flag captain") + '. Tap to select her (1)"' + (live ? "" : " disabled") + "><b>1</b> " + esc(v.flagName) + " " + fh + "% · sh " + Math.round(100 * sh.mj / sh.maxMJ) + "%<br><span>" + fdo + "</span>" +
       '<i class="' + (fh < 35 ? "low" : "") + '" style="width:' + fh + '%"></i></button>';
     cpHtml("cp-sq-ships", flagLn + v.ships.map(function (x) {
       var h = Math.round(x.hull * 100), sel = sqSel.indexOf(x.no) >= 0;
@@ -2325,8 +2333,8 @@
       ["On station", cp.escort.onStation.map(function (p) { return p + "%"; }).join(" · ") + (sim.hasDrive ? " (system by system)" : " (sortie by sortie)")],
       ["Torpedoes at the " + cp.escort.name, cp.escort.calls + " bursts: " + cp.escort.covers + " covered (" + cp.escort.covered + " torpedoes taken on our shields), " + cp.escort.torps + " hit her"]] : []).concat(cp.squad ? [
       ["Squadron", cp.squad.home + " of " + cp.squad.n + " ships home" + (cp.squad.lost ? ", " + cp.squad.lost + " lost" : "") + (cp.squad.left ? ", " + cp.squad.left + " left behind" : "")],
-      ["Flag captain", esc(cp.squad.flag) + (cp.squad.flagBridge ? " (you took his bridge: once a mission −1 squadron reputation, −1 morale to him)" : "")],
-      ["Captains", cp.squad.ships.map(function (x) { return esc(x.ship) + " (" + esc(x.name) + "): " + (x.left ? "left behind" : x.hull > 0 ? "hull " + x.hull + "%" : "lost") + ", " + x.kills + " kills"; }).join(" · ")],
+      [cap(sim.data.classId, "Flag captain"), esc(cp.squad.flag) + (cp.squad.flagBridge ? " (you took his bridge: once a mission −1 squadron reputation, −1 morale to him)" : "")],
+      [cap(sim.data.classId, "Captains"), cp.squad.ships.map(function (x) { return esc(x.ship) + " (" + esc(x.name) + "): " + (x.left ? "left behind" : x.hull > 0 ? "hull " + x.hull + "%" : "lost") + ", " + x.kills + " kills"; }).join(" · ")],
       ["Targets destroyed", cp.squad.targetsDown + " of " + cp.squad.targets + (cp.squad.objectives ? " (objectives " + cp.squad.objectivesDown + " of " + cp.squad.objectives + ")" : "") + "; " + cp.squad.kills + " finished off by the other ships"]] : []).concat([
       ["Enemy ships destroyed by your crew", cp.kills + " / " + cp.ships],
       ["Torpedoes shot down", cp.downed],
@@ -2635,7 +2643,7 @@
     if (rc && (rc.lost.length || rc.out.length)) rows.push('<p class="big-line' + (rc.lost.length ? " demo" : "") + '">' +
       (rc.lost.length ? "Killed with their ships: " + rc.lost.map(function (x) { return esc(x.name) + " (" + esc(x.ship) + ")"; }).join(", ") + ". " : "") +
       (rc.out.length ? "Survived the loss of their ships, awaiting new ones (they sit out the next squadron mission): " + rc.out.map(function (x) { return esc(x.name) + " (" + esc(x.ship) + ")"; }).join(", ") + ". " : "") +
-      (rc.hired ? rc.hired + " new captain" + (rc.hired === 1 ? "" : "s") + " joined your captains pool." : "") + "</p>");
+      (rc.hired ? cap(job.classId, rc.hired + " new captain" + (rc.hired === 1 ? "" : "s") + " joined your captains pool.") : "") + "</p>");
     rows.push("<h2>" + BL.career.STATION_NAME[job.station] + " reputation profile</h2>" + profileHtml(report.profileAfter, report.profileBefore, job.station));
     $("db-career").innerHTML = "<h2>Career: " + esc(career.name) + "</h2>" + rows.join("");
   }
@@ -2961,9 +2969,9 @@
   // A squadron job's ships and the captains it suggests (BL.captains.captainsOf), flagship first.
   function squadLines(j) {
     var ids = BL.captains.captainsOf(career, j), C = BL.captains;
-    function line(ship, id, flag) { var m = C.captain(career, id); if (!m) return null; var v = C.view(m); return esc(String(ship).replace(BL.SHIP_PREFIX, "")) + (flag ? " (flagship): flag captain " : ": ") + esc(v.name) + ", " + v.label + " (skill " + Math.round(v.skill * 100) + "), " + v.temper + ", morale " + v.morale; }
+    function line(ship, id, flag) { var m = C.captain(career, id); if (!m) return null; var v = C.view(m); return esc(String(ship).replace(BL.SHIP_PREFIX, "")) + (flag ? cap(j.classId, " (flagship): flag captain ") + esc(noCox(j.classId, v.name)) : ": " + esc(v.name)) + ", " + v.label + " (skill " + Math.round(v.skill * 100) + "), " + v.temper + ", morale " + v.morale; }
     return [line(j.ship, ids.flag, true)].concat((j.wingShips || []).map(function (s, k) { return line(s, ids.wing[k]); })).filter(Boolean)
-      .concat(['<span class="muted">Suggested from your captains pool; you can change any of them before the briefing.</span>']);
+      .concat(['<span class="muted">' + cap(j.classId, "Suggested from your captains pool; you can change any of them before the briefing.") + "</span>"]);
   }
   function offerCard(j, i, up, tag, rankName, cls, crew, squad) {
     var pilot = j.station === "pilot" || j.station === "captain" || j.station === "squadron";
@@ -2974,7 +2982,7 @@
       '<button class="primary" data-i="' + i + '">Accept</button>' +
       (j.escort ? '<div class="offer-story">Escort mission: your ' + cls.name.toLowerCase() + " is one of a squadron screening " + (j.classId === "gunboat" ? "the carrier" : j.escortKind === "convoy" ? "a convoy" : j.escortKind === "capital" ? "a capital ship" : "a convoy or a capital ship") + ".</div>" : "") +
       (j.story ? '<div class="offer-story"><b>' + esc(j.title) + "</b> · " + cls.name + " chapter: " + esc(j.chapter) + "</div>" : "") +
-      (j.flag ? '<div class="offer-story">Squadron of ' + (1 + (j.wingShips || []).length) + " " + cls.name.toLowerCase() + "s: you command it from the flagship; your flag captain runs her.</div>" : "") +
+      (j.flag ? '<div class="offer-story">Squadron of ' + (1 + (j.wingShips || []).length) + " " + cls.name.toLowerCase() + cap(j.classId, "s: you command it from the flagship; your flag captain runs her.") + "</div>" : "") +
       (j.by ? '<div class="offer-story">Offered by ' + esc(j.by.name) + ", who values " + j.by.says + ".</div>" : "") +
       '<div class="meta">Reputation +' + BL.career.repFor(j) + " on success" +
       (j.flag ? (up ? " · your first squadron of " + cls.name.toLowerCase() + "s" : "") : up ? " · success qualifies you as " + rankName + "-" + j.n : "") + "</div>" +
@@ -3041,8 +3049,8 @@
   }
   function crewPosts() {
     var ids = crewJob.crewIds, cp = crewJob.capIds, out = [];
-    if (cp) out = [{ cap: true, post: "flag", name: "Flag captain, " + esc(BL.shipLabel(crewJob.classId, crewJob.ship, crewJob.hull)), id: cp.flag }].concat(cp.wing.map(function (id, k) {
-      return { cap: true, post: "wing", k: k, name: "Captain, " + esc(String((crewJob.wingShips || [])[k] || "ship " + (k + 2))), id: id };
+    if (cp) out = [{ cap: true, post: "flag", name: cap(crewJob.classId, "Flag captain, ") + esc(BL.shipLabel(crewJob.classId, crewJob.ship, crewJob.hull)), id: cp.flag }].concat(cp.wing.map(function (id, k) {
+      return { cap: true, post: "wing", k: k, name: cap(crewJob.classId, "Captain, ") + esc(String((crewJob.wingShips || [])[k] || "ship " + (k + 2))), id: id };
     }));
     return out.concat([{ post: "engineer", name: "Engineer", id: ids.engineer }, { post: "pilot", name: "Pilot", id: ids.pilot }].concat(ids.guns.map(function (id, k) { return { post: "gun", name: "Gun " + (k + 1), id: id, k: k }; })));
   }
@@ -3053,14 +3061,14 @@
   }
   function renderCrew() {
     var j = crewJob, posts = crewPosts();
-    $("crew-title").textContent = j.flag ? "Your captains and crew" : "Your crew";
+    $("crew-title").textContent = j.flag ? cap(j.classId, "Your captains and crew") : "Your crew";
     $("crew-lede").textContent = j.flag
-      ? "A squadron of " + (1 + j.wingShips.length) + " " + BL.classById(j.classId).name.toLowerCase() + "s (TL" + j.tl + "). The job suggests a captain for every ship from your captains pool, the flag captain first, and the flagship's crew from your crew pool. Tap a post to choose someone else. Anyone you ask may refuse (the better he is, the likelier; squadron reputation helps with captains, command reputation with the crew); the job asks the best first and stops at the first who agrees. Each captain gains a point of skill for every successful mission. When a ship is lost, her captain's chance of surviving is his skill, and a survivor sits out the next squadron mission while he waits for a new ship."
+      ? cap(j.classId, "A squadron of " + (1 + j.wingShips.length) + " " + BL.classById(j.classId).name.toLowerCase() + "s (TL" + j.tl + "). The job suggests a captain for every ship from your captains pool, the flag captain first, and the flagship's crew from your crew pool. Tap a post to choose someone else. Anyone you ask may refuse (the better he is, the likelier; squadron reputation helps with captains, command reputation with the crew); the job asks the best first and stops at the first who agrees. Each captain gains a point of skill for every successful mission. When a ship is lost, her captain's chance of surviving is his skill, and a survivor sits out the next squadron mission while he waits for a new ship.")
       : BL.shipLabel(j.classId, j.ship, j.hull) + " (TL" + j.tl + "). The job suggests this crew from your crew pool. Tap a post to choose another man for it; a man you ask may refuse to sign on with you (the better he is, the likelier, and your command reputation helps). The job asks the best men first and stops at the first who signs on, so the men below him haven't been asked yet. A man gains a point of skill for every successful mission; morale rises with successes and falls with failures and shipmates lost; if the ship is destroyed, each man's chance of surviving is his skill.";
     $("crew-posts").innerHTML = posts.map(function (p, i) {
       // (while its list is open, the post row doesn't repeat the man highlighted in the list)
       var P = poolOf(p), m = manOf(p, p.id), html = '<button class="crew-post' + (crewOpen === i ? " on" : "") + '" data-p="' + i + '"><b>' + p.name + "</b>" +
-        (crewOpen === i ? '<span class="tag">tap ' + (p.cap ? "a captain" : "a man") + ' below, or tap here to close</span>' : m ? "<span>" + manLine(P.view(m)) + '</span><span class="crew-tags">' + rollTag(j, m.id, p.cap) + "</span>" : "<span>(nobody)</span>") + "</button>";
+        (crewOpen === i ? '<span class="tag">tap ' + (p.cap ? cap(j.classId, "a captain") : "a man") + ' below, or tap here to close</span>' : m ? "<span>" + manLine(P.view(m)) + '</span><span class="crew-tags">' + rollTag(j, m.id, p.cap) + "</span>" : "<span>(nobody)</span>") + "</button>";
       var list = p.cap ? BL.captains.available(career, j.classId) : BL.roster.available(career, p.post);
       if (crewOpen === i) html += '<div class="crew-pick">' + list.map(function (v) {
         var where = posts.filter(function (q) { return !!q.cap === !!p.cap && q.id === v.id; })[0], no = ((p.cap ? j.capAsked : j.asked) || {})[v.id] === false || (p.cap && v.out);
