@@ -690,7 +690,7 @@
       form: Q.start, target: null, attackReady: 0, attackUntil: 0, n: n, alert: null, fx: [] };
   };
   // The targets' [strength, gunfire] for our class (BL.COMMAND.squad.map.classK).
-  Captain.prototype.sqK = function () { return BL.COMMAND.squad.map.classK[this.m.data.classId] || [1, 1]; };
+  Captain.prototype.sqK = function () { var M = BL.COMMAND.squad.map, k = M.classK[this.m.data.classId] || [1, 1]; return [k[0] * M.lethal[0], k[1] * M.lethal[1]]; };
   // Seconds at our cruise speed, in map units.
   Captain.prototype.cs = function () { return this.m.helm.gOf("cruise") * BL.COMMAND.scale; };
   /* A system's targets: the objective (the depot) somewhere off the straight way, then `targets`
@@ -719,7 +719,9 @@
       var bin = bearing(map.jump, map.start), fo = M.kinds.fortress.range * cs * B.off;
       for (var f = 0; f < B.fortresses; f++) add("fortress", along(map.jump, bin + (B.fortresses > 1 ? -B.spread + 2 * B.spread * f / (B.fortresses - 1) : 0), fo));
     }
-    var n = r.int(B && map.drop ? B.targets : M.targets);
+    // (more of them the bigger the squadron: `more` a ship past the flagship, the odd share by chance)
+    var more = M.more * ((BL.COMMAND.squad.size[this.m.data.classId] || 4) - 1);
+    var n = r.int(B && map.drop ? B.targets : M.targets) + Math.floor(more) + (r.next() < more % 1 ? 1 : 0);
     for (var q = 0, tries = 0; q < n && tries < 300; tries++) {
       var p = { x: x0 + r.next() * (x1 - x0), y: y0 + r.next() * (y1 - y0) };
       if (!ok(p, 0.16)) continue;

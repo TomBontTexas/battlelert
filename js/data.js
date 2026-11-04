@@ -972,7 +972,10 @@
              // every cross[1] s.
              radio: { gap: [6, 3, 1.5], shipGap: 4, fresh: 8, cross: [2, [7, 12]] },
              map: { window: 1.5, sensor: 55, reportOff: 10, range: 16, close: 0.75, gunDps: 0.1, enemyDps: 3, shield: 0.08, ambush: 0.6,
-                    targets: [3, 4], unknown: [1, 2], letters: "ABCDEFGH",
+                    // (Nov 3, 2026, TexasBont: "This was built on those squadrons going against one ship. Now we
+                    // have anywhere from 2 to 4 ships": `more` targets a system for each ship past the flagship,
+                    // and every target's [strength, gunfire] x `lethal`, so the test bot wins about half)
+                    targets: [3, 4], more: 0.5, lethal: [1, 1], unknown: [1, 2], letters: "ABCDEFGHIJKL",
                     kinds: {
                       depot: { name: "Supply depot", enc: "siege", hp: 720, speed: 0, objective: true, guns: [[0, 180, 3]], range: 12 },
                       siege: { name: "Siege battery", enc: "siege", hp: 600, speed: 0, ships: 4, guns: [[0, 180, 6]], range: 20 },
@@ -997,12 +1000,12 @@
                     // Per class, [target strength, target gunfire] x the destroyer squadron's: strength
                     // by the squadron's guns (ships x guns), gunfire by one ship's hull and shields, so
                     // every class's fights last about as long as a destroyer squadron's.
-                    // (Headless, squadron test bot, TL5 to 7, 18 missions each, wins, Nov 3, 2026, with every ship
-                    // handling as the flagship does and easing her turns and her speed onto her station: gunboat 12,
-                    // picket 11, destroyer escort 11, destroyer 11, light cruiser 11, cruiser 12, heavy cruiser 12,
-                    // battleship 12, dreadnought 12.)
-                    classK: { gunboat: [0.24, 0.42], picket: [0.25, 0.57], destroyerEscort: [0.4, 0.6], destroyer: [0.9, 0.9], lightCruiser: [1.35, 1.15],
-                              cruiser: [2, 1.5], heavyCruiser: [2.8, 2.2], battleship: [2.3, 2.6], dreadnought: [1.2, 3] } } },
+                    // (Headless, squadron test bot, TL5 to 7, 18 missions each, wins, Nov 3, 2026, with `more` targets
+                    // for a bigger squadron, retuned for about half: gunboat 9, picket 8, destroyer escort 10,
+                    // destroyer 10, light cruiser 11, cruiser 9, heavy cruiser 9, battleship 9, dreadnought 8;
+                    // every ship left in formation: none, the dreadnought 9.)
+                    classK: { gunboat: [0.2, 0.36], picket: [0.24, 0.54], destroyerEscort: [0.41, 0.61], destroyer: [0.83, 0.83], lightCruiser: [1.28, 1.09],
+                              cruiser: [2.3, 1.73], heavyCruiser: [2.8, 2.2], battleship: [2.65, 3], dreadnought: [1.2, 3] } } },
     // A picket's scouting run (the captain's path): `n` checkpoints of radius `r` (x the map's size)
     // to fly through in order, spread over `along` of the way to the jump point and `side` off it.
     // The navigator's plot keeps `slack` s in hand for each one.
