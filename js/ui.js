@@ -1514,7 +1514,7 @@
     $("cp-sec-torp").hidden = cmd; $("cp-teles").hidden = cmd; $("cp-warn").hidden = cmd; $("cp-drop").hidden = cmd; $("cp-ship-grp").hidden = cmd || !shipGrp;
     if (cmd) dropPick = false;
     $("tu-station").textContent = (cmd ? "Squadron · " : sq ? "Flag bridge · " : "Bridge · ") + (job.test ? sim.data.className : BL.shipLabel(job.classId, job.ship, job.hull)) + " (TL" + sim.data.tl + ")";
-    $("tu-keys").textContent = cmd ? "← → course 10° (Shift 1°) · R resume plot · ↑ ↓ engines · 1 to " + sim.captain.escort.n + " select a ship · A all · then tap a target or a spot on the map · Z recall · X hold fire · C clear · O formation · J warp · D flag bridge · V swap map · + − F zoom · Esc pause"
+    $("tu-keys").textContent = cmd ? "← → course 10° (Shift 1°) · R resume plot · ↑ ↓ engines · 1 to " + sim.captain.escort.n + " select a ship · A all · then tap a target or a spot on the map · Z recall · X hold fire · C clear · O formation · [ ] close up, open out · L dress the line · J warp · D flag bridge · V swap map · + − F zoom · Esc pause"
       : bridgeKeys + (sq ? " · Q back to the squadron" : "");
     lastBridgeBox = {};
   }
@@ -1540,10 +1540,13 @@
     sqSel = sqSel.filter(function (n) { return n === 1 || v.ships.some(function (x) { return x.no === n && x.live; }); });
     setText($("cp-sq-hd"), "SQUADRON · " + home + " of " + (v.ships.length + 1));
     var left = c.sqGroups().length, obj = c.sqGroups().filter(function (T) { return T.K.objective; }).length;
-    cpLine("cp-sq-ln", "<b>" + Q.formations[v.form].short + "</b> · " + left + " target" + (left === 1 ? "" : "s") + " left" + (obj ? " · objective standing" : " · <span style='color:#3dff7a'>objective down</span>"));
+    cpLine("cp-sq-ln", "<b>" + Q.formations[v.form].short + "</b> · spacing " + Math.round(v.spacing * 100) + "% · " + left + " target" + (left === 1 ? "" : "s") + " left" + (obj ? " · objective standing" : " · <span style='color:#3dff7a'>objective down</span>"));
     cpLine("cp-sq-ln2", v.alert ? "⚠ " + esc(v.alert) : "");
     var pendForm = v.ships.some(function (x) { return x.pend; });
     Array.prototype.forEach.call($("cp-sq-form").children, function (b) { b.classList.toggle("on", b.dataset.form === v.form); b.classList.toggle("pend", b.dataset.form === v.form && pendForm); b.disabled = !live; });
+    var stPend = v.ships.some(function (x) { return x.stPend; });
+    $("cp-sq-close").disabled = !live || !v.canClose; $("cp-sq-open").disabled = !live || !v.canOpen; $("cp-sq-dress").disabled = !live;
+    ["cp-sq-close", "cp-sq-open", "cp-sq-dress"].forEach(function (id) { $(id).classList.toggle("pend", stPend); });
     // (the flagship's line: her flag captain, hull and shields, what she's doing)
     var sh = sim.sys("shield"), fh = Math.round(100 * sim.ship.hull / sim.ship.hullMax), fg = c.flagGo, fT = fg && fg.kind === "target" ? c.sqTargets[fg.id] : null;
     var fdo = fT ? "→ " + fT.letter + " " + fT.K.name.toLowerCase() : fg ? "→ a spot" : "flagship · on " + (c.helmView().own ? "your course" : "the plot");
@@ -1612,7 +1615,12 @@
       var lh = big ? 13 : 12, wd = Math.max.apply(null, lines.map(function (l) { return ctx.measureText(l[0]).width; })), ht = lines.length * lh;
       var cands = [[p.x + r + 6, p.y - ht / 2], [p.x - r - 6 - wd, p.y - ht / 2], [p.x - wd / 2, p.y - r - 6 - ht], [p.x - wd / 2, p.y + r + 6],
         [p.x + r + 6, p.y - r - ht], [p.x + r + 6, p.y + r], [p.x - r - 6 - wd, p.y - r - ht], [p.x - r - 6 - wd, p.y + r]];
-      function over(b) { return occ.reduce(function (a, o) { return a + Math.max(0, Math.min(b.x1, o.x1) - Math.max(b.x0, o.x0)) * Math.max(0, Math.min(b.y1, o.y1) - Math.max(b.y0, o.y0)); }, 0); }
+      // (a label past the map's edge would be cut off: what's outside counts heavily against it)
+      var k = ctx.getTransform().a || 1, cw = ctx.canvas.width / k, ch = ctx.canvas.height / k;
+      function over(b) {
+        var out = (b.x1 - b.x0) * (b.y1 - b.y0) - Math.max(0, Math.min(b.x1, cw) - Math.max(b.x0, 0)) * Math.max(0, Math.min(b.y1, ch) - Math.max(b.y0, 0));
+        return 100 * out + occ.reduce(function (a, o) { return a + Math.max(0, Math.min(b.x1, o.x1) - Math.max(b.x0, o.x0)) * Math.max(0, Math.min(b.y1, o.y1) - Math.max(b.y0, o.y0)); }, 0);
+      }
       var best = null, bo = Infinity;
       cands.forEach(function (cd) { var b = { x0: cd[0] - 3, y0: cd[1] - 2, x1: cd[0] + wd + 3, y1: cd[1] + ht + 2 }, o = over(b); if (o < bo) { bo = o; best = b; } });
       ctx.fillStyle = "rgba(5,8,12,.78)"; ctx.fillRect(best.x0, best.y0, best.x1 - best.x0, best.y1 - best.y0);
@@ -1967,6 +1975,9 @@
       var sqn = c.escort.n;
       if (kl === "d" && !ev.repeat) toFlagBridge();
       else if (kl === "o" && !ev.repeat) c.setFormation(cycle(BL.COMMAND.squad.formationList, c.escort.form, 1));
+      else if (k === "[" && !ev.repeat) c.setSpacing(-1);
+      else if (k === "]" && !ev.repeat) c.setSpacing(1);
+      else if (kl === "l" && !ev.repeat) c.dressLine();
       else if (k >= "1" && k <= "9" && +k <= sqn && !ev.repeat) sqToggle(+k);
       else if (kl === "a" && !ev.repeat) sqAll();
       else if (kl === "z" && !ev.repeat && sqSel.length) { sqRecall(); click(); }
@@ -2024,6 +2035,9 @@
       if (b.dataset.form) { c.setFormation(b.dataset.form); return; }
       if (b.dataset.sel) { sqToggle(+b.dataset.sel); return; }
       if (b.id === "cp-sq-recall") { sqRecall(); click(); return; }
+      if (b.id === "cp-sq-close") { c.setSpacing(-1); return; }
+      if (b.id === "cp-sq-open") { c.setSpacing(1); return; }
+      if (b.id === "cp-sq-dress") { c.dressLine(); return; }
       if (b.id === "cp-sq-hold") { sqHold(); click(); return; }
       if (b.id === "cp-sq-clear") { sqSel = []; click(); return; }
       if (b.id === "cp-sq-bridge") { toFlagBridge(); return; }

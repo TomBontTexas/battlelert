@@ -944,6 +944,13 @@
                ahead: { name: "Line ahead", short: "LINE AHEAD", slots: [[180, 1], [180, 2], [180, 3], [180, 4], [180, 5]], trail: true },
                abreast: { name: "Line abreast", short: "LINE ABREAST", slots: [[-90, 1], [90, 1], [-90, 2], [90, 2], [-90, 3]] } },
              formationList: ["ahead", "abreast"], start: "ahead",
+             // Station keeping (Nov 3, 2026, TexasBont: "sometimes the ships aren't equally spaced"):
+             // CLOSE UP and OPEN OUT change the gap between stations by `step` (from `min` to `max`;
+             // close up stops `touch` x the gap where the shields just clear); a captain wanders off
+             // his station by up to `wander` x (1 - his skill) (toward a new place every `every` s, at
+             // `drift` of his slot's distance a second); DRESS THE LINE puts every ship back on her
+             // exact station, and her temper creeps back over `dress` s.
+             station: { step: [0.15, 0.25], min: 0.6, max: 2, touch: 1.04, wander: 0.35, every: [20, 40], drift: 0.01, dress: 60 },
              gap: 0.03, clear: 0.06, lag: 2, tick: 0.5, hire: [0.4, 0.95],
              temper: { aggressive: [0.85, 1.1, 1.1], steady: [1, 1, 1], cautious: [1.2, 0.9, 0.85] },
              ranks: ["Lieutenant", "Lieutenant Commander", "Commander"],
@@ -1153,6 +1160,9 @@
     sqAck:       ["{ship}: aye, going after {L}.", "{ship}: copy, {the} at {L}.", "{ship}: on my way to {L}."],
     sqAckSpot:   ["{ship}: aye, moving to the spot.", "{ship}: copy, on my way."],
     sqAckForm:   ["{ship}: rejoining the formation.", "{ship}: aye, falling in."],
+    sqAckClose:  ["{ship}: closing up.", "{ship}: aye, closing up."],
+    sqAckOpen:   ["{ship}: opening out.", "{ship}: aye, opening out."],
+    sqAckDress:  ["{ship}: dressing the line.", "{ship}: aye, taking station."],
     sqAckHold:   ["{ship}: holding fire. We'll wait for them.", "{ship}: aye, guns cold till they're close."],
     sqContact:   ["{ship}: contact, {what} at {L}!", "{ship}: eyes on {L}. It's {what}."],
     sqUnknown:   ["{ship}: that unknown contact at {L} is {what}!", "{ship}: {L} is {what}. The pickets missed it."],

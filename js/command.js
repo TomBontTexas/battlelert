@@ -667,7 +667,7 @@
         label: s >= 0.85 ? "sharp" : s >= 0.7 ? "steady" : s >= 0.5 ? "green" : "sloppy" };
     }
     this.flagCaptain = captain();
-    for (var k = 1; k < n; k++) wing.push({ no: k + 1, slot: k - 1, hull: m.data.hull, hullMax: m.data.hull, sh: sh.maxMJ, shMax: sh.maxMJ, stops: 0, kills: 0, cap: captain(),
+    for (var k = 1; k < n; k++) wing.push({ no: k + 1, slot: k - 1, spacing: 1, drift: 0, dressAt: -999, hull: m.data.hull, hullMax: m.data.hull, sh: sh.maxMJ, shMax: sh.maxMJ, stops: 0, kills: 0, cap: captain(),
       form: Q.start, order: { kind: "form" }, hold: false, pend: [], fireAt: 0, left: false, task: "form", attackUntil: 0 });
     // Every ship's name (Nov 3, 2026, TexasBont: "use the actual ship name"): the flagship's is the
     // job's (a test picks one), the others' from the same class and tech level's names (BL.shipName),
@@ -683,7 +683,7 @@
     // Every system's targets, made now from the seed (the plotting screen shows them).
     this.sqMaps = this.maps.map(function (map, i) { return self.makeTargets(map, i); });
     this.preOrders = this.maps.map(function () { return {}; });       // (orders given on the plotting screen: ship number -> target id)
-    return { flag: true, kind: "squadron", W: { name: "squadron", label: "SQUADRON" }, ships: [], wing: wing, hull: 0, hullMax: 0, pos: null, hdg: 0,
+    return { flag: true, kind: "squadron", W: { name: "squadron", label: "SQUADRON" }, ships: [], wing: wing, spacing: 1, hull: 0, hullMax: 0, pos: null, hdg: 0,
       form: Q.start, target: null, attackReady: 0, attackUntil: 0, n: n, alert: null, fx: [] };
   };
   // The targets' [strength, gunfire] for our class (BL.COMMAND.squad.map.classK).
@@ -751,9 +751,21 @@
   // had there, so the column follows her round every corner.
   Captain.prototype.slotAt = function (g, form) {
     var es = this.escort, F = BL.COMMAND.squad.formations[form || es.form] || BL.COMMAND.squad.formations.ahead, sl = F.slots[g.slot % F.slots.length];
-    var far = sl[1] * (es.stD || BL.COMMAND.squad.gap * this.map().D) * this.capT(g)[0];
+    var far = sl[1] * this.stationGap(g.spacing) * this.offStation(g);
     if (F.trail && es.trail && es.trail.length > 1) return this.trailAt(far);
     var p = along(es.pos || this.pos, es.hdg + sl[0], far); p.hdg = es.hdg; return p;
+  };
+  // The gap between stations at spacing s (CLOSE UP / OPEN OUT), never so close the shields touch.
+  Captain.prototype.stationGap = function (s) {
+    var es = this.escort, Q = BL.COMMAND.squad, R = this.m.turret.R, base = es.stD || Q.gap * this.map().D;
+    var touch = this.kView ? 2 * Math.max(R.rx, R.ry) / this.kView * Q.station.touch : 0;
+    return Math.max(touch, base * (s || 1));
+  };
+  // How far off her station a captain keeps (x her slot's distance): his temper, easing back in
+  // over `dress` s after DRESS THE LINE, and the way he's wandered since.
+  Captain.prototype.offStation = function (g) {
+    var S = BL.COMMAND.squad.station, k = clamp((this.m.totalT - g.dressAt) / S.dress, 0, 1);
+    return (1 + (this.capT(g)[0] - 1) * k) * (1 + (g.drift || 0));
   };
   // The point `far` map units back along the flagship's track, with the heading she had there.
   Captain.prototype.trailAt = function (far) {
@@ -771,7 +783,7 @@
     var es = this.escort, step = es.stD * 0.1, tr = es.trail;
     if (!tr) return;
     if (dist(this.pos, tr[0]) >= step) tr.unshift({ x: this.pos.x, y: this.pos.y });
-    var keep = 8 * es.stD, tot = 0;
+    var keep = 8 * es.stD * Math.max(1, es.spacing || 1), tot = 0;
     for (var i = 1; i < tr.length; i++) { tot += dist(tr[i - 1], tr[i]); if (tot > keep) { tr.length = i + 1; break; } }
   };
   Captain.prototype.sqLive = function () { return this.escort.wing.filter(function (g) { return g.hull > 0; }); };
@@ -792,6 +804,24 @@
     if (!Q.formations[id] || !this.escort.flag) return;
     this.escort.form = id;
     this.sqLive().forEach(function (g) { if (g.form !== id || g.pend.some(function (p) { return p.what === "form"; })) self.sqOrder(g, "form", id); });
+    this.m.cue("tick");
+  };
+  // CLOSE UP (-1) and OPEN OUT (+1): every ship's station gap a step closer or farther.
+  Captain.prototype.setSpacing = function (dir) {
+    var S = BL.COMMAND.squad.station, es = this.escort, self = this;
+    if (!es.flag) return;
+    var v = Math.round(clamp(es.spacing + (dir < 0 ? -S.step[0] : S.step[1]), S.min, S.max) * 100) / 100;
+    // (closing up stops where the shields would touch)
+    if (dir < 0 && this.stationGap(v) >= this.stationGap(es.spacing) - 1e-9) return;
+    es.spacing = v;
+    this.sqLive().forEach(function (g) { self.sqOrder(g, "spacing", v); });
+    this.m.cue("tick");
+  };
+  // DRESS THE LINE: every ship back on her exact station.
+  Captain.prototype.dressLine = function () {
+    var self = this;
+    if (!this.escort.flag) return;
+    this.sqLive().forEach(function (g) { self.sqOrder(g, "dress", true); });
     this.m.cue("tick");
   };
   /* Orders to ships (numbers): to a target (its id), to a spot on the map (they line up there,
@@ -860,7 +890,7 @@
     var sp = o.spot, near = null, nd = Infinity, self = this;
     this.sqGroups().forEach(function (T) { if (T.unknown && !T.seen) return; var d = dist(self.shownAt(T), sp); if (d < nd) { nd = d; near = T; } });
     var face = near ? bearing(sp, this.shownAt(near)) : es.hdg, line = es.form === "abreast";
-    var hd = line ? face : to360(face + 90), k = o.k || 0, n = Math.max(1, o.spot.n || 1), gap = es.stD;
+    var hd = line ? face : to360(face + 90), k = o.k || 0, n = Math.max(1, o.spot.n || 1), gap = this.stationGap(es.spacing);
     var q = line ? along(sp, hd + 90, (k - (n - 1) / 2) * gap) : along(sp, hd + 180, k * gap);
     q.hdg = hd; return q;
   };
@@ -886,10 +916,19 @@
           if (oT) self.sqSay("sqAck", g, { L: oT.letter, the: self.sqThe(oT) }); else self.sqSay(p.v.kind === "spot" ? "sqAckSpot" : "sqAckForm", g);
         }
         else if (p.what === "hold") { g.hold = p.v; if (p.v) self.sqSay("sqAckHold", g); }
+        else if (p.what === "spacing") { self.sqSay(p.v < g.spacing ? "sqAckClose" : "sqAckOpen", g); g.spacing = p.v; }
+        else if (p.what === "dress") { g.drift = 0; g.dressAt = t; self.sqSay("sqAckDress", g); }
         return false;
       });
       g.sh = Math.min(g.shMax, g.sh + rate * dt);
       if (g.shDown && g.sh > 0.5 * g.shMax) g.shDown = false;
+      // (he wanders off his station, the less skilled the farther; none while he's dressing)
+      var ST = Q.station, wmax = ST.wander * (1 - g.cap.skill);
+      if (t - g.dressAt > ST.dress && wmax > 0) {
+        self.sqDrift = self.sqDrift || BL.rng(((m.seed ^ 0x68e31da4) >>> 0) || 1);
+        if (t >= (g.driftAt || 0)) { g.driftTo = (self.sqDrift.next() * 2 - 1) * wmax; g.driftAt = t + self.sqDrift.range(ST.every); }
+        g.drift += clamp((g.driftTo || 0) - g.drift, -ST.drift * dt, ST.drift * dt);
+      }
       if (!g.pos) { var s0 = self.slotAt(g, g.form); g.pos = { x: s0.x, y: s0.y }; g.hdg = es.hdg; }
       var goal = self.goalOf(g, g.pos), d = dist(g.pos, goal), k = self.capK(g);
       var want = d > near ? bearing(g.pos, goal) : goal.hdg !== undefined ? goal.hdg : es.hdg;
@@ -1130,13 +1169,15 @@
   Captain.prototype.squadView = function () {
     var es = this.escort, t = this.m.totalT, self = this;
     if (!es || !es.flag) return null;
-    return { form: es.form, alert: es.alert ? es.alert.text : null, flag: this.flagCaptain, flagName: this.flagName, flagGo: this.flagGo,
+    var S = BL.COMMAND.squad.station;
+    return { form: es.form, spacing: es.spacing, canClose: this.stationGap(Math.max(S.min, es.spacing - S.step[0])) < this.stationGap(es.spacing) - 1e-9, canOpen: es.spacing < S.max - 1e-9,
+      alert: es.alert ? es.alert.text : null, flag: this.flagCaptain, flagName: this.flagName, flagGo: this.flagGo,
       ships: es.wing.map(function (g) {
         var o = self.orderOf(g), T = o.kind === "target" ? self.sqTargets && self.sqTargets[o.id] : null;
         var doing = g.left ? "left behind" : g.hull <= 0 ? "lost" : o.kind === "target" ? (T && !T.dead ? "→ " + T.letter + " " + T.K.name.toLowerCase() : "target gone") : o.kind === "spot" ? "→ a spot" : "in formation";
         if (g.hull > 0 && o.kind === "form" && g.pos && dist(g.pos, self.slotAt(g, g.form)) > BL.COMMAND.escort.near * self.map().D * 3) doing = "forming up";
         if (g.hull > 0 && g.hold) doing += " · holding fire";
-        return { no: g.no, name: g.name, cap: g.cap, hull: g.hull / g.hullMax, sh: g.sh / g.shMax, doing: doing, live: g.hull > 0, order: o.kind, pend: g.pend.length > 0, progress: self.sqProgress(g), kills: g.kills, hold: g.hold };
+        return { no: g.no, name: g.name, cap: g.cap, hull: g.hull / g.hullMax, sh: g.sh / g.shMax, doing: doing, live: g.hull > 0, order: o.kind, pend: g.pend.some(function (q) { return q.what === "order" || q.what === "hold" || q.what === "form"; }), stPend: g.pend.some(function (q) { return q.what === "spacing" || q.what === "dress"; }), progress: self.sqProgress(g), kills: g.kills, hold: g.hold };
       }) };
   };
 
@@ -1565,7 +1606,7 @@
     if (es && es.flag) {
       r.captain.squad = { n: es.n, home: sqHome, lost: es.wing.filter(function (g) { return g.hull <= 0 && !g.left; }).length, left: es.wing.filter(function (g) { return g.left; }).length,
         kills: st.sqKills, targets: sqAll.length, targetsDown: sqDownAll, objectives: sqObj.length, objectivesDown: sqObjDown, flagWaves: sqAll.reduce(function (a, T) { return a + T.waves; }, 0), flagBridge: st.flagBridge, flag: c.flagCaptain.name,
-        flagName: this.flagName, ships: es.wing.map(function (g) { return { no: g.no, ship: g.name, name: g.cap.name, hull: Math.round(100 * g.hull / g.hullMax), kills: g.kills, left: g.left }; }) };
+        flagName: c.flagName, ships: es.wing.map(function (g) { return { no: g.no, ship: g.name, name: g.cap.name, hull: Math.round(100 * g.hull / g.hullMax), kills: g.kills, left: g.left }; }) };
     } else if (c.escort) {
       r.captain.escort = { kind: es.kind, name: es.W.name, hull: Math.round(100 * es.hull / es.hullMax), ships: es.ships.length, afloat: afloat, torps: st.wardTorps, calls: st.wardCalls, covers: st.covers, covered: st.covered,
         squad: es.wing.length + 1, wingLost: es.wing.filter(function (g) { return g.hull <= 0; }).length, wingStops: st.wingStops,
