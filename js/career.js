@@ -7,11 +7,13 @@
   "use strict";
   var BL = root.BL = root.BL || {};
   var KEY = BL.APP_TAG + "_career";
-  // The three crew stations, then command (the bridge: coxswain of a gunboat, captain above).
-  var STATIONS = ["engineer", "gunner", "pilot", "captain"];
+  // The three crew stations, then command (the bridge: coxswain of a gunboat, captain above), then
+  // squadron command (Squadrons, approved Nov 2, 2026: a class's squadron opens after
+  // BL.CAPTAINS.opens successful command missions on it).
+  var STATIONS = ["engineer", "gunner", "pilot", "captain", "squadron"];
   var CREW = ["engineer", "gunner", "pilot"];
-  var STATION_NAME = { engineer: "Engineer", gunner: "Gunner", pilot: "Pilot", captain: "Command" };
-  var PLAYABLE = { engineer: true, gunner: true, pilot: true, captain: true }; // stations built so far
+  var STATION_NAME = { engineer: "Engineer", gunner: "Gunner", pilot: "Pilot", captain: "Command", squadron: "Squadron" };
+  var PLAYABLE = { engineer: true, gunner: true, pilot: true, captain: true, squadron: true }; // stations built so far
   // Command jobs on the gunboat and destroyer escort: this share are escort missions.
   var ESCORT_SHARE = 1 / 3, ESCORT_CLASSES = { gunboat: true, destroyerEscort: true };
   var GUNNER_CLASSES = 9;                          // the gunner station is built up to this class
@@ -21,6 +23,7 @@
     var cls = BL.classByN(n);
     if (!cls || !PLAYABLE[station]) return false;
     if (station === "pilot" || station === "captain") return !!(BL.HELM && BL.HELM.classes[cls.id]);
+    if (station === "squadron") return !!(BL.HELM && BL.HELM.classes[cls.id]) && !!BL.COMMAND.squad.size[cls.id];
     return station === "gunner" ? n <= GUNNER_CLASSES : !!cls.built;
   }
   // guns: the pilot's "guns on target" slot (unused at the other stations).
@@ -75,12 +78,20 @@
     STATIONS.forEach(function (s) {
       var st = c.stations[s] = c.stations[s] || {};
       st.qualified = clamp(+st.qualified || 0, 0, 9);
-      st.rep = isFinite(+st.rep) ? Math.max(0, +st.rep) : 0;
+      st.rep = st.rep === undefined ? REP.start : isFinite(+st.rep) ? Math.max(0, +st.rep) : 0;     // (a path new since the career began starts at 50)
       st.failures = st.failures || {};
       st.realUntil = +st.realUntil || 0;
       var p = c.profiles[s] = c.profiles[s] || blankProfile();
       Object.keys(blankProfile()).forEach(function (k) { if (!isFinite(+p[k])) p[k] = 0; });
       if (!isFinite(+c.stepUps[s])) c.stepUps[s] = 0;
+    });
+    // Successful missions by class on the command and squadron paths (squadron command of a class
+    // opens after BL.CAPTAINS.opens on its command); careers from before count their history.
+    ["captain", "squadron"].forEach(function (s) {
+      var st = c.stations[s];
+      if (st.wins && typeof st.wins === "object") return;
+      st.wins = {};
+      c.history.forEach(function (h) { if (h.station === s && h.outcome === "success") st.wins[h.n] = (st.wins[h.n] || 0) + 1; });
     });
     if (!Array.isArray(c.signoffsUsed)) c.signoffsUsed = [];
     c.name = cleanName(c.name) || "Recruit";
@@ -148,6 +159,7 @@
   function qualified(c, station) { return c.stations[station].qualified; }
   function rank(c, station) {
     var q = qualified(c, station);
+    if (station === "squadron") { var k = squadronClasses(c).length; return k ? "Squadron commander, " + k + (k === 1 ? " class" : " classes") : "Squadron: none yet"; }
     return q ? STATION_NAME[station] + "-" + q : "Recruit";
   }
   function highestClass(c) { return Math.max.apply(null, CREW.map(function (s) { return c.stations[s].qualified; })); }
@@ -167,13 +179,20 @@
   // The best rank held, short, for the title screen's button: "E4", or "E4 · G1" (Engineer-4,
   // Gunner-1; C for Command).
   function ranks(c) {
-    var held = STATIONS.filter(function (s) { return qualified(c, s) > 0; }).map(function (s) { return STATION_NAME[s].charAt(0) + qualified(c, s); });
+    var held = STATIONS.filter(function (s) { return qualified(c, s) > 0 && s !== "squadron"; }).map(function (s) { return STATION_NAME[s].charAt(0) + qualified(c, s); });
+    if (squadronClasses(c).length) held.push("S×" + squadronClasses(c).length);
     return held.length ? held.join(" · ") : "Recruit";
   }
   function signoffsTotal(c) { return Math.max(0, highestClass(c) - 2); }
   function signoffsHeld(c) { return signoffsTotal(c) - c.signoffsUsed.length; }
   // The class a station is working toward: the one above its qualification (class 1 to start).
   function targetClass(c, station) { return Math.min(9, qualified(c, station) + 1); }
+  // Squadron command, class by class: open once you've had BL.CAPTAINS.opens successful command
+  // missions on the class; held once you've had a successful squadron mission on it.
+  function commandWins(c, n) { return (c.stations.captain.wins || {})[n] || 0; }
+  function squadronOpen(c, n) { return built("squadron", n) && commandWins(c, n) >= BL.CAPTAINS.opens; }
+  function squadronWins(c, n) { return (c.stations.squadron.wins || {})[n] || 0; }
+  function squadronClasses(c) { return BL.CLASSES.filter(function (k) { return squadronWins(c, k.n) > 0; }).map(function (k) { return k.n; }); }
 
   /* ------------------------------------------------------------ Offers
      Generic postings for now: a ship class, a tech level and a ship name; one list per station.
@@ -199,6 +218,15 @@
       job.escort = !!ESCORT_CLASSES[cls.id] && rng.chance(ESCORT_SHARE);
       if (BL.pickEngineer) job.engineer = BL.pickEngineer(job.seed, cls.id);
       if (BL.pickPilot) job.pilot = BL.pickPilot(job.seed, cls.id);
+    }
+    // A squadron job: the flagship (as a command job) and her squadron's other ships, every name
+    // different (BL.shipName); the fleet admiral who offers it is added by squadronOffers.
+    if (station === "squadron") {
+      job.helm = true; job.captain = true; job.flag = true;
+      if (BL.pickEngineer) job.engineer = BL.pickEngineer(job.seed, cls.id);
+      if (BL.pickPilot) job.pilot = BL.pickPilot(job.seed, cls.id);
+      var used = {}; used[job.ship] = true; job.wingShips = [];
+      for (var k = 1; k < (BL.COMMAND.squad.size[cls.id] || 4); k++) { var nm = BL.shipName(rng, cls.id, tl, used); used[nm] = true; job.wingShips.push(nm); }
     }
     if (story) {
       job.story = story.id; job.title = story.title; job.chapter = story.chapter;
@@ -274,9 +302,11 @@
       offers = storyOffers(c, station, rng);
       offers.sort(function (a, b) { return b.n - a.n || (a.story || "").localeCompare(b.story || "") || a.tl - b.tl; });
       c.offersBy[station] = uniqueShips(offers, rng, c);
+      if (station === "captain") offeredBy(c, offers, rng);
       return offers;
     }
     if (station === "captain") return commandOffers(c, rng);
+    if (station === "squadron") return squadronOffers(c, rng);
     var current = Math.max(1, q);
     if (!built(station, current)) current = Math.min(current, station === "gunner" ? GUNNER_CLASSES : current);
     if (!built(station, current)) current = 1;
@@ -308,12 +338,72 @@
     });
     offers.sort(function (a, b) { return b.n - a.n || a.tl - b.tl; });
     c.offersBy.captain = uniqueShips(offers, rng, c);
+    offeredBy(c, offers, rng);
     return offers;
+  }
+  /* Squadron jobs, offered by the named fleet admirals (BL.BRASS): on every class whose squadron
+     command is open, a lowest-tech job from the admiral who rates you best, and one more at any
+     tech level from an admiral whose bar you pass. */
+  function squadronOffers(c, rng) {
+    var offers = [], B = brass(c);
+    BL.CLASSES.forEach(function (k) {
+      if (!squadronOpen(c, k.n)) return;
+      var rated = B.admirals.map(function (a) { return { a: a, v: weigh(c, a, "squadron") }; }).sort(function (x, y) { return y.v - x.v; });
+      offers.push(byWhom(makeJob(rng, "squadron", k.n, lowTL(k.n)), rated[0].a));
+      var pass = rated.filter(function (x) { return x.v >= x.a.bar; });
+      if (pass.length) offers.push(byWhom(makeJob(rng, "squadron", k.n, anyTL(rng, k.n)), rng.pick(pass).a));
+    });
+    offers.sort(function (a, b) { return b.n - a.n || a.tl - b.tl; });
+    c.offersBy.squadron = uniqueShips(offers, rng, c);
+    return offers;
+  }
+  /* Named commanders (BL.BRASS): 3 commodores per class, who offer command jobs, and 4 fleet
+     admirals, who offer squadron jobs; made once per career, no two sharing a first or last name.
+     Each has a taste (what he weighs in the profile) and a bar. */
+  function brass(c) {
+    if (c.brass && c.brass.admirals) return c.brass;
+    var R = BL.BRASS, E = BL.GUNNERY.engineer, rng = BL.rng(((c.offerSeed || 1) ^ 0x6a09e667) >>> 0 || 1), tf = {}, tl = {}, id = 1, tastes = Object.keys(R.tastes);
+    function one(level) {
+      var fs = E.first.filter(function (n) { return !tf[n]; }), ls = E.last.filter(function (n) { return !tl[n]; });
+      var p = { id: id++, level: level, first: rng.pick(fs), last: rng.pick(ls), taste: rng.pick(tastes), bar: Math.round(rng.range(R.bar) * 100) / 100 };
+      tf[p.first] = true; tl[p.last] = true;
+      return p;
+    }
+    var b = { commodores: {}, admirals: [] };
+    BL.CLASSES.forEach(function (k) { var list = b.commodores[k.id] = []; for (var i = 0; i < R.perClass; i++) list.push(one("commodore")); });
+    for (var i = 0; i < R.admirals; i++) b.admirals.push(one("admiral"));
+    return (c.brass = b);
+  }
+  function brassName(p) { return BL.BRASS.ranks[p.level] + " " + p.first + " " + p.last; }
+  // The profile weighed his way, 0..1 (a weight below 0 counts the factor's opposite). Squadron
+  // jobs weigh the squadron profile once it has missions, else the command one; with no command
+  // missions yet, everyone rates you even.
+  function weigh(c, p, station) {
+    var w = BL.BRASS.tastes[p.taste].w, sqd = station === "squadron" && c.profiles.squadron.missions, pr = profile(c, sqd ? "squadron" : "captain"), sum = 0, tot = 0;
+    if (!sqd && !c.profiles.captain.missions) return 0.5;
+    Object.keys(w).forEach(function (k) { var v = clamp(+pr[k] || 0, 0, 1); sum += Math.abs(w[k]) * (w[k] < 0 ? 1 - v : v); tot += Math.abs(w[k]); });
+    return tot ? sum / tot : 0.5;
+  }
+  function byWhom(job, p) { job.by = { name: brassName(p), says: BL.BRASS.tastes[p.taste].says }; return job; }
+  // Each command job is offered by one of its class's commodores: one whose bar you pass, else the
+  // one who rates you best.
+  function offeredBy(c, list, rng) {
+    var B = brass(c);
+    list.forEach(function (j) {
+      var rated = B.commodores[j.classId].map(function (p) { return { p: p, v: weigh(c, p, "captain") }; }).sort(function (x, y) { return y.v - x.v; });
+      var pass = rated.filter(function (x) { return x.v >= x.p.bar; });
+      byWhom(j, (pass.length ? rng.pick(pass) : rated[0]).p);
+    });
   }
   // A station qualification can open command of the next class: then the command offers are drawn again.
   function refreshCommand(c) {
     var q = qualified(c, "captain"), list = offers(c, "captain");
     if (canCommand(c, q + 1) && !list.some(function (o) { return o.n === q + 1; })) generateOffers(c, "captain");
+    // (a squadron command newly open: the squadron offers are drawn again; command offers saved
+    // before the named commodores get theirs)
+    var sq = offers(c, "squadron");
+    if (BL.CLASSES.some(function (k) { return squadronOpen(c, k.n) && !sq.some(function (o) { return o.n === k.n; }); })) generateOffers(c, "squadron");
+    if (offers(c, "captain").some(function (o) { return !o.by; })) offeredBy(c, offers(c, "captain"), BL.rng(c.offerSeed + 13));
   }
   // Tech levels for a class (BL.TECH.levels): the lowest, and any one at random.
   function lowTL(n) { return BL.TECH.levels(BL.classByN(n).id)[0]; }
@@ -321,7 +411,7 @@
   // Careers saved before the step-up rule may lack the guaranteed lowest-tech offer.
   function ensureStepUp(c, station) {
     var q = qualified(c, station), next = BL.classByN(q + 1), list = offers(c, station);
-    if (q < 1 || !next || !built(station, next.n) || hasStory(station) || station === "captain") return;
+    if (q < 1 || !next || !built(station, next.n) || hasStory(station) || station === "captain" || station === "squadron") return;
     var has = list.some(function (o) { return o.n === next.n && o.tl === lowTL(next.n); });
     if (!has) {
       list.push(makeJob(BL.rng(c.offerSeed + 3), station, next.n, lowTL(next.n)));
@@ -349,11 +439,13 @@
      the same); at command, a squadron left behind, each crewman killed and dropping down to a
      station (once a mission) come on top. */
   var REP = { start: 50, success: 1, tlBonus: { 5: 2, 6: 1 }, failure: -1, destroyed: -2, abandoned: -1,
-    wardLost: -1, dropMissed: -3, squadronLost: -3, killed: -1, droppedDown: -1 };
+    wardLost: -1, dropMissed: -3, squadronLost: -3, killed: -1, droppedDown: -1, shipLost: -1, flagBridge: -1 };
   function repFor(job) { return REP.success + (REP.tlBonus[job.tl] || 0); }      // what a success earns
   // The mission's reputation, part by part: [[what, points], ...].
-  function repParts(station, outcome, tl, squadrons, killed, dropped) {
-    var cmd = station === "captain", out = [];
+  // (squadron command, sq: each ship lost, left behind included, and taking the flagship's bridge,
+  // once a mission; dropping down from there to a station counts on top, as at command)
+  function repParts(station, outcome, tl, squadrons, killed, dropped, sq) {
+    var cmd = station === "captain" || station === "squadron", out = [];
     if (outcome === "success") { out.push(["success", REP.success]); if (REP.tlBonus[tl]) out.push(["tech level " + tl, REP.tlBonus[tl]]); }
     else if (outcome === "destroyed") out.push(["ship destroyed", REP.destroyed]);
     else if (outcome === "abandoned") out.push(["abandoned ship", REP.abandoned]);
@@ -363,6 +455,8 @@
     if (cmd && squadrons) out.push(["squadron left behind", REP.squadronLost * squadrons]);
     if (cmd && killed) out.push([killed + " crew killed", REP.killed * killed]);
     if (cmd && dropped) out.push(["dropped down to a station", REP.droppedDown]);
+    if (sq && sq.shipsLost) out.push([sq.shipsLost + (sq.shipsLost === 1 ? " ship" : " ships") + " lost", REP.shipLost * sq.shipsLost]);
+    if (sq && sq.flagBridge) out.push(["took the flagship's bridge", REP.flagBridge]);
     return out;
   }
 
@@ -374,12 +468,13 @@
     var st = c.stations[job.station], post = job.n, before = st.qualified;
     var report = { rep: 0, qualifiedBefore: before, qualifiedAfter: before, promoted: false, demoted: false, failuresAtPost: 0,
       profileBefore: profile(c) };
-    var success = r.outcome === "success";
+    var success = r.outcome === "success", squad = job.station === "squadron";
+    if (success && (job.station === "captain" || squad)) st.wins[post] = (st.wins[post] || 0) + 1;
     if (success) {
       if (job.story) { c.storyDone[job.story] = today(); report.storyDone = job.story; }
       st.failures[post] = 0;
       if (post > st.qualified) { st.qualified = post; report.promoted = true; }
-    } else if (post >= st.qualified) {
+    } else if (post >= st.qualified && !squad) {     // (squadron command isn't a ladder: no sending back)
       st.failures[post] = (st.failures[post] || 0) + 1;
       report.failuresAtPost = st.failures[post];
       if (st.failures[post] >= 2) {
@@ -401,7 +496,7 @@
     var p = c.profiles[job.station] = c.profiles[job.station] || blankProfile(), n = p.missions;
     report.profileBefore = profile(c, job.station);
     function avg(old, v) { return (old * n + v) / (n + 1); }
-    var gun = job.station === "gunner", hm = job.station === "pilot" && r.helm, cp = job.station === "captain" && r.captain;
+    var gun = job.station === "gunner", hm = job.station === "pilot" && r.helm, cp = (job.station === "captain" || squad) && r.captain;
     p.aggression = avg(p.aggression, r.aggression || 0);
     // Command: navigation (efficiency slot), command (demands slot) and guns on target.
     if (cp) {
@@ -423,8 +518,11 @@
     if (success) p.wins++; else p.losses++;
     report.profileAfter = profile(c, job.station);
     // Command: the roster crew's losses, growth and morale (BL.roster.afterMission); then reputation.
-    if (job.station === "captain" && BL.roster) report.crew = BL.roster.afterMission(c, job, r, { date: today() });
-    report.repParts = repParts(job.station, r.outcome, job.tl, cp && r.detail ? r.detail.squadronsLost || 0 : 0, report.crew ? report.crew.lost.length : 0, cp && cp.dropped);
+    if (cp && BL.roster) report.crew = BL.roster.afterMission(c, job, r, { date: today() });
+    // Squadron command: the captains' losses, growth and morale (BL.captains.afterMission).
+    if (squad && BL.captains) report.captains = BL.captains.afterMission(c, job, r, { date: today() });
+    var sqRep = squad && cp && cp.squad ? { shipsLost: cp.squad.lost + cp.squad.left, flagBridge: !!cp.squad.flagBridge } : null;
+    report.repParts = repParts(job.station, r.outcome, job.tl, cp && r.detail ? r.detail.squadronsLost || 0 : 0, report.crew ? report.crew.lost.length : 0, cp && cp.dropped, sqRep);
     var repWas = st.rep;
     st.rep = Math.max(0, st.rep + report.repParts.reduce(function (a, p) { return a + p[1]; }, 0));
     report.rep = st.rep - repWas;
@@ -434,6 +532,14 @@
     if (c.history.length > 200) c.history.length = 200;
     logService(c, entry, r);
     if (r.outcome === "destroyed" || r.outcome === "abandoned") { retireShip(c, entry); report.shipLost = true; }
+    // (a squadron's other ships: each gets her own service record; one lost or left behind is retired)
+    if (squad && cp && cp.squad) cp.squad.ships.forEach(function (s, i) {
+      var nm = s.fullName || (job.wingShips || [])[i]; if (!nm) return;
+      var e = { date: entry.date, station: "squadron", classId: job.classId, n: job.n, tl: job.tl, ship: nm, hull: hullOf(c, { ship: nm, classId: job.classId }),
+        seed: job.seed, outcome: s.left ? "leftBehind" : s.hull <= 0 ? "destroyed" : r.outcome, score: null, rep: 0, serious: job.serious };
+      logService(c, e, { detail: { kills: s.kills, hullLost: s.hullLost } });
+      if (s.left || s.hull <= 0) retireShip(c, e);
+    });
     generateOffers(c, job.station);
     refreshCommand(c);
     return report;
@@ -500,6 +606,7 @@
     signoffsTotal: signoffsTotal, signoffsHeld: signoffsHeld, signoffOptions: signoffOptions, spendSignoff: spendSignoff,
     offers: offers, generateOffers: generateOffers, lowerJobs: lowerJobs, repFor: repFor, REP: REP,
     applyResult: applyResult, profile: profile, serviceRecord: serviceRecord,
+    squadronOpen: squadronOpen, squadronWins: squadronWins, squadronClasses: squadronClasses, commandWins: commandWins, brass: brass, brassName: brassName,
     storyComplete: storyComplete, storyLeft: storyLeft
   };
 })(typeof window !== "undefined" ? window : globalThis);

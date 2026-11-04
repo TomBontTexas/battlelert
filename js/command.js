@@ -669,8 +669,10 @@
       return { name: rank + " " + first + " " + last, who: first + " " + last, last: last, skill: s, temper: r.pick(["cautious", "steady", "aggressive"]),
         label: s >= 0.85 ? "sharp" : s >= 0.7 ? "steady" : s >= 0.5 ? "green" : "sloppy" };
     }
-    this.flagCaptain = captain();
-    for (var k = 1; k < n; k++) wing.push({ no: k + 1, slot: k - 1, spacing: 1, drift: 0, dressAt: -999, hull: m.data.hull, hullMax: m.data.hull, sh: sh.maxMJ, shMax: sh.maxMJ, stops: 0, kills: 0, cap: captain(),
+    // (a squadron job brings its own captains from the career's pool, m.squadSet; a test rolls them)
+    var set = m.squadSet;
+    this.flagCaptain = set && set.flag || captain();
+    for (var k = 1; k < n; k++) wing.push({ no: k + 1, slot: k - 1, spacing: 1, drift: 0, dressAt: -999, hull: m.data.hull, hullMax: m.data.hull, sh: sh.maxMJ, shMax: sh.maxMJ, stops: 0, kills: 0, cap: set && set.wing[k - 1] || captain(),
       form: Q.start, order: { kind: "form" }, hold: false, pend: [], fireAt: 0, left: false, task: "form", attackUntil: 0 });
     // Every ship's name (Nov 3, 2026, TexasBont: "use the actual ship name"): the flagship's is the
     // job's (a test picks one), the others' from the same class and tech level's names (BL.shipName),
@@ -680,7 +682,7 @@
     var pickName = BL.shipName || function (rr, c, tl, u) { return "Ship " + (1 + Object.keys(u).length); };     // (no names.js: headless tests)
     var fn = m.shipName || pickName(nr, m.data.classId, m.data.tl, used); used[fn] = true; this.flagName = short(fn);
     wing.forEach(function (g) {
-      var nm = pickName(nr, m.data.classId, m.data.tl, used); used[nm] = true; g.name = short(nm);
+      var nm = set && set.ships && set.ships[g.no - 2] || pickName(nr, m.data.classId, m.data.tl, used); used[nm] = true; g.name = short(nm); g.fullName = nm;
       if (BL.speech && BL.speech.alias) BL.speech.alias(g.name, "Ship " + g.no);
     });
     // Every system's targets, made now from the seed (the plotting screen shows them).
@@ -1665,7 +1667,7 @@
     if (es && es.flag) {
       r.captain.squad = { n: es.n, home: sqHome, lost: es.wing.filter(function (g) { return g.hull <= 0 && !g.left; }).length, left: es.wing.filter(function (g) { return g.left; }).length,
         kills: st.sqKills, targets: sqAll.length, targetsDown: sqDownAll, objectives: sqObj.length, objectivesDown: sqObjDown, flagWaves: sqAll.reduce(function (a, T) { return a + T.waves; }, 0), flagBridge: st.flagBridge, flag: c.flagCaptain.name,
-        flagName: c.flagName, ships: es.wing.map(function (g) { return { no: g.no, ship: g.name, name: g.cap.name, hull: Math.round(100 * g.hull / g.hullMax), kills: g.kills, left: g.left }; }) };
+        flagName: c.flagName, ships: es.wing.map(function (g) { return { no: g.no, ship: g.name, fullName: g.fullName, id: g.cap.id, name: g.cap.name, hull: Math.round(100 * g.hull / g.hullMax), hullLost: Math.round(g.hullMax - g.hull), kills: g.kills, left: g.left }; }) };
     } else if (c.escort) {
       r.captain.escort = { kind: es.kind, name: es.W.name, hull: Math.round(100 * es.hull / es.hullMax), ships: es.ships.length, afloat: afloat, torps: st.wardTorps, calls: st.wardCalls, covers: st.covers, covered: st.covered,
         squad: es.wing.length + 1, wingLost: es.wing.filter(function (g) { return g.hull <= 0; }).length, wingStops: st.wingStops,

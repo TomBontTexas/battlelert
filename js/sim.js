@@ -45,6 +45,7 @@
     this.quiet = !!opts.quiet;              // harness: skip chatter text and sound cues
     // A Command job's crew from the roster (BL.roster.forMission): { engineer, pilot, guns: [...] }; else rolled from the seed.
     this.crewSet = opts.crew || null;
+    this.squadSet = opts.squad || null;             // (a squadron job: its captains and ships, BL.captains.forMission)
 
     // Pilot training (training.js): one endless system with no enemies and no jump.
     this.training = !!opts.training;

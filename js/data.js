@@ -851,6 +851,37 @@
     sign: { stay: 25, morale: 5 },
     record: 100                                  // missions kept on each man's record
   };
+  /* The squadron commander's captains pool (Squadrons, approved Nov 2, 2026; js/captains.js): one
+     pool per career, by class, made at that class's first squadron job; each class's squadron size
+     plus `extra` captains (the flag captain among them). skill: a first pool's captains (as the
+     Squadron test's, BL.COMMAND.squad.hire); hire: a green new captain's (one joins for each
+     killed); grow, morale and sign as BL.ROSTER (sign: refusals against squadron reputation);
+     morale.shipLost: a captain whose ship is lost, and every captain for each ship lost;
+     out: squadron missions a captain sits out after losing his ship ("awaiting a new ship").
+     opens: successful command missions on a class that open its squadron command. */
+  BL.CAPTAINS = {
+    extra: 3, skill: [0.4, 0.95], hire: [0.35, 0.55],
+    grow: { success: 0.01, cap: 0.95 },
+    morale: { start: 60, success: 5, failure: -10, shipLost: -10, flagBridge: -1, eff: [0.9, 1.1] },
+    sign: { stay: 25, morale: 5 }, out: 1, opens: 3, record: 100
+  };
+  /* Named commanders (Squadrons, approved Nov 2, 2026; TexasBont: 3 squadron commanders per class
+     offer captain jobs, 4 fleet admirals offer squadron jobs on any class). Made once per career
+     from the Dallas–Fort Worth names (BL.brass). Each has a taste: what he weighs in the player's
+     reputation profile (BL.career.profile; each 0..1), and a bar: he offers a job when the profile,
+     weighed his way, passes it. Every class's command always has a lowest-tech offer whatever the
+     bars say. ranks: what each level is called. */
+  BL.BRASS = {
+    perClass: 3, admirals: 4, ranks: { commodore: "Commodore", admiral: "Fleet Admiral" },
+    tastes: {
+      bold:    { says: "bold commanders",            w: { aggression: 1 } },
+      careful: { says: "careful commanders",         w: { aggression: -1, condition: 1 } },
+      home:    { says: "ships and crews brought home", w: { condition: 1 } },
+      results: { says: "objectives met",             w: { winloss: 1 } },
+      sharp:   { says: "sharp navigation and orders", w: { efficiency: 0.5, demands: 0.5 } },
+      gunnery: { says: "ships destroyed",            w: { guns: 1 } } },
+    bar: [0.35, 0.65]
+  };
 
   BL.COMMAND = {
     scale: 1, reach: 0.9, driveTau: 5, jumpOff: [0, 50], zone: 0.08,
