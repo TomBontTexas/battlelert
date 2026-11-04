@@ -216,7 +216,8 @@
     if (sqv) $("brief-squad").innerHTML = "<b>The squadron:</b> " + (sqv.ships.length + 1) + " " + cls.name.toLowerCase() + "s in " + BL.COMMAND.squad.formations[sqv.form].name.toLowerCase() + ". " +
       "1 " + esc(sqv.flagName) + ", the flagship: flag captain " + esc(sqv.flag.name) + ", " + sqv.flag.label + " (skill " + Math.round(sqv.flag.skill * 100) + "), " + sqv.flag.temper + " temper. " +
       sqv.ships.map(function (x) { return x.no + " " + esc(x.name) + ": " + esc(x.cap.name) + ", " + x.cap.label + " (" + Math.round(x.cap.skill * 100) + "), " + x.cap.temper; }).join(" · ") +
-      ". Each system's map shows the enemy's targets: destroy its objective, the supply depot, before the squadron warps on, or the mission fails. Send ships to targets or spots on the map; an order takes each captain a few seconds to carry out, longer the lower his skill.";
+      (sim.sys("buster") ? ". Get through to the drop zone at the end of system " + sim.cfg.jumps + " and drop the planet buster; fight only what gets in the way. Fortress ships guard the drop zone." :
+      ". Each system's map shows the enemy's targets: destroy its objective, the supply depot, before the squadron warps on, or the mission fails.") + " Send ships to targets or spots on the map; an order takes each captain a few seconds to carry out, longer the lower his skill.";
     $("brief-sweep").hidden = sim.route.indexOf("sweep") < 0;
     if (gunner) {
       var en = sim.turret.engineer;
@@ -1540,7 +1541,7 @@
     sqSel = sqSel.filter(function (n) { return n === 1 || v.ships.some(function (x) { return x.no === n && x.live; }); });
     setText($("cp-sq-hd"), "SQUADRON · " + home + " of " + (v.ships.length + 1));
     var left = c.sqGroups().length, obj = c.sqGroups().filter(function (T) { return T.K.objective; }).length;
-    cpLine("cp-sq-ln", "<b>" + Q.formations[v.form].short + "</b> · spacing " + Math.round(v.spacing * 100) + "% · " + left + " target" + (left === 1 ? "" : "s") + " left" + (obj ? " · objective standing" : " · <span style='color:#3dff7a'>objective down</span>"));
+    cpLine("cp-sq-ln", "<b>" + Q.formations[v.form].short + "</b> · spacing " + Math.round(v.spacing * 100) + "% · " + left + " target" + (left === 1 ? "" : "s") + " left" + (sim.sys("buster") ? "" : obj ? " · objective standing" : " · <span style='color:#3dff7a'>objective down</span>"));
     cpLine("cp-sq-ln2", v.alert ? "⚠ " + esc(v.alert) : "");
     var pendForm = v.ships.some(function (x) { return x.pend; });
     Array.prototype.forEach.call($("cp-sq-form").children, function (b) { b.classList.toggle("on", b.dataset.form === v.form); b.classList.toggle("pend", b.dataset.form === v.form && pendForm); b.disabled = !live; });
@@ -2156,7 +2157,7 @@
     $("pl-squad").innerHTML = '<div class="ps-hd">YOUR SHIPS · tap to send one to a target</div>' + c.sqLive().map(function (g) {
       var T = pre[g.no] !== undefined ? ts[pre[g.no]] : null;
       return '<button data-pre="' + g.no + '"><b>' + g.no + "</b> " + esc(g.name) + " → " + (T ? T.letter + " " + T.K.name.toLowerCase() : "in formation") + "</button>";
-    }).join("") + '<div class="muted small-text">The objective is the depot (gold). The flagship flies your course. "?" are contacts the pickets missed.</div>';
+    }).join("") + '<div class="muted small-text">' + (sim.sys("buster") ? "No objective: get through and make the drop. Fortress ships guard the drop zone." : "The objective is the depot (gold).") + ' The flagship flies your course. "?" are contacts the pickets missed.</div>';
   }
   // A new plot: straight to the approach point, then in along the jump heading.
   function blankPlot(m) { return { pts: [{ x: m.start.x, y: m.start.y }, { x: m.approach.x, y: m.approach.y }, { x: m.jump.x, y: m.jump.y }], eng: ["cruise", "cruise"] }; }
@@ -2309,7 +2310,7 @@
       ["Squadron", cp.squad.home + " of " + cp.squad.n + " ships home" + (cp.squad.lost ? ", " + cp.squad.lost + " lost" : "") + (cp.squad.left ? ", " + cp.squad.left + " left behind" : "")],
       ["Flag captain", esc(cp.squad.flag) + (cp.squad.flagBridge ? " (you took his bridge: once a mission −1 squadron reputation, −1 morale to him)" : "")],
       ["Captains", cp.squad.ships.map(function (x) { return esc(x.ship) + " (" + esc(x.name) + "): " + (x.left ? "left behind" : x.hull > 0 ? "hull " + x.hull + "%" : "lost") + ", " + x.kills + " kills"; }).join(" · ")],
-      ["Targets destroyed", cp.squad.targetsDown + " of " + cp.squad.targets + " (objectives " + cp.squad.objectivesDown + " of " + cp.squad.objectives + "); " + cp.squad.kills + " finished off by the other ships"]] : []).concat([
+      ["Targets destroyed", cp.squad.targetsDown + " of " + cp.squad.targets + (cp.squad.objectives ? " (objectives " + cp.squad.objectivesDown + " of " + cp.squad.objectives + ")" : "") + "; " + cp.squad.kills + " finished off by the other ships"]] : []).concat([
       ["Enemy ships destroyed by your crew", cp.kills + " / " + cp.ships],
       ["Torpedoes shot down", cp.downed],
       ["Hull lost", d.hullLost],

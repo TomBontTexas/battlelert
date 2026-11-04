@@ -712,15 +712,21 @@
       out.push({ id: out.length, letter: M.letters[out.length], kind: kind, K: K, pos: { x: p.x, y: p.y }, hdg: hdg, hp: hp, hpMax: hp,
         rep: along(p, r.next() * 360, off), unknown: false, seen: false, last: null, dead: false, victim: null, hunt: null, wave: null, reserve: 0, waves: 0, by: null });
     }
-    for (var t = 0; t < 60 && !out.length; t++) { var p0 = along(along(map.start, hb, r.range([0.4, 0.7]) * D), hb + 90, r.range([0.1, 0.25]) * D * (r.chance(0.5) ? 1 : -1)); if (ok(p0, 0.15)) add("depot", p0); }
-    var n = r.int(M.targets);
+    // (a planet buster mission has no depot: it only has to get through, and the drop zone is guarded)
+    var B = this.m.sys("buster") ? M.buster : null;
+    if (!B) for (var t = 0; t < 60 && !out.length; t++) { var p0 = along(along(map.start, hb, r.range([0.4, 0.7]) * D), hb + 90, r.range([0.1, 0.25]) * D * (r.chance(0.5) ? 1 : -1)); if (ok(p0, 0.15)) add("depot", p0); }
+    if (B && map.drop) {
+      var bin = bearing(map.jump, map.start), fo = M.kinds.fortress.range * cs * B.off;
+      for (var f = 0; f < B.fortresses; f++) add("fortress", along(map.jump, bin + (B.fortresses > 1 ? -B.spread + 2 * B.spread * f / (B.fortresses - 1) : 0), fo));
+    }
+    var n = r.int(B && map.drop ? B.targets : M.targets);
     for (var q = 0, tries = 0; q < n && tries < 300; tries++) {
       var p = { x: x0 + r.next() * (x1 - x0), y: y0 + r.next() * (y1 - y0) };
       if (!ok(p, 0.16)) continue;
       add(r.pick(M.pick), p); q++;
     }
     // (some aren't in the pickets' report: unknown contacts until our ships see them)
-    var others = out.filter(function (x) { return !x.K.objective; });
+    var others = out.filter(function (x) { return !x.K.objective && x.kind !== "fortress"; });
     for (var u = r.int(M.unknown); u > 0 && others.length; u--) { var x = others.splice(Math.floor(r.next() * others.length), 1)[0]; x.unknown = true; }
     return out;
   };
@@ -966,6 +972,13 @@
           if (pno && pno !== T.hunt && !ours.some(function (o) { return o !== prey && dist(o.pos, prey.pos) < M.range * cs; })) { es.alert = { at: t, text: T.letter + " · " + T.K.name + " turning on " + prey.g.name }; self.sqSay("sqHunted", prey.g, { L: T.letter, what: self.sqWhat(T) }, "warn"); }
           T.hunt = pno;
           if (prey) { want = bearing(T.pos, prey.pos); if (pd < T.K.standOff * T.K.range * cs) sp = 0; }
+        } else if (T.K.guard) {
+          // (a guard: between its post and the nearest of ours it sees, never far from its post)
+          var post = T.post || (T.post = { x: T.pos.x, y: T.pos.y }), foe = null, fd = Infinity;
+          vis.forEach(function (o) { var dd = dist(o.pos, post); if (dd < M.sensor * cs && dd < fd) { fd = dd; foe = o; } });
+          var spot = foe ? along(post, bearing(post, foe.pos), Math.min(T.K.guard * T.K.range * cs, Math.max(0, fd - 0.5 * T.K.range * cs))) : post;
+          var gd = dist(T.pos, spot);
+          if (gd < sp * 2) { sp = gd / 2; want = foe ? bearing(T.pos, foe.pos) : T.hdg; } else want = bearing(T.pos, spot);
         } else if (T.K.patrol && victim) {
           var tb = bearing(T.pos, victim.pos), a1 = to360(tb + 90), a2 = to360(tb - 90);
           want = Math.abs(norm(a1 - T.hdg)) <= Math.abs(norm(a2 - T.hdg)) ? a1 : a2;
@@ -1113,7 +1126,7 @@
     if (T.wave || T.dead) return;
     var enc = BL.ENCOUNTERS[T.K.enc]; if (!enc || !enc.wave) return;
     var n0 = m.waves.length;
-    m.spawnWave(enc, T.K.enc, T.waves ? "quietWave" : null);
+    m.spawnWave(enc, T.K.enc, T.waves || T.K.quiet ? "quietWave" : null);
     if (m.waves.length === n0) return;
     w = m.waves[m.waves.length - 1];
     // (the whole target, its ships that much tougher; its torpedoes as its encounter fires them,
@@ -1715,7 +1728,8 @@
   };
 
   /* The squadron test's commander bot: the navigator's plot, LINE AHEAD, and every other ship sent
-     to the system's objective (once it's known), then the nearest target to the flagship; a ship
+     to the system's objective (once it's known), then the nearest target to the flagship (a planet
+     buster mission: only one that comes near her); a ship
      down below `retire` of her hull comes back to formation. The warp as soon as it's ready. Its
      flag captain is the captain test bot (noJump). (opts.form: a formation to hold; opts.idle:
      no orders, every ship in formation, for comparison; opts.retire.) */
@@ -1729,10 +1743,15 @@
       this.tAt = m.totalT + 2;
       var gs = c.sqGroups().filter(function (T) { return !T.unknown || T.seen; }), obj = gs.filter(function (T) { return T.K.objective; })[0], near = null, nd = Infinity;
       gs.forEach(function (T) { var d = dist(c.shownAt(T), c.pos); if (d < nd) { nd = d; near = T; } });
+      // (a planet buster mission only has to get through: it fights only what comes within `threat` x
+      // our guns' range of the flagship)
+      var busterRun = !!m.sys("buster"), reach = BL.COMMAND.squad.map.range * c.cs() * BL.COMMAND.squad.map.buster.threat;
+      if (busterRun && nd > reach) near = null;
       var aim = obj || near, retire = o.retire === undefined ? 0.35 : o.retire;
       c.sqLive().forEach(function (g) {
         var ord = c.orderOf(g);
         if (g.hull / g.hullMax < retire) { if (ord.kind !== "form") c.recall([g.no]); return; }
+        if (busterRun && !aim && ord.kind === "target") { c.recall([g.no]); return; }
         if (aim && (ord.kind !== "target" || ord.id !== aim.id) && !c.jumpOrdered) c.sendTo([g.no], aim.id);
       });
     }

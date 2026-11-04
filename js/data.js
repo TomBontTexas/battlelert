@@ -976,8 +976,21 @@
                       raiders: { name: "Raider pack", enc: "raiders", hp: 450, speed: 1.4, hunt: true, standOff: 0.6, guns: [[0, 45, 6]], range: 13 },
                       interceptors: { name: "Interceptor flight", enc: "interceptors", hp: 240, speed: 1.9, hunt: true, standOff: 0.5, guns: [[0, 45, 4]], range: 10 },
                       frigate: { name: "Frigate group", enc: "frigate", hp: 900, speed: 0.7, patrol: true, guns: [[0, 30, 2, "lead"], [90, 60, 4], [-90, 60, 4]], range: 18 },
-                      hunters: { name: "Drive hunters", enc: "hunters", hp: 300, speed: 1.7, hunt: true, standOff: 0.7, guns: [[0, 180, 3]], range: 11 } },
+                      hunters: { name: "Drive hunters", enc: "hunters", hp: 300, speed: 1.7, hunt: true, standOff: 0.7, guns: [[0, 180, 3]], range: 11 },
+                      // (the drop zone's guards: a planet buster mission's last system. `guard`: it puts itself
+                      // between the zone and the nearest of our ships it sees, never more than `guard` x its
+                      // range from its post; `quiet`: no arrival call in the battle view, the captains'
+                      // contact reports name it)
+                      fortress: { name: "Fortress ship", enc: "fortress", hp: 8000, speed: 0.35, guard: 0.6, quiet: true, guns: [[0, 180, 11]], range: 24 } },
                     pick: ["siege", "raiders", "interceptors", "frigate", "hunters", "raiders"],
+                    // A planet buster mission (the dreadnought; Nov 3, 2026, TexasBont: "They shouldn't be trying
+                    // to do anything but get through the system without being shot down... the big fortress ships
+                    // need to be protecting the drop zone. For the command career path, this is the boss
+                    // scenario."): no depots; on the way, only what's in it; in the last system `fortresses`
+                    // fortress ships round the drop zone, `off` x their range from its middle, `spread` degrees
+                    // either side of the way in, and `targets` others.
+                    // (the test bot fights only what comes within `threat` x our guns' range of the flagship)
+                    buster: { fortresses: 2, off: 0.55, spread: 60, targets: [2, 3], threat: 1.5 },
                     // Per class, [target strength, target gunfire] x the destroyer squadron's: strength
                     // by the squadron's guns (ships x guns), gunfire by one ship's hull and shields, so
                     // every class's fights last about as long as a destroyer squadron's.
