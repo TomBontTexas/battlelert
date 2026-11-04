@@ -54,6 +54,7 @@
     "Ship 5":         { pitch: 0.97, rate: 1.2,  order: 29 },
     "Ship 6":         { pitch: 1.06, rate: 1.2,  order: 30 }
   };
+  var ALIAS = {};                // a squadron ship's name -> her voice ("Johnston" -> "Ship 2")
   var SPEAKERS = Object.keys(PROFILE).sort(function (a, b) { return PROFILE[a].order - PROFILE[b].order; });
 
   // Apple's joke and robot voices (Wobble, Cellos, Zarvox...) and the old Eloquence voices.
@@ -108,10 +109,11 @@
 
   // "Tactical: enemy salvo in 6 s." -> speaker "Tactical", words to say.
   function split(text) {
-    var m = /^([^:]{2,20}):\s*(.*)$/.exec(text);
+    var m = /^([^:]{2,30}):\s*(.*)$/.exec(text);
+    if (m && ALIAS[m[1]]) return { speaker: ALIAS[m[1]], words: m[1] + ", " + m[2] };   // (her name, then what she says)
     var speaker = m && PROFILE[m[1]] ? m[1] : "Crew";
     var words = m && PROFILE[m[1]] ? m[2] : text;
-    if (/^(Gunner|Ship) \d/.test(speaker)) words = speaker + ", " + words;   // which gun (or ship) matters
+    if (/^Gunner \d/.test(speaker)) words = speaker + ", " + words;   // which gun matters
     words = words.replace(/(\d+(?:\.\d+)?) s\b/g, "$1 seconds")
                  .replace(/(\d+(?:\.\d+)?) MW\b/g, "$1 megawatts")
                  .replace(/(\d+(?:\.\d+)?) MJ\b/g, "$1 megajoules")
@@ -214,6 +216,7 @@
       if (queue.length > MAX_QUEUE) queue.splice(0, queue.length - MAX_QUEUE);
       next();
     },
+    alias: function (name, speaker) { if (PROFILE[speaker]) ALIAS[name] = speaker; },
     // Who speaks with which voice, for the Options screen.
     crew: function () {
       if (!voices.length) loadVoices();

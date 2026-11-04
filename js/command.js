@@ -602,7 +602,7 @@
     g.hull = Math.max(0, g.hull - d);
     if (g.hull > 0) return;
     m.cue("hullHit");
-    if (this.escort.flag) this.sqSay("sqLost", null, { n: g.no }, "bad", true);
+    if (this.escort.flag) this.sqSay("sqLost", null, { name: g.name }, "bad", true);
     this.rng = this.rng || BL.rng((m.seed ^ 0x3c6ef372) >>> 0);
     m.waves.forEach(function (w) {
       if (w.aim !== i) return;
@@ -669,6 +669,17 @@
     this.flagCaptain = captain();
     for (var k = 1; k < n; k++) wing.push({ no: k + 1, slot: k - 1, hull: m.data.hull, hullMax: m.data.hull, sh: sh.maxMJ, shMax: sh.maxMJ, stops: 0, kills: 0, cap: captain(),
       form: Q.start, order: { kind: "form" }, hold: false, pend: [], fireAt: 0, left: false, task: "form", attackUntil: 0 });
+    // Every ship's name (Nov 3, 2026, TexasBont: "use the actual ship name"): the flagship's is the
+    // job's (a test picks one), the others' from the same class and tech level's names (BL.shipName),
+    // no two alike. Each ship keeps her own radio voice (BL.speech.alias).
+    var nr = BL.rng(((m.seed ^ 0x5bd1e995) >>> 0) || 1), used = {}, P = BL.SHIP_PREFIX;
+    function short(nm) { return String(nm).replace(P, ""); }
+    var pickName = BL.shipName || function (rr, c, tl, u) { return "Ship " + (1 + Object.keys(u).length); };     // (no names.js: headless tests)
+    var fn = m.shipName || pickName(nr, m.data.classId, m.data.tl, used); used[fn] = true; this.flagName = short(fn);
+    wing.forEach(function (g) {
+      var nm = pickName(nr, m.data.classId, m.data.tl, used); used[nm] = true; g.name = short(nm);
+      if (BL.speech && BL.speech.alias) BL.speech.alias(g.name, "Ship " + g.no);
+    });
     // Every system's targets, made now from the seed (the plotting screen shows them).
     this.sqMaps = this.maps.map(function (map, i) { return self.makeTargets(map, i); });
     this.preOrders = this.maps.map(function () { return {}; });       // (orders given on the plotting screen: ship number -> target id)
@@ -915,7 +926,7 @@
           vis.forEach(function (o) { var dd = dist(o.pos, T.pos); if (dd < M.sensor * 1.2 * cs && dd < pd) { pd = dd; prey = o; } });
           var pno = prey ? (prey.g ? prey.g.no : 0) : null;
           // (warn the commander when a pack turns on one of his ships out on her own)
-          if (pno && pno !== T.hunt && !ours.some(function (o) { return o !== prey && dist(o.pos, prey.pos) < M.range * cs; })) { es.alert = { at: t, text: T.letter + " · " + T.K.name + " turning on ship " + pno }; self.sqSay("sqHunted", prey.g, { L: T.letter, what: self.sqWhat(T) }, "warn"); }
+          if (pno && pno !== T.hunt && !ours.some(function (o) { return o !== prey && dist(o.pos, prey.pos) < M.range * cs; })) { es.alert = { at: t, text: T.letter + " · " + T.K.name + " turning on " + prey.g.name }; self.sqSay("sqHunted", prey.g, { L: T.letter, what: self.sqWhat(T) }, "warn"); }
           T.hunt = pno;
           if (prey) { want = bearing(T.pos, prey.pos); if (pd < T.K.standOff * T.K.range * cs) sp = 0; }
         } else if (T.K.patrol && victim) {
@@ -987,7 +998,7 @@
       var hurt = es.wing.filter(function (g) { return g.hull > 0 && t - (g.hitAt === undefined ? -99 : g.hitAt) < 3; }), live = this.sqLive();
       if (hurt.length && live.length > 1) {
         var who = hurt[Math.floor(this.sqRng.next() * hurt.length)], by = live.filter(function (g) { return g !== who; });
-        this.sqSay("sqCross", by[Math.floor(this.sqRng.next() * by.length)], { other: RQ.call[who.no] || "ship " + who.no });
+        this.sqSay("sqCross", by[Math.floor(this.sqRng.next() * by.length)], { other: who.name });
       } else if (live.length) this.sqSay("sqBusy", live[Math.floor(this.sqRng.next() * live.length)]);
     }
     es.fx = es.fx.filter(function (f) { return t - f.at < 0.4; });
@@ -1070,7 +1081,7 @@
     if (g.hull > 0 && g.hull <= 0.25 * g.hullMax && !g.saidLow) { g.saidLow = g.saidHalf = true; this.sqSay("sqHullLow", g, null, "warn", true); }
     else if (g.hull > 0 && g.hull <= 0.5 * g.hullMax && !g.saidHalf) { g.saidHalf = true; this.sqSay("sqHullHalf", g, null, "warn"); }
   };
-  /* Squadron radio (Nov 2, 2026): the captains' calls (BL.CHATTER sq...; {ship} is "Ship n"),
+  /* Squadron radio (Nov 2, 2026): the captains' calls (BL.CHATTER sq...; {ship} is her name),
      the more of them the hotter the fight. A routine call waits a gap after the last one (shorter
      the more targets are firing on us and ships are hurt: BL.COMMAND.squad.radio) and the ship's
      own gap; a `must` call (a hull failing, a ship lost, the objective down) always goes out. */
@@ -1083,7 +1094,7 @@
       if (g && t - (g.saidAt === undefined ? -99 : g.saidAt) < R.shipGap) return;
     }
     this.sqRng = this.sqRng || BL.rng(((m.seed ^ 0x2545f491) >>> 0) || 1);
-    var v = Object.assign({ ship: g ? "Ship " + g.no : "" }, vars || {});
+    var v = Object.assign({ ship: g ? g.name : "" }, vars || {});
     this.sqLines = this.sqLines || {};
     var pick = this.sqRng.pick(lines);
     if (pick === this.sqLines[key] && lines.length > 1) pick = lines[(lines.indexOf(pick) + 1) % lines.length];     // (not the same line twice running)
@@ -1109,23 +1120,23 @@
       if (d <= M.range * cs) ours += self.gunsBear(o.pos, o.hdg, T.pos);
       if (d <= T.K.range * cs) theirs = Math.max(theirs, self.enemyGunsOn(T, o.pos));
     });
-    var sent = this.escort.wing.filter(function (g) { var o = self.orderOf(g); return g.hull > 0 && o.kind === "target" && o.id === T.id; }).map(function (g) { return g.no; });
-    if (this.flagGo && this.flagGo.kind === "target" && this.flagGo.id === T.id) sent.unshift(1);
+    var sent = this.escort.wing.filter(function (g) { var o = self.orderOf(g); return g.hull > 0 && o.kind === "target" && o.id === T.id; }).map(function (g) { return g.name; });
+    if (this.flagGo && this.flagGo.kind === "target" && this.flagGo.id === T.id) sent.unshift(this.flagName);
     return { letter: T.letter, name: T.unknown && !T.seen && !T.last ? "Unknown contact" : T.K.name, known: !T.unknown || T.seen || !!T.last, seen: T.seen,
       pct: Math.round(100 * T.hp / T.hpMax), dead: T.dead, objective: !!T.K.objective, moves: !!T.K.speed, guns: T.K.guns.reduce(function (a, g) { return a + g[2]; }, 0),
-      range: T.K.range, on: T.victim === null ? null : T.victim === 0 ? "the flagship" : "ship " + T.victim, sent: sent, ours: ours, theirs: theirs };
+      range: T.K.range, on: T.victim === null ? null : T.victim === 0 ? this.flagName + " (the flagship)" : (this.escort.wing.filter(function (g) { return g.no === T.victim; })[0] || {}).name, sent: sent, ours: ours, theirs: theirs };
   };
   // The squadron's ships for the screens: number, captain, hull, shields and what she's doing.
   Captain.prototype.squadView = function () {
     var es = this.escort, t = this.m.totalT, self = this;
     if (!es || !es.flag) return null;
-    return { form: es.form, alert: es.alert ? es.alert.text : null, flag: this.flagCaptain, flagGo: this.flagGo,
+    return { form: es.form, alert: es.alert ? es.alert.text : null, flag: this.flagCaptain, flagName: this.flagName, flagGo: this.flagGo,
       ships: es.wing.map(function (g) {
         var o = self.orderOf(g), T = o.kind === "target" ? self.sqTargets && self.sqTargets[o.id] : null;
         var doing = g.left ? "left behind" : g.hull <= 0 ? "lost" : o.kind === "target" ? (T && !T.dead ? "→ " + T.letter + " " + T.K.name.toLowerCase() : "target gone") : o.kind === "spot" ? "→ a spot" : "in formation";
         if (g.hull > 0 && o.kind === "form" && g.pos && dist(g.pos, self.slotAt(g, g.form)) > BL.COMMAND.escort.near * self.map().D * 3) doing = "forming up";
         if (g.hull > 0 && g.hold) doing += " · holding fire";
-        return { no: g.no, cap: g.cap, hull: g.hull / g.hullMax, sh: g.sh / g.shMax, doing: doing, live: g.hull > 0, order: o.kind, pend: g.pend.length > 0, progress: self.sqProgress(g), kills: g.kills, hold: g.hold };
+        return { no: g.no, name: g.name, cap: g.cap, hull: g.hull / g.hullMax, sh: g.sh / g.shMax, doing: doing, live: g.hull > 0, order: o.kind, pend: g.pend.length > 0, progress: self.sqProgress(g), kills: g.kills, hold: g.hold };
       }) };
   };
 
@@ -1554,7 +1565,7 @@
     if (es && es.flag) {
       r.captain.squad = { n: es.n, home: sqHome, lost: es.wing.filter(function (g) { return g.hull <= 0 && !g.left; }).length, left: es.wing.filter(function (g) { return g.left; }).length,
         kills: st.sqKills, targets: sqAll.length, targetsDown: sqDownAll, objectives: sqObj.length, objectivesDown: sqObjDown, flagWaves: sqAll.reduce(function (a, T) { return a + T.waves; }, 0), flagBridge: st.flagBridge, flag: c.flagCaptain.name,
-        ships: es.wing.map(function (g) { return { no: g.no, name: g.cap.name, hull: Math.round(100 * g.hull / g.hullMax), kills: g.kills, left: g.left }; }) };
+        flagName: this.flagName, ships: es.wing.map(function (g) { return { no: g.no, ship: g.name, name: g.cap.name, hull: Math.round(100 * g.hull / g.hullMax), kills: g.kills, left: g.left }; }) };
     } else if (c.escort) {
       r.captain.escort = { kind: es.kind, name: es.W.name, hull: Math.round(100 * es.hull / es.hullMax), ships: es.ships.length, afloat: afloat, torps: st.wardTorps, calls: st.wardCalls, covers: st.covers, covered: st.covered,
         squad: es.wing.length + 1, wingLost: es.wing.filter(function (g) { return g.hull <= 0; }).length, wingStops: st.wingStops,

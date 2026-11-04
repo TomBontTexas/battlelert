@@ -38,6 +38,7 @@
     this.seed = opts.seed || BL.randomSeed();
     this.rng = BL.rng(this.seed);
     this.data = BL.shipFor(opts.classId || "destroyer", opts.tl);
+    this.shipName = opts.shipName || null;          // (the job's ship, "INS Fletcher"; none in a test)
     this.cfg = Object.assign({}, BL.MISSION, { jumps: this.data.mission.jumps, jumpWindowAt: this.data.mission.windows });
     this.phys = BL.PHYSICS;
     this.dt = 1 / BL.TICK_RATE;

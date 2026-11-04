@@ -950,8 +950,8 @@
              // The captains' radio (Captain.sqSay): seconds between routine calls [calm, a target
              // firing on us or a ship hurt, 3 or more], a ship's own gap, a hit counts as new after
              // `fresh` s quiet; captains talk to each other with `cross[0]` or more firing or hurt,
-             // every cross[1] s; what they call each other.
-             radio: { gap: [6, 3, 1.5], shipGap: 4, fresh: 8, cross: [2, [7, 12]], call: { 2: "Two", 3: "Three", 4: "Four", 5: "Five", 6: "Six" } },
+             // every cross[1] s.
+             radio: { gap: [6, 3, 1.5], shipGap: 4, fresh: 8, cross: [2, [7, 12]] },
              map: { window: 1.5, sensor: 55, reportOff: 10, range: 16, close: 0.75, gunDps: 0.1, enemyDps: 3, shield: 0.08, ambush: 0.6,
                     targets: [3, 4], unknown: [1, 2], letters: "ABCDEFGH",
                     kinds: {
@@ -1148,8 +1148,8 @@
     helmReq:     ["Gunner {n}: Captain, nothing in my arc. Target {side}."],     // to the captain, who orders the helm
     jumpNoticeH: ["Navigation: warp window in {t} s. Warp heading {hdg}."],     // reports; the captain orders the heading
     jumpHeading: ["Navigation: drive's full. We're off the warp heading."],
-    // The squadron's radio (Nov 2, 2026; Captain.sqSay): the wing captains ({ship}: "Ship 2"), {L} a target's letter,
-    // {what} "a raider pack", {the} "the raider pack", {name} "raider pack", {other} another ship ("Three").
+    // The squadron's radio (Nov 2, 2026; Captain.sqSay): the wing captains ({ship}: her name, "Johnston"), {L} a target's
+    // letter, {what} "a raider pack", {the} "the raider pack", {name} "raider pack" (sqLost: the ship's), {other} another ship's name.
     sqAck:       ["{ship}: aye, going after {L}.", "{ship}: copy, {the} at {L}.", "{ship}: on my way to {L}."],
     sqAckSpot:   ["{ship}: aye, moving to the spot.", "{ship}: copy, on my way."],
     sqAckForm:   ["{ship}: rejoining the formation.", "{ship}: aye, falling in."],
@@ -1167,7 +1167,7 @@
     sqHullLow:   ["{ship}: she can't take much more!", "{ship}: hull's failing! We need help!"],
     sqKill:      ["{ship}: {L} destroyed!", "{ship}: scratch one {name}!", "{ship}: {L} is breaking up!"],
     sqKillT:     ["Tactical: {L} destroyed.", "Tactical: {L} breaking up."],
-    sqLost:      ["Tactical: we lost ship {n}!", "Tactical: ship {n} is gone!"],
+    sqLost:      ["Tactical: we lost {name}!", "Tactical: {name} is gone!"],
     sqObjective: ["Tactical: the depot is down! Objective complete."],
     sqCross:     ["{ship}: {other}, you've got one on you!", "{ship}: hang on, {other}, I'm coming!", "{ship}: {other}, watch your flank!", "{ship}: {other}, get out of there!"],
     sqBusy:      ["{ship}: they're everywhere!", "{ship}: keep it together, people!", "{ship}: this is getting hot!"],

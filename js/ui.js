@@ -159,7 +159,7 @@
     // A Command job: the crew from the roster (the crew screen's picks, else the suggestion).
     var rcrew = null;
     if (j.captain && !j.test && career && BL.roster) { j.crewUsed = BL.roster.crewOf(career, j, true); rcrew = BL.roster.forMission(career, j.crewUsed); }
-    sim = new BL.Mission({ seed: j.seed, crew: rcrew, classId: j.classId, tl: j.tl, gunner: guns, helm: !!j.helm, captain: !!j.captain, flag: !!j.flag, escort: !!j.escort, escortKind: j.escortKind || null, test: !!j.test, sweep: j.test && j.classId === "gunboat" && !!guns && !j.escort,
+    sim = new BL.Mission({ seed: j.seed, crew: rcrew, classId: j.classId, tl: j.tl, shipName: j.test ? null : j.ship, gunner: guns, helm: !!j.helm, captain: !!j.captain, flag: !!j.flag, escort: !!j.escort, escortKind: j.escortKind || null, test: !!j.test, sweep: j.test && j.classId === "gunboat" && !!guns && !j.escort,
       route: story ? story.systems : null, reports: story ? story.reports.map(storyText) : null,
       world: story ? ((story.briefing || "").match(/(industrial|military|transportation|reclamation) world/) || [])[1] : null });
     if (j.test) $("seed-input").value = j.seed;
@@ -214,8 +214,8 @@
     var sqv = sim.flag && sim.captain.squadView();
     $("brief-squad").hidden = !sqv;
     if (sqv) $("brief-squad").innerHTML = "<b>The squadron:</b> " + (sqv.ships.length + 1) + " " + cls.name.toLowerCase() + "s in " + BL.COMMAND.squad.formations[sqv.form].name.toLowerCase() + ". " +
-      "Flag captain: " + esc(sqv.flag.name) + ", " + sqv.flag.label + " (skill " + Math.round(sqv.flag.skill * 100) + "), " + sqv.flag.temper + " temper. " +
-      sqv.ships.map(function (x) { return "Ship " + x.no + ": " + esc(x.cap.name) + ", " + x.cap.label + " (" + Math.round(x.cap.skill * 100) + "), " + x.cap.temper; }).join(" · ") +
+      "1 " + esc(sqv.flagName) + ", the flagship: flag captain " + esc(sqv.flag.name) + ", " + sqv.flag.label + " (skill " + Math.round(sqv.flag.skill * 100) + "), " + sqv.flag.temper + " temper. " +
+      sqv.ships.map(function (x) { return x.no + " " + esc(x.name) + ": " + esc(x.cap.name) + ", " + x.cap.label + " (" + Math.round(x.cap.skill * 100) + "), " + x.cap.temper; }).join(" · ") +
       ". Each system's map shows the enemy's targets: destroy its objective, the supply depot, before the squadron warps on, or the mission fails. Send ships to targets or spots on the map; an order takes each captain a few seconds to carry out, longer the lower his skill.";
     $("brief-sweep").hidden = sim.route.indexOf("sweep") < 0;
     if (gunner) {
@@ -1547,12 +1547,12 @@
     // (the flagship's line: her flag captain, hull and shields, what she's doing)
     var sh = sim.sys("shield"), fh = Math.round(100 * sim.ship.hull / sim.ship.hullMax), fg = c.flagGo, fT = fg && fg.kind === "target" ? c.sqTargets[fg.id] : null;
     var fdo = fT ? "→ " + fT.letter + " " + fT.K.name.toLowerCase() : fg ? "→ a spot" : "flagship · on " + (c.helmView().own ? "your course" : "the plot");
-    var flagLn = '<button data-sel="1" class="flagrow' + (sqSel.indexOf(1) >= 0 ? " sel" : "") + '" title="The flagship: ' + esc(v.flag.name) + ', your flag captain. Tap to select her (1)"' + (live ? "" : " disabled") + "><b>1</b> " + esc(v.flag.last) + " " + fh + "% · sh " + Math.round(100 * sh.mj / sh.maxMJ) + "%<br><span>" + fdo + "</span>" +
+    var flagLn = '<button data-sel="1" class="flagrow' + (sqSel.indexOf(1) >= 0 ? " sel" : "") + '" title="The flagship: ' + esc(v.flag.name) + ', your flag captain. Tap to select her (1)"' + (live ? "" : " disabled") + "><b>1</b> " + esc(v.flagName) + " " + fh + "% · sh " + Math.round(100 * sh.mj / sh.maxMJ) + "%<br><span>" + fdo + "</span>" +
       '<i class="' + (fh < 35 ? "low" : "") + '" style="width:' + fh + '%"></i></button>';
     cpHtml("cp-sq-ships", flagLn + v.ships.map(function (x) {
       var h = Math.round(x.hull * 100), sel = sqSel.indexOf(x.no) >= 0;
       return '<button data-sel="' + x.no + '" class="' + (x.live ? "" : "lost") + (sel ? " sel" : "") + (x.pend ? " pend" : "") + '" title="' + esc(x.cap.name) + ", " + x.cap.label + " (skill " + Math.round(x.cap.skill * 100) + "), " + x.cap.temper + " temper" +
-        (x.live ? ". Tap to select her (" + x.no + ")" : "") + '"' + (x.live && live ? "" : " disabled") + "><b>" + x.no + "</b> " + esc(x.cap.last) + (x.live ? " " + h + "%" : "") + "<br><span>" + esc(x.doing) + "</span>" +
+        (x.live ? ". Tap to select her (" + x.no + ")" : "") + '"' + (x.live && live ? "" : " disabled") + "><b>" + x.no + "</b> " + esc(x.name) + (x.live ? " " + h + "%" : "") + "<br><span>" + esc(x.doing) + "</span>" +
         (x.live ? '<i class="' + (h < 35 ? "low" : "") + '" style="width:' + h + '%"></i>' : "") + "</button>";
     }).join(""));
     var any = sqSel.length > 0;
@@ -1569,7 +1569,7 @@
       cpHtml("cp-sq-card", "<b>" + tv.letter + " · " + esc(tv.name) + "</b>" + (tv.objective ? " · objective" : "") + "<br>" +
         (tv.dead ? "Destroyed" : (tv.seen ? "Seen" : tv.known ? "Pickets' report" : "Not in the report") + " · " + (tv.known ? tv.pct + "% strength" : "strength unknown") + "<br>" +
         (tv.known ? (tv.moves ? "Moves" : "Fixed") + " · " + tv.guns + " guns · range " + tv.range + "<br>" : "") +
-        (tv.on ? "Firing on " + tv.on + "<br>" : "") + "Sent: " + (tv.sent.length ? "ship" + (tv.sent.length > 1 ? "s " : " ") + tv.sent.join(", ") : "none") +
+        (tv.on ? "Firing on " + tv.on + "<br>" : "") + "Sent: " + (tv.sent.length ? tv.sent.map(esc).join(", ") : "none") +
         (tv.seen ? '<br>Guns bearing: <span class="num ours">' + tv.ours + '</span> vs <span class="num theirs">' + tv.theirs + "</span>" : "")));
     }
     var eng = c.helmView().eng;
@@ -2127,7 +2127,7 @@
     var c = sim.captain, pre = c.preOrders[plotEd.i], ts = c.sqMaps[plotEd.i];
     $("pl-squad").innerHTML = '<div class="ps-hd">YOUR SHIPS · tap to send one to a target</div>' + c.sqLive().map(function (g) {
       var T = pre[g.no] !== undefined ? ts[pre[g.no]] : null;
-      return '<button data-pre="' + g.no + '"><b>' + g.no + "</b> " + esc(g.cap.last) + " → " + (T ? T.letter + " " + T.K.name.toLowerCase() : "in formation") + "</button>";
+      return '<button data-pre="' + g.no + '"><b>' + g.no + "</b> " + esc(g.name) + " → " + (T ? T.letter + " " + T.K.name.toLowerCase() : "in formation") + "</button>";
     }).join("") + '<div class="muted small-text">The objective is the depot (gold). The flagship flies your course. "?" are contacts the pickets missed.</div>';
   }
   // A new plot: straight to the approach point, then in along the jump heading.
@@ -2237,7 +2237,7 @@
     var v = sim.flag && sim.captain.squadView();
     if (!v) return "";
     var ts = sim.captain.sqTargets || [], down = ts.filter(function (T) { return T.dead; }).length, obj = ts.filter(function (T) { return T.K.objective; })[0];
-    return "<li>Squadron: " + v.ships.map(function (x) { return "ship " + x.no + " " + (x.live ? Math.round(x.hull * 100) + "%" : x.doing); }).join(", ") + "</li>" +
+    return "<li>Squadron: " + v.ships.map(function (x) { return esc(x.name) + " " + (x.live ? Math.round(x.hull * 100) + "%" : x.doing); }).join(", ") + "</li>" +
       "<li>Targets destroyed: " + down + " of " + ts.length + (obj ? " · the objective (" + obj.letter + ") " + (obj.dead ? "destroyed" : "still standing") : "") + "</li>";
   }
   function debriefCaptain(r) {
@@ -2280,7 +2280,7 @@
       ["Torpedoes at the " + cp.escort.name, cp.escort.calls + " bursts: " + cp.escort.covers + " covered (" + cp.escort.covered + " torpedoes taken on our shields), " + cp.escort.torps + " hit her"]] : []).concat(cp.squad ? [
       ["Squadron", cp.squad.home + " of " + cp.squad.n + " ships home" + (cp.squad.lost ? ", " + cp.squad.lost + " lost" : "") + (cp.squad.left ? ", " + cp.squad.left + " left behind" : "")],
       ["Flag captain", esc(cp.squad.flag) + (cp.squad.flagBridge ? " (you took his bridge: once a mission −1 squadron reputation, −1 morale to him)" : "")],
-      ["Captains", cp.squad.ships.map(function (x) { return "Ship " + x.no + " " + esc(x.name) + ": " + (x.left ? "left behind" : x.hull > 0 ? "hull " + x.hull + "%" : "lost") + ", " + x.kills + " kills"; }).join(" · ")],
+      ["Captains", cp.squad.ships.map(function (x) { return esc(x.ship) + " (" + esc(x.name) + "): " + (x.left ? "left behind" : x.hull > 0 ? "hull " + x.hull + "%" : "lost") + ", " + x.kills + " kills"; }).join(" · ")],
       ["Targets destroyed", cp.squad.targetsDown + " of " + cp.squad.targets + " (objectives " + cp.squad.objectivesDown + " of " + cp.squad.objectives + "); " + cp.squad.kills + " finished off by the other ships"]] : []).concat([
       ["Enemy ships destroyed by your crew", cp.kills + " / " + cp.ships],
       ["Torpedoes shot down", cp.downed],
