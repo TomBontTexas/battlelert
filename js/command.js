@@ -1051,29 +1051,38 @@
     var m = this.m, h = m.helm, H = BL.HELM, C = h.C, K = BL.COMMAND, S = BL.COMMAND.squad.station;
     var vFull = h.gOf("full") * K.scale, vFlank = h.gOf("flank") * K.scale, top = C.top, build = C.build;
     var d = dist(g.pos, goal), gh = goal.hdg !== undefined ? goal.hdg : this.escort.hdg, want, cmd;
-    var cap = vf > vFull * 0.99 ? vFlank : vFull;
+    var cap = vf > vFull * 0.99 ? vFlank : vFull, tau = H.engineTau + H.engineLagTau * C.lag + H.speedTau;
+    g.v = g.v === undefined ? 0 : g.v;
+    // (she judges the gap by where she'll be once her engines have answered, `tau` s on: a big ship
+    // slowing late no longer runs past her station and has to drop back)
+    var brg = bearing(g.pos, goal), closing = g.v * Math.cos(norm(g.hdg - brg) * RAD);
     if (inForm && d > S.far * (this.escort.stD || 1)) {
       // (well off her station: straight for it, easing off as she nears it)
-      want = bearing(g.pos, goal); cmd = Math.min(cap, vf + S.close * d);
+      closing -= vf * Math.cos(norm(gh - brg) * RAD);
+      want = brg; cmd = clamp(vf + S.close * (d - closing * tau), 0, cap);
     } else if (inForm) {
       // (along: how far her station is ahead of her on its heading; the aim point leads it)
       var dx = goal.x - g.pos.x, dy = goal.y - g.pos.y, al = dx * Math.sin(gh * RAD) + dy * Math.cos(gh * RAD), lat = Math.abs(dx * Math.cos(gh * RAD) - dy * Math.sin(gh * RAD));
       var lead = Math.max(this.escort.stD || 1, vf * S.lead), aim = along(goal, gh, lead);
+      al -= (g.v * Math.cos(norm(g.hdg - gh) * RAD) - vf) * tau;
       want = bearing(g.pos, aim);
       cmd = clamp(vf + S.close * (al + 0.3 * lat), 0, cap);
     } else {
       var near = BL.COMMAND.escort.near * this.map().D * 0.3;
-      want = d > near ? bearing(g.pos, goal) : gh;
-      cmd = d > near ? Math.min(vFull, S.close * d + vFull * 0.05) : 0;
+      want = d > near ? brg : gh;
+      cmd = d > near ? clamp(S.close * (d - closing * tau) + vFull * 0.05, 0, vFull) : 0;
     }
     // (she slows to turn when her bow is well off where she wants to go: no circling a station
     // inside her turning circle)
     cmd *= clamp(Math.cos(norm(want - g.hdg) * RAD), 0.1, 1);
     // (her engines spool and the ship eases to speed as the flagship's do)
-    g.v = g.v === undefined ? 0 : g.v;
-    g.v += (cmd - g.v) * (1 - Math.exp(-dt / (H.engineTau + H.engineLagTau * C.lag + H.speedTau)));
-    // (the turn: toward the heading wanted, no faster than her top rate, building at her class's rate)
-    var omWant = clamp(norm(want - g.hdg) * S.turnGain, -top, top);
+    g.v += (cmd - g.v) * (1 - Math.exp(-dt / tau));
+    // (the turn: toward the heading wanted, no faster than her top rate, building at her class's rate.
+    // Nov 3, 2026, TexasBont: "the really big ships tend to overcorrect": she eases off the turn on
+    // a square-root curve, as the flagship's autopilot does, so it dies away just as she comes on
+    // the heading; a big ship's slow build no longer swings her past it and back.)
+    var err = norm(want - g.hdg);
+    var omWant = (err < 0 ? -1 : 1) * Math.min(top, Math.abs(err) * S.turnGain, Math.sqrt(2 * build * S.ease * Math.abs(err)));
     g.om = (g.om || 0) + clamp(omWant - (g.om || 0), -build * dt, build * dt);
     g.hdg = to360(g.hdg + g.om * dt);
     g.pos = along(g.pos, g.hdg, g.v * dt);

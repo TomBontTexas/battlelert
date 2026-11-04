@@ -953,8 +953,9 @@
              station: { step: [0.15, 0.25], min: 0.6, max: 2, touch: 1.04, wander: 0.35, every: [20, 40], drift: 0.01, dress: 60,
                         // (keeping station, Captain.sqSteer: aim `lead` s of the flagship's run ahead of the
                         // station; speed closes the gap at `close` a second; turn rate `turnGain` x the heading
-                        // off; more than `far` station gaps off, straight for it)
-                        lead: 3, close: 0.5, turnGain: 1.5, far: 1.5 },
+                        // off, eased off by `ease` x her build rate so she stops the turn on the heading; more
+                        // than `far` station gaps off, straight for it)
+                        lead: 3, close: 0.5, turnGain: 1.5, ease: 0.8, far: 1.5 },
              gap: 0.025, clear: 0.06, lag: 2,
              // (in the battle view a squadron's ships sit `view` x farther from her than the map's scale
              // (Captain.kWing), so their stations on the map can be close without their shields
@@ -981,10 +982,11 @@
                     // by the squadron's guns (ships x guns), gunfire by one ship's hull and shields, so
                     // every class's fights last about as long as a destroyer squadron's.
                     // (Headless, squadron test bot, TL5 to 7, 18 missions each, wins, Nov 3, 2026, with every ship
-                    // handling as the flagship does: gunboat 12, picket 10, destroyer escort 11, destroyer 11, light
-                    // cruiser 13, cruiser 13, heavy cruiser 13, battleship 12, dreadnought 10.)
-                    classK: { gunboat: [0.26, 0.44], picket: [0.25, 0.57], destroyerEscort: [0.4, 0.6], destroyer: [0.9, 0.9], lightCruiser: [1.2, 1.1],
-                              cruiser: [2, 1.5], heavyCruiser: [2.8, 2.2], battleship: [2, 2.5], dreadnought: [1.2, 3] } } },
+                    // handling as the flagship does and easing her turns and her speed onto her station: gunboat 12,
+                    // picket 11, destroyer escort 11, destroyer 11, light cruiser 11, cruiser 12, heavy cruiser 12,
+                    // battleship 12, dreadnought 12.)
+                    classK: { gunboat: [0.24, 0.42], picket: [0.25, 0.57], destroyerEscort: [0.4, 0.6], destroyer: [0.9, 0.9], lightCruiser: [1.35, 1.15],
+                              cruiser: [2, 1.5], heavyCruiser: [2.8, 2.2], battleship: [2.3, 2.6], dreadnought: [1.2, 3] } } },
     // A picket's scouting run (the captain's path): `n` checkpoints of radius `r` (x the map's size)
     // to fly through in order, spread over `along` of the way to the jump point and `side` off it.
     // The navigator's plot keeps `slack` s in hand for each one.
