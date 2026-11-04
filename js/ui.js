@@ -1097,6 +1097,19 @@
       while (el.scrollWidth > el.clientWidth + 0.5 && size > 9) { size -= 1; el.style.fontSize = size + "px"; }
     });
   }
+  // A panel's button labels never cut off (Nov 3, 2026, TexasBont: ABREAST was, on the iPad, whose
+  // font is wider): a label that doesn't fit its button shrinks till it does. Measured again when the
+  // window's size changes (fitKey).
+  var fitKey = "";
+  function fitButtons(box) {
+    var key = innerWidth + "x" + innerHeight + ":" + box.offsetWidth + ":" + Array.prototype.filter.call(box.querySelectorAll(".cp-row button"), function (b) { return b.offsetParent; }).length;
+    if (key === fitKey || !box.offsetWidth) return; fitKey = key;
+    Array.prototype.forEach.call(box.querySelectorAll(".cp-row button"), function (b) {
+      b.style.fontSize = ""; if (!b.offsetParent) return;
+      var size = parseFloat(getComputedStyle(b).fontSize);
+      while (b.scrollWidth > b.clientWidth + 0.5 && size > 7) { size -= 0.5; b.style.fontSize = size + "px"; }
+    });
+  }
   function rate(h, s) { return s ? Math.round(100 * h / s) + "%" : "–"; }
   function frac(h, s) { return s ? "(" + h + "/" + s + ")" : ""; }
   function turretActive() { return running && sim && sim.turret && !paused && sim.phase !== "done" && $("ov-grav").hidden; }
@@ -1548,6 +1561,7 @@
     var stPend = v.ships.some(function (x) { return x.stPend; });
     $("cp-sq-close").disabled = !live || !v.canClose; $("cp-sq-open").disabled = !live || !v.canOpen; $("cp-sq-dress").disabled = !live;
     ["cp-sq-close", "cp-sq-open", "cp-sq-dress"].forEach(function (id) { $(id).classList.toggle("pend", stPend); });
+    fitButtons($("cp-sq-form").closest(".cp-side"));
     // (the flagship's line: her flag captain, hull and shields, what she's doing)
     var sh = sim.sys("shield"), fh = Math.round(100 * sim.ship.hull / sim.ship.hullMax), fg = c.flagGo, fT = fg && fg.kind === "target" ? c.sqTargets[fg.id] : null;
     var fdo = fT ? "→ " + fT.letter + " " + fT.K.name.toLowerCase() : fg ? "→ a spot" : "flagship · on " + (c.helmView().own ? "your course" : "the plot");
