@@ -942,8 +942,11 @@
              test: ["gunboat", "picket", "destroyerEscort", "destroyer", "lightCruiser", "cruiser", "heavyCruiser", "battleship", "dreadnought"],
              formations: {
                ahead: { name: "Line ahead", short: "LINE AHEAD", btn: "AHEAD", slots: [[180, 1], [180, 2], [180, 3], [180, 4], [180, 5]], trail: true },
+               // (Nov 3, 2026, TexasBont: "We have one for ahead where the flagship is in the front. I need one
+               // where he's in the back": the column ahead of her, on her heading)
+               rear: { name: "Line ahead, flagship in the rear", short: "FLAG IN REAR", btn: "REAR", slots: [[0, 1], [0, 2], [0, 3], [0, 4], [0, 5]] },
                abreast: { name: "Line abreast", short: "LINE ABREAST", btn: "ABREAST", slots: [[-90, 1], [90, 1], [-90, 2], [90, 2], [-90, 3]] } },
-             formationList: ["ahead", "abreast"], start: "ahead",
+             formationList: ["ahead", "rear", "abreast"], start: "ahead",
              // Station keeping (Nov 3, 2026, TexasBont: "sometimes the ships aren't equally spaced"):
              // CLOSE UP and OPEN OUT change the gap between stations by `step` (from `min` to `max`;
              // close up stops `touch` x the gap where the shields just clear); a captain wanders off
