@@ -506,9 +506,10 @@
     var g = this.wingOn(id); if (g) g.station = this.station;
     this.station = id; this.m.cue("tick");
   };
-  // A map point in the battle view (view units from us, the view's up = our heading).
-  Captain.prototype.toView = function (p, hdg) {
-    var R = this.m.turret.R, k = this.kView, b = (bearing(this.pos, p) - this.m.helm.compass()) * RAD, d = dist(this.pos, p) * k;
+  // A map point in the battle view (view units from us, the view's up = our heading); k: its scale
+  // (default kView).
+  Captain.prototype.toView = function (p, hdg, k) {
+    var R = this.m.turret.R; k = k || this.kView; var b = (bearing(this.pos, p) - this.m.helm.compass()) * RAD, d = dist(this.pos, p) * k;
     return { x: R.cx + Math.sin(b) * d, y: R.cy - Math.cos(b) * d, d: d, rot: norm((hdg || 0) - this.m.helm.compass()) };
   };
   // Where she is in the battle view: ship i of hers (her middle if none).
@@ -517,7 +518,9 @@
     return this.toView(s && s.pos ? s.pos : w.pos, w.hdg);
   };
   // Where wingman i is (on his station) in the battle view.
-  Captain.prototype.wingView = function (i) { var g = this.escort.wing[i]; return g ? this.toView(this.wingPos(g), g.pos ? g.hdg : this.escort.hdg) : null; };
+  Captain.prototype.wingView = function (i) { var g = this.escort.wing[i]; return g ? this.toView(this.wingPos(g), g.pos ? g.hdg : this.escort.hdg, this.kWing()) : null; };
+  // The battle view's scale for the escort's ships (a squadron's: BL.COMMAND.squad.view x kView).
+  Captain.prototype.kWing = function () { return this.kView * (this.escort && this.escort.flag ? BL.COMMAND.squad.view : 1); };
   // Where a wingman is on the map (his station or slot until he has moved).
   Captain.prototype.wingPos = function (g) { return g.pos || (this.escort.flag ? this.slotAt(g, g.form) : this.stationAt(g.station)); };
   // She sails her course like a ship: steering for a point `wardLead` x the map's size ahead of
@@ -730,7 +733,7 @@
     this.sqLeave = null;
     es.pos = { x: this.pos.x, y: this.pos.y }; es.hdg = map.start.hdg;
     // (a station gap keeps two ships' shields `clear` apart in the battle view)
-    es.stD = Math.max(Q.gap * map.D, this.kView ? (2 * Math.max(R.rx, R.ry) + Q.clear) / this.kView : 0);
+    es.stD = Math.max(Q.gap * map.D, this.kView ? (2 * Math.max(R.rx, R.ry) + Q.clear) / this.kWing() : 0);
     // (the flagship's track for LINE AHEAD: it starts as a straight line astern of her)
     es.trail = [{ x: this.pos.x, y: this.pos.y }, along(this.pos, es.hdg + 180, 8 * es.stD)];
     es.alert = null; es.fx = []; es.sel = null; this.flagGo = null;
@@ -758,7 +761,7 @@
   // The gap between stations at spacing s (CLOSE UP / OPEN OUT), never so close the shields touch.
   Captain.prototype.stationGap = function (s) {
     var es = this.escort, Q = BL.COMMAND.squad, R = this.m.turret.R, base = es.stD || Q.gap * this.map().D;
-    var touch = this.kView ? 2 * Math.max(R.rx, R.ry) / this.kView * Q.station.touch : 0;
+    var touch = this.kView ? 2 * Math.max(R.rx, R.ry) / this.kWing() * Q.station.touch : 0;
     return Math.max(touch, base * (s || 1));
   };
   // How far off her station a captain keeps (x her slot's distance): his temper, easing back in

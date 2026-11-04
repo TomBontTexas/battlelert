@@ -1500,7 +1500,7 @@
     // (SPEED: the squadron's engine order, flank at the top left down to stop)
     var spd = BRIDGE_ENG.slice().reverse().map(function (id) { var p = h.preset(id); return '<button data-eng="' + id + '" title="Squadron speed: all ' + p.name.toLowerCase() + ' (↑ ↓)">' + p.short + "</button>"; });
     $("cp-sq-speed1").innerHTML = sim.flag ? spd.slice(0, 3).join("") : ""; $("cp-sq-speed2").innerHTML = sim.flag ? spd.slice(3).join("") : "";
-    $("cp-sq-form").innerHTML = sim.flag ? K.squad.formationList.map(function (id) { return '<button data-form="' + id + '" title="' + K.squad.formations[id].name + ' (O)">' + K.squad.formations[id].short + "</button>"; }).join("") : "";
+    $("cp-sq-form").innerHTML = sim.flag ? K.squad.formationList.map(function (id) { return '<button data-form="' + id + '" title="' + K.squad.formations[id].name + ' (O)">' + K.squad.formations[id].btn + "</button>"; }).join("") : "";
     bridgeKeys = $("tu-keys").textContent; shipGrp = !$("cp-ship-grp").hidden;
     applyCmd();
   }
@@ -1674,7 +1674,8 @@
     var c = sim.captain, es = c.escort, M = BL.COMMAND.squad.map, cs = c.cs(), fp = fr.toPx(c.pos), mono = "ui-monospace, Menlo, Consolas, monospace";
     ctx.strokeStyle = "rgba(76,195,238,.35)"; ctx.lineWidth = 1; ctx.setLineDash([7, 7]); ctx.beginPath(); ctx.arc(fp.x, fp.y, M.sensor * cs * fr.s, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
     occ = occ || [];
-    [fp].concat(es.wing.filter(function (g) { return g.hull > 0; }).map(function (g) { return fr.toPx(c.wingPos(g)); })).forEach(function (q) { occ.push({ x0: q.x - 12, y0: q.y - 16, x1: q.x + 20, y1: q.y + 12 }); });
+    var shipPx = [fp].concat(es.wing.filter(function (g) { return g.hull > 0; }).map(function (g) { return fr.toPx(c.wingPos(g)); }));
+    shipPx.forEach(function (q) { occ.push({ x0: q.x - 12, y0: q.y - 16, x1: q.x + 20, y1: q.y + 12, ship: true }); });
     drawTargets(ctx, fr, c.sqTargets || [], big, c, false, occ);
     es.fx.forEach(function (f) { var a = fr.toPx(f.a), b = fr.toPx(f.b); ctx.strokeStyle = f.foe ? "rgba(255,107,107,.75)" : "rgba(127,216,200,.8)"; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); });
     function orderLine(from, goal) { var q = fr.toPx(goal); ctx.strokeStyle = "rgba(127,216,200,.6)"; ctx.lineWidth = 1.2; ctx.setLineDash([5, 5]); ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(q.x, q.y); ctx.stroke(); ctx.setLineDash([]); }
@@ -1686,10 +1687,23 @@
       if (o.kind !== "form") orderLine(gp, c.goalOf(g, at));
       BL.drawMapShip(ctx, gp, g.pos ? g.hdg : es.hdg, big ? 9 : 6, g.hold ? "#9aa6b2" : "#7fd8c8");
       if (sqSel.indexOf(g.no) >= 0) { ctx.strokeStyle = "#ffd666"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(gp.x, gp.y, big ? 13 : 10, 0, Math.PI * 2); ctx.stroke(); }
-      ctx.fillStyle = "rgba(207,227,255,.95)"; ctx.fillText("" + g.no, gp.x + 9, gp.y - 8);
+      shipNo("" + g.no, gp, "rgba(207,227,255,.95)");
     });
     if (sqSel.indexOf(1) >= 0) { ctx.strokeStyle = "#ffd666"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(fp.x, fp.y, big ? 14 : 11, 0, Math.PI * 2); ctx.stroke(); }
-    ctx.fillStyle = "#ffd666"; ctx.fillText("1", fp.x + 10, fp.y - 9);
+    shipNo("1", fp, "#ffd666");
+    // A ship's number in the first clear place round her (no text on other text, and off the
+    // other ships' markers as far as it can be).
+    function shipNo(s, q, col) {
+      var w = ctx.measureText(s).width, h = big ? 11 : 10, best = null, bo = Infinity;
+      [[9, -8], [9, 8], [-9 - w, -8], [-9 - w, 8], [-w / 2, -16], [-w / 2, 16], [14, 0], [-14 - w, 0]].forEach(function (d) {
+        var b = { x0: q.x + d[0] - 1, y0: q.y + d[1] - h / 2, x1: q.x + d[0] + w + 1, y1: q.y + d[1] + h / 2 };
+        var o = occ.reduce(function (a, z) { return z.ship ? a : a + 100 * Math.max(0, Math.min(b.x1, z.x1) - Math.max(b.x0, z.x0)) * Math.max(0, Math.min(b.y1, z.y1) - Math.max(b.y0, z.y0)); }, 0);
+        o += shipPx.reduce(function (a, z) { return a + Math.max(0, Math.min(b.x1, z.x + 7) - Math.max(b.x0, z.x - 7)) * Math.max(0, Math.min(b.y1, z.y + 7) - Math.max(b.y0, z.y - 7)); }, 0);
+        if (o < bo) { bo = o; best = b; }
+      });
+      ctx.fillStyle = col; ctx.fillText(s, best.x0 + 1, (best.y0 + best.y1) / 2);
+      occ.push({ x0: best.x0, y0: best.y0, x1: best.x1, y1: best.y1 });
+    }
   }
   var lastBridgeBox = {}, canBreakEver = true;
   var STATION_LIST = ["ahead", "port", "stbd", "astern"], STATION_SHORT = { ahead: "AHEAD", port: "PORT", stbd: "STBD", astern: "ASTERN" },
