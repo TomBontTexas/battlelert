@@ -950,7 +950,11 @@
              // his station by up to `wander` x (1 - his skill) (toward a new place every `every` s, at
              // `drift` of his slot's distance a second); DRESS THE LINE puts every ship back on her
              // exact station, and her temper creeps back over `dress` s.
-             station: { step: [0.15, 0.25], min: 0.6, max: 2, touch: 1.04, wander: 0.35, every: [20, 40], drift: 0.01, dress: 60 },
+             station: { step: [0.15, 0.25], min: 0.6, max: 2, touch: 1.04, wander: 0.35, every: [20, 40], drift: 0.01, dress: 60,
+                        // (keeping station, Captain.sqSteer: aim `lead` s of the flagship's run ahead of the
+                        // station; speed closes the gap at `close` a second; turn rate `turnGain` x the heading
+                        // off; more than `far` station gaps off, straight for it)
+                        lead: 3, close: 0.5, turnGain: 1.5, far: 1.5 },
              gap: 0.025, clear: 0.06, lag: 2,
              // (in the battle view a squadron's ships sit `view` x farther from her than the map's scale
              // (Captain.kWing), so their stations on the map can be close without their shields
@@ -976,10 +980,11 @@
                     // Per class, [target strength, target gunfire] x the destroyer squadron's: strength
                     // by the squadron's guns (ships x guns), gunfire by one ship's hull and shields, so
                     // every class's fights last about as long as a destroyer squadron's.
-                    // (Headless, squadron test bot, TL5 to 7, 18 missions each, wins: gunboat 12, picket 10, destroyer
-                    // escort 9, destroyer 11, light cruiser 11, cruiser 12, heavy cruiser 12, battleship 10, dreadnought 9.)
-                    classK: { gunboat: [0.25, 0.43], picket: [0.25, 0.57], destroyerEscort: [0.45, 0.65], destroyer: [1, 1], lightCruiser: [1.2, 1.1],
-                              cruiser: [2, 1.5], heavyCruiser: [2.8, 2.2], battleship: [2.6, 2.8], dreadnought: [1.4, 3.2] } } },
+                    // (Headless, squadron test bot, TL5 to 7, 18 missions each, wins, Nov 3, 2026, with every ship
+                    // handling as the flagship does: gunboat 12, picket 10, destroyer escort 11, destroyer 11, light
+                    // cruiser 13, cruiser 13, heavy cruiser 13, battleship 12, dreadnought 10.)
+                    classK: { gunboat: [0.26, 0.44], picket: [0.25, 0.57], destroyerEscort: [0.4, 0.6], destroyer: [0.9, 0.9], lightCruiser: [1.2, 1.1],
+                              cruiser: [2, 1.5], heavyCruiser: [2.8, 2.2], battleship: [2, 2.5], dreadnought: [1.2, 3] } } },
     // A picket's scouting run (the captain's path): `n` checkpoints of radius `r` (x the map's size)
     // to fly through in order, spread over `along` of the way to the jump point and `side` off it.
     // The navigator's plot keeps `slack` s in hand for each one.

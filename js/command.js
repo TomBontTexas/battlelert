@@ -906,7 +906,7 @@
       var dps = 0; tu.bats.forEach(function (b) { dps += b.w.damage / b.w.interval; });
       this.sqGun = dps / Math.max(1, tu.bats.length) * M.gunDps;       // (one gun's damage a second)
     }
-    var vmax = m.helm.gOf("full") * BL.COMMAND.scale, near = BL.COMMAND.escort.near * this.map().D;
+    var vf = m.helm.speed * BL.COMMAND.scale;          // (the flagship's speed: a ship in formation keeps it)
     // Our ships: orders reach them, shields recharge, they move to their goals.
     es.wing.forEach(function (g) {
       if (g.hull <= 0) return;
@@ -932,13 +932,8 @@
         if (t >= (g.driftAt || 0)) { g.driftTo = (self.sqDrift.next() * 2 - 1) * wmax; g.driftAt = t + self.sqDrift.range(ST.every); }
         g.drift += clamp((g.driftTo || 0) - g.drift, -ST.drift * dt, ST.drift * dt);
       }
-      if (!g.pos) { var s0 = self.slotAt(g, g.form); g.pos = { x: s0.x, y: s0.y }; g.hdg = es.hdg; }
-      var goal = self.goalOf(g, g.pos), d = dist(g.pos, goal), k = self.capK(g);
-      var want = d > near ? bearing(g.pos, goal) : goal.hdg !== undefined ? goal.hdg : es.hdg;
-      g.hdg = to360(g.hdg + clamp(norm(want - g.hdg), -BL.COMMAND.escort.wingTurn * k * dt, BL.COMMAND.escort.wingTurn * k * dt));
-      var v = vmax * (0.8 + 0.2 * k);
-      if (d > near) g.pos = along(g.pos, g.hdg, Math.min(d, v * dt * Math.max(0.2, Math.cos(norm(want - g.hdg) * RAD))));
-      else g.pos = along(g.pos, bearing(g.pos, goal), Math.min(d, v * dt));
+      if (!g.pos) { var s0 = self.slotAt(g, g.form); g.pos = { x: s0.x, y: s0.y }; g.hdg = es.hdg; g.v = vf; g.om = 0; }
+      self.sqSteer(g, self.goalOf(g, g.pos), g.order.kind === "form", vf, dt);
     });
     var ours = this.ourShips();
     // The targets: who sees whom, then each moves (hunters after the nearest of ours they see,
@@ -1045,6 +1040,43 @@
     }
     es.fx = es.fx.filter(function (f) { return t - f.at < 0.4; });
     if (es.alert && t - es.alert.at > 10) es.alert = null;
+  };
+  /* A ship of the squadron under way (Nov 3, 2026, TexasBont: "the squadron ships all have the same
+     performance characteristics as the flagship"): the flagship's class's top speed (full; flank
+     only to catch up with her formation), her engines' spool and the ship's ease to speed, her top
+     turn rate and how fast a turn builds. She steers smoothly: in formation, for a point a little
+     ahead of her station at the flagship's speed plus what closes the gap along it; sent to a
+     target or a spot, she slows as she gets there and turns to the heading wanted. */
+  Captain.prototype.sqSteer = function (g, goal, inForm, vf, dt) {
+    var m = this.m, h = m.helm, H = BL.HELM, C = h.C, K = BL.COMMAND, S = BL.COMMAND.squad.station;
+    var vFull = h.gOf("full") * K.scale, vFlank = h.gOf("flank") * K.scale, top = C.top, build = C.build;
+    var d = dist(g.pos, goal), gh = goal.hdg !== undefined ? goal.hdg : this.escort.hdg, want, cmd;
+    var cap = vf > vFull * 0.99 ? vFlank : vFull;
+    if (inForm && d > S.far * (this.escort.stD || 1)) {
+      // (well off her station: straight for it, easing off as she nears it)
+      want = bearing(g.pos, goal); cmd = Math.min(cap, vf + S.close * d);
+    } else if (inForm) {
+      // (along: how far her station is ahead of her on its heading; the aim point leads it)
+      var dx = goal.x - g.pos.x, dy = goal.y - g.pos.y, al = dx * Math.sin(gh * RAD) + dy * Math.cos(gh * RAD), lat = Math.abs(dx * Math.cos(gh * RAD) - dy * Math.sin(gh * RAD));
+      var lead = Math.max(this.escort.stD || 1, vf * S.lead), aim = along(goal, gh, lead);
+      want = bearing(g.pos, aim);
+      cmd = clamp(vf + S.close * (al + 0.3 * lat), 0, cap);
+    } else {
+      var near = BL.COMMAND.escort.near * this.map().D * 0.3;
+      want = d > near ? bearing(g.pos, goal) : gh;
+      cmd = d > near ? Math.min(vFull, S.close * d + vFull * 0.05) : 0;
+    }
+    // (she slows to turn when her bow is well off where she wants to go: no circling a station
+    // inside her turning circle)
+    cmd *= clamp(Math.cos(norm(want - g.hdg) * RAD), 0.1, 1);
+    // (her engines spool and the ship eases to speed as the flagship's do)
+    g.v = g.v === undefined ? 0 : g.v;
+    g.v += (cmd - g.v) * (1 - Math.exp(-dt / (H.engineTau + H.engineLagTau * C.lag + H.speedTau)));
+    // (the turn: toward the heading wanted, no faster than her top rate, building at her class's rate)
+    var omWant = clamp(norm(want - g.hdg) * S.turnGain, -top, top);
+    g.om = (g.om || 0) + clamp(omWant - (g.om || 0), -build * dt, build * dt);
+    g.hdg = to360(g.hdg + g.om * dt);
+    g.pos = along(g.pos, g.hdg, g.v * dt);
   };
   // Damage to a target from one of our other ships; true if that sank it. Fighting the flagship,
   // it lands on its wave's ships in the battle view.
@@ -1695,7 +1727,11 @@
         if (aim && (ord.kind !== "target" || ord.id !== aim.id) && !c.jumpOrdered) c.sendTo([g.no], aim.id);
       });
     }
-    if (c.jumpView().ready && !c.jumpOrdered) c.orderJump();
+    // (the warp waits for the objective, as a commander would, unless the flagship is badly hurt,
+    // or for 90 s after it could go)
+    var standing = c.sqGroups().some(function (T) { return T.K.objective; }), ready = c.jumpView().ready;
+    if (!ready) this.readyAt = null; else if (this.readyAt == null) this.readyAt = m.totalT;
+    if (ready && !c.jumpOrdered && (o.idle || !standing || m.ship.hull < 0.3 * m.ship.hullMax || m.isDrop() || m.totalT - this.readyAt > 90)) c.orderJump();
   };
   BL.runCaptainHeadless = function (seed, classId, tl, idle, extra) {
     classId = classId || "destroyer";
