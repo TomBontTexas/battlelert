@@ -266,8 +266,20 @@
       out.push(makeJob(rng, station, q, lowTL(q)));
       for (var i = rng.int([1, 2]); i > 0; i--) out.push(makeJob(rng, station, q, anyTL(rng, q)));
     }
+    if (cmd) squadronWork(c, rng, out);
     return out;
   }
+  /* Command: on every class below the one you command whose squadron isn't open yet (fewer than
+     BL.CAPTAINS.opens command successes), one job stays on offer, a requalifying job at half
+     reputation: a story mission you haven't flown there, else a plain one (TexasBont, Nov 4, 2026). */
+  function squadronWork(c, rng, out) {
+    for (var n = 1; n < qualified(c, "captain"); n++) {
+      if (!built("captain", n) || !built("squadron", n) || squadronOpen(c, n)) continue;
+      var m = storyLeft(c, "captain", n)[0];
+      out.push(m ? makeJob(rng, "captain", n, anyTL(rng, n), false, m) : makeJob(rng, "captain", n, lowTL(n), false));
+    }
+  }
+  function needsSquadronWork(c, n) { return n < qualified(c, "captain") && built("captain", n) && built("squadron", n) && !squadronOpen(c, n); }
   function offers(c, station) { return c.offersBy[station] || []; }
   // Every ship in a list of jobs is a different ship: a repeat gets a new name of its class and tech level.
   // A lost gunboat's PT number is never drawn again; a named ship lost in action comes back as a new
@@ -336,6 +348,7 @@
       offers.push(makeJob(rng, "captain", n, lowTL(n)));
       for (var i = rng.int([1, 2]); i > 0; i--) offers.push(makeJob(rng, "captain", n, anyTL(rng, n)));
     });
+    squadronWork(c, rng, offers);
     offers.sort(function (a, b) { return b.n - a.n || a.tl - b.tl; });
     c.offersBy.captain = uniqueShips(offers, rng, c);
     offeredBy(c, offers, rng);
@@ -399,6 +412,8 @@
   function refreshCommand(c) {
     var q = qualified(c, "captain"), list = offers(c, "captain");
     if (canCommand(c, q + 1) && !list.some(function (o) { return o.n === q + 1; })) generateOffers(c, "captain");
+    // (a class below yours still short of its squadron, with no job on it: drawn again)
+    else if (BL.CLASSES.some(function (k) { return needsSquadronWork(c, k.n) && !list.some(function (o) { return o.n === k.n; }); })) generateOffers(c, "captain");
     // (a squadron command newly open: the squadron offers are drawn again; command offers saved
     // before the named commodores get theirs)
     var sq = offers(c, "squadron");

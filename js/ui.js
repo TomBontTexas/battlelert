@@ -2940,6 +2940,9 @@
   function offerHtml(j, i) {
     var cls = BL.classByN(j.n), q = BL.career.qualified(career, j.station), up = j.n > q, rankName = BL.career.STATION_NAME[j.station];
     var tag = up ? '<span class="tag up">' + (q ? "STEP UP" : "FIRST QUALIFICATION") + "</span>" : !j.serious ? '<span class="tag low">REQUALIFYING</span>' : "";
+    // (a lower class's command job still short of its squadron: how far along)
+    if (j.station === "captain" && !up && career && j.n < q && !BL.career.squadronOpen(career, j.n))
+      tag += '<span class="tag">SQUADRON ' + BL.career.commandWins(career, j.n) + "/" + BL.CAPTAINS.opens + "</span>";
     if (j.escort) tag += '<span class="tag">ESCORT MISSION</span>';
     // Ship and hull number with the tech level; reputation; then who you'd serve with and the guns.
     // Crew: everyone at the other stations the job names (j.engineer, j.gunner, j.pilot, each
