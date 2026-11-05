@@ -20,6 +20,26 @@ ENC = {"raiders": "raiders", "interceptors": "interceptors", "siege line": "sieg
        "battleship group": "battleshipA", "homeworld fortress": "fortress"}
 REPORTERS = ("Tactical", "Navigation", "Engineering", "Damage control", "Bridge")
 
+# A report that names an enemy plays in the system that enemy is in (a mission's chatter is not
+# always in system order: "Interceptors approaching from astern" listed first on a mission whose
+# first system is a siege line); one naming an enemy the mission doesn't have is left out. The
+# other lines fill the systems left, in order. "" = no report in that system.
+NAMES = [("cruiserA", r"\bcruiser group|azurian cruiser"), ("battleshipA", r"\bbattleship group|azurian battleship"),
+         ("frigate", r"\bfrigate"), ("interceptors", r"\binterceptor"), ("raiders", r"\braider"), ("siege", r"\bsiege"),
+         ("hunters", r"\bdrive hunter|\bhunters?\b"), ("minefield", r"\bmine"), ("fortress", r"\bfortress")]
+def place(lines, systems):
+    out, rest = [""] * len(systems), []
+    for line in lines:
+        named = [k for k, rx in NAMES if re.search(rx, line, re.I)]
+        if not named: rest.append(line); continue
+        at = [i for i, s in enumerate(systems) if s in named or (s == "sweep" and "minefield" in named)]
+        free = [i for i in at if not out[i]]
+        if free: out[free[0]] = line
+    for line in rest:
+        free = [i for i in range(len(out)) if not out[i]]
+        if free: out[free[0]] = line
+    return out
+
 def parse(station, text):
     chapters, missions = {}, []
     for m in re.finditer(r"^CLASS (\d): .*\n(?:\w+-\d) \| Chapter: ([^|\n]+)", text, re.M):
@@ -40,11 +60,12 @@ def parse(station, text):
             assert name in ENC, (station, n, k, s)
             systems.append(ENC[name])
         assert len(systems) == 3, (station, n, k, systems)
-        reports = []
+        lines = []
         for line in f.get("CHATTER", []):
             who = line.split(":")[0]
             if who in REPORTERS and who != OWN[station] and not re.search(r"jump|warp|planet-buster", line, re.I):
-                reports.append(line)
+                lines.append(line)
+        reports = place(lines, systems)
         mission = {"id": "%s-%d-%d" % (station, n, k), "n": n, "k": k, "title": f["TITLE"][0],
                    "chapter": chapters.get(n, ""), "briefing": " ".join(f["BRIEFING"]), "systems": systems,
                    "after": " ".join(f.get("AFTER", [])), "lost": " ".join(f.get("IF LOST", [])), "reports": reports}

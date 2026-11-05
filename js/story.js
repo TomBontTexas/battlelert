@@ -23,7 +23,11 @@
    ],
    "after": "The gunboat returned to its carrier with the mission complete. Chief Verren noted your performance: \"Not bad, {hero}. You kept her running when it counted.\"",
    "lost": "The sortie failed, and the carrier recovered what remained of the operation.",
-   "reports": []
+   "reports": [
+    "",
+    "",
+    ""
+   ]
   },
   {
    "id": "engineer-1-2",
@@ -40,7 +44,9 @@
    "after": "The fleet has a passage through the minefield. Chief Verren congratulated your crew: \"Good work, {hero}. A lot of bigger ships owe you a drink.\"",
    "lost": "The attempt failed, leaving the approaches too dangerous for the advancing fleet.",
    "reports": [
-    "Tactical: Mine contacts ahead."
+    "Tactical: Mine contacts ahead.",
+    "",
+    ""
    ]
   },
   {
@@ -58,7 +64,9 @@
    "after": "The gunboat survived its encounters and returned to the carrier. Chief Verren reviewed the report: \"Three sorties against those devils. Good work keeping her alive, {hero}.\"",
    "lost": "The interceptors defeated the gunboat, leaving the forward formation exposed.",
    "reports": [
-    "Tactical: Multiple interceptor contacts."
+    "Tactical: Multiple interceptor contacts.",
+    "",
+    ""
    ]
   },
   {
@@ -76,7 +84,9 @@
    "after": "{ship} completed its reconnaissance and returned valuable reports. Chief Verren's message was brief: \"First independent patrol, {hero}. That's one you'll remember.\"",
    "lost": "The patrol failed, leaving the fleet without reliable information about the route.",
    "reports": [
-    "Tactical: Raider contacts detected."
+    "Tactical: Raider contacts detected.",
+    "",
+    ""
    ]
   },
   {
@@ -94,7 +104,9 @@
    "after": "The patrol identified the enemy approaches and returned its reports. Verren remarked, \"A scout that comes home is worth two that don't.\"",
    "lost": "Azurian forces prevented the patrol from completing its reconnaissance.",
    "reports": [
-    "Tactical: Multiple fast contacts."
+    "Tactical: Multiple fast contacts.",
+    "",
+    ""
    ]
   },
   {
@@ -112,7 +124,9 @@
    "after": "{ship} returned with intelligence on the raider deployments. Verren commented, \"Good work, {hero}. Being able to leave is half the battle.\"",
    "lost": "The enemy prevented the patrol from completing its assignment.",
    "reports": [
-    "Tactical: Raider contacts detected."
+    "Tactical: Raider contacts detected.",
+    "",
+    ""
    ]
   },
   {
@@ -130,7 +144,9 @@
    "after": "The escort completed its assignment, allowing the convoy to continue toward the front. Verren wrote, \"No headlines for keeping supplies moving. Just a fleet that can fight tomorrow.\"",
    "lost": "The escort failed, jeopardizing the convoy and its supplies.",
    "reports": [
-    "Tactical: Raiders approaching the convoy."
+    "Tactical: Raiders approaching the convoy.",
+    "",
+    ""
    ]
   },
   {
@@ -148,7 +164,9 @@
    "after": "The withdrawal route was secured, allowing the damaged vessels to escape. Verren observed, \"Sometimes the best victory is getting good men home.\"",
    "lost": "The escort failed to secure the withdrawal route.",
    "reports": [
-    "Tactical: Hostile contacts closing."
+    "Tactical: Hostile contacts closing.",
+    "",
+    ""
    ]
   },
   {
@@ -166,7 +184,9 @@
    "after": "The convoy reached its destination after the escort defeated the enemy attacks. Verren sent his congratulations: \"Keep doing work like that, {hero}, and the fleet might actually finish this war.\"",
    "lost": "The enemy broke the escort's defense, leaving the convoy exposed.",
    "reports": [
-    "Tactical: Enemy frigates detected."
+    "",
+    "Tactical: Enemy frigates detected.",
+    ""
    ]
   },
   {
@@ -184,7 +204,9 @@
    "after": "The destroyer completed its attack and opened the route for Imperial forces. Verren reported, \"You're not just keeping a ship alive anymore, {hero}. You're helping move a fleet.\"",
    "lost": "The destroyer failed to penetrate the Azurian defenses.",
    "reports": [
-    "Tactical: Enemy frigates ahead."
+    "Tactical: Enemy frigates ahead.",
+    "",
+    ""
    ]
   },
   {
@@ -202,7 +224,9 @@
    "after": "The enemy forward positions were broken. Imperial forces can now advance. Verren's congratulations carried a warning: \"Good work. Don't mistake one victory for the end of the war.\"",
    "lost": "The Azurians held their defensive positions and stopped the attack.",
    "reports": [
-    "Tactical: Continuous enemy fire detected."
+    "Tactical: Continuous enemy fire detected.",
+    "",
+    ""
    ]
   },
   {
@@ -220,7 +244,9 @@
    "after": "{ship} defeated the enemy formations and completed its assignment. Verren remarked, \"They tried to leave you stranded. You didn't give them the satisfaction.\"",
    "lost": "Azurian resistance stopped the destroyer's advance.",
    "reports": [
-    "Tactical: Drive hunters approaching."
+    "Tactical: Drive hunters approaching.",
+    "",
+    ""
    ]
   },
   {
@@ -238,7 +264,9 @@
    "after": "The enemy formations were defeated, allowing the fleet to continue its advance. Verren wrote, \"Good work, {hero}. A main gun is impressive, but not without the power to fire it.\"",
    "lost": "The light cruiser failed to break the Azurian defensive formations.",
    "reports": [
-    "Tactical: Enemy cruiser group ahead."
+    "",
+    "Tactical: Enemy cruiser group ahead.",
+    ""
    ]
   },
   {
@@ -256,7 +284,9 @@
    "after": "The enemy withdrew from the passage, clearing the route for Imperial forces. Verren observed, \"That's how you move a front line, {hero}. One stubborn ship at a time.\"",
    "lost": "The Azurians retained control of the passage and blocked the Imperial advance.",
    "reports": [
-    "Tactical: Enemy warships on approach."
+    "Tactical: Enemy warships on approach.",
+    "",
+    ""
    ]
   },
   {
@@ -274,7 +304,9 @@
    "after": "The defensive belt was broken. Imperial forces can now threaten the installations beyond it. Verren's message read, \"Good shooting takes power. You gave them what they needed.\"",
    "lost": "The enemy defensive belt held, preventing the light cruiser from completing its assault.",
    "reports": [
-    "Tactical: Siege line ahead."
+    "Tactical: Siege line ahead.",
+    "",
+    ""
    ]
   },
   {
@@ -292,7 +324,9 @@
    "after": "The cruiser completed its raid and returned with its operational reports. Verren wrote, \"A good cruiser gets out there. A good engineer brings her home.\"",
    "lost": "The enemy stopped the raid and jeopardized the cruiser's embarked forces.",
    "reports": [
-    "Tactical: Enemy contacts ahead."
+    "Tactical: Enemy contacts ahead.",
+    "",
+    ""
    ]
   },
   {
@@ -310,7 +344,9 @@
    "after": "The raid disrupted Azurian reinforcements and weakened their defensive preparations. Verren observed, \"You're operating a long way from the nearest friendly dock. That's proper Navy work.\"",
    "lost": "Azurian forces defeated the raid, allowing their reinforcements to continue toward the frontier.",
    "reports": [
-    "Tactical: Enemy cruiser group detected."
+    "",
+    "Tactical: Enemy cruiser group detected.",
+    ""
    ]
   },
   {
@@ -328,7 +364,9 @@
    "after": "The cruiser completed its raid and withdrew from Azurian territory. Verren remarked, \"That's another enemy commander wondering where his patrol ships went.\"",
    "lost": "The enemy prevented the raid and retained control of its approaches.",
    "reports": [
-    "Tactical: Drive hunters approaching."
+    "",
+    "Tactical: Drive hunters approaching.",
+    ""
    ]
   },
   {
@@ -346,7 +384,9 @@
    "after": "The heavy cruiser defeated the enemy attacks and completed its operation. Verren wrote, \"They've stopped trying to win every battle. Now they're trying to wear us out.\"",
    "lost": "The enemy defeated the heavy cruiser and continued its attacks on Imperial formations.",
    "reports": [
-    "Tactical: Multiple interceptor contacts."
+    "Tactical: Multiple interceptor contacts.",
+    "",
+    ""
    ]
   },
   {
@@ -364,7 +404,9 @@
    "after": "The withdrawal route was secured, allowing the surviving Imperial vessels to escape. Verren sent a personal message: \"Saving ships is saving the men who'll fight the next battle.\"",
    "lost": "Azurian forces broke the holding action and threatened the withdrawing formation.",
    "reports": [
-    "Tactical: Enemy pursuit closing."
+    "Tactical: Enemy pursuit closing.",
+    "",
+    ""
    ]
   },
   {
@@ -382,7 +424,9 @@
    "after": "Imperial forces broke the outer defenses and gained another approach toward the Nest. Verren observed, \"They're fighting harder now, {hero}. That's what happens when there's nowhere left to run.\"",
    "lost": "The Azurians held their positions and stopped the attack.",
    "reports": [
-    "Tactical: Enemy formations ahead."
+    "Tactical: Enemy formations ahead.",
+    "",
+    ""
    ]
   },
   {
@@ -400,7 +444,9 @@
    "after": "The Imperial formation broke through the defensive line. Verren's message read, \"Two reactors, {hero}, and a battleship still standing. I'd call that a good day's work.\"",
    "lost": "The Azurian battle line stopped the Imperial advance.",
    "reports": [
-    "Tactical: Enemy battleships detected."
+    "Tactical: Enemy battleships detected.",
+    "",
+    ""
    ]
   },
   {
@@ -418,7 +464,9 @@
    "after": "The enemy concentration was defeated, allowing the Imperial offensive to continue. Verren remarked, \"That's one less enemy fleet standing between us and the end of this war.\"",
    "lost": "The Azurian counterattack disrupted the Imperial advance.",
    "reports": [
-    "Tactical: Enemy capital ships approaching."
+    "Tactical: Enemy capital ships approaching.",
+    "",
+    ""
    ]
   },
   {
@@ -436,6 +484,8 @@
    "after": "The battleship helped break the final outer defenses of the industrial region. Verren wrote, \"Whatever comes next, {hero}, you've earned your place in it.\"",
    "lost": "The enemy held the industrial approaches and halted the Imperial attack.",
    "reports": [
+    "",
+    "",
     "Tactical: Battleship group ahead."
    ]
   },
@@ -454,7 +504,9 @@
    "after": "The planet buster destroyed the Azurian industrial world. Starforce confirmed the loss of its major shipbuilding facilities. Chief Verren sent his final message: \"You kept her running, {hero}. The Navy won't forget that.\"",
    "lost": "Azurian defenses prevented the dreadnought from delivering its planet buster.",
    "reports": [
-    "Tactical: Enemy battleships ahead."
+    "Tactical: Enemy battleships ahead.",
+    "",
+    ""
    ]
   },
   {
@@ -472,7 +524,9 @@
    "after": "The dreadnought reached its firing position and destroyed the industrial world. Imperial Command announced a major victory. Verren's message read, \"You did your duty, {hero}. That's all any engineer can promise.\"",
    "lost": "The Azurian battle line stopped the dreadnought before it could deliver the weapon.",
    "reports": [
-    "Tactical: Enemy capital ships closing."
+    "Tactical: Enemy capital ships closing.",
+    "",
+    ""
    ]
   },
   {
@@ -490,7 +544,9 @@
    "after": "The planet buster struck its target, destroying the Azurian industrial world. The Navy celebrated its first decisive planet-buster victory. Verren's last message read, \"Well done, {hero}. Now let's hope they remember what this cost.\"",
    "lost": "Enemy resistance prevented the planet-buster strike, leaving the industrial world intact.",
    "reports": [
-    "Tactical: Drive hunters approaching."
+    "Tactical: Drive hunters approaching.",
+    "",
+    ""
    ]
   }
  ],
@@ -510,7 +566,9 @@
    "after": "The raider screen was disrupted and the gunboat returned to its carrier. Kest noted that you made every shot count.",
    "lost": "The raiders stopped the sortie and the gunboat failed to secure its approach.",
    "reports": [
-    "Tactical: Raider contacts ahead."
+    "Tactical: Raider contacts ahead.",
+    "",
+    ""
    ]
   },
   {
@@ -528,7 +586,9 @@
    "after": "A navigable lane was opened for the following ships. Kest congratulated you on doing the job without wasting a shot.",
    "lost": "The gunboat failed to help secure a safe route through the mines.",
    "reports": [
-    "Tactical: Mines detected ahead."
+    "Tactical: Mines detected ahead.",
+    "",
+    ""
    ]
   },
   {
@@ -546,7 +606,9 @@
    "after": "The gunboat survived three interceptor encounters. Kest called your shooting disciplined under pressure.",
    "lost": "The interceptor attacks defeated the sortie and exposed the carrier screen.",
    "reports": [
-    "Tactical: Interceptors closing fast."
+    "Tactical: Interceptors closing fast.",
+    "",
+    ""
    ]
   },
   {
@@ -564,7 +626,9 @@
    "after": "The patrol returned with reports and its weapons crew intact. Kest praised the accuracy of your contact reports.",
    "lost": "The patrol failed to return reliable information about the enemy approaches.",
    "reports": [
-    "Tactical: Raider contacts detected."
+    "Tactical: Raider contacts detected.",
+    "",
+    ""
    ]
   },
   {
@@ -582,7 +646,9 @@
    "after": "The patrol identified the raider threat and returned its report. Kest noted that you protected the ship’s escape capability.",
    "lost": "The raiders stopped the patrol before it completed its assignment.",
    "reports": [
-    "Tactical: Raider contacts detected."
+    "Tactical: Raider contacts detected.",
+    "",
+    ""
    ]
   },
   {
@@ -600,7 +666,9 @@
    "after": "The ship delivered its reconnaissance report. Kest observed that patient shooting often beats hurried shooting.",
    "lost": "The enemy drove the picket away before reconnaissance was complete.",
    "reports": [
-    "Tactical: Multiple fast contacts."
+    "Tactical: Multiple fast contacts.",
+    "",
+    ""
    ]
   },
   {
@@ -618,7 +686,9 @@
    "after": "The escort fought off the attackers and the convoy continued. Kest remarked that every saved transport matters.",
    "lost": "The escort failed to keep the Azurians away from the convoy.",
    "reports": [
-    "Tactical: Raiders bearing on the transports."
+    "Tactical: Raiders bearing on the transports.",
+    "",
+    ""
    ]
   },
   {
@@ -636,7 +706,9 @@
    "after": "The withdrawal succeeded and the surviving ships escaped. Kest quietly thanked the gun crews for keeping the pursuit back.",
    "lost": "Enemy pursuit broke the escort screen and endangered the withdrawing ships.",
    "reports": [
-    "Tactical: Pursuing contacts closing."
+    "Tactical: Pursuing contacts closing.",
+    "",
+    ""
    ]
   },
   {
@@ -654,7 +726,9 @@
    "after": "The convoy passed through the threatened corridor. Kest praised the gun crews for staying on assigned targets.",
    "lost": "Azurian forces broke the escort’s defense of the convoy.",
    "reports": [
-    "Tactical: Enemy frigates ahead."
+    "",
+    "Tactical: Enemy frigates ahead.",
+    ""
    ]
   },
   {
@@ -672,7 +746,9 @@
    "after": "The destroyer drove through the enemy screen. Kest called the coordinated gunfire a marked improvement over the early patrols.",
    "lost": "The enemy screen held and prevented the destroyer from advancing.",
    "reports": [
-    "Tactical: Frigates ahead."
+    "Tactical: Frigates ahead.",
+    "",
+    ""
    ]
   },
   {
@@ -690,7 +766,9 @@
    "after": "The destroyer broke the defenses and reported evidence of organized raptor tactics. Kest added the engagement data to her study of Varkesh.",
    "lost": "The Azurian defense stopped the destroyer’s attack.",
    "reports": [
-    "Tactical: Multiple contacts converging."
+    "Tactical: Multiple contacts converging.",
+    "",
+    ""
    ]
   },
   {
@@ -708,7 +786,9 @@
    "after": "The destroyer completed the attack and escaped the hunter screen. Kest commended your response to changing fire orders.",
    "lost": "Drive hunters and their escorts defeated the destroyer’s advance.",
    "reports": [
-    "Tactical: Drive hunters closing."
+    "Tactical: Drive hunters closing.",
+    "",
+    ""
    ]
   },
   {
@@ -726,7 +806,9 @@
    "after": "The light cruiser helped breach the defensive position. Kest remarked that one well-timed main-gun shot can decide an engagement.",
    "lost": "The enemy defense prevented the cruiser from opening the passage.",
    "reports": [
-    "Tactical: Enemy cruisers ahead."
+    "Tactical: Enemy cruisers ahead.",
+    "",
+    ""
    ]
   },
   {
@@ -744,7 +826,9 @@
    "after": "The approach was cleared for the following Imperial force. Kest praised your timing under pressure.",
    "lost": "Enemy formations closed the passage before the light cruiser could break through.",
    "reports": [
-    "Tactical: Cruiser crossing our bow."
+    "Tactical: Cruiser crossing our bow.",
+    "",
+    ""
    ]
   },
   {
@@ -762,7 +846,9 @@
    "after": "The defense belt broke and Imperial ships moved through the opening. Kest credited patient fire control for the result.",
    "lost": "The Azurian siege line repelled the assault.",
    "reports": [
-    "Tactical: Siege line ahead."
+    "Tactical: Siege line ahead.",
+    "",
+    ""
    ]
   },
   {
@@ -780,7 +866,9 @@
    "after": "The cruiser completed its raid and returned to Imperial space. Kest praised the gun crews for protecting their embarked comrades.",
    "lost": "Enemy forces stopped the cruiser and jeopardized its embarked gunboats.",
    "reports": [
-    "Tactical: Enemy contacts closing."
+    "Tactical: Enemy contacts closing.",
+    "",
+    ""
    ]
   },
   {
@@ -798,7 +886,9 @@
    "after": "The raid disrupted enemy movement along the route. Kest noted the importance of selecting threats rather than collecting kills.",
    "lost": "The Azurians halted the raid and maintained their movements.",
    "reports": [
-    "Tactical: Frigate group detected."
+    "Tactical: Frigate group detected.",
+    "",
+    ""
    ]
   },
   {
@@ -816,7 +906,9 @@
    "after": "The cruiser completed the raid and returned valuable tactical recordings. Kest found another familiar feature in the enemy attack pattern.",
    "lost": "The enemy formation repelled the cruiser and preserved its route.",
    "reports": [
-    "Tactical: Enemy contacts accelerating."
+    "Tactical: Enemy contacts accelerating.",
+    "",
+    ""
    ]
   },
   {
@@ -834,7 +926,9 @@
    "after": "The heavy cruiser defeated the screen and completed its task. Kest praised the gun crews for defending the ship without losing focus.",
    "lost": "Enemy attacks stopped the heavy cruiser’s advance.",
    "reports": [
-    "Tactical: Drive hunters detected."
+    "",
+    "Tactical: Drive hunters detected.",
+    ""
    ]
   },
   {
@@ -852,7 +946,9 @@
    "after": "The withdrawing formation escaped behind the heavy cruiser’s screen. Kest called the outcome a victory worth remembering.",
    "lost": "Enemy pursuit broke through and endangered the withdrawing vessels.",
    "reports": [
-    "Tactical: Pursuers closing."
+    "Tactical: Pursuers closing.",
+    "",
+    ""
    ]
   },
   {
@@ -870,7 +966,9 @@
    "after": "The outer defensive screen was broken. Kest observed that the Azurians fought with skill even as their position worsened.",
    "lost": "The defenders held their position and halted the Imperial attack.",
    "reports": [
-    "Tactical: Enemy formations ahead."
+    "Tactical: Enemy formations ahead.",
+    "",
+    ""
    ]
   },
   {
@@ -888,7 +986,9 @@
    "after": "The Imperial battle line broke the Azurian defense. Kest congratulated you on holding fire discipline against heavy targets.",
    "lost": "The enemy battle line stopped the Imperial advance.",
    "reports": [
-    "Tactical: Enemy battleships ahead."
+    "Tactical: Enemy battleships ahead.",
+    "",
+    ""
    ]
   },
   {
@@ -906,7 +1006,9 @@
    "after": "The counterattack concentration was disrupted. Kest said the defenders had fought much as Varkesh would have wanted.",
    "lost": "The Azurian counterattack prevented the Imperial formation from advancing.",
    "reports": [
-    "Tactical: Enemy capital ships maneuvering."
+    "Tactical: Enemy capital ships maneuvering.",
+    "",
+    ""
    ]
   },
   {
@@ -924,7 +1026,9 @@
    "after": "The fleet opened the approach after a hard capital-ship engagement. Kest thanked the gun crews for staying with the battle plan.",
    "lost": "The defensive formations held and stopped the Imperial force.",
    "reports": [
-    "Tactical: Siege batteries and capital ships ahead."
+    "Tactical: Siege batteries and capital ships ahead.",
+    "",
+    ""
    ]
   },
   {
@@ -942,7 +1046,9 @@
    "after": "The dreadnought reached its firing position and the planet buster destroyed the Azurian military world. Kest reported that the defense had broken, though Varkesh’s fate remained unconfirmed.",
    "lost": "Azurian defenses stopped the dreadnought before it could deliver the planet buster.",
    "reports": [
-    "Tactical: Battleship formation ahead."
+    "Tactical: Battleship formation ahead.",
+    "",
+    ""
    ]
   },
   {
@@ -960,7 +1066,9 @@
    "after": "The planet buster destroyed the military world after a costly defense was defeated. Kest called it a victory over Varkesh’s strategy, not proof of his death.",
    "lost": "The Azurian capital ships repelled the dreadnought’s strike.",
    "reports": [
-    "Tactical: Enemy cruisers and battleships ahead."
+    "Tactical: Enemy cruisers and battleships ahead.",
+    "",
+    ""
    ]
   },
   {
@@ -978,7 +1086,9 @@
    "after": "The planet buster destroyed the military world and the surviving Azurian defenders withdrew. Kest’s final report warned that pride would keep Varkesh dangerous wherever he remained.",
    "lost": "Enemy resistance defeated the dreadnought before the weapon could reach its target.",
    "reports": [
-    "Tactical: Drive hunters closing."
+    "Tactical: Drive hunters closing.",
+    "",
+    ""
    ]
   }
  ],
@@ -998,7 +1108,9 @@
    "after": "The gunboat completed its sorties and returned to the carrier. Renn praised your steady handling under pressure.",
    "lost": "The interceptors broke the gunboat screen before the assignment was completed.",
    "reports": [
-    "Tactical: Interceptors ahead."
+    "Tactical: Interceptors ahead.",
+    "",
+    ""
    ]
   },
   {
@@ -1016,7 +1128,9 @@
    "after": "The lane was opened and {ship} recovered aboard its carrier. Renn called your course discipline excellent.",
    "lost": "The mine-lane sortie failed and the fleet passage remained unsafe.",
    "reports": [
-    "Tactical: Mines detected ahead."
+    "Tactical: Mines detected ahead.",
+    "",
+    ""
    ]
   },
   {
@@ -1034,7 +1148,9 @@
    "after": "The carrier approaches remained clear and the gunboat recovered successfully. Renn noted that you resisted the enemy’s feints.",
    "lost": "The raiders forced the gunboat off its protective assignment.",
    "reports": [
-    "Tactical: Raider contacts closing."
+    "Tactical: Raider contacts closing.",
+    "",
+    ""
    ]
   },
   {
@@ -1052,7 +1168,9 @@
    "after": "The picket ship returned with its survey reports. Renn approved the disciplined approaches and timely withdrawals.",
    "lost": "The scouting route remained unverified after enemy forces stopped the patrol.",
    "reports": [
-    "Tactical: Interceptors approaching."
+    "",
+    "Tactical: Interceptors approaching.",
+    ""
    ]
   },
   {
@@ -1070,7 +1188,9 @@
    "after": "The patrol mapped the hostile approaches and carried the intelligence home. Renn noted your careful course control.",
    "lost": "The enemy prevented the picket ship from completing its reconnaissance.",
    "reports": [
-    "Tactical: Frigate contacts detected."
+    "",
+    "Tactical: Frigate contacts detected.",
+    ""
    ]
   },
   {
@@ -1088,7 +1208,9 @@
    "after": "The raider positions were reported to Fleet Command. Renn called the patrol a useful lesson in patience.",
    "lost": "Raiders prevented the scouting mission from returning its intelligence.",
    "reports": [
-    "Tactical: Raider contacts detected."
+    "Tactical: Raider contacts detected.",
+    "",
+    ""
    ]
   },
   {
@@ -1106,7 +1228,9 @@
    "after": "The convoy passed through its assigned route under escort. Renn commended your formation discipline.",
    "lost": "The escort failed to preserve the convoy’s passage.",
    "reports": [
-    "Tactical: Raiders closing on convoy."
+    "Tactical: Raiders closing on convoy.",
+    "",
+    ""
    ]
   },
   {
@@ -1124,7 +1248,9 @@
    "after": "The withdrawing ships escaped behind the escort. Renn said your helm work helped save experienced crews.",
    "lost": "The enemy broke the escort’s screen and endangered the withdrawal.",
    "reports": [
-    "Tactical: Enemy contacts overtaking us."
+    "Tactical: Enemy contacts overtaking us.",
+    "",
+    ""
    ]
   },
   {
@@ -1142,7 +1268,9 @@
    "after": "The supply ships reached their destination. Renn called the escort’s handling steady and professional.",
    "lost": "The Azurians stopped the convoy’s passage through the corridor.",
    "reports": [
-    "Tactical: Frigates ahead of convoy."
+    "",
+    "Tactical: Frigates ahead of convoy.",
+    ""
    ]
   },
   {
@@ -1160,7 +1288,9 @@
    "after": "The destroyer helped open the route for the following formations. Renn praised your controlled attacks.",
    "lost": "The enemy defense held and blocked the destroyer’s advance.",
    "reports": [
-    "Tactical: Enemy cruisers ahead."
+    "Tactical: Enemy cruisers ahead.",
+    "",
+    ""
    ]
   },
   {
@@ -1178,7 +1308,9 @@
    "after": "The outer screen broke and Imperial ships gained a passage. Renn called the maneuvers exact and economical.",
    "lost": "The destroyer failed to open the defended approach.",
    "reports": [
-    "Tactical: Frigates crossing our bow."
+    "",
+    "Tactical: Frigates crossing our bow.",
+    ""
    ]
   },
   {
@@ -1196,7 +1328,9 @@
    "after": "The destroyer crossed the threatened route and rejoined the advance. Renn congratulated you on denying the hunters an easy target.",
    "lost": "Drive hunters halted the destroyer’s advance.",
    "reports": [
-    "Tactical: Drive hunters on both flanks."
+    "Tactical: Drive hunters on both flanks.",
+    "",
+    ""
    ]
   },
   {
@@ -1214,7 +1348,9 @@
    "after": "The light cruiser broke the blocking formation. Renn commended the precise main-gun approaches.",
    "lost": "The enemy prevented the light cruiser from clearing the route.",
    "reports": [
-    "Tactical: Cruiser target ahead."
+    "Tactical: Cruiser target ahead.",
+    "",
+    ""
    ]
   },
   {
@@ -1232,7 +1368,9 @@
    "after": "The hostile formation was dispersed and the route reopened. Renn noted that you made every turn count.",
    "lost": "The blocking force held and the approach remained closed.",
    "reports": [
-    "Tactical: Target crossing left."
+    "Tactical: Target crossing left.",
+    "",
+    ""
    ]
   },
   {
@@ -1250,7 +1388,9 @@
    "after": "The light cruiser helped break the siege line. Renn praised your timing under sustained fire.",
    "lost": "The Azurian siege line forced the light cruiser to withdraw.",
    "reports": [
-    "Tactical: Siege line established ahead."
+    "Tactical: Siege line established ahead.",
+    "",
+    ""
    ]
   },
   {
@@ -1268,7 +1408,9 @@
    "after": "The cruiser completed the raid and withdrew. Renn praised your handling of the larger ship under pressure.",
    "lost": "Enemy forces stopped the cruiser before the raid was completed.",
    "reports": [
-    "Tactical: Raider contacts ahead."
+    "Tactical: Raider contacts ahead.",
+    "",
+    ""
    ]
   },
   {
@@ -1286,7 +1428,9 @@
    "after": "The raid disrupted Azurian movements and the cruiser returned. Renn called the withdrawal as skillful as the attack.",
    "lost": "The enemy defeated the cruiser’s raid inside Azurian territory.",
    "reports": [
-    "Tactical: Cruiser group detected."
+    "",
+    "Tactical: Cruiser group detected.",
+    ""
    ]
   },
   {
@@ -1304,7 +1448,9 @@
    "after": "The cruiser survived its raid and returned with its embarked force. Renn approved your measured maneuvers.",
    "lost": "Enemy attacks ended the raid and threatened the embarked gunboat squadron.",
    "reports": [
-    "Tactical: Interceptors inbound."
+    "Tactical: Interceptors inbound.",
+    "",
+    ""
    ]
   },
   {
@@ -1322,7 +1468,9 @@
    "after": "The heavy cruiser broke through the threatened route. Renn noted that the drive hunters failed to pin you down.",
    "lost": "Enemy hunters stopped the heavy cruiser’s advance.",
    "reports": [
-    "Tactical: Drive hunters approaching."
+    "",
+    "Tactical: Drive hunters approaching.",
+    ""
    ]
   },
   {
@@ -1340,7 +1488,9 @@
    "after": "The damaged ships escaped while the heavy cruiser held the route. Renn called it an important victory without a headline.",
    "lost": "The escort screen failed and endangered the withdrawing ships.",
    "reports": [
-    "Tactical: Enemy pursuit closing."
+    "Tactical: Enemy pursuit closing.",
+    "",
+    ""
    ]
   },
   {
@@ -1358,7 +1508,9 @@
    "after": "The heavy cruiser helped open another approach into Azurian territory. Renn praised the ship’s disciplined maneuvers.",
    "lost": "Azurian forces held their ground and stopped the advance.",
    "reports": [
-    "Tactical: Enemy battleships ahead."
+    "Tactical: Enemy battleships ahead.",
+    "",
+    ""
    ]
   },
   {
@@ -1376,7 +1528,9 @@
    "after": "The Imperial battle line broke the defense. Renn commended your precise maneuvering among capital ships.",
    "lost": "The Azurian battle line stopped the offensive.",
    "reports": [
-    "Tactical: Battleship group on approach."
+    "",
+    "Tactical: Battleship group on approach.",
+    ""
    ]
   },
   {
@@ -1394,7 +1548,9 @@
    "after": "The counterattack was defeated. Renn wrote that you handled the capital ship like a professional.",
    "lost": "The enemy capital ships broke the Imperial intercepting force.",
    "reports": [
-    "Tactical: Capital ships closing."
+    "Tactical: Capital ships closing.",
+    "",
+    ""
    ]
   },
   {
@@ -1412,7 +1568,9 @@
    "after": "The battleship helped break the approach defenses. Renn noted that the next assignment would demand even greater care.",
    "lost": "The enemy kept control of the approach to the transportation region.",
    "reports": [
-    "Tactical: Siege line ahead."
+    "Tactical: Siege line ahead.",
+    "",
+    ""
    ]
   },
   {
@@ -1430,7 +1588,9 @@
    "after": "The dreadnought reached firing position and the third planet buster destroyed the Azurian transportation world. Renn thanked you for bringing the ship through.",
    "lost": "Azurian defenses prevented the dreadnought from delivering the third planet buster.",
    "reports": [
-    "Tactical: Battleships ahead."
+    "Tactical: Battleships ahead.",
+    "",
+    ""
    ]
   },
   {
@@ -1448,7 +1608,9 @@
    "after": "The dreadnought survived the defenses and destroyed the transportation world with the third planet buster. Renn reported a flawless final approach.",
    "lost": "Enemy capital ships stopped the dreadnought before the strike.",
    "reports": [
-    "Tactical: Enemy capital ships closing."
+    "Tactical: Enemy capital ships closing.",
+    "",
+    ""
    ]
   },
   {
@@ -1466,7 +1628,9 @@
    "after": "The third planet buster destroyed the transportation world after the dreadnought reached its firing position. Renn’s final note read: \"The course held, {hero}. The war moves on.\"",
    "lost": "Drive hunters and capital ships prevented the planet-buster strike.",
    "reports": [
-    "Tactical: Drive hunters approaching."
+    "Tactical: Drive hunters approaching.",
+    "",
+    ""
    ]
   }
  ],
@@ -1487,7 +1651,8 @@
    "lost": "The carrier was lost with her launch corridor still under attack.",
    "reports": [
     "Tactical: Raiders on the launch corridor.",
-    "Engineering: Power stable."
+    "Engineering: Power stable.",
+    ""
    ],
    "escort": "carrier"
   },
@@ -1507,7 +1672,8 @@
    "lost": "The mine lane remained unsafe, and the fleet could not use the planned passage.",
    "reports": [
     "Tactical: Mine contacts marked ahead.",
-    "Damage control: Hull holding."
+    "Damage control: Hull holding.",
+    ""
    ]
   },
   {
@@ -1526,7 +1692,8 @@
    "lost": "The attackers broke the gunboat screen and left the carrier group exposed.",
    "reports": [
     "Tactical: Interceptors crossing our bow.",
-    "Engineering: Drive output holding."
+    "Engineering: Drive output holding.",
+    ""
    ]
   },
   {
@@ -1545,7 +1712,8 @@
    "lost": "The scouting run failed, leaving the fleet without a reliable report on the approach.",
    "reports": [
     "Navigation: Checkpoint route plotted.",
-    "Tactical: Mine contacts ahead."
+    "Tactical: Mine contacts ahead.",
+    ""
    ]
   },
   {
@@ -1564,7 +1732,8 @@
    "lost": "The fleet advanced without a current picture of the enemy positions.",
    "reports": [
     "Tactical: Frigate group holding position.",
-    "Navigation: Checkpoints complete."
+    "Navigation: Checkpoints complete.",
+    ""
    ]
   },
   {
@@ -1582,8 +1751,9 @@
    "after": "The patrol's position and the minefield were reported before the picket left the route. Rusk said the fleet could now choose its passage with its eyes open.",
    "lost": "The patrol remained unlocated, and the fleet had to proceed without the scouting report.",
    "reports": [
+    "Engineering: Drive charging.",
     "Tactical: Cruiser group ahead.",
-    "Engineering: Drive charging."
+    ""
    ]
   },
   {
@@ -1602,7 +1772,8 @@
    "lost": "The convoy was destroyed before it could reach the fleet.",
    "reports": [
     "Tactical: Raiders closing on the convoy.",
-    "Engineering: Shields holding."
+    "Engineering: Shields holding.",
+    ""
    ],
    "escort": "convoy"
   },
@@ -1621,8 +1792,9 @@
    "after": "The capital ship cleared the route and warped out under escort. Vale called the formation work disciplined and the result worth the risk.",
    "lost": "The capital ship was destroyed before she could leave the route.",
    "reports": [
-    "Tactical: Drive hunters turning toward the capital ship.",
-    "Damage control: Hull holding."
+    "Damage control: Hull holding.",
+    "",
+    "Tactical: Drive hunters turning toward the capital ship."
    ],
    "escort": "capital"
   },
@@ -1641,8 +1813,9 @@
    "after": "The enemy screen gave way and the formation had a usable passage. Rusk noted that the escort returned with both the route and its report intact.",
    "lost": "The enemy held the passage, and the formation could not use the planned route.",
    "reports": [
+    "Engineering: Both batteries charged.",
     "Tactical: Cruiser group blocking the route.",
-    "Engineering: Both batteries charged."
+    ""
    ]
   },
   {
@@ -1661,7 +1834,8 @@
    "lost": "The destroyer failed to clear the approach, and the fleet's passage closed.",
    "reports": [
     "Navigation: Course plotted around the field.",
-    "Engineering: Auxiliary bank available."
+    "Engineering: Auxiliary bank available.",
+    ""
    ]
   },
   {
@@ -1679,8 +1853,9 @@
    "after": "The siege line broke and the destroyer cleared the route before the window closed. Vale praised the crew for keeping the ship's options open through the final engagement.",
    "lost": "The siege line held, and the destroyer could not open the route.",
    "reports": [
+    "Engineering: Auxiliary bank engaged.",
     "Tactical: Interceptors approaching from astern.",
-    "Engineering: Auxiliary bank engaged."
+    ""
    ]
   },
   {
@@ -1699,6 +1874,7 @@
    "lost": "The enemy concentration sealed the gap before the fleet could use it.",
    "reports": [
     "Navigation: Minefield marked on the plotted route.",
+    "",
     "Tactical: Cruiser group turning toward us."
    ]
   },
@@ -1718,7 +1894,8 @@
    "lost": "The enemy formation held the route, and the light cruiser could not open a passage.",
    "reports": [
     "Tactical: Frigate group in the approach.",
-    "Engineering: Main gun charged."
+    "Engineering: Main gun charged.",
+    ""
    ]
   },
   {
@@ -1737,7 +1914,8 @@
    "lost": "The cruiser screen closed the route before the light cruiser could leave.",
    "reports": [
     "Navigation: Flank route plotted.",
-    "Tactical: Target crossing the bow."
+    "Tactical: Target crossing the bow.",
+    ""
    ]
   },
   {
@@ -1755,8 +1933,9 @@
    "after": "The forward line held and the light cruiser withdrew on schedule. Rusk's report noted that the main gun was used where it changed the engagement.",
    "lost": "The Azurian attack forced the forward line back, and the light cruiser was lost with it.",
    "reports": [
-    "Tactical: Battleship group in range.",
-    "Engineering: Main gun charged."
+    "Engineering: Main gun charged.",
+    "",
+    "Tactical: Battleship group in range."
    ]
   },
   {
@@ -1775,7 +1954,8 @@
    "lost": "The raid failed, and the cruiser never brought her squadron home.",
    "reports": [
     "Tactical: Frigate group breaking formation.",
-    "Engineering: Launchers charged."
+    "Engineering: Launchers charged.",
+    ""
    ]
   },
   {
@@ -1794,7 +1974,8 @@
    "lost": "The drive hunters broke the cruiser, and her squadron went down with the raid.",
    "reports": [
     "Damage control: Hangar reports damage.",
-    "Tactical: Drive hunters closing."
+    "Tactical: Drive hunters closing.",
+    ""
    ]
   },
   {
@@ -1813,7 +1994,8 @@
    "lost": "The cruiser group held the route, and the raid ended with the cruiser lost.",
    "reports": [
     "Tactical: Cruiser group turning toward the gunboats.",
-    "Engineering: Arresters charged."
+    "Engineering: Arresters charged.",
+    ""
    ]
   },
   {
@@ -1832,7 +2014,8 @@
    "lost": "The drive hunters and their escorts stopped the heavy cruiser in enemy space.",
    "reports": [
     "Tactical: Drive hunters closing on the stern.",
-    "Engineering: CIWS charged."
+    "Engineering: CIWS charged.",
+    ""
    ]
   },
   {
@@ -1851,7 +2034,8 @@
    "lost": "The enemy forced the fleet to abandon the route before the line could reform.",
    "reports": [
     "Tactical: Raiders crossing the gap.",
-    "Damage control: Hull holding."
+    "Damage control: Hull holding.",
+    ""
    ]
   },
   {
@@ -1869,8 +2053,9 @@
    "after": "The heavy cruiser held its route and the fleet escaped Varkesh's feint. Rusk said the report showed a captain who could see the whole formation.",
    "lost": "Varkesh's attack forced the fleet off the planned route and stopped its withdrawal.",
    "reports": [
-    "Tactical: Cruiser group closing.",
-    "Navigation: Zone bearing confirmed."
+    "Navigation: Zone bearing confirmed.",
+    "",
+    "Tactical: Cruiser group closing."
    ]
   },
   {
@@ -1889,7 +2074,8 @@
    "lost": "The Imperial line broke before the battleship could clear the route.",
    "reports": [
     "Tactical: Battleship group forming ahead.",
-    "Engineering: Both reactors stable."
+    "Engineering: Both reactors stable.",
+    ""
    ]
   },
   {
@@ -1907,8 +2093,9 @@
    "after": "The flank held until the center cleared the siege line. Vale's note said the battleship stayed where its presence mattered.",
    "lost": "The Azurian attack broke the flank and forced the fleet to abandon its position.",
    "reports": [
+    "Engineering: Reactor output balanced.",
     "Tactical: Raiders on the flank.",
-    "Engineering: Reactor output balanced."
+    ""
    ]
   },
   {
@@ -1927,6 +2114,7 @@
    "lost": "The battleship failed to cover the withdrawal, and the rear of the fleet was lost in enemy space.",
    "reports": [
     "Navigation: Withdrawal course plotted.",
+    "",
     "Tactical: Drive hunters astern."
    ]
   },
@@ -1945,8 +2133,9 @@
    "after": "The planet buster struck the reclamation world, the fourth Azurian world destroyed in the campaign. Vale's final note recorded the fleet's success and the lives that could not be brought home.",
    "lost": "The defenders stopped the dreadnought before it could deliver the planet buster.",
    "reports": [
+    "Engineering: Three reactors stable.",
     "Tactical: Battleship group closing.",
-    "Engineering: Three reactors stable."
+    ""
    ]
   },
   {
@@ -1965,7 +2154,8 @@
    "lost": "Drive hunters and capital ships forced the dreadnought away before the strike.",
    "reports": [
     "Tactical: Drive hunters approaching.",
-    "Damage control: Hull holding."
+    "Damage control: Hull holding.",
+    ""
    ]
   },
   {
@@ -1984,6 +2174,7 @@
    "lost": "The siege line held, and the dreadnought turned away without releasing the planet buster.",
    "reports": [
     "Navigation: Drop zone approach plotted.",
+    "",
     "Tactical: Siege line ahead."
    ]
   }
