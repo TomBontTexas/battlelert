@@ -304,6 +304,7 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 .cgrid th { color: var(--muted); font-weight: 700; font-size: 12px; }
 .cgrid td:first-child, .cgrid th:first-child { text-align: left; padding-left: 8px; white-space: nowrap; }
 .cgrid td.q { background: #16402c; color: var(--good); font-weight: 800; }
+.cgrid td.qpart { color: var(--good); font-weight: 800; white-space: nowrap; }
 .cgrid td.next { outline: 2px solid var(--warn); outline-offset: -2px; color: var(--warn); font-weight: 800; }
 .cgrid td.off { color: var(--muted); opacity: .55; }
 .cgrid td.later { color: var(--muted); font-style: italic; }

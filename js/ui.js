@@ -2793,14 +2793,18 @@
         if (!BL.career.PLAYABLE[st]) return k.n === 1 ? '<td class="later" colspan="9">' + later[st] + "</td>" : "";
         // (squadron command: class by class, open after 3 successful command missions on it)
         if (st === "squadron") return BL.career.squadronWins(c, k.n) ? '<td class="q" title="Squadron commanded">✔</td>' : BL.career.squadronOpen(c, k.n) ? '<td class="next" title="Open to you">▶</td>' :
-          '<td class="off" title="' + BL.career.commandWins(c, k.n) + " of " + BL.CAPTAINS.opens + ' command successes">' + (BL.career.commandWins(c, k.n) ? BL.career.commandWins(c, k.n) + "/" + BL.CAPTAINS.opens : "") + "</td>";
+          '<td class="off">' + (BL.career.built(st, k.n) ? "" : "·") + "</td>";
         var ready = BL.career.built(st, k.n);
+        // (command: the square shows the command successes and turns green at 3/3, when that
+        // class's squadron opens: TexasBont, Nov 4, 2026)
+        if (k.n <= q && st === "captain" && BL.career.built("squadron", k.n) && !BL.career.squadronOpen(c, k.n))
+          return '<td class="qpart" title="Qualified; ' + BL.career.commandWins(c, k.n) + " of " + BL.CAPTAINS.opens + ' command successes toward this class’s squadron">✔ ' + BL.career.commandWins(c, k.n) + "/" + BL.CAPTAINS.opens + "</td>";
         if (k.n <= q) return '<td class="q" title="Qualified">✔</td>';
         if (k.n === target && ready && (st !== "captain" || BL.career.canCommand(c, k.n))) return '<td class="next" title="Working toward">▶</td>';
         return '<td class="off">' + (ready ? "" : "·") + "</td>";
       }).join("") + "</tr>";
     }).join("");
-    return '<table class="cgrid">' + head + rows + "</table><p class=\"muted small-text\">✔ qualified · ▶ working toward · dot = not built yet · Squadron: ✔ commanded, ▶ open, 1/3 command successes so far</p>";
+    return '<table class="cgrid">' + head + rows + "</table><p class=\"muted small-text\">✔ qualified · ▶ working toward · dot = not built yet · Command: 1/3 command successes so far; green at 3/3, which opens that class's squadron · Squadron: ✔ commanded, ▶ open</p>";
   }
   function summaryHtml(c) {
     return BL.career.STATIONS.filter(function (s) { return BL.career.PLAYABLE[s]; }).map(function (s) {
