@@ -654,7 +654,8 @@
         s.nextShot = Math.min(s.nextShot, this.t);
       }
     } else if (e.type === "jump") {
-      if (this.hasDrive && this.phase !== "countdown" && !this.isDrop()) this.chat(this.captain ? "jumpOpenNav" : "jumpOpen", null, "warn");     // (on the bridge no "where's my drive" in the player's name)
+      var dr = this.sys("drive");      // (not when the drive is already full: on the bridge it waits on the captain, not the drive)
+      if (this.hasDrive && this.phase !== "countdown" && !this.isDrop() && !(dr && dr.mj >= dr.maxMJ - 0.5)) this.chat(this.captain ? "jumpOpenNav" : "jumpOpen", null, "warn");     // (on the bridge no "where's my drive" in the player's name)
     }
   };
 

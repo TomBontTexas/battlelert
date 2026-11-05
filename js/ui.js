@@ -749,7 +749,8 @@
       var bst = sim.sys("buster");
       if (bst) js += " · buster " + Math.floor(bst.mj / bst.maxMJ * 100) + "%";
       if (need > drive.maxMW * 0.8) jc += " late";
-    } else { js = "⚠ Window OPEN: the bridge is waiting on the drive"; jc += " late"; }
+    } else if (drive.mj >= drive.maxMJ - 0.5 && sim.captain) { var jv = sim.captain.jumpView(); js = "⚠ Window OPEN · drive ready" + (jv.why ? " · " + jv.why : ""); jc += " late"; }
+    else { js = "⚠ Window OPEN: the bridge is waiting on the drive"; jc += " late"; }
     setText($("jump-status"), js); setCls($("jump-status"), jc);
     }
     Array.prototype.forEach.call($("route").children, function (li, i) {
