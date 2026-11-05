@@ -309,6 +309,13 @@
     return this.plots[i];
   };
   // On arrival in a system (after the helm's reset): the ship at the map's start, on its heading.
+  // What kind of target she is (BL.COMMAND.sitting): "sitting" (dead slow or below, on average),
+  // "moving" (turning hard, or standard and up) or "cruise".
+  Captain.prototype.targetIs = function () {
+    var K = BL.COMMAND.sitting, h = this.m.helm, v = this.avgSpeed === undefined ? h.speed : this.avgSpeed;
+    if (v <= h.gOf(K.slow) + 0.01) return "sitting";
+    return Math.abs(h.omega) > K.hardTurn * h.C.safe || v >= h.gOf(K.fast) - 0.01 ? "moving" : "cruise";
+  };
   Captain.prototype.reset = function () {
     this.at = this.m.jumpIndex;
     var m = this.m, h = m.helm, map = this.map(), plot = this.plotFor(this.at), info = BL.plotInfo(map, plot, this.gOf.bind(this));
@@ -1538,6 +1545,8 @@
     if (!this.pos) return;
     // The ship moves on the map at her speed, on her compass heading.
     var hdg = h.compass(), v = h.speed * K.scale;
+    // (her speed over the last BL.COMMAND.sitting.avg s: the sitting target, Captain.targetIs)
+    var SA = K.sitting.avg; this.avgSpeed = this.avgSpeed === undefined ? h.speed : this.avgSpeed + (h.speed - this.avgSpeed) * Math.min(1, dt / SA);
     this.pos.x += Math.sin(hdg * RAD) * v * dt; this.pos.y += Math.cos(hdg * RAD) * v * dt;
     // The drive's charge rate, MJ/s, averaged over the last few seconds (and the MOAB's, for the drop).
     var bu = m.sys("buster");

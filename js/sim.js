@@ -548,7 +548,9 @@
       enc.guns.forEach(function (g) {
         var spec = G[g[0]], n = Math.ceil(g[1] * alive - 1e-9);
         for (var k = 0; k < n; k++) if (self.rng.chance(spec.rate * near * dt)) {
-          var hit = self.rng.chance(G.hit);
+          // (on the bridge, a shot at her: by what kind of target she is, Captain.targetIs)
+          var mine = self.captain && (w.aim === null || w.aim === undefined);
+          var hit = self.rng.chance(mine ? BL.COMMAND.sitting.hit[self.captain.targetIs()] : G.hit);
           if (self.turret && self.turret.enemyShot) self.turret.enemyShot(w, g[0], hit);
           // (a group after another ship of the escort: it takes the hit)
           if (hit) { if (w.aim !== null && w.aim !== undefined && self.captain) self.captain.gunAt(w.aim, spec.mj * (w.factor || 1)); else self.gunHit(spec.mj * (w.factor || 1)); }
