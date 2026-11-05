@@ -1089,8 +1089,9 @@
     // The sitting target (items 16, 29, 32; approved Oct 28, 2026, built Nov 4, 2026): on the bridge,
     // enemy guns hit her `hit.sitting` of the time at dead slow or below, `hit.moving` while she's
     // turning hard (over `hardTurn` x her safe turn rate) or at standard and up, else `hit.cruise`;
-    // torpedoes against a sitting ship can't be dodged. Speed: her average over the last `avg` s.
-    sitting: { hit: { sitting: 0.7, cruise: 0.5, moving: 0.4 }, avg: 10, hardTurn: 0.5, slow: "deadSlow", fast: "standard" },
+    // torpedoes against a sitting ship can't be dodged, and `torpMiss` of those a moving ship doesn't dodge
+    // miss anyway (Nov 5, 2026). Speed: her average over the last `avg` s.
+    sitting: { hit: { sitting: 0.7, cruise: 0.5, moving: 0.4 }, torpMiss: 0.6, avg: 10, hardTurn: 0.5, slow: "deadSlow", fast: "standard" },
     // SHIELDS costs the guns: on it the engineer gives the guns and the main gun only this share of
     // the power they'd ask for (AIEngineer.think), so the captain switches it on for the torpedoes
     // and off again to shoot.

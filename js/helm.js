@@ -395,7 +395,8 @@
     if (!e.torp || e.type === "mine") return false;                      // a mine is steered round, not dodged
     this.stats.torps++; if (this.cur) this.cur.torps++;
     if (m.captain && m.captain.targetIs() === "sitting") return false;   // (a sitting ship can't dodge: BL.COMMAND.sitting)
-    if (!this.dodged(ev ? ev.snap : e.snap || this.aimSnap())) return false;
+    if (!this.dodged(ev ? ev.snap : e.snap || this.aimSnap()))      // (a moving captain's ship: some torpedoes miss anyway)
+      return !!(m.captain && m.captain.targetIs() === "moving" && m.rng.chance(BL.COMMAND.sitting.torpMiss));
     this.stats.dodged++; if (this.cur) this.cur.dodged++;
     // (dodging inside the corridor is the pilot's to do; leaving it is what's disobeying: runCorridor)
     return true;
