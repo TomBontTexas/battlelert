@@ -2622,10 +2622,16 @@
     $("btn-db-again").hidden = $("btn-db-new").hidden = $("btn-db-title").hidden = !job.test;
   }
 
+  // A story mission lost in a system the pickets got wrong: its own ending would name the enemy
+  // that wasn't there (TexasBont, Nov 4, 2026).
+  function intelLost(w) {
+    function en(id) { var e = BL.plural(BL.ENCOUNTERS[id].enemy); return /^Azurian/.test(e) ? e : e.charAt(0).toLowerCase() + e.slice(1); }
+    return "The intelligence was wrong: the pickets reported " + en(w.reported) + ", but " + en(w.found) + " were waiting. They held, and " + storyText("{ship}") + " could not get through.";
+  }
   function signed(n) { return (n > 0 ? "+" : n < 0 ? "−" : "") + Math.abs(n); }
   function renderCareerReport(r) {
     var st = career.stations[job.station], rows = [], story = job.story && BL.storyMission(job.story);
-    if (story) rows.push('<p class="story-line"><b>' + esc(story.title) + ".</b> " + esc(storyText(r.outcome === "success" ? story.after : story.lost)) + "</p>");
+    if (story) rows.push('<p class="story-line"><b>' + esc(story.title) + ".</b> " + esc(r.intelWrong ? intelLost(r.intelWrong) : storyText(r.outcome === "success" ? story.after : story.lost)) + "</p>");
     if (story && r.outcome === "success" && story.n === 9) rows.push('<p class="big-line promo">' + BL.career.STATION_NAME[job.station] + " storyline complete.</p>");
     rows.push('<p class="big-line">Reputation: <b>' + signed(report.rep) + "</b> (" + BL.career.STATION_NAME[job.station].toLowerCase() + " path, now " + st.rep + ")</p>");
     rows.push('<p class="muted">' + report.repParts.map(function (p) { return p[0] + " " + signed(p[1]); }).join(", ") + (st.rep === 0 && report.rep > report.repParts.reduce(function (a, p) { return a + p[1]; }, 0) ? " (reputation never goes below 0)" : "") + "</p>");

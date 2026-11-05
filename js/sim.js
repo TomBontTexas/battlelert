@@ -366,6 +366,9 @@
     this.phase = "done";
     this.closeOverloadRun();
     this.result = this.captain ? BL.scoreCaptain(this, outcome) : this.helm ? BL.scoreHelm(this, outcome) : this.turret ? BL.scoreGunner(this, outcome) : BL.score(this, outcome);
+    // (lost in a system the pickets got wrong: what they reported and what was there, for the debrief)
+    var ji = this.jumpIndex;
+    if (outcome !== "success" && this.intel && this.intel[ji] !== this.route[ji]) this.result.intelWrong = { reported: this.intel[ji], found: this.route[ji] };
     this.cue(outcome === "success" ? "win" : "lose");
   };
 
