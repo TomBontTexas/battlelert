@@ -2798,7 +2798,9 @@
   }
   // jobs: each row's name is a button to that path's job offers (the career hub; TexasBont, Nov 6, 2026).
   function gridHtml(c, jobs) {
-    var head = "<tr><th></th>" + BL.CLASSES.map(function (k) { return "<th>" + k.n + ". " + k.name + "</th>"; }).join("") + "</tr>";
+    // (every class column the same width; each heading its number over its name, the names bottom-aligned)
+    var head = "<colgroup><col class=\"cg-first\">" + BL.CLASSES.map(function () { return "<col>"; }).join("") + "</colgroup>" +
+      "<thead><tr><th></th>" + BL.CLASSES.map(function (k) { return '<th><span class="cg-n">' + k.n + "</span>" + k.name + "</th>"; }).join("") + "</tr></thead>";
     var later = { gunner: "Phase 3", pilot: "Phase 4" };
     var rows = BL.career.STATIONS.map(function (st) {
       var q = BL.career.qualified(c, st), target = BL.career.targetClass(c, st);
@@ -2818,7 +2820,7 @@
         return '<td class="off">' + (ready ? "" : "·") + "</td>";
       }).join("") + "</tr>";
     }).join("");
-    return '<table class="cgrid">' + head + rows + "</table><p class=\"muted small-text\">" + (jobs ? "Tap a row's name for its job offers · " : "") + "✔ qualified · ▶ working toward · dot = not built yet · Command: 1/3 command successes so far; green at 3/3, which opens that class's squadron · Squadron: ✔ commanded, ▶ open</p>";
+    return '<table class="cgrid' + (jobs ? " jobs" : "") + '">' + head + "<tbody>" + rows + "</tbody></table><p class=\"muted small-text\">" + (jobs ? "Tap a row's name for its job offers · " : "") + "✔ qualified · ▶ working toward · dot = not built yet · Command: 1/3 command successes so far; green at 3/3, which opens that class's squadron · Squadron: ✔ commanded, ▶ open</p>";
   }
   function summaryHtml(c) {
     return BL.career.STATIONS.filter(function (s) { return BL.career.PLAYABLE[s]; }).map(function (s) {
