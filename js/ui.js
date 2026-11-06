@@ -2798,9 +2798,10 @@
   }
   // jobs: each row's name is a button to that path's job offers (the career hub; TexasBont, Nov 6, 2026).
   function gridHtml(c, jobs) {
-    // (every class column the same width; each heading its number over its name, the names bottom-aligned)
+    // (every class column the same width; the numbers in one row, the names centred in the row under them)
     var head = "<colgroup><col class=\"cg-first\">" + BL.CLASSES.map(function () { return "<col>"; }).join("") + "</colgroup>" +
-      "<thead><tr><th></th>" + BL.CLASSES.map(function (k) { return '<th><span class="cg-n">' + k.n + "</span>" + k.name + "</th>"; }).join("") + "</tr></thead>";
+      '<thead><tr class="cg-nums"><th rowspan="2"></th>' + BL.CLASSES.map(function (k) { return '<th><span class="cg-n">' + k.n + "</span></th>"; }).join("") + "</tr>" +
+      '<tr class="cg-names">' + BL.CLASSES.map(function (k) { return "<th>" + k.name + "</th>"; }).join("") + "</tr></thead>";
     var later = { gunner: "Phase 3", pilot: "Phase 4" };
     var rows = BL.career.STATIONS.map(function (st) {
       var q = BL.career.qualified(c, st), target = BL.career.targetClass(c, st);

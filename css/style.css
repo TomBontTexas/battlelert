@@ -306,8 +306,11 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 .cgrid th, .cgrid td { border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 0 4px; height: 40px; text-align: center; vertical-align: middle; }
 .cgrid tr > :last-child { border-right: 0; }
 .cgrid tbody tr:last-child > * { border-bottom: 0; }
-.cgrid thead th { background: var(--panel-2); color: var(--text); font-weight: 700; font-size: 11px; line-height: 1.2; height: auto; padding: 8px 2px 7px; vertical-align: bottom; border-bottom: 2px solid var(--line); }
-.cgrid .cg-n { display: block; margin: 0 auto 4px; width: 20px; height: 20px; line-height: 20px; border-radius: 50%; background: rgba(110,220,255,.12); color: var(--charge); font-size: 11px; font-weight: 800; }
+.cgrid thead th { background: var(--panel-2); color: var(--text); font-weight: 700; font-size: 11px; line-height: 1.2; height: auto; padding: 4px 2px 7px; vertical-align: middle; border-bottom: 2px solid var(--line); }
+.cgrid tr.cg-nums th { border-bottom: 0; padding: 7px 2px 0; }
+.cgrid tr.cg-names th { height: 34px; }
+.cgrid tr.cg-nums th[rowspan] { border-bottom: 2px solid var(--line); }
+.cgrid .cg-n { display: block; margin: 0 auto; width: 20px; height: 20px; line-height: 20px; border-radius: 50%; background: rgba(110,220,255,.12); color: var(--charge); font-size: 11px; font-weight: 800; }
 .cgrid td:first-child, .cgrid th:first-child { text-align: left; padding: 0 6px; white-space: nowrap; font-weight: 600; background: var(--panel-2); }
 .cgrid td { font-size: 15px; }
 .cgrid td.q { background: #16402c; color: var(--good); font-weight: 800; }
