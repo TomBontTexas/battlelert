@@ -280,7 +280,7 @@
     this.nextWaveAt = this.cfg.arrivalSeconds + r.range(enc.firstWave);
     this.nextStragglerAt = enc.stragglers ? this.cfg.arrivalSeconds + r.range(enc.stragglers.first) : Infinity;
     this.nextBurnAt = this.cfg.arrivalSeconds + r.range(enc.burns.every) * 0.6;
-    this.driveFullAt = null;
+    this.driveFullAt = null; this.driveLineAt = null;
     this.jumpAt = null;
     this.burnUntil = 0;
     this.curBurn = null;
@@ -662,7 +662,9 @@
       }
     } else if (e.type === "jump") {
       var dr = this.sys("drive");      // (not when the drive is already full: on the bridge it waits on the captain, not the drive)
-      if (this.hasDrive && this.phase !== "countdown" && !this.isDrop() && !(dr && dr.mj >= dr.maxMJ - 0.5)) this.chat(this.captain ? "jumpOpenNav" : "jumpOpen", null, "warn");     // (on the bridge no "where's my drive" in the player's name)
+      // (on the bridge no "where's my drive" in the player's name, and Navigation waits a moment: Mission.runJump)
+      if (this.captain && this.hasDrive && !this.isDrop()) this.driveLineAt = this.t + BL.COMMAND.driveLineWait;
+      else if (this.hasDrive && this.phase !== "countdown" && !this.isDrop() && !(dr && dr.mj >= dr.maxMJ - 0.5)) this.chat("jumpOpen", null, "warn");
     }
   };
 
@@ -1191,6 +1193,7 @@
       return;
     }
     var full = drive.mj >= drive.maxMJ - 0.5;
+    if (this.driveLineAt && t >= this.driveLineAt) { this.driveLineAt = null; if (!full && this.phase === "engage" && (drive.maxMJ - 0.5 - drive.mj) > (drive.rate || 0) * BL.COMMAND.driveLineWait) this.chat("jumpOpenNav", null, "warn"); }
     // Dreadnought: the planet buster must be full too before the final jump.
     if (this.jumpIndex === this.cfg.jumps - 1 && !this.busterFull()) {
       if (full && this.phase === "engage" && t >= this.windowAt() && !this.busterSaid) { this.busterSaid = true; this.chat("busterWait", null, "bad"); }
