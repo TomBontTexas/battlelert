@@ -2817,14 +2817,14 @@
         if (k.n <= q && st === "captain" && BL.career.built("squadron", k.n) && !BL.career.squadronOpen(c, k.n))
           return '<td class="qpart" title="Qualified; ' + BL.career.commandWins(c, k.n) + " of " + BL.CAPTAINS.opens + ' command successes toward this class’s squadron">✔ ' + BL.career.commandWins(c, k.n) + "/" + BL.CAPTAINS.opens + "</td>";
         // (a path with ribbons shows each rank's ribbon in place of the tick: BL.ribbonSvg)
-        var rib = k.n <= q && BL.ribbonSvg ? BL.ribbonSvg(st, k.n, 62) : "";
+        var rib = k.n <= q && BL.ribbonSvg ? BL.ribbonSvg(st, k.n, 80) : "";
         if (rib) return '<td class="q rib" title="' + BL.career.STATION_NAME[st] + "-" + k.n + ' ribbon">' + rib + "</td>";
         if (k.n <= q) return '<td class="q" title="Qualified">✔</td>';
         if (k.n === target && ready && (st !== "captain" || BL.career.canCommand(c, k.n))) return '<td class="next" title="Working toward">▶</td>';
         return '<td class="off">' + (ready ? "" : "·") + "</td>";
       }).join("") + "</tr>";
     }).join("");
-    return '<table class="cgrid' + (jobs ? " jobs" : "") + '">' + head + "<tbody>" + rows + "</tbody></table><p class=\"muted small-text\">" + (jobs ? "Tap a row's name for its job offers · " : "") + "✔ qualified (engineer: the rank's ribbon) · ▶ working toward · dot = not built yet · Command: 1/3 command successes so far; green at 3/3, which opens that class's squadron · Squadron: ✔ commanded, ▶ open</p>";
+    return '<table class="cgrid' + (jobs ? " jobs" : "") + '">' + head + "<tbody>" + rows + "</tbody></table><p class=\"muted small-text\">" + (jobs ? "Tap a row's name for its job offers · " : "") + "✔ qualified (engineer and gunner: the rank's ribbon) · ▶ working toward · dot = not built yet · Command: 1/3 command successes so far; green at 3/3, which opens that class's squadron · Squadron: ✔ commanded, ▶ open</p>";
   }
   function summaryHtml(c) {
     return BL.career.STATIONS.filter(function (s) { return BL.career.PLAYABLE[s]; }).map(function (s) {

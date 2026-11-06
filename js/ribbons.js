@@ -2,7 +2,8 @@
 /* Rank ribbons (TexasBont, Nov 6, 2026): a service ribbon's shape (1 3/8 x 3/8 in, 11:3), one per
    rank, drawn as SVG. Engineer: maroon; E1 plain, E2 one bronze wrench, E3 two crossed in bronze,
    E4 in silver, E5 in gold; E6 to E8 add a bronze, silver or gold star where they cross; E9 a gold
-   star there and one on either side. The other paths' ribbons are still to come.
+   star there and one on either side. Gunner: green, the same with sabers for wrenches (blades up).
+   Pilot and command ribbons are still to come.
    BL.ribbonSvg(station, rank, width) -> an SVG string, or "" for a path without ribbons yet. */
 (function (root) {
   "use strict";
@@ -12,7 +13,7 @@
     silver: ["#ffffff", "#c3c9d2", "#7d8591"],
     gold:   ["#fff0a0", "#e0b030", "#8a6410"]
   };
-  var COLOR = { engineer: "#6e1426" };
+  var COLOR = { engineer: "#6e1426", gunner: "#1f8a3e" };
   var uid = 0;      // (each ribbon's gradients and masks get their own ids)
 
   function star(cx, cy, R) {
@@ -33,12 +34,24 @@
       '<rect x="-10.5" y="-1.45" width="21" height="2.9" rx="1"/>' +
       '<circle cx="11.2" cy="0" r="3.9"/><circle cx="-11.4" cy="0" r="3.3"/></g></g>';
   }
-  function engineerDevices(id, rank) {
+  // A cavalry saber along the x axis: the curved blade's point at +x, the hilt (guard, grip,
+  // pommel) at -x.
+  function saber(id, fill, tf) {
+    return '<g transform="' + tf + '" filter="url(#' + id + 'sh)" fill="url(#' + fill + ')">' +
+      '<path d="M-5.4,-1.7 Q5,-3.6 16.5,-1.6 L15.6,-0.4 Q5,-0.6 -5.4,1.7 Z"/>' +
+      '<path d="M-3.8,-0.9 Q5,-2.4 13.5,-1.3" fill="none" stroke="#000" stroke-opacity=".3" stroke-width=".45"/>' +
+      '<rect x="-7" y="-3.6" width="2.2" height="7.2" rx=".9"/>' +
+      '<path d="M-6,3.1 Q-10.5,4.6 -12.6,1.2" fill="none" stroke="url(#' + fill + ')" stroke-width="1.1"/>' +
+      '<rect x="-12.4" y="-1.4" width="6" height="2.8" rx="1.1"/>' +
+      '<circle cx="-13" cy="0" r="1.8"/></g>';
+  }
+  // The rank's devices: one (rank 2) or two crossed (3 up), bronze to gold, then the stars.
+  function devices(id, rank, draw) {
     var dev = "", cx = 55, cy = 15, wm = rank <= 3 ? "bronze" : rank === 4 ? "silver" : "gold";
-    if (rank === 2) dev += wrench(id, id + wm, "translate(" + cx + "," + cy + ")");
+    if (rank === 2) dev += draw(id, id + wm, "translate(" + cx + "," + cy + ")");
     else if (rank >= 3) {
-      dev += wrench(id, id + wm, "translate(" + cx + "," + cy + ") rotate(-38)");
-      dev += wrench(id, id + wm, "translate(" + cx + "," + cy + ") rotate(218)");
+      dev += draw(id, id + wm, "translate(" + cx + "," + cy + ") rotate(-38)");
+      dev += draw(id, id + wm, "translate(" + cx + "," + cy + ") rotate(218)");
     }
     var sm = { 6: "bronze", 7: "silver", 8: "gold", 9: "gold" }[rank];
     if (sm) dev += '<polygon points="' + star(cx, cy, 6.2) + '" fill="url(#' + id + sm + ')" stroke="#3a2a08" stroke-width=".35" filter="url(#' + id + 'sh)"/>';
@@ -60,6 +73,6 @@
     var body = '<rect width="110" height="30" fill="' + base + '"/><rect width="110" height="30" fill="url(#' + id + 'tx)"/>' +
       '<rect width="110" height="30" fill="url(#' + id + 'sheen)"/><rect x=".4" y=".4" width="109.2" height="29.2" fill="none" stroke="#000" stroke-opacity=".45" stroke-width=".8"/>';
     return '<svg class="ribbon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 110 30" width="' + w + '" height="' + (w * 3 / 11).toFixed(1) + '" role="img" aria-label="' + station + " " + rank + ' ribbon">' +
-      defs + body + engineerDevices(id, rank) + "</svg>";
+      defs + body + devices(id, rank, station === "gunner" ? saber : wrench) + "</svg>";
   };
 })(typeof window !== "undefined" ? window : globalThis);

@@ -316,7 +316,7 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 .cgrid td { font-size: 15px; }
 .cgrid td.q { background: #16402c; color: var(--good); font-weight: 800; }
 .cgrid td.rib { line-height: 0; }
-.cgrid td.rib svg.ribbon { display: inline-block; vertical-align: middle; max-width: 100%; height: auto; box-shadow: 0 1px 2px rgba(0,0,0,.5); }
+.cgrid td.rib svg.ribbon { display: inline-block; vertical-align: middle; max-width: calc(100% - 10px); height: auto;     /* (never touching the cell's edge) */ box-shadow: 0 1px 2px rgba(0,0,0,.5); }
 .cgrid td.qpart { color: var(--good); font-weight: 800; white-space: nowrap; font-size: 13px; }
 .cgrid td.next { box-shadow: inset 0 0 0 2px var(--warn); color: var(--warn); font-weight: 800; }
 .cgrid td.off { color: var(--muted); opacity: .55; }
