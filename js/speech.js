@@ -110,7 +110,7 @@
   // "Tactical: enemy salvo in 6 s." -> speaker "Tactical", words to say.
   function split(text) {
     var m = /^([^:]{2,30}):\s*(.*)$/.exec(text);
-    if (m && ALIAS[m[1]]) return { speaker: ALIAS[m[1]], words: m[1] + ", " + m[2] };   // (her name, then what she says)
+    if (m && ALIAS[m[1]]) return { speaker: ALIAS[m[1]], words: boats(m[1] + ", " + m[2]) };   // (her name, then what she says)
     var speaker = m && PROFILE[m[1]] ? m[1] : "Crew";
     var words = m && PROFILE[m[1]] ? m[2] : text;
     if (/^Gunner \d/.test(speaker)) words = speaker + ", " + words;   // which gun matters
@@ -119,8 +119,10 @@
                  .replace(/(\d+(?:\.\d+)?) MJ\b/g, "$1 megajoules")
                  .replace(/(\d+) G\b/g, "$1 G")
                  .replace(/\bCIWS\b/g, "sea-whiz");
-    return { speaker: speaker, words: words };
+    return { speaker: speaker, words: boats(words) };
   }
+  // A gunboat's number digit by digit: "PT-167" -> "P T one six seven", not "P T one hundred sixty-seven".
+  function boats(words) { return words.replace(/\bPT-?(\d+)/g, function (x, d) { return "P T " + d.split("").join(" "); }); }
 
   // Watchdog: if the browser never reports the line finished, let the queue move on anyway.
   function unstick() {

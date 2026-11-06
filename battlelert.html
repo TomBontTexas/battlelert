@@ -6,7 +6,7 @@
 <meta name="copyright" content="© 2011–2026 Tom Bont. All rights reserved.">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Battlelert</title>
-<link rel="stylesheet" href="css/style.css?b=0f8a2b6d">
+<link rel="stylesheet" href="css/style.css?b=5c779e22">
 </head>
 <body>
 
@@ -338,12 +338,11 @@
         <div class="cp-row" id="cp-sq-form"></div>
         <div class="cp-row" id="cp-sq-st"><button id="cp-sq-close" title="Close up: every ship's station a little closer ([)">CLOSE</button><button id="cp-sq-open" title="Open out: every ship's station a little farther apart (])">OPEN</button><button id="cp-sq-dress" title="Dress the line: every ship back on her exact station (L)">DRESS</button></div>
         <div class="cp-sq-ships" id="cp-sq-ships"></div>
-        <div class="cp-ln cp-sq-hint" id="cp-sq-hint"></div>
+        <div class="cp-row" id="cp-sq-allrow"><button id="cp-sq-all" title="Select the whole squadron, flagship and all (A); then tap a target or a spot on the map">ALL SHIPS <small>(A)</small></button></div>
         <div class="cp-row cp-sq-sel" id="cp-sq-selrow"><button id="cp-sq-recall" title="Back to formation on the flagship (Z); the flagship back to her plot">RECALL</button><button id="cp-sq-hold" title="Hold fire: hidden till an enemy is close, then they open up (X)">HOLD FIRE</button><button id="cp-sq-clear" title="Clear the selection (C)">CLEAR</button></div>
         <div class="cp-sq-card" id="cp-sq-card" hidden></div>
-        <div class="cp-hd">SPEED</div>
-        <div class="cp-row" id="cp-sq-speed1"></div><div class="cp-row" id="cp-sq-speed2"></div>
-        <div class="cp-row"><button id="cp-sq-bridge" class="cp-wide" title="Drop down to the flagship's bridge and captain her yourself (D). Once a mission it costs 1 squadron reputation and 1 morale to the flag captain.">FLAG BRIDGE <small>(D)</small></button></div>
+        <div class="cp-row" id="cp-sq-speed1"></div>
+        <div class="cp-row"><span class="cp-row cp-sq-spd2" id="cp-sq-speed2"></span><button id="cp-sq-bridge" class="cp-wide" title="Drop down to the flagship's bridge and captain her yourself (D). Once a mission it costs 1 squadron reputation and 1 morale to the flag captain.">FLAG BRIDGE <small>(D)</small></button></div>
       </div>
       <!-- The telegraphs: engines (flank at the top down to stop), the gunners' order, the engineer's stance; meters over each -->
       <div class="cp-teles" id="cp-teles">
@@ -691,7 +690,7 @@
     <h2>Commanding a squadron</h2>
     <table class="keys">
       <tr><td>1 to 4</td><td>Select that ship (1 is the flagship); again to drop her. Tapping a ship on the map, or her line, does the same</td></tr>
-      <tr><td>A</td><td>Select every ship</td></tr>
+      <tr><td>A</td><td>ALL SHIPS: select every ship</td></tr>
       <tr><td>Tap the map</td><td>On one of your ships: select or drop her. With ships selected: on a target, send them to it (a ship already sent somewhere changes to it); on open space, send them there. With none: on a target, its card; on open space, steer the flagship</td></tr>
       <tr><td>Z / X / C</td><td>The ships selected: RECALL to formation / HOLD FIRE (or OPEN FIRE) / clear the selection</td></tr>
       <tr><td>O</td><td>Formation: AHEAD (line ahead), REAR (line ahead, flagship in the rear), ABREAST (line abreast)</td></tr>
@@ -790,7 +789,7 @@
     <ol class="tight">
       <li><b>Plan the attack.</b> In warp space, with the clock stopped, the plotting screen shows the targets where the pickets' report puts them (dashed, a little off, and "?" for contacts they missed). Plot the flagship's course as on the bridge, and tap each ship in YOUR SHIPS to send her to a target from the start (each tap moves her to the next target in the report; past the last, back to formation).</li>
       <li><b>What you see.</b> The dashed blue ring round the flagship is your sensor range. A target inside any of your ships' sensor range shows solid, where it really is, with its strength, the red ring of its gun range and the wedges its guns bear through; one you can't see shows where it was last seen or reported. A "?" shows what it is once a ship gets close. Moving targets show their heading.</li>
-      <li><b>Sending ships.</b> Tap a ship on the map or her line in the SQUADRON box (or press her number; 1 is the flagship) to select her (tap again to drop her); tap more to select several; A selects all. Then tap a target on the map to send them to it, or open space to send them there. A ship sent to a target closes to its guns' range and turns her broadside to it; ships sent to the same spot line up there facing the nearest enemy: in line ahead broadside on, in line abreast bows on. <b>RECALL</b> (Z) brings the ones selected back to formation (the flagship back to her plot), <b>HOLD FIRE</b> (X) keeps them quiet and hidden until an enemy is close, then they open up (an ambush), <b>CLEAR</b> (C) drops the selection. With nothing selected, tap a target for its card, or tap open space to steer the flagship.</li>
+      <li><b>Sending ships.</b> Tap a ship on the map or her line in the SQUADRON box (or press her number; 1 is the flagship) to select her (tap again to drop her); tap more to select several; <b>ALL SHIPS</b> (A) selects the whole squadron. Then tap a target on the map to send them to it, or open space to send them there. A ship sent to a target closes to its guns' range and turns her broadside to it; ships sent to the same spot line up there facing the nearest enemy: in line ahead broadside on, in line abreast bows on. <b>RECALL</b> (Z) brings the ones selected back to formation (the flagship back to her plot), <b>HOLD FIRE</b> (X) keeps them quiet and hidden until an enemy is close, then they open up (an ambush), <b>CLEAR</b> (C) drops the selection. With nothing selected, tap a target for its card, or tap open space to steer the flagship.</li>
       <li><b>Fire.</b> Every gun that bears and is in range fires: a destroyer's bow and stern rail guns each cover 200° and her pulse cannon all round, so all three bear abeam and two ahead. The enemy's guns have arcs too: raiders and interceptors fire forward; a frigate group's column fires its broadsides, but ahead of it only its lead ship's bow guns bear. Cross ahead of a column (cross its T) and every one of your guns bears on its lead while few of its guns bear on you. A target's card shows the guns bearing each way. Two ships on one target sink it fast and split its fire; one alone may lose.</li>
       <li><b>Formation.</b> The ships not sent anywhere keep formation on the flagship: <b>AHEAD</b> (line ahead) puts them in a column astern of her, each following her own track, so they turn every corner where she did; <b>REAR</b> (line ahead, flagship in the rear) puts the column ahead of her on her heading, so she brings up the rear; <b>ABREAST</b> (line abreast) puts them to either side. Every ship of the squadron handles as the flagship does: the same top speed (full; flank only to catch up with the formation), the same engines and the same turn, so a squadron of big ships takes its time getting into place; each eases off her turn and her speed as she comes onto her station, so she settles there without swinging past it. <b>CLOSE</b> (close up, [) and <b>OPEN</b> (open out, ]) bring every ship's station closer or spread them farther apart (the SQUADRON box shows the spacing; closing up stops before their shields touch). A cautious captain keeps a little farther back and an aggressive one a little closer, and the less skilled a captain the more he wanders off his station; <b>DRESS</b> (dress the line, L) puts every ship back on her exact station, and over the next minute their own habits creep back in. The formation also says how ships sent together to a spot line up.</li>
       <li><b>The flagship.</b> Your flag captain runs her: her engineer's stance, her gunners and her pilot. She flies your course, or select her (1) and send her like the others. A target that fires on her comes into her battle view (SWAP) as its wave, on its true bearing, and what her crew does to it is done to it. Raiders and other hunters go after the nearest of your ships they see; a ship out on her own gets a warning in the SQUADRON box when one turns on her.</li>
@@ -808,7 +807,7 @@
   </div>
 </section>
 
-<script src="version.js?b=f747c85d"></script>
+<script src="version.js?b=ea2e27b8"></script>
 <script src="update-banner.js?b=ec7860dd"></script>
 <script src="js/data.js?b=612bfc02"></script>
 <script src="js/sim.js?b=c35bac51"></script>
@@ -821,14 +820,14 @@
 <script src="js/art.js?b=ac37cac5"></script>
 <script src="js/turretview.js?b=960c39ae"></script>
 <script src="js/ringview.js?b=c677aa94"></script>
-<script src="js/bridgeview.js?b=dabb7fdf"></script>
+<script src="js/bridgeview.js?b=d06c2cb7"></script>
 <script src="js/names.js?b=08410f0b"></script>
 <script src="js/story.js?b=b3779fd3"></script>
 <script src="js/captains.js?b=21c22b10"></script>
 <script src="js/roster.js?b=6ef1bed9"></script>
 <script src="js/career.js?b=dc455a4c"></script>
-<script src="js/speech.js?b=28799004"></script>
+<script src="js/speech.js?b=73f09200"></script>
 <script src="js/audio.js?b=7bd9e9f9"></script>
-<script src="js/ui.js?b=1891b23b"></script>
+<script src="js/ui.js?b=ed6f253b"></script>
 </body>
 </html>

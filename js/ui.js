@@ -846,6 +846,9 @@
     box.innerHTML = log.slice(-lines).map(function (l) {
       return '<div class="' + l.kind + '"><span class="t">' + mmss(l.t) + "</span>" + icon[l.kind] + esc(l.text) + "</div>";
     }).join("");
+    // (the oldest lines that don't fit are dropped whole, never shown cut in half)
+    var hs = Array.prototype.map.call(box.children, function (d) { return d.offsetHeight; }), sum = hs.reduce(function (a, b) { return a + b; }, 0);
+    for (var i = 0; i < hs.length - 1 && sum > box.clientHeight; i++) { sum -= hs[i]; box.children[0].remove(); }
   }
   // A ship's name and hull number as HTML; the hull number never breaks, so a long name wraps it whole.
   function shipHtml(classId, ship, hull) { var h = hull || BL.hullNumber(classId, ship); return esc(ship) + (h ? ' <span class="nw">' + h + "</span>" : ""); }
@@ -891,7 +894,7 @@
     $("tu-gunside").hidden = helm; $("tu-helm").hidden = !helm; $("hm-wheel").hidden = !helm; $("hm-strip").hidden = !helm;
     $("scr-turret").classList.toggle("helm", helm);
     bridgeSwap(false);
-    $("cp-side").hidden = $("cp-mapbox").hidden = $("cp-orders").hidden = true; $("scr-turret").classList.remove("captain");
+    $("cp-side").hidden = $("cp-mapbox").hidden = $("cp-orders").hidden = true; $("scr-turret").classList.remove("captain", "squad");
     $("btn-tu-call").hidden = $("btn-tu-fire").hidden = helm;
     $("hm-launch").hidden = true;
     $("btn-tu-bridge").hidden = !cpAt;
@@ -1494,7 +1497,7 @@
   function buildBridge() {
     var h = sim.helm, G = BL.GUNNERY, K = BL.COMMAND;
     $("tu-helm").hidden = $("hm-wheel").hidden = $("hm-strip").hidden = true;
-    $("scr-turret").classList.remove("helm"); $("scr-turret").classList.add("captain");
+    $("scr-turret").classList.remove("helm"); $("scr-turret").classList.add("captain"); $("scr-turret").classList.toggle("squad", !!sim.flag);     // (a squadron: a wider BRIDGE column for its ships)
     $("cp-side").hidden = $("cp-mapbox").hidden = false; $("cp-orders").hidden = true;      // (every order is in the BRIDGE column)
     $("tu-station").textContent = "Bridge · " + (job.test ? sim.data.className : BL.shipLabel(job.classId, job.ship, job.hull)) + " (TL" + sim.data.tl + ")";
     var hasMain = !!sim.sys("main"), hasHangar = !!(sim.sys("hangar") && sim.data.hangar);
@@ -1525,7 +1528,7 @@
     // A squadron: the formation buttons; then the commander's view or the flagship's bridge.
     // (SPEED: the squadron's engine order, flank at the top left down to stop)
     var spd = BRIDGE_ENG.slice().reverse().map(function (id) { var p = h.preset(id); return '<button data-eng="' + id + '" title="Squadron speed: all ' + p.name.toLowerCase() + ' (↑ ↓)">' + p.short + "</button>"; });
-    $("cp-sq-speed1").innerHTML = sim.flag ? spd.slice(0, 3).join("") : ""; $("cp-sq-speed2").innerHTML = sim.flag ? spd.slice(3).join("") : "";
+    $("cp-sq-speed1").innerHTML = sim.flag ? spd.slice(0, 4).join("") : ""; $("cp-sq-speed2").innerHTML = sim.flag ? spd.slice(4).join("") : "";     // (four, then two beside FLAG BRIDGE)
     $("cp-sq-form").innerHTML = sim.flag ? K.squad.formationList.map(function (id) { return '<button data-form="' + id + '" title="' + K.squad.formations[id].name + ' (O)">' + K.squad.formations[id].btn + "</button>"; }).join("") : "";
     bridgeKeys = $("tu-keys").textContent; shipGrp = !$("cp-ship-grp").hidden;
     applyCmd();
@@ -1567,7 +1570,7 @@
     setText($("cp-sq-hd"), "SQUADRON · " + home + " of " + (v.ships.length + 1));
     var left = c.sqGroups().length, obj = c.sqGroups().filter(function (T) { return T.K.objective; }).length;
     cpLine("cp-sq-ln", "<b>" + Q.formations[v.form].short + "</b> · spacing " + Math.round(v.spacing * 100) + "% · " + left + " target" + (left === 1 ? "" : "s") + " left" + (sim.sys("buster") ? "" : obj ? " · objective standing" : " · <span style='color:#3dff7a'>objective down</span>"));
-    cpLine("cp-sq-ln2", v.alert ? "⚠ " + esc(v.alert) : "");
+    cpLine("cp-sq-ln2", v.alert ? "⚠ " + esc(v.alert) : ""); $("cp-sq-ln2").hidden = !v.alert;     // (no blank line when there's no alert)
     var pendForm = v.ships.some(function (x) { return x.pend; });
     Array.prototype.forEach.call($("cp-sq-form").children, function (b) { b.classList.toggle("on", b.dataset.form === v.form); b.classList.toggle("pend", b.dataset.form === v.form && pendForm); b.disabled = !live; });
     var stPend = v.ships.some(function (x) { return x.stPend; });
@@ -1577,7 +1580,7 @@
     // (the flagship's line: her flag captain, hull and shields, what she's doing)
     var sh = sim.sys("shield"), fh = Math.round(100 * sim.ship.hull / sim.ship.hullMax), fg = c.flagGo, fT = fg && fg.kind === "target" ? c.sqTargets[fg.id] : null;
     var fdo = fT ? "→ " + fT.letter + " " + fT.K.name.toLowerCase() : fg ? "→ a spot" : "flagship · on " + (c.helmView().own ? "your course" : "the plot");
-    var flagLn = '<button data-sel="1" class="flagrow' + (sqSel.indexOf(1) >= 0 ? " sel" : "") + '" title="The flagship: ' + esc(v.flag.name) + ", your " + cap(sim.data.classId, "flag captain") + '. Tap to select her (1)"' + (live ? "" : " disabled") + "><b>1</b> " + esc(v.flagName) + " " + fh + "% · sh " + Math.round(100 * sh.mj / sh.maxMJ) + "%<br><span>" + fdo + "</span>" +
+    var flagLn = '<button data-sel="1" class="flagrow' + (sqSel.indexOf(1) >= 0 ? " sel" : "") + '" title="The flagship: ' + esc(v.flag.name) + ", your " + cap(sim.data.classId, "flag captain") + '. Tap to select her (1)"' + (live ? "" : " disabled") + "><b>1</b> " + esc(v.flagName) + " " + fh + "% · sh " + Math.round(100 * sh.mj / sh.maxMJ) + "% <span>· " + fdo + "</span>" +
       '<i class="' + (fh < 35 ? "low" : "") + '" style="width:' + fh + '%"></i></button>';
     cpHtml("cp-sq-ships", flagLn + v.ships.map(function (x) {
       var h = Math.round(x.hull * 100), sel = sqSel.indexOf(x.no) >= 0;
@@ -1586,20 +1589,21 @@
         (x.live ? '<i class="' + (h < 35 ? "low" : "") + '" style="width:' + h + '%"></i>' : "") + "</button>";
     }).join(""));
     var any = sqSel.length > 0;
-    cpLine("cp-sq-hint", any ? "Ship" + (sqSel.length > 1 ? "s " : " ") + sqSel.join(", ") + ": tap a target or a spot on the map" : "Tap ships (here or on the map), then a target or a spot");
+    $("cp-sq-all").disabled = !live;
     $("cp-sq-selrow").hidden = !any;
     ["cp-sq-recall", "cp-sq-hold", "cp-sq-clear"].forEach(function (id) { $(id).disabled = !live; });
     var holding = sqSel.length && sqSel.every(function (n) { var x = v.ships.filter(function (s) { return s.no === n; })[0]; return x && x.hold; });
     setHtml($("cp-sq-hold"), holding ? "OPEN FIRE" : "HOLD FIRE");
     // The target card: what it is, how strong, what it's firing on, who's sent, and the guns that bear each way.
     var T = !any && sqTgt !== null ? c.sqTargets[sqTgt] : null;
-    $("cp-sq-card").hidden = !T;
+    $("cp-sq-card").hidden = !T; $("cp-sq-allrow").hidden = any || !!T;     // (ALL SHIPS with none selected; the card, or the selected ships' orders, in its place)
     if (T) {
       var tv = c.targetView(T);
       cpHtml("cp-sq-card", "<b>" + tv.letter + " · " + esc(tv.name) + "</b>" + (tv.objective ? " · objective" : "") + "<br>" +
-        (tv.dead ? "Destroyed" : (tv.seen ? "Seen" : tv.known ? "Pickets' report" : "Not in the report") + " · " + (tv.known ? tv.pct + "% strength" : "strength unknown") + "<br>" +
-        (tv.known ? (tv.moves ? "Moves" : "Fixed") + " · " + tv.guns + " guns · range " + tv.range + "<br>" : "") +
-        (tv.on ? "Firing on " + tv.on + "<br>" : "") + "Sent: " + (tv.sent.length ? tv.sent.map(esc).join(", ") : "none") +
+        // (its facts run on, " · " between, so the card takes few lines in the column)
+        (tv.dead ? "Destroyed" : (tv.seen ? "Seen" : tv.known ? "Pickets' report" : "Not in the report") + " · " + (tv.known ? tv.pct + "% strength" : "strength unknown") + " · " +
+        (tv.known ? (tv.moves ? "Moves" : "Fixed") + " · " + tv.guns + " guns · range " + tv.range + " · " : "") +
+        (tv.on ? "Firing on " + tv.on + " · " : "") + "Sent: " + (tv.sent.length ? tv.sent.map(esc).join(", ") : "none") +
         (tv.seen ? '<br>Guns bearing: <span class="num ours">' + tv.ours + '</span> vs <span class="num theirs">' + tv.theirs + "</span>" : "")));
     }
     var eng = c.helmView().eng;
@@ -2081,6 +2085,7 @@
       if (b.id === "cp-sq-dress") { c.dressLine(); return; }
       if (b.id === "cp-sq-hold") { sqHold(); click(); return; }
       if (b.id === "cp-sq-clear") { sqSel = []; click(); return; }
+      if (b.id === "cp-sq-all") { sqAll(); return; }
       if (b.id === "cp-sq-bridge") { toFlagBridge(); return; }
       if (b.id === "cp-sq-back") { toSquadron(); return; }
       if (sim.flag && cmdView && (b.dataset.gun || b.dataset.stance || b.dataset.pilot || b.dataset.brk !== undefined)) return;

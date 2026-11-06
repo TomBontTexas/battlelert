@@ -38,7 +38,12 @@
   BL.drawNavMap = function (ctx, w, h, map, plot, opts) {
     opts = opts || {};
     // (every piece of text it writes goes in `boxes`, so a leg's label, and labels drawn after, keep clear)
-    var fill0 = ctx.fillText, boxes = opts.labels || []; ctx.fillText = function (str, x, y) { boxes.push(BL.textBox(ctx, str, x, y)); fill0.call(ctx, str, x, y); };
+    // (and none runs off the map's edge: it's moved in, so no word is cut off)
+    var fill0 = ctx.fillText, boxes = opts.labels || []; ctx.fillText = function (str, x, y) {
+      var b = BL.textBox(ctx, str, x, y);
+      x += Math.max(2 - b.x0, Math.min(0, w - 2 - b.x1)); y += Math.max(2 - b.y0, Math.min(0, h - 2 - b.y1));
+      boxes.push(BL.textBox(ctx, str, x, y)); fill0.call(ctx, str, x, y);
+    };
     var f = opts.frame || BL.navFrame(map, plot, w, h, opts.small ? 10 : 18), P = f.toPx, s = f.s, small = !!opts.small;
     ctx.clearRect(0, 0, w, h);
     ctx.fillStyle = "#05080c"; ctx.fillRect(0, 0, w, h);
