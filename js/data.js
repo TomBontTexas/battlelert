@@ -1062,6 +1062,7 @@
     // has the launchers or arresters full); the test bot recovers `botRecover` s before the window.
     // (Nov 5, 2026, TexasBont: the biggest ship within `arc` degrees of the bow; the swing is called off
     // if it leaves that arc, and the crew fires only with it on the line, never at a smaller ship.)
+    capitalShield: { k: 1.1, types: ["frigate", "cruiserA", "battleshipA", "fortress"] },     // (Mission.shieldK)
     mainSwing: { timeout: 25, arc: 45, botSwing: 60 },      // (botSwing: the test bot swings only for a target that far off the bow)
     hangarOrder: { botRecover: 40 },
     // Lines the captain hears although the pilot's quiet list (BL.HELM.quiet) mutes them: the

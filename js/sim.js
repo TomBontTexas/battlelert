@@ -553,14 +553,21 @@
           var hit = self.rng.chance(mine ? BL.COMMAND.sitting.hit[self.captain.targetIs()] : G.hit);
           if (self.turret && self.turret.enemyShot) self.turret.enemyShot(w, g[0], hit);
           // (a group after another ship of the escort: it takes the hit)
-          if (hit) { if (w.aim !== null && w.aim !== undefined && self.captain) self.captain.gunAt(w.aim, spec.mj * (w.factor || 1)); else self.gunHit(spec.mj * (w.factor || 1)); }
+          if (hit) { if (w.aim !== null && w.aim !== undefined && self.captain) self.captain.gunAt(w.aim, spec.mj * (w.factor || 1)); else self.gunHit(spec.mj * (w.factor || 1), w.id); }
         }
       });
     });
   };
-  Mission.prototype.gunHit = function (mj) {
-    var sh = this.sys("shield"), st = this.stats, js = this.jumpStats, took = Math.min(sh.mj, mj);
-    sh.mj -= took; st.gunMJ = (st.gunMJ || 0) + mj; js.gunMJ = (js.gunMJ || 0) + mj;
+  // On the bridge each MJ in the shields stops BL.COMMAND.capitalShield MJ from a capital ship group (frigate,
+  // cruiser, battleship, fortress: Nov 5, 2026, TexasBont); the enemy is the same at every station.
+  Mission.prototype.shieldK = function (waveId) {
+    if (!this.captain) return 1;
+    var w = this.waves.filter(function (x) { return x.id === waveId; })[0];
+    return w && BL.COMMAND.capitalShield.types.indexOf(w.type) >= 0 ? BL.COMMAND.capitalShield.k : 1;
+  };
+  Mission.prototype.gunHit = function (mj, waveId) {
+    var sh = this.sys("shield"), st = this.stats, js = this.jumpStats, k = this.shieldK(waveId), took = Math.min(sh.mj * k, mj);
+    sh.mj -= took / k; st.gunMJ = (st.gunMJ || 0) + mj; js.gunMJ = (js.gunMJ || 0) + mj;
     if (!this.gunSaid) { this.gunSaid = true; this.say("Tactical: they're in gun range.", "warn"); }
     var over = mj - took; if (over <= 0) return;
     this.gunHull = (this.gunHull || 0) + over * this.data.hullPerMJ;
@@ -699,8 +706,8 @@
       if (this.rng.chance(0.4)) this.chat("dodged", null, "good");
       return;
     }
-    var absorbed = Math.min(sh.mj, e.mj), overflow = e.mj - absorbed;
-    sh.mj -= absorbed;
+    var k = this.shieldK(e.wave), absorbed = Math.min(sh.mj * k, e.mj), overflow = e.mj - absorbed;
+    sh.mj -= absorbed / k;
     st.salvos++; js.salvos++;
     if (e.visible) st.salvosAnnounced++; else { st.surprises++; this.chat("surprise", null, "bad"); }
     e.outcome = overflow <= 0.5 ? "shield" : "hull";
