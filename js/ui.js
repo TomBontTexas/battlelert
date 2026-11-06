@@ -48,7 +48,7 @@
   }
 
   /* ------------------------------------------------------------- Screens */
-  var SCREENS = ["scr-title", "scr-enlist", "scr-hub", "scr-offers", "scr-crew", "scr-record", "scr-registry", "scr-shipcard", "scr-briefing", "scr-console", "scr-turret", "scr-debrief"];
+  var SCREENS = ["scr-title", "scr-enlist", "scr-hub", "scr-offers", "scr-crew", "scr-record", "scr-reports", "scr-registry", "scr-shipcard", "scr-briefing", "scr-console", "scr-turret", "scr-debrief"];
   function show(id) { SCREENS.forEach(function (s) { $(s).hidden = s !== id; }); }
   function overlay(id, on) { $(id).hidden = !on; }
   function inConsole() { return !$("scr-console").hidden; }
@@ -2810,24 +2810,24 @@
         if (!BL.career.PLAYABLE[st]) return k.n === 1 ? '<td class="later" colspan="9">' + later[st] + "</td>" : "";
         // (squadron command: class by class, open after 3 successful command missions on it)
         var sqRib = st === "squadron" && BL.career.squadronWins(c, k.n) && BL.ribbonSvg ? BL.ribbonSvg(st, k.n, 80) : "";
-        if (sqRib) return '<td class="q rib" title="Squadron commanded: S' + k.n + ' ribbon">' + sqRib + "</td>";
+        if (sqRib) return '<td class="q rib" data-rep="' + st + ":" + k.n + '" title="Squadron commanded: S' + k.n + ' ribbon: tap for its mission reports">' + sqRib + "</td>";
         if (st === "squadron") return BL.career.squadronWins(c, k.n) ? '<td class="q" title="Squadron commanded">✔</td>' : BL.career.squadronOpen(c, k.n) ? '<td class="next" title="Open to you">▶</td>' :
           '<td class="off">' + (BL.career.built(st, k.n) ? "" : "·") + "</td>";
         var ready = BL.career.built(st, k.n);
         // (command: the square shows the command successes and turns green at 3/3, when that
         // class's squadron opens: TexasBont, Nov 4, 2026)
         if (k.n <= q && st === "captain" && BL.career.built("squadron", k.n) && !BL.career.squadronOpen(c, k.n))
-          return '<td class="qpart' + (BL.ribbonSvg ? " rib" : "") + '" title="Qualified; ' + BL.career.commandWins(c, k.n) + " of " + BL.CAPTAINS.opens + ' command successes toward this class’s squadron">' +
+          return '<td class="qpart' + (BL.ribbonSvg ? " rib" : "") + '" data-rep="' + st + ":" + k.n + '" title="Qualified; ' + BL.career.commandWins(c, k.n) + " of " + BL.CAPTAINS.opens + ' command successes toward this class’s squadron">' +
             (BL.ribbonSvg ? BL.ribbonSvg(st, k.n, 58) + '<span class="cg-cnt">' : "✔ ") + BL.career.commandWins(c, k.n) + "/" + BL.CAPTAINS.opens + (BL.ribbonSvg ? "</span>" : "") + "</td>";     // (the ribbon, and the count beside it)
         // (a path with ribbons shows each rank's ribbon in place of the tick: BL.ribbonSvg)
         var rib = k.n <= q && BL.ribbonSvg ? BL.ribbonSvg(st, k.n, 80) : "";
-        if (rib) return '<td class="q rib" title="' + BL.career.STATION_NAME[st] + "-" + k.n + ' ribbon">' + rib + "</td>";
+        if (rib) return '<td class="q rib" data-rep="' + st + ":" + k.n + '" title="' + BL.career.STATION_NAME[st] + "-" + k.n + ' ribbon: tap for its mission reports">' + rib + "</td>";
         if (k.n <= q) return '<td class="q" title="Qualified">✔</td>';
         if (k.n === target && ready && (st !== "captain" || BL.career.canCommand(c, k.n))) return '<td class="next" title="Working toward">▶</td>';
         return '<td class="off">' + (ready ? "" : "·") + "</td>";
       }).join("") + "</tr>";
     }).join("");
-    return '<table class="cgrid' + (jobs ? " jobs" : "") + '">' + head + "<tbody>" + rows + "</tbody></table><p class=\"muted small-text\">" + (jobs ? "Tap a row's name for its job offers · " : "") + "✔ qualified (each path shows the rank's ribbon) · ▶ working toward · dot = not built yet · Command: 1/3 beside a ribbon counts command successes; at 3/3 that class's squadron opens · Squadron: ribbon commanded, ▶ open</p>";
+    return '<table class="cgrid' + (jobs ? " jobs" : "") + '">' + head + "<tbody>" + rows + "</tbody></table><p class=\"muted small-text\">" + (jobs ? "Tap a row's name for its job offers, a ribbon for its mission reports · " : "Tap a ribbon for its mission reports · ") + "✔ qualified (each path shows the rank's ribbon) · ▶ working toward · dot = not built yet · Command: 1/3 beside a ribbon counts command successes; at 3/3 that class's squadron opens · Squadron: ribbon commanded, ▶ open</p>";
   }
   function summaryHtml(c) {
     return BL.career.STATIONS.filter(function (s) { return BL.career.PLAYABLE[s]; }).map(function (s) {
@@ -2887,7 +2887,10 @@
       last.outcome + ", " + signed(last.rep || 0) + " reputation." : "No missions yet. Your first job offers are waiting.";
     show("scr-hub");
   }
-  $("hub-grid").onclick = function (ev) { var b = ev.target.closest("button[data-jobs]"); if (b) { click(); showOffers("offers", b.dataset.jobs); } };
+  $("hub-grid").onclick = function (ev) {
+    var b = ev.target.closest("button[data-jobs]"); if (b) { click(); showOffers("offers", b.dataset.jobs); return; }
+    var r = ev.target.closest("td[data-rep]"); if (r) { click(); showReports(r.dataset.rep, "hub"); }
+  };
   /* Pilot training (training.js): any class the pilot is qualified on (a new pilot: the gunboat). */
   var trainClass = null;
   $("btn-hub-train").onclick = function () {
@@ -3140,6 +3143,40 @@
     show("scr-record");
   }
   $("btn-record-back").onclick = function () { click(); showHub(); };
+  $("rec-grid").onclick = function (ev) { var r = ev.target.closest("td[data-rep]"); if (r) { click(); showReports(r.dataset.rep, "record"); } };
+
+  /* ------------------------------------------------------ Mission reports
+     A ribbon tapped on the career chart (TexasBont, Nov 6, 2026): every mission on record at that
+     station on that class, newest first, each with its ship, systems, outcome and score, and a story
+     mission's after-action line. (The career keeps the last 200 missions.) */
+  var rpFrom = "hub";
+  function showReports(key, from) {
+    var c = career, st = key.split(":")[0], n = +key.split(":")[1], cls = BL.classByN(n), who = BL.career.STATION_NAME[st];
+    rpFrom = from || "hub";
+    var list = c.history.filter(function (h) { return (h.station || "engineer") === st && (h.n || BL.classById(h.classId).n) === n; });
+    var won = list.filter(function (h) { return h.outcome === "success"; }).length;
+    $("rp-ribbon").innerHTML = BL.ribbonSvg ? BL.ribbonSvg(st, n, 165) : "";
+    $("rp-title").textContent = who + " · " + cls.name + ": mission reports";
+    $("rp-sum").textContent = list.length ? list.length + " mission" + (list.length === 1 ? "" : "s") + " on record, " + won + " won." : "No missions on record here.";
+    $("rp-list").innerHTML = list.map(function (h) {
+      // (the ship's service record holds the systems flown, ships destroyed and hull lost)
+      var m = null;
+      Object.keys(c.ships).some(function (k) { return c.ships[k].missions.some(function (x) { if (x.seed === h.seed && x.date === h.date && x.station === h.station) { m = x; return true; } }); });
+      var sm = h.story && BL.storyMission ? BL.storyMission(h.story) : null, ok = h.outcome === "success";
+      var line = sm ? String(ok ? sm.after : sm.lost).replace(/\{hero\}/g, c.name).replace(/\{ship\}/g, BL.shipLabel(h.classId, h.ship, h.hull)) : "";
+      var sys = m && m.encounters && m.encounters.length ? m.encounters.map(function (id) { return (BL.ENCOUNTERS[id] || { name: id }).name; }).join(" → ") : "";
+      var facts = [shipHtml(h.classId, h.ship, h.hull) + " (TL" + h.tl + ")"];
+      if (sys) facts.push(esc(sys));
+      if (m && m.kills != null) facts.push("ships destroyed " + m.kills);
+      if (m && m.hullLost != null) facts.push("hull lost " + Math.round(m.hullLost));
+      return '<div class="rp-card ' + (ok ? "ok" : "bad") + '"><div class="rp-top"><b>' + esc(h.title || (h.serious === false ? "Requalifying" : "Patrol")) + "</b><span>" + h.date + "</span></div>" +
+        '<div class="rp-out"><b>' + (OUTCOME_NAME[h.outcome] || h.outcome) + "</b> · score " + (h.score != null ? h.score : "–") + " · reputation " + signed(h.rep || 0) + "</div>" +
+        '<div class="rp-facts">' + facts.join(" · ") + "</div>" + (line ? '<p class="rp-story">' + esc(line) + "</p>" : "") + "</div>";
+    }).join("");
+    $("btn-rp-back").textContent = rpFrom === "record" ? "Service record" : "Career hub";
+    show("scr-reports"); window.scrollTo(0, 0);
+  }
+  $("btn-rp-back").onclick = function () { click(); if (rpFrom === "record") showRecord(); else showHub(); };
 
   /* ------------------------------------------------------ Naval registry
      Every named ship by class and tech level (each name's past ships, lost in action, then the one
