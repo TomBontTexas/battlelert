@@ -225,10 +225,12 @@
     var mv = P.turn * dt * (this.m.ship.crippled ? 0.7 : 1), turn = clamp(norm(tg.bearing), -mv, mv);
     if (Math.abs(turn) > 1e-4) this.rotate(turn);
   };
-  RingTurret.prototype.bigTarget = function () {
-    var best = null, bs = -1;
+  // (`arc`: only ships within that many degrees of the bow)
+  RingTurret.prototype.bigTarget = function (arc) {
+    var best = null, bs = -1, self = this;
     this.ships.forEach(function (s) {
       if (s.dead || s.state === "leave") return;
+      if (arc && Math.abs(norm(self.bearingOf(s.x, s.y))) > arc) return;
       var sc = s.hp + (s.lockable ? 1e4 : 0);
       if (sc > bs) { bs = sc; best = s; }
     });
@@ -301,7 +303,8 @@
     // (on the bridge the main gun fires only on the captain's MAIN GUN order: Captain.orderMain)
     var ms = this.mainState(), held = m.captain && !m.captain.swing;
     if (ms) {
-      if (!ms.ready || held || !this.mainLine()) this.mainSeen = 0;
+      var ln = this.mainLine();      // (on the bridge only the swing's target: never a small ship in front of it)
+      if (!ms.ready || held || !ln || m.captain && ln !== m.captain.swing.s) this.mainSeen = 0;
       else if (!this.mainSeen) this.mainSeen = now + this.crewReact();
       else if (now >= this.mainSeen) { this.mainSeen = 0; this.fireMain(); }
     }

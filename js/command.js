@@ -1263,7 +1263,7 @@
   Captain.prototype.mainView = function () {
     var m = this.m, mg = m.sys("main"), tu = m.turret;
     if (!mg) return null;
-    var ready = !mg.tripped && mg.mj >= mg.maxMJ - 0.5, tg = ready ? tu.bigTarget() : null;
+    var ready = !mg.tripped && mg.mj >= mg.maxMJ - 0.5, tg = ready ? tu.bigTarget(BL.COMMAND.mainSwing.arc) : null;
     return { ready: ready, pct: Math.floor(mg.mj / mg.maxMJ * 100), target: tg, swinging: !!this.swing, can: ready && !!tg && !this.swing && !this.holding && !this.jumpOrdered };
   };
   Captain.prototype.orderMain = function () {
@@ -1273,13 +1273,15 @@
     this.m.cue("tick");
     return true;
   };
-  // The swing ends once the gun has fired (or lost most of its charge), nothing is left to swing
-  // onto (a target that's gone gives way to the next biggest), or it has taken too long.
+  // The swing ends once the gun has fired (or lost most of its charge), its target leaves the arc off
+  // the bow, nothing is left to swing onto (a target that's gone gives way to the next biggest in the
+  // arc), or it has taken too long.
   Captain.prototype.runSwing = function () {
     var sw = this.swing, m = this.m, mg = m.sys("main");
     if (!sw) return;
-    if (sw.s.dead || sw.s.state === "leave" || m.turret.ships.indexOf(sw.s) < 0) sw.s = m.turret.bigTarget();
-    if (!sw.s || !mg || m.stats.mainShots > sw.shots || mg.mj < mg.maxMJ * 0.8 || m.t >= sw.until || this.holding) this.swing = null;
+    var arc = BL.COMMAND.mainSwing.arc;
+    if (sw.s.dead || sw.s.state === "leave" || m.turret.ships.indexOf(sw.s) < 0) sw.s = m.turret.bigTarget(arc);
+    if (!sw.s || Math.abs(norm(m.turret.bearingOf(sw.s.x, sw.s.y))) > arc || !mg || m.stats.mainShots > sw.shots || mg.mj < mg.maxMJ * 0.8 || m.t >= sw.until || this.holding) this.swing = null;
   };
   /* LAUNCH / RECOVER (cruiser and up): the captain alone launches and recovers the gunboat
      squadron. The engineer keeps the hangar capacitor charging (the launchers while it's aboard,

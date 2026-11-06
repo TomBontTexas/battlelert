@@ -1935,7 +1935,7 @@
     }
     if (mv) {
       var mb = $("cp-main"); mb.disabled = !live || !mv.can; mb.classList.toggle("ready", !!mv.can);
-      setHtml(mb, mv.swinging ? "SWINGING" : mv.ready ? "MAIN GUN <small>(M)</small>" : "MAIN " + mv.pct + "%");
+      setHtml(mb, mv.swinging ? "SWINGING" : mv.ready && !mv.target ? "MAIN · NONE AHEAD" : mv.ready ? "MAIN GUN <small>(M)</small>" : "MAIN " + mv.pct + "%");
     }
     if (hgv) {
       var hb = $("cp-hangar"); hb.disabled = !live || !hgv.can; hb.classList.toggle("ready", !!hgv.can);

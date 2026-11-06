@@ -1060,7 +1060,9 @@
     // most `timeout` s), then she comes back to the plot; the crew fires it only on that order. Cruiser and up: the
     // captain alone launches and recovers the gunboat squadron (LAUNCH / RECOVER, once the engineer
     // has the launchers or arresters full); the test bot recovers `botRecover` s before the window.
-    mainSwing: { timeout: 25, botSwing: 60 },      // (botSwing: the test bot swings only for a target that far off the bow)
+    // (Nov 5, 2026, TexasBont: the biggest ship within `arc` degrees of the bow; the swing is called off
+    // if it leaves that arc, and the crew fires only with it on the line, never at a smaller ship.)
+    mainSwing: { timeout: 25, arc: 45, botSwing: 60 },      // (botSwing: the test bot swings only for a target that far off the bow)
     hangarOrder: { botRecover: 40 },
     // Lines the captain hears although the pilot's quiet list (BL.HELM.quiet) mutes them: the
     // answer to his own LAUNCH, in its plain (bridge) wording.
