@@ -254,6 +254,8 @@
     classes.forEach(function (n) {
       if (!BL.classByN(n) || !built(station, n)) return;
       if (cmd && n > q && !canCommand(c, n)) return;      // (command of a class: the command ladder, canCommand)
+      // (a class whose squadron is open: the rest of its story moves to the requalifying jobs; TexasBont, Nov 6, 2026)
+      if (cmd && squadronOpen(c, n)) return;
       var left = storyLeft(c, station, n);
       left.forEach(function (m, i) { out.push(makeJob(rng, station, n, i === 0 ? lowTL(n) : anyTL(rng, n), true, m)); });
       if (!left.length && n > q && !storyComplete(c, station)) {
@@ -418,6 +420,8 @@
     // before the named commodores get theirs)
     var sq = offers(c, "squadron");
     if (BL.CLASSES.some(function (k) { return squadronOpen(c, k.n) && !sq.some(function (o) { return o.n === k.n; }); })) generateOffers(c, "squadron");
+    // (a story job on a class whose squadron is now open: drawn again without it)
+    if (offers(c, "captain").some(function (o) { return o.story && o.serious && squadronOpen(c, o.n); })) generateOffers(c, "captain");
     if (offers(c, "captain").some(function (o) { return !o.by; })) offeredBy(c, offers(c, "captain"), BL.rng(c.offerSeed + 13));
   }
   // Tech levels for a class (BL.TECH.levels): the lowest, and any one at random.
@@ -437,11 +441,13 @@
 
   // Requalifying: jobs below your current class, always available. You've already qualified on
   // them, so they're practice or requalification, and earn half that class's reputation. With a
-  // storyline, they're the story missions you skipped on those classes.
+  // storyline, they're the story missions you skipped on those classes (at command, your own class's
+  // too once its squadron is open: storyOffers no longer offers them).
   function lowerJobs(c, station) {
     var q = qualified(c, station), out = [];
     var rng = BL.rng(c.offerSeed + 7);
-    for (var n = 1; n < q; n++) {
+    for (var n = 1; n <= q; n++) {
+      if (n === q && !(station === "captain" && hasStory(station) && squadronOpen(c, n))) continue;
       if (!built(station, n)) continue;
       if (hasStory(station)) { storyLeft(c, station, n).forEach(function (m) { out.push(makeJob(rng, station, n, anyTL(rng, n), false, m)); }); continue; }
       BL.TECH.levels(BL.classByN(n).id).forEach(function (tl) { out.push(makeJob(rng, station, n, tl, false)); });
