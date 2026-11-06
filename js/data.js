@@ -1062,6 +1062,9 @@
     // has the launchers or arresters full); the test bot recovers `botRecover` s before the window.
     // (Nov 5, 2026, TexasBont: the biggest ship within `arc` degrees of the bow; the swing is called off
     // if it leaves that arc, and the crew fires only with it on the line, never at a smaller ship.)
+    // The main gun's bleed on the bridge (Nov 5, 2026, TexasBont): at the usual 2% a second it never filled
+    // on the SHIELDS stance (its share of power was under what it leaks); now it holds like the drive.
+    mainBleed: 0.0015,
     capitalShield: { k: 1.1, types: ["frigate", "cruiserA", "battleshipA", "fortress"] },     // (Mission.shieldK)
     mainSwing: { timeout: 25, arc: 45, botSwing: 60 },      // (botSwing: the test bot swings only for a target that far off the bow)
     hangarOrder: { botRecover: 40 },

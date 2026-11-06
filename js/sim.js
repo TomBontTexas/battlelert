@@ -1037,6 +1037,7 @@
   // Bleed rate (share of stored charge per second), and the power that holds a capacitor full.
   Mission.prototype.bleedOf = function (s) {
     var b = this.phys.bleed; if (!b) return 0;
+    if (this.captain && s.kind === "main") return BL.COMMAND.mainBleed;     // (the bridge: the main gun holds its charge)
     return b[s.kind] !== undefined ? b[s.kind] : b.other;
   };
   Mission.prototype.holdMW = function (s) { return s.drainMW + s.mj * this.bleedOf(s); };
