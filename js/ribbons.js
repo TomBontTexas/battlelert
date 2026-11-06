@@ -3,7 +3,8 @@
    rank, drawn as SVG. Engineer: maroon; E1 plain, E2 one bronze wrench, E3 two crossed in bronze,
    E4 in silver, E5 in gold; E6 to E8 add a bronze, silver or gold star where they cross; E9 a gold
    star there and one on either side. Gunner: green, the same with sabers for wrenches (blades up).
-   Pilot and command ribbons are still to come.
+   Pilot: sky blue with aviator's wings: P2 one wing, P3 to P5 a spread pair, stars as before.
+   Command ribbons are still to come.
    BL.ribbonSvg(station, rank, width) -> an SVG string, or "" for a path without ribbons yet. */
 (function (root) {
   "use strict";
@@ -13,7 +14,7 @@
     silver: ["#ffffff", "#c3c9d2", "#7d8591"],
     gold:   ["#fff0a0", "#e0b030", "#8a6410"]
   };
-  var COLOR = { engineer: "#6e1426", gunner: "#1f8a3e" };
+  var COLOR = { engineer: "#6e1426", gunner: "#1f8a3e", pilot: "#2f72b8" };
   var uid = 0;      // (each ribbon's gradients and masks get their own ids)
 
   function star(cx, cy, R) {
@@ -45,17 +46,28 @@
       '<rect x="-12.4" y="-1.4" width="6" height="2.8" rx="1.1"/>' +
       '<circle cx="-13" cy="0" r="1.8"/></g>';
   }
-  // The rank's devices: one (rank 2) or two crossed (3 up), bronze to gold, then the stars.
+  // An aviator's wing: from the centre (x 0) out to the tip at +x, feathers along its trailing edge.
+  function wing(id, fill, tf) {
+    return '<g transform="' + tf + ' scale(1,1.3)" filter="url(#' + id + 'sh)"><path fill="url(#' + fill + ')" d="M0.6,-2.2 C5,-5.6 12,-6.6 20.5,-6 ' +
+      'L18.6,-4.2 L20,-3.8 L17,-2.2 L18.2,-1.7 L15,-0.2 L15.8,0.4 L12.2,1.6 L12.6,2.2 Q6,3.4 0.6,2.4 Z"/>' +
+      '<path d="M3,-1.6 C7,-3.6 12,-4.4 17,-4.4 M3.5,0.4 C7,-1 10.5,-1.6 14,-1.6" fill="none" stroke="#000" stroke-opacity=".28" stroke-width=".4"/></g>';
+  }
+  // The rank's devices: one (rank 2) or two crossed (3 up; wings: a spread pair), bronze to gold,
+  // then the stars.
   function devices(id, rank, draw) {
-    var dev = "", cx = 55, cy = 15, wm = rank <= 3 ? "bronze" : rank === 4 ? "silver" : "gold";
-    if (rank === 2) dev += draw(id, id + wm, "translate(" + cx + "," + cy + ")");
-    else if (rank >= 3) {
+    var dev = "", cx = 55, cy = 15, wm = rank <= 3 ? "bronze" : rank === 4 ? "silver" : "gold", wings = draw === wing;
+    if (rank === 2) dev += draw(id, id + wm, "translate(" + (wings ? cx - 10 : cx) + "," + cy + ")");
+    else if (rank >= 3 && wings) {
+      dev += draw(id, id + wm, "translate(" + cx + "," + cy + ")") + draw(id, id + wm, "translate(" + cx + "," + cy + ") scale(-1,1)");
+      if (rank < 6) dev += '<circle cx="' + cx + '" cy="' + cy + '" r="2.6" fill="url(#' + id + wm + ')" filter="url(#' + id + 'sh)"/>';     // (where the wings meet)
+    } else if (rank >= 3) {
       dev += draw(id, id + wm, "translate(" + cx + "," + cy + ") rotate(-38)");
       dev += draw(id, id + wm, "translate(" + cx + "," + cy + ") rotate(218)");
     }
     var sm = { 6: "bronze", 7: "silver", 8: "gold", 9: "gold" }[rank];
     if (sm) dev += '<polygon points="' + star(cx, cy, 6.2) + '" fill="url(#' + id + sm + ')" stroke="#3a2a08" stroke-width=".35" filter="url(#' + id + 'sh)"/>';
-    if (rank === 9) [cx - 26, cx + 26].forEach(function (x) { dev += '<polygon points="' + star(x, cy, 5) + '" fill="url(#' + id + 'gold)" stroke="#3a2a08" stroke-width=".3" filter="url(#' + id + 'sh)"/>'; });
+    var sx = wings ? 31 : 26;
+    if (rank === 9) [cx - sx, cx + sx].forEach(function (x) { dev += '<polygon points="' + star(x, cy, 5) + '" fill="url(#' + id + 'gold)" stroke="#3a2a08" stroke-width=".3" filter="url(#' + id + 'sh)"/>'; });
     return dev;
   }
 
@@ -73,6 +85,6 @@
     var body = '<rect width="110" height="30" fill="' + base + '"/><rect width="110" height="30" fill="url(#' + id + 'tx)"/>' +
       '<rect width="110" height="30" fill="url(#' + id + 'sheen)"/><rect x=".4" y=".4" width="109.2" height="29.2" fill="none" stroke="#000" stroke-opacity=".45" stroke-width=".8"/>';
     return '<svg class="ribbon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 110 30" width="' + w + '" height="' + (w * 3 / 11).toFixed(1) + '" role="img" aria-label="' + station + " " + rank + ' ribbon">' +
-      defs + body + devices(id, rank, station === "gunner" ? saber : wrench) + "</svg>";
+      defs + body + devices(id, rank, station === "gunner" ? saber : station === "pilot" ? wing : wrench) + "</svg>";
   };
 })(typeof window !== "undefined" ? window : globalThis);
