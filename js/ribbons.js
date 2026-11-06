@@ -5,7 +5,8 @@
    star there and one on either side. Gunner: green, the same with sabers for wrenches (blades up).
    Pilot: sky blue with aviator's wings: P2 one wing, P3 to P5 a spread pair, stars as before.
    Command: royal purple with a gold stripe near each end, with anchors (crossed, rings up).
-   Squadron: navy with twin gold stripes near each end, with spyglasses (crossed, lenses up).
+   Squadron: the command ribbon with twin gold stripes near each end (Nov 6, 2026). The spyglasses
+   (navy, crossed, lenses up) are kept for the Fleet Admiral, still to come.
    BL.ribbonSvg(station, rank, width) -> an SVG string, or "" for a path without ribbons yet. */
 (function (root) {
   "use strict";
@@ -15,9 +16,9 @@
     silver: ["#ffffff", "#c3c9d2", "#7d8591"],
     gold:   ["#fff0a0", "#e0b030", "#8a6410"]
   };
-  var COLOR = { engineer: "#6e1426", gunner: "#1f8a3e", pilot: "#2f72b8", captain: "#55287f", squadron: "#1b2a5c" };
-  var EDGE = { captain: "#d8ab3c", squadron: "#d8ab3c" };      // (a gold stripe near each end)
-  var TWIN = { squadron: true };                                // (two, side by side)
+  var COLOR = { engineer: "#6e1426", gunner: "#1f8a3e", pilot: "#2f72b8", captain: "#55287f", squadron: "#55287f", admiral: "#1b2a5c" };
+  var EDGE = { captain: "#d8ab3c", squadron: "#d8ab3c", admiral: "#d8ab3c" };      // (a gold stripe near each end)
+  var TWIN = { squadron: true, admiral: true };                                // (two, side by side)
   var uid = 0;      // (each ribbon's gradients and masks get their own ids)
 
   function star(cx, cy, R) {
@@ -106,6 +107,6 @@
       (EDGE[station] ? (TWIN[station] ? [3.2, 7, 101.2, 105] : [4, 103.4]).map(function (x) { return '<rect x="' + x + '" width="' + (TWIN[station] ? 1.8 : 2.6) + '" height="30" fill="' + EDGE[station] + '"/>'; }).join("") : "") +
       '<rect width="110" height="30" fill="url(#' + id + 'sheen)"/><rect x=".4" y=".4" width="109.2" height="29.2" fill="none" stroke="#000" stroke-opacity=".45" stroke-width=".8"/>';
     return '<svg class="ribbon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 110 30" width="' + w + '" height="' + (w * 3 / 11).toFixed(1) + '" role="img" aria-label="' + station + " " + rank + ' ribbon">' +
-      defs + body + devices(id, rank, station === "gunner" ? saber : station === "pilot" ? wing : station === "captain" ? anchor : station === "squadron" ? spyglass : wrench) + "</svg>";
+      defs + body + devices(id, rank, station === "gunner" ? saber : station === "pilot" ? wing : station === "captain" || station === "squadron" ? anchor : station === "admiral" ? spyglass : wrench) + "</svg>";
   };
 })(typeof window !== "undefined" ? window : globalThis);
