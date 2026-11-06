@@ -1100,8 +1100,8 @@
     sitting: { hit: { sitting: 0.7, cruise: 0.5, moving: 0.4 }, torpMiss: 0.6, avg: 10, hardTurn: 0.5, slow: "deadSlow", fast: "standard" },
     // SHIELDS costs the guns: on it the engineer gives the guns and the main gun only this share of
     // the power they'd ask for (AIEngineer.think), so the captain switches it on for the torpedoes
-    // and off again to shoot.
-    shieldsGuns: 0.15,
+    // and off again to shoot. (0.15 until Nov 5, 2026: light cruisers then lost nearly every frigate fight)
+    shieldsGuns: 0.4,
     // The captain answers for his ship: his ship condition part loses this many times the share of
     // hull lost (2: half the hull gone, nothing left of the part), so the reputation hit doubles.
     hullCost: 2,
@@ -1110,7 +1110,7 @@
       steady: { name: "Steady: no breaks, take everything on the shields", short: "STEADY" } },
     pilotList: ["evade", "hold", "steady"],
     // (drive first: after life support the drive charges to be full by the window (its last percent flat out), the rest share what's left)
-    stances: { shields: { name: "Shields first (the guns get little power)", short: "SHIELDS" }, balanced: { name: "Balanced", short: "BALANCE" }, guns: { name: "Guns first", short: "GUNS" },
+    stances: { shields: { name: "Shields first (the guns get less power)", short: "SHIELDS" }, balanced: { name: "Balanced", short: "BALANCE" }, guns: { name: "Guns first", short: "GUNS" },
       drive: { name: "Drive first", short: "DRIVE" }, main: { name: "Main gun first", short: "MAIN GUN" }, moab: { name: "Planet buster first", short: "MOAB" } },
     // (main: light cruiser and up; drive: ships with a warp drive; moab: the dreadnought's planet buster)
     stanceList: ["balanced", "shields", "guns", "main", "drive", "moab"],
