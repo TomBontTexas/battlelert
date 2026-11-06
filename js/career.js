@@ -263,8 +263,9 @@
         out.push(makeJob(rng, station, n, anyTL(rng, n)));
       }
     });
-    // Command: the class you command has no story left and the next isn't open yet: plain jobs on it.
-    if (cmd && q >= 1 && !out.some(function (j) { return j.n === q; }) && !out.some(function (j) { return j.n > q; })) {
+    // Command: the class you command has no story left and the next isn't open yet: plain jobs on it
+    // (not once its squadron is open: then it's Squadron jobs and requalifying; TexasBont, Nov 6, 2026).
+    if (cmd && q >= 1 && !squadronOpen(c, q) && !out.some(function (j) { return j.n === q; }) && !out.some(function (j) { return j.n > q; })) {
       out.push(makeJob(rng, station, q, lowTL(q)));
       for (var i = rng.int([1, 2]); i > 0; i--) out.push(makeJob(rng, station, q, anyTL(rng, q)));
     }
@@ -420,8 +421,8 @@
     // before the named commodores get theirs)
     var sq = offers(c, "squadron");
     if (BL.CLASSES.some(function (k) { return squadronOpen(c, k.n) && !sq.some(function (o) { return o.n === k.n; }); })) generateOffers(c, "squadron");
-    // (a story job on a class whose squadron is now open: drawn again without it)
-    if (offers(c, "captain").some(function (o) { return o.story && o.serious && squadronOpen(c, o.n); })) generateOffers(c, "captain");
+    // (a job on a class whose squadron is now open: drawn again without it)
+    if (offers(c, "captain").some(function (o) { return o.serious && squadronOpen(c, o.n); })) generateOffers(c, "captain");
     if (offers(c, "captain").some(function (o) { return !o.by; })) offeredBy(c, offers(c, "captain"), BL.rng(c.offerSeed + 13));
   }
   // Tech levels for a class (BL.TECH.levels): the lowest, and any one at random.

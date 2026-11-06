@@ -2796,12 +2796,14 @@
         '<i class="pf-mark" style="left:' + v + '%"></i></div><div class="pf-ends"><span>' + row[2] + "</span><span>" + row[3] + "</span></div></div>";
     }).join("") + (before ? '<p class="muted small-text">Grey mark: before this mission.</p>' : "");
   }
-  function gridHtml(c) {
+  // jobs: each row's name is a button to that path's job offers (the career hub; TexasBont, Nov 6, 2026).
+  function gridHtml(c, jobs) {
     var head = "<tr><th></th>" + BL.CLASSES.map(function (k) { return "<th>" + k.n + ". " + k.name + "</th>"; }).join("") + "</tr>";
     var later = { gunner: "Phase 3", pilot: "Phase 4" };
     var rows = BL.career.STATIONS.map(function (st) {
       var q = BL.career.qualified(c, st), target = BL.career.targetClass(c, st);
-      return "<tr><td>" + BL.career.STATION_NAME[st] + "</td>" + BL.CLASSES.map(function (k) {
+      var name = jobs && BL.career.PLAYABLE[st] ? '<button class="cg-jobs" data-jobs="' + st + '" title="' + BL.career.STATION_NAME[st] + ' job offers">' + BL.career.STATION_NAME[st] + " jobs ›</button>" : BL.career.STATION_NAME[st];
+      return "<tr><td>" + name + "</td>" + BL.CLASSES.map(function (k) {
         if (!BL.career.PLAYABLE[st]) return k.n === 1 ? '<td class="later" colspan="9">' + later[st] + "</td>" : "";
         // (squadron command: class by class, open after 3 successful command missions on it)
         if (st === "squadron") return BL.career.squadronWins(c, k.n) ? '<td class="q" title="Squadron commanded">✔</td>' : BL.career.squadronOpen(c, k.n) ? '<td class="next" title="Open to you">▶</td>' :
@@ -2816,7 +2818,7 @@
         return '<td class="off">' + (ready ? "" : "·") + "</td>";
       }).join("") + "</tr>";
     }).join("");
-    return '<table class="cgrid">' + head + rows + "</table><p class=\"muted small-text\">✔ qualified · ▶ working toward · dot = not built yet · Command: 1/3 command successes so far; green at 3/3, which opens that class's squadron · Squadron: ✔ commanded, ▶ open</p>";
+    return '<table class="cgrid">' + head + rows + "</table><p class=\"muted small-text\">" + (jobs ? "Tap a row's name for its job offers · " : "") + "✔ qualified · ▶ working toward · dot = not built yet · Command: 1/3 command successes so far; green at 3/3, which opens that class's squadron · Squadron: ✔ commanded, ▶ open</p>";
   }
   function summaryHtml(c) {
     return BL.career.STATIONS.filter(function (s) { return BL.career.PLAYABLE[s]; }).map(function (s) {
@@ -2870,22 +2872,13 @@
   function showHub() {
     $("hub-name").textContent = career.name;
     $("hub-summary").innerHTML = summaryHtml(career);
-    $("hub-grid").innerHTML = gridHtml(career);
+    $("hub-grid").innerHTML = gridHtml(career, true);
     var last = career.history[0];
     $("hub-last").textContent = last ? "Last mission: " + BL.career.STATION_NAME[last.station || "engineer"].toLowerCase() + " aboard " + BL.shipLabel(last.classId, last.ship, last.hull) + " (TL" + last.tl + "), " +
       last.outcome + ", " + signed(last.rep || 0) + " reputation." : "No missions yet. Your first job offers are waiting.";
-    $("btn-hub-eng").textContent = "Engineer jobs (" + BL.career.offers(career, "engineer").length + ")";
-    $("btn-hub-gun").textContent = "Gunner jobs (" + BL.career.offers(career, "gunner").length + ")";
-    $("btn-hub-pilot").textContent = "Pilot jobs (" + BL.career.offers(career, "pilot").length + ")";
-    $("btn-hub-cmd").textContent = "Command jobs (" + BL.career.offers(career, "captain").length + ")";
-    $("btn-hub-sq").textContent = "Squadron jobs (" + BL.career.offers(career, "squadron").length + ")";
     show("scr-hub");
   }
-  $("btn-hub-eng").onclick = function () { click(); showOffers("offers", "engineer"); };
-  $("btn-hub-gun").onclick = function () { click(); showOffers("offers", "gunner"); };
-  $("btn-hub-pilot").onclick = function () { click(); showOffers("offers", "pilot"); };
-  $("btn-hub-cmd").onclick = function () { click(); showOffers("offers", "captain"); };
-  $("btn-hub-sq").onclick = function () { click(); showOffers("offers", "squadron"); };
+  $("hub-grid").onclick = function (ev) { var b = ev.target.closest("button[data-jobs]"); if (b) { click(); showOffers("offers", b.dataset.jobs); } };
   /* Pilot training (training.js): any class the pilot is qualified on (a new pilot: the gunboat). */
   var trainClass = null;
   $("btn-hub-train").onclick = function () {
@@ -3021,6 +3014,7 @@
       $("offers-lede").textContent = station === "squadron" ? "Squadron postings, offered by the fleet admirals: you command a squadron of like ships from the flagship, plotting its course and giving its orders; your flag captain runs the flagship and a captain runs every other ship. Each job suggests captains from your captains pool and the flagship's crew from your crew pool; you can change any of them before the briefing. " +
         (open ? "Squadron command is open on " + open + " class" + (open === 1 ? "" : "es") + ". " : "None yet: ") + "A class's squadron opens after " + BL.CAPTAINS.opens + " successful command missions on it. Each ship lost costs a point of squadron reputation, and so does taking the flagship's bridge." : station === "captain" ? (
         "Command postings: you're on the bridge, plotting each system's course and giving the orders; your crew carry them out. Each job suggests a crew from your crew pool, and you can change any post before the briefing. A gunboat's commander is its coxswain. On the gunboat and destroyer escort some are escort missions." +
+        (!shownJobs.length && BL.career.squadronOpen(career, cq) ? " No command jobs now: your " + BL.classByN(cq).name.toLowerCase() + " squadron is open, so take Squadron jobs; story missions you skipped are under Requalifying jobs." : "") +
         (cq >= 9 ? "" : needs.length ? " Command of the " + BL.classByN(cq + 1).name.toLowerCase() + " needs " + needs.join(" and ") + "." : " Command of the " + BL.classByN(cq + 1).name.toLowerCase() + " is open to you.")) : (station === "gunner"
         ? "Postings for gunners at your level. Each lists the ship's guns and names the engineer who'll run your power and the gun crew."
         : station === "pilot"

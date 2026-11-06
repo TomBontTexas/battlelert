@@ -308,6 +308,7 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 .cgrid td.next { outline: 2px solid var(--warn); outline-offset: -2px; color: var(--warn); font-weight: 800; }
 .cgrid td.off { color: var(--muted); opacity: .55; }
 .cgrid td.later { color: var(--muted); font-style: italic; }
+.cgrid button.cg-jobs { width: 100%; text-align: left; padding: 6px 8px; font-size: 13px; background: #1f4e63; border-color: var(--charge); white-space: nowrap; }     /* (a row's name: its job offers) */
 .offers { display: grid; gap: 10px; }
 .offer { display: grid; grid-template-columns: 1fr auto; gap: 6px 16px; align-items: center; background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; }
 .offer.stepup { border-color: var(--warn); }
