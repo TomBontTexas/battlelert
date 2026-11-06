@@ -2809,6 +2809,8 @@
       return "<tr><td>" + name + "</td>" + BL.CLASSES.map(function (k) {
         if (!BL.career.PLAYABLE[st]) return k.n === 1 ? '<td class="later" colspan="9">' + later[st] + "</td>" : "";
         // (squadron command: class by class, open after 3 successful command missions on it)
+        var sqRib = st === "squadron" && BL.career.squadronWins(c, k.n) && BL.ribbonSvg ? BL.ribbonSvg(st, k.n, 80) : "";
+        if (sqRib) return '<td class="q rib" title="Squadron commanded: S' + k.n + ' ribbon">' + sqRib + "</td>";
         if (st === "squadron") return BL.career.squadronWins(c, k.n) ? '<td class="q" title="Squadron commanded">✔</td>' : BL.career.squadronOpen(c, k.n) ? '<td class="next" title="Open to you">▶</td>' :
           '<td class="off">' + (BL.career.built(st, k.n) ? "" : "·") + "</td>";
         var ready = BL.career.built(st, k.n);
@@ -2825,7 +2827,7 @@
         return '<td class="off">' + (ready ? "" : "·") + "</td>";
       }).join("") + "</tr>";
     }).join("");
-    return '<table class="cgrid' + (jobs ? " jobs" : "") + '">' + head + "<tbody>" + rows + "</tbody></table><p class=\"muted small-text\">" + (jobs ? "Tap a row's name for its job offers · " : "") + "✔ qualified (engineer, gunner, pilot and command: the rank's ribbon) · ▶ working toward · dot = not built yet · Command: 1/3 beside a ribbon counts command successes; at 3/3 that class's squadron opens · Squadron: ✔ commanded, ▶ open</p>";
+    return '<table class="cgrid' + (jobs ? " jobs" : "") + '">' + head + "<tbody>" + rows + "</tbody></table><p class=\"muted small-text\">" + (jobs ? "Tap a row's name for its job offers · " : "") + "✔ qualified (each path shows the rank's ribbon) · ▶ working toward · dot = not built yet · Command: 1/3 beside a ribbon counts command successes; at 3/3 that class's squadron opens · Squadron: ribbon commanded, ▶ open</p>";
   }
   function summaryHtml(c) {
     return BL.career.STATIONS.filter(function (s) { return BL.career.PLAYABLE[s]; }).map(function (s) {
