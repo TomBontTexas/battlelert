@@ -485,8 +485,7 @@
   /* ------------------------------------------------------- Mission result
      Every mission moves reputation on that path (repParts); success qualifies you on the class.
      Any two failures at a post (station + class) send you back one class, where you
-     requalify with a real mission: C4 failing twice on destroyers (or, at C4, on light cruisers)
-     is C3 again (TexasBont, Nov 6, 2026). Failures on jobs below your class don't count. */
+     requalify with a real mission. Failures on jobs below your class don't count. */
   function applyResult(c, job, r) {
     var st = c.stations[job.station], post = job.n, before = st.qualified;
     var report = { rep: 0, qualifiedBefore: before, qualifiedAfter: before, promoted: false, demoted: false, failuresAtPost: 0,
@@ -502,7 +501,7 @@
       report.failuresAtPost = st.failures[post];
       if (st.failures[post] >= 2) {
         st.failures[post] = 0;
-        var back = Math.max(0, st.qualified - 1);
+        var back = Math.max(0, Math.min(st.qualified, post - 2));
         // Classes lost this way must be requalified with real missions, not rapid sign-offs.
         st.realUntil = Math.max(st.realUntil || 0, st.qualified);
         if (back < st.qualified) { st.qualified = back; report.demoted = true; }
