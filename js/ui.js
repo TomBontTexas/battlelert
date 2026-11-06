@@ -2805,7 +2805,7 @@
     var later = { gunner: "Phase 3", pilot: "Phase 4" };
     var rows = BL.career.STATIONS.map(function (st) {
       var q = BL.career.qualified(c, st), target = BL.career.targetClass(c, st);
-      var name = jobs && BL.career.PLAYABLE[st] ? '<button class="cg-jobs" data-jobs="' + st + '" title="' + BL.career.STATION_NAME[st] + ' job offers">' + BL.career.STATION_NAME[st] + " jobs ›</button>" : BL.career.STATION_NAME[st];
+      var name = jobs && BL.career.PLAYABLE[st] ? '<button class="cg-jobs" data-jobs="' + st + '" title="' + BL.career.STATION_NAME[st] + ' job offers">' + BL.career.STATION_NAME[st] + " ›</button>" : BL.career.STATION_NAME[st];
       return "<tr><td>" + name + "</td>" + BL.CLASSES.map(function (k) {
         if (!BL.career.PLAYABLE[st]) return k.n === 1 ? '<td class="later" colspan="9">' + later[st] + "</td>" : "";
         // (squadron command: class by class, open after 3 successful command missions on it)

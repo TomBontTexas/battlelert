@@ -291,6 +291,7 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 
 /* -------------------------------------------------------------- Career */
 .sheet.narrow { max-width: 560px; }
+#scr-hub .sheet { max-width: 1000px; }     /* (room for the career chart's nine columns on the iPad) */
 .field-label { display: block; font-weight: 700; margin: 14px 0 6px; }
 .text-input { width: 100%; font: 18px var(--font); padding: 9px 12px; background: var(--panel-2); color: var(--text); border: 1px solid var(--line); border-radius: 6px; }
 .warn-note { color: var(--warn); }
@@ -302,16 +303,16 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 /* The career chart: a first column for the paths, nine equal class columns. */
 .cgrid { table-layout: fixed; border-collapse: separate; border-spacing: 0; font-size: 13px; min-width: 780px; width: 100%; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
 .cgrid col.cg-first { width: 96px; }
-.cgrid.jobs col.cg-first { width: 136px; }
+.cgrid.jobs col.cg-first { width: 112px; }
 .cgrid th, .cgrid td { border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 0 4px; height: 40px; text-align: center; vertical-align: middle; }
 .cgrid tr > :last-child { border-right: 0; }
 .cgrid tbody tr:last-child > * { border-bottom: 0; }
-.cgrid thead th { background: var(--panel-2); color: var(--text); font-weight: 700; font-size: 11px; line-height: 1.2; height: auto; padding: 4px 2px 7px; vertical-align: middle; border-bottom: 2px solid var(--line); }
+.cgrid thead th { background: var(--panel-2); color: var(--text); font-weight: 700; font-size: 11px; line-height: 1.2; height: auto; padding: 4px 2px 7px; vertical-align: middle; text-align: center; border-bottom: 2px solid var(--line); }
 .cgrid tr.cg-nums th { border-bottom: 0; padding: 7px 2px 0; }
 .cgrid tr.cg-names th { height: 34px; }
 .cgrid tr.cg-nums th[rowspan] { border-bottom: 2px solid var(--line); }
 .cgrid .cg-n { display: block; margin: 0 auto; width: 20px; height: 20px; line-height: 20px; border-radius: 50%; background: rgba(110,220,255,.12); color: var(--charge); font-size: 11px; font-weight: 800; }
-.cgrid td:first-child, .cgrid th:first-child { text-align: left; padding: 0 6px; white-space: nowrap; font-weight: 600; background: var(--panel-2); }
+.cgrid td:first-child, .cgrid thead tr.cg-nums th:first-child { text-align: left; padding: 0 6px; white-space: nowrap; font-weight: 600; background: var(--panel-2); }
 .cgrid td { font-size: 15px; }
 .cgrid td.q { background: #16402c; color: var(--good); font-weight: 800; }
 .cgrid td.qpart { color: var(--good); font-weight: 800; white-space: nowrap; font-size: 13px; }
