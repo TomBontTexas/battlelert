@@ -125,10 +125,14 @@
       // On the bridge a capacitor at (or nearly at) full gets a trickle charge, enough to hold it
       // there against its bleed, so the captain's LAUNCH or MAIN GUN doesn't flicker off at 99%.
       if (m.captain && s.mj >= s.maxMJ - 1) w = Math.max(w, Math.min(s.maxMW, m.holdMW(s) * 1.25 + 0.2));
+      // (the main gun within its last 5% is topped off ahead of everything, or with the reactors spoken
+      // for it hung at 99% and MAIN GUN never lit: Nov 5, 2026)
+      var top = m.captain && s.kind === "main" && !full && s.mj >= s.maxMJ * 0.95 ? Math.min(s.maxMW, m.holdMW(s) + (s.maxMJ - s.mj) + 1) : 0;
+      w = Math.max(w, top);
       var draw = full ? Math.min(w, m.holdMW(s)) : w;
       // (shields split over several reactors: an even share of each, so the tightest one sets the limit)
       var room = s.split ? n * Math.min.apply(null, left) : left[s.reactor];
-      var give = Math.max(0, Math.min(w, room + (full ? w : 0)));
+      var give = Math.max(top, Math.min(w, room + (full ? w : 0)));
       m.setSetpoint(id, give);
       if (s.split) for (var k = 0; k < n; k++) left[k] -= Math.min(draw, give) / n;
       else left[s.reactor] -= Math.min(draw, give);
