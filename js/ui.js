@@ -2815,7 +2815,8 @@
         // (command: the square shows the command successes and turns green at 3/3, when that
         // class's squadron opens: TexasBont, Nov 4, 2026)
         if (k.n <= q && st === "captain" && BL.career.built("squadron", k.n) && !BL.career.squadronOpen(c, k.n))
-          return '<td class="qpart" title="Qualified; ' + BL.career.commandWins(c, k.n) + " of " + BL.CAPTAINS.opens + ' command successes toward this class’s squadron">✔ ' + BL.career.commandWins(c, k.n) + "/" + BL.CAPTAINS.opens + "</td>";
+          return '<td class="qpart' + (BL.ribbonSvg ? " rib" : "") + '" title="Qualified; ' + BL.career.commandWins(c, k.n) + " of " + BL.CAPTAINS.opens + ' command successes toward this class’s squadron">' +
+            (BL.ribbonSvg ? BL.ribbonSvg(st, k.n, 58) + '<span class="cg-cnt">' : "✔ ") + BL.career.commandWins(c, k.n) + "/" + BL.CAPTAINS.opens + (BL.ribbonSvg ? "</span>" : "") + "</td>";     // (the ribbon, and the count beside it)
         // (a path with ribbons shows each rank's ribbon in place of the tick: BL.ribbonSvg)
         var rib = k.n <= q && BL.ribbonSvg ? BL.ribbonSvg(st, k.n, 80) : "";
         if (rib) return '<td class="q rib" title="' + BL.career.STATION_NAME[st] + "-" + k.n + ' ribbon">' + rib + "</td>";
@@ -2824,7 +2825,7 @@
         return '<td class="off">' + (ready ? "" : "·") + "</td>";
       }).join("") + "</tr>";
     }).join("");
-    return '<table class="cgrid' + (jobs ? " jobs" : "") + '">' + head + "<tbody>" + rows + "</tbody></table><p class=\"muted small-text\">" + (jobs ? "Tap a row's name for its job offers · " : "") + "✔ qualified (engineer, gunner and pilot: the rank's ribbon) · ▶ working toward · dot = not built yet · Command: 1/3 command successes so far; green at 3/3, which opens that class's squadron · Squadron: ✔ commanded, ▶ open</p>";
+    return '<table class="cgrid' + (jobs ? " jobs" : "") + '">' + head + "<tbody>" + rows + "</tbody></table><p class=\"muted small-text\">" + (jobs ? "Tap a row's name for its job offers · " : "") + "✔ qualified (engineer, gunner, pilot and command: the rank's ribbon) · ▶ working toward · dot = not built yet · Command: 1/3 beside a ribbon counts command successes; at 3/3 that class's squadron opens · Squadron: ✔ commanded, ▶ open</p>";
   }
   function summaryHtml(c) {
     return BL.career.STATIONS.filter(function (s) { return BL.career.PLAYABLE[s]; }).map(function (s) {

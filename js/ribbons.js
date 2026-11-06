@@ -4,7 +4,7 @@
    E4 in silver, E5 in gold; E6 to E8 add a bronze, silver or gold star where they cross; E9 a gold
    star there and one on either side. Gunner: green, the same with sabers for wrenches (blades up).
    Pilot: sky blue with aviator's wings: P2 one wing, P3 to P5 a spread pair, stars as before.
-   Command ribbons are still to come.
+   Command: royal purple with a gold stripe near each end, with anchors (crossed, rings up).
    BL.ribbonSvg(station, rank, width) -> an SVG string, or "" for a path without ribbons yet. */
 (function (root) {
   "use strict";
@@ -14,7 +14,8 @@
     silver: ["#ffffff", "#c3c9d2", "#7d8591"],
     gold:   ["#fff0a0", "#e0b030", "#8a6410"]
   };
-  var COLOR = { engineer: "#6e1426", gunner: "#1f8a3e", pilot: "#2f72b8" };
+  var COLOR = { engineer: "#6e1426", gunner: "#1f8a3e", pilot: "#2f72b8", captain: "#55287f" };
+  var EDGE = { captain: "#d8ab3c" };      // (a gold stripe near each end)
   var uid = 0;      // (each ribbon's gradients and masks get their own ids)
 
   function star(cx, cy, R) {
@@ -52,6 +53,15 @@
       'L18.6,-4.2 L20,-3.8 L17,-2.2 L18.2,-1.7 L15,-0.2 L15.8,0.4 L12.2,1.6 L12.6,2.2 Q6,3.4 0.6,2.4 Z"/>' +
       '<path d="M3,-1.6 C7,-3.6 12,-4.4 17,-4.4 M3.5,0.4 C7,-1 10.5,-1.6 14,-1.6" fill="none" stroke="#000" stroke-opacity=".28" stroke-width=".4"/></g>';
   }
+  // An anchor along the x axis: the ring and stock at +x, the crown and its two curved arms at -x.
+  function anchor(id, fill, tf) {
+    var f = "url(#" + fill + ")";
+    return '<g transform="' + tf + '" filter="url(#' + id + 'sh)" fill="' + f + '">' +
+      '<rect x="-10.6" y="-0.85" width="19.6" height="1.7" rx=".8"/>' +
+      '<rect x="6.6" y="-3.4" width="1.4" height="6.8" rx=".6"/>' +
+      '<circle cx="10.8" cy="0" r="1.5" fill="none" stroke="' + f + '" stroke-width="1"/>' +
+      '<path d="M-7.6,-4.2 Q-11.2,-3.6 -11.2,0 Q-11.2,3.6 -7.6,4.2" fill="none" stroke="' + f + '" stroke-width="1.5" stroke-linecap="round"/></g>';
+  }
   // The rank's devices: one (rank 2) or two crossed (3 up; wings: a spread pair), bronze to gold,
   // then the stars.
   function devices(id, rank, draw) {
@@ -83,8 +93,9 @@
       '<filter id="' + id + 'sh" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx=".35" dy=".55" stdDeviation=".35" flood-color="#000" flood-opacity=".65"/></filter>' +
       grad(id + "bronze", "bronze") + grad(id + "silver", "silver") + grad(id + "gold", "gold") + "</defs>";
     var body = '<rect width="110" height="30" fill="' + base + '"/><rect width="110" height="30" fill="url(#' + id + 'tx)"/>' +
+      (EDGE[station] ? '<rect x="4" width="2.6" height="30" fill="' + EDGE[station] + '"/><rect x="103.4" width="2.6" height="30" fill="' + EDGE[station] + '"/>' : "") +
       '<rect width="110" height="30" fill="url(#' + id + 'sheen)"/><rect x=".4" y=".4" width="109.2" height="29.2" fill="none" stroke="#000" stroke-opacity=".45" stroke-width=".8"/>';
     return '<svg class="ribbon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 110 30" width="' + w + '" height="' + (w * 3 / 11).toFixed(1) + '" role="img" aria-label="' + station + " " + rank + ' ribbon">' +
-      defs + body + devices(id, rank, station === "gunner" ? saber : station === "pilot" ? wing : wrench) + "</svg>";
+      defs + body + devices(id, rank, station === "gunner" ? saber : station === "pilot" ? wing : station === "captain" ? anchor : wrench) + "</svg>";
   };
 })(typeof window !== "undefined" ? window : globalThis);
