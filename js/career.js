@@ -551,7 +551,7 @@
     var entry = { date: today(), station: job.station, classId: job.classId, n: job.n, tl: job.tl, ship: job.ship, hull: job.hull || hullOf(c, job),
       seed: job.seed, outcome: r.outcome, score: r.score, rep: report.rep, serious: job.serious, story: job.story, title: job.title };
     c.history.unshift(entry);
-    if (c.history.length > 200) c.history.length = 200;
+    if (c.history.length > 1000) c.history.length = 1000;
     logService(c, entry, r);
     if (r.outcome === "destroyed" || r.outcome === "abandoned") { retireShip(c, entry); report.shipLost = true; }
     // (a squadron's other ships: each gets her own service record; one lost or left behind is retired)

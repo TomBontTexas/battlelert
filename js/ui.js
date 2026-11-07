@@ -3148,7 +3148,7 @@
   /* ------------------------------------------------------ Mission reports
      A ribbon tapped on the career chart (TexasBont, Nov 6, 2026): every mission on record at that
      station on that class, newest first, each with its ship, systems, outcome and score, and a story
-     mission's after-action line. (The career keeps the last 200 missions.) */
+     mission's after-action line. (The career keeps the last 1000 missions.) */
   var rpFrom = "hub";
   function showReports(key, from) {
     var c = career, st = key.split(":")[0], n = +key.split(":")[1], cls = BL.classByN(n), who = BL.career.STATION_NAME[st];
