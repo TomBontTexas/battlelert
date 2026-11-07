@@ -1306,7 +1306,7 @@
      escorts of the class below, all the way down, and each destroyer escort with a squadron of
      `pyramid.pickets` picket ships. No gunboat squadrons: a capital ship's gunboats stay with her.
      turns: Fleet HQ's turns for the campaign (base at F3, plus perLevel for each level above).
-     lose: the share of his ships lost that fails it. ship: a ship's strength in a fight (hp:
+     ship: a ship's strength in a fight (hp:
      hull + shields x shieldK; fire: her guns' MW). fight: rounds at most in a turn's fight (it goes on until one side is destroyed or breaks off: TexasBont, Nov 7, 2026); ask: the
      fight his flag is in stops for him when our side's damage (ships lost and hull damage)
      reaches it, and asks: the marks he can fight on to (or to the finish); k: the share
@@ -1332,7 +1332,6 @@
     abbr: { gunboat: "GB", picket: "PK", destroyerEscort: "DE", destroyer: "DD", lightCruiser: "CL", cruiser: "CA", heavyCruiser: "CH", battleship: "BB", dreadnought: "DN", defences: "DEF" },
     plural: { gunboat: "gunboats", picket: "pickets", destroyerEscort: "destroyer escorts", destroyer: "destroyers", lightCruiser: "light cruisers", cruiser: "cruisers", heavyCruiser: "heavy cruisers", battleship: "battleships", dreadnought: "dreadnoughts" },
     turns: { base: 16, perLevel: 1 },
-    lose: 0.5,
     map: { cols: 11, rows: 7 },
     ship: { shieldK: 0.25 },
     fight: { rounds: 30, ask: 0.25, asks: [0.5, 0.75], k: 0.3, spread: [0.75, 1.25], breakAt: { cautious: 0.8, steady: 0.6, aggressive: 0.4 } },

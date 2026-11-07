@@ -207,7 +207,7 @@
     var m = $("adm-modal"), lost = c.shipsLost(), won = c.state === "won";
     var why = won ? "The target world " + c.hexes[c.world].name + " is taken on turn " + (c.turn - 1) + " of " + c.turns + "."
       : c.why === "time" ? "Fleet HQ's " + c.turns + " turns ran out before the world fell."
-      : c.why === "losses" ? "Half the fleet's ships are lost: Fleet HQ calls off the campaign."
+      : c.why === "losses" ? "The whole fleet is lost."
       : "The fleet withdrew after losing its flagship.";
     if (BL.audio) BL.audio.play(won ? "win" : "lose");
     m.innerHTML = "<div class='ov-card'><h1>" + (won ? "Campaign won" : "Campaign lost") + "</h1><p>" + esc(why) + "</p><p class='muted'>Ships lost: " + lost + " of " + c.shipsTotal + ".</p>" +

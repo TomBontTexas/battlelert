@@ -7,7 +7,7 @@
    join forces in one system. He sends each force to a system, the Azurians plot their own
    moves, then every move happens at once. Forces that come out in the same system fight there,
    decided off screen; he reads the report after the turn. He wins when a force holds the target
-   world at the end of a turn; he fails if Fleet HQ's turns run out or he loses half his ships.
+   world at the end of a turn; he fails if Fleet HQ's turns run out or his whole fleet is lost.
    If his flagship is destroyed he shifts the flag (fight on) or withdraws (a loss). Tuning:
    BL.ADMIRALS (data.js).
    Later stages: detachments and fog of war (2), supply, repair and the enemy planner (3), the
@@ -361,7 +361,8 @@
   // Won, lost, or the flagship gone (he decides: BL.Campaign.setFlag or withdraw).
   Campaign.prototype.check = function () {
     if (this.hexes[this.world].owner === "us") { this.state = "won"; this.why = "world"; return; }
-    if (this.shipsLost() >= this.shipsTotal * this.A.lose) { this.state = "lost"; this.why = "losses"; return; }
+    // (no losses rule: he decides when to pull out of his flag's fights; TexasBont, Nov 7, 2026)
+    if (!this.ours().length) { this.state = "lost"; this.why = "losses"; return; }
     if (this.flagShip.hp <= 0) { this.state = "flag"; return; }
     if (this.turn > this.turns) { this.state = "lost"; this.why = "time"; return; }
   };
