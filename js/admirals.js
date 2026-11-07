@@ -8,7 +8,7 @@
    he loses half his squadrons. If his flag squadron is destroyed he shifts the flag (fight on)
    or withdraws (a loss). Tuning: BL.ADMIRALS (data.js).
    Later stages: detachments and fog of war (2), supply, repair and the enemy planner (3), the
-   career (4), the Grand Admiral's four fleet admirals (5). */
+   career (4), the Grand Admiral's three fleet admirals (5). */
 (function (root) {
   "use strict";
   var BL = root.BL = root.BL || {};
