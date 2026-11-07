@@ -1341,7 +1341,11 @@
     abbr: { cargo: "AK", gunboat: "PT", picket: "DL", destroyerEscort: "DE", destroyer: "DD", lightCruiser: "CL", cruiser: "C", heavyCruiser: "CA", battleship: "BB", dreadnought: "DN", defences: "DEF" },     // (the hull codes, BL.HULL_CODES)
     plural: { gunboat: "gunboats", picket: "pickets", destroyerEscort: "destroyer escorts", destroyer: "destroyers", lightCruiser: "light cruisers", cruiser: "cruisers", heavyCruiser: "heavy cruisers", battleship: "battleships", dreadnought: "dreadnoughts" },
     turns: { base: 16, perLevel: 1 },
-    points: { facility: 1, world: 10, convoy: 10, rank: 10 },
+    points: { facility: 1, world: 10, convoy: 10, buster: 10, rank: 10 },
+    // G9's campaign (TexasBont, Nov 7, 2026): the planet buster strike on the Azurian homeworld.
+    // The buster rides in the flagship of the first turn and drops once the homeworld's garrison
+    // and defences are beaten with her there; then it's over (nothing to hold).
+    buster: { levels: ["G9"] },
     // F3's campaign (TexasBont, Nov 7, 2026: DLs and DEs aren't ships of the line): escort a convoy
     // of `cargo` unarmed cargo ships (each `hp` x a destroyer escort's) from our base to the other
     // Imperial world; at least half must be there, and the world held, at the end of the last

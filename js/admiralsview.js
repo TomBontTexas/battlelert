@@ -54,13 +54,13 @@
     opts = o; c = new BL.Campaign({ seed: o.seed, level: o.level }); sel = []; focus = c.home; trail = null; cheered = false;
     if (ticking) { clearTimeout(ticking); ticking = null; }
     $("adm-modal").hidden = true;
-    hintDefault = $("adm-hint").textContent = "1–9 select · A all · S split · J join · H hold · F fly the flag (first turn) · W withdraw · Enter end turn · Esc clear";
+    hintDefault = $("adm-hint").textContent = "1–9 select · A all · S split · J join · H hold · F fly the flag" + (c.busterMode ? " and the buster" : "") + " (first turn) · W withdraw · Enter end turn · Esc clear";
     draw();
   }
 
   /* --------------------------------------------------------------- Drawing */
   function draw() {
-    $("adm-title").textContent = "Admirals · " + c.level + " " + BL.ADMIRALS.titles[c.level] + (c.convoyMode ? " · convoy escort" : "");
+    $("adm-title").textContent = "Admirals · " + c.level + " " + BL.ADMIRALS.titles[c.level] + (c.convoyMode ? " · convoy escort" : c.busterMode ? " · planet buster strike" : "");
     var pts = c.points().total;
     $("adm-turn").textContent = "Turn " + Math.min(c.turn, c.turns) + " of " + c.turns + " · " + pts + " point" + (pts === 1 ? "" : "s") + " held";
     $("adm-seed").textContent = "seed " + c.seed;
@@ -124,7 +124,8 @@
     // The forces: a chip each, ours first, two to a row under the system's mark. Ours are where
     // they are; the Azurians where he knows them (seen now: solid; reported: dashed and faded).
     var at = {}; shown = {};
-    c.ours().forEach(function (f) { (at[f.at] = at[f.at] || []).push({ id: f.id, side: "us", f: f, label: c.chip(f) + (f.id === c.flag ? "★" : "") }); shown[f.id] = f.at; });
+    var bf = c.busterForce();
+    c.ours().forEach(function (f) { (at[f.at] = at[f.at] || []).push({ id: f.id, side: "us", f: f, label: c.chip(f) + (f.id === c.flag ? "★" : "") + (f === bf ? "✦" : "") }); shown[f.id] = f.at; });
     Object.keys(known).forEach(function (id) {
       var k = known[id]; (at[k.at] = at[k.at] || []).push({ id: k.id, side: "az", k: k, label: k.label + (k.seen ? "" : "?") }); shown[id] = k.at;
     });
@@ -167,7 +168,7 @@
   function line(f) {
     var alive = c.alive(f).length, ord = f.dest === f.at ? "Holding at " + c.hexes[f.at].name : "To " + c.hexes[f.dest].name + " · " + c.path(f.at, f.dest).length + " warps";
     return "<div class='adm-sq" + (sel.indexOf(f.id) >= 0 ? " sel" : "") + (f.lost ? " lost" : "") + "' data-id='" + f.id + "'>" +
-      "<b>" + (fleetList().indexOf(f) + 1) + " · " + esc(c.desc(f).replace(/^./, function (s) { return s.toUpperCase(); })) + (f.id === c.flag ? " ★ flag" : "") + "</b>" +
+      "<b>" + (fleetList().indexOf(f) + 1) + " · " + esc(c.desc(f).replace(/^./, function (s) { return s.toUpperCase(); })) + (f.id === c.flag ? " ★ flag" : "") + (f === c.busterForce() ? " ✦ buster" : "") + "</b>" +
       "<span>" + esc(f.cmd.name) + " · " + f.cmd.temper + " · skill " + Math.round(f.cmd.skill * 100) + "</span>" +
       (f.lost ? "<span class='bad'>Destroyed</span>" : "<span>" + alive + "/" + f.ships.length + " ships · " + pct(c.condition(f)) + "</span><span>" + esc(ord) + "</span>") + "</div>";
   }
@@ -351,6 +352,8 @@
     var head = st === "won" ? (u.convoy ? "The convoy is in" : "The world is taken") : st === "over" ? "Campaign won" : p.total ? "Partial success" : "Campaign lost";
     var why = u.convoy ? convoyWhy(u, st, left) : st === "won" ? "The target world " + u.world + " is taken on turn " + u.wonTurn + " of " + u.turns + ". Now hold it to the end of turn " + u.turns +
         " (" + left + " turn" + (left === 1 ? "" : "s") + "): the Azurians will throw everything they have left at it, and more is coming. Your ships repair at its shipyard: a whole turn there without a fight and they're good as new."
+      : st === "over" && c.why === "buster" ? "The homeworld's garrison and defences are beaten: the planet buster dropped on " + u.world + " on turn " + u.wonTurn + ". The war is won."
+      : c.why === "buster" ? "The " + BL.ADMIRALS.plural[(c.buster || c.flagShip).cls].replace(/s$/, "") + " carrying the planet buster is lost: the strike has failed."
       : st === "over" ? "The target world " + u.world + " was taken on turn " + u.wonTurn + " and held to the end of turn " + u.turns + "."
       : c.why === "time" ? "Fleet HQ's " + c.turns + " turns ran out before the world fell."
       : c.why === "retaken" ? "The Azurians hold " + u.world + " at the end of turn " + u.turns + ": it was taken but not held."

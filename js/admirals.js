@@ -11,7 +11,8 @@
    If his flagship is destroyed he shifts the flag (fight on) or withdraws (a loss). Once the
    world is taken (state "won") he must hold it to the end of the last turn (then "over", won)
    against the Azurians' counterattack. He may withdraw any time; every campaign scores points
-   (the world 10, each facility held 1), and 10 at a level earn the next. A force that spends a whole turn, unfought, in a system
+   (the world 10, each facility held 1), and 10 at a level earn the next. G9 is the planet buster
+   strike: it drops on the homeworld once its garrison and defences are beaten, and that ends it. A force that spends a whole turn, unfought, in a system
    with a shipyard we hold (the worlds are bases, shipyards and depots) is fully repaired. Tuning:
    BL.ADMIRALS (data.js).
    Stage 2 (TexasBont, Nov 7, 2026): fog of war (he sees what his ships see, a detached picket
@@ -43,6 +44,8 @@
     this.rng = BL.rng(this.seed);
     this.irng = BL.rng((this.seed * 7919 + 17) >>> 0);  // (Fleet HQ's reports: their own dice, so the fog never changes the fighting)
     this.convoyMode = A.convoy.levels.indexOf(this.level) >= 0;   // F3: escort a convoy between two Imperial worlds
+    this.busterMode = A.buster.levels.indexOf(this.level) >= 0;   // G9: drop the planet buster on the Azurian homeworld
+    this.buster = null;                               // (G9: the ship carrying it, the first turn's flagship)
     this.intel = {};                                  // what he knows of each Azurian force: { at, turn, seen, label, name, trail: [{ at, seen }] }
     this.turn = 1;
     this.turns = A.turns.base + A.turns.perLevel * A.levels.indexOf(this.level);
@@ -282,6 +285,11 @@
     this.refresh(lead); this.syncFlag();
     return lead;
   };
+  // G9: the force the planet buster is in.
+  Campaign.prototype.busterForce = function () {
+    var s = this.buster || this.flagShip; if (!this.busterMode) return null;
+    return this.ours().filter(function (x) { return x.ships.indexOf(s) >= 0; })[0] || null;
+  };
   // The force the flagship is in.
   Campaign.prototype.syncFlag = function () {
     var s = this.flagShip, f = this.ours().filter(function (x) { return x.ships.indexOf(s) >= 0; })[0];
@@ -308,7 +316,8 @@
   Campaign.prototype.points = function () {
     var P = this.A.points, items = [];
     if (this.state === "lost" && this.why === "losses") return { total: 0, items: items };
-    if (this.state === "over") items.push({ name: this.hexes[this.world].name, what: this.convoyMode ? "the convoy through" : "the target world", pts: this.convoyMode ? P.convoy : P.world });
+    if (this.state === "over") items.push({ name: this.hexes[this.world].name, what: this.convoyMode ? "the convoy through" : this.busterMode ? "the planet buster dropped" : "the target world",
+      pts: this.convoyMode ? P.convoy : this.busterMode ? P.buster : P.world });
     this.hexes.forEach(function (h) {
       if (h.owner !== "us" || h.kind === "home" || h.kind === "world") return;
       items.push({ name: h.name, what: list(h.kinds), pts: P.facility * h.kinds.length });
@@ -469,6 +478,7 @@
   Campaign.prototype.endTurn = function () {
     if (this.state !== "play") return null;
     var self = this, lines = [], flagFight = null;
+    if (this.busterMode && !this.buster) this.buster = this.flagShip;
     this.flagSet = true;
     this.turnLines = lines;
     this.visBefore = this.visibleSet();               // (warping into a system he couldn't see: an ambush, if they're there)
@@ -589,6 +599,20 @@
       if (!this.won && held && inn >= half) { this.won = true; this.wonTurn = this.turn - 1; this.state = "won"; this.why = "arrived"; return; }
       if (!this.ours().length) { this.state = "lost"; this.why = "losses"; return; }
       if (this.flagShip.hp <= 0 && this.ours().some(function (f) { return f.role !== "convoy"; })) { this.state = "flag"; return; }
+      return;
+    }
+    // G9: the buster drops once the world is taken (its garrison and defences beaten) with her
+    // there; lost with her.
+    if (this.busterMode) {
+      var bs = this.buster || this.flagShip, bf = this.busterForce();
+      if (held && bs.hp > 0 && bf && bf.at === this.world) {
+        this.won = true; this.wonTurn = this.turn - 1; this.state = "over"; this.why = "buster";
+        this.note("The planet buster drops on " + this.hexes[this.world].name + "."); return;
+      }
+      if (bs.hp <= 0) { this.state = "lost"; this.why = "buster"; return; }
+      if (this.turn > this.turns) { this.state = "lost"; this.why = "time"; return; }
+      if (!this.ours().length) { this.state = "lost"; this.why = "losses"; return; }
+      if (this.flagShip.hp <= 0) { this.state = "flag"; return; }
       return;
     }
     // The last turn over: won if the world is ours.
