@@ -13,6 +13,10 @@
   var S = 30, RT3 = Math.sqrt(3), PAD = 8;            // hex size (centre to corner) and margin, in map units
 
   var c = null, opts = null, sel = [], focus = null, hintDefault = "", trail = null, ticking = null, cheered = false;
+  // Markers slide to their new systems when a turn ends (TexasBont, Nov 7, 2026): where each force
+  // was before (id -> hex), and whether a slide is playing.
+  var slideFrom = null, sliding = false, SLIDE_MS = 650;
+  function snap() { var m = {}; c.forces.forEach(function (f) { if (!f.lost) m[f.id] = f.at; }); return m; }
   var KIND = { home: "Our base", world: "Target world", empty: "" };
 
   function centre(h) { return { x: PAD + S + 1.5 * S * h.col, y: PAD + RT3 * S * (h.row + 0.5 * (h.col & 1) + 0.5) }; }   // flat-top, odd columns down
@@ -40,7 +44,9 @@
   };
   // (the wrench's open jaw and the hole in its box end)
   var DEFS = '<defs><mask id="adm-jaw" maskUnits="userSpaceOnUse" x="-10" y="-10" width="20" height="20"><rect x="-10" y="-10" width="20" height="20" fill="#fff"/>' +
-    '<rect x="5.6" y="-1.1" width="4" height="2.2" fill="#000"/><circle cx="-6.2" cy="0" r="0.9" fill="#000"/></mask></defs>';
+    '<rect x="5.6" y="-1.1" width="4" height="2.2" fill="#000"/><circle cx="-6.2" cy="0" r="0.9" fill="#000"/></mask>' +
+    // (the arrowhead on an Azurian force's last move)
+    '<marker id="adm-arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="4" markerHeight="4" orient="auto"><path d="M0,0 L10,5 L0,10 Z" class="adm-arrowhead"/></marker></defs>';
 
   function start(o) {
     opts = o; c = new BL.Campaign({ seed: o.seed, level: o.level }); sel = []; focus = c.home; trail = null; cheered = false;
@@ -57,7 +63,27 @@
     $("adm-seed").textContent = "seed " + c.seed;
     $("btn-adm-end").disabled = c.state !== "play";
     drawMap(); drawFleet(); drawSystem(); drawReport();
+    // (the markers slide first, then the battle or the write-up comes up)
+    if (slide()) { sliding = true; setTimeout(function () { sliding = false; modals(); }, SLIDE_MS + 50); } else modals();
+  }
+  function modals() {
     if (c.state === "battle") battleView(); else if (c.state === "flag") flagModal(); else if (c.state === "won" || c.state === "lost" || c.state === "over") endModal();
+  }
+  // Each marker from the system it was in to the one it's in now; a force new to the map fades in.
+  function slide() {
+    if (!slideFrom) return false;
+    var from = slideFrom, moved = false; slideFrom = null;
+    Array.prototype.forEach.call($("adm-svg").querySelectorAll("g.adm-chip[data-id]"), function (g) {
+      var f = c.force(+g.getAttribute("data-id")), was = from[f.id];
+      if (was === undefined) { g.style.opacity = "0"; g.getBoundingClientRect(); g.style.transition = "opacity " + SLIDE_MS + "ms"; g.style.opacity = "1"; moved = true; return; }
+      if (was === f.at) return;
+      var a = centre(c.hexes[was]), b = centre(c.hexes[f.at]);
+      g.style.transform = "translate(" + (a.x - b.x).toFixed(1) + "px," + (a.y - b.y).toFixed(1) + "px)";
+      g.getBoundingClientRect();
+      g.style.transition = "transform " + SLIDE_MS + "ms ease-in-out"; g.style.transform = "none";
+      moved = true;
+    });
+    return moved;
   }
   function drawMap() {
     var svg = $("adm-svg"), w = PAD * 2 + S * (1.5 * c.cols + 0.5), h = PAD * 2 + RT3 * S * (c.rows + 0.5);
@@ -99,7 +125,7 @@
       list.forEach(function (f, k) {
         var row = Math.floor(k / per), inRow = Math.min(per, list.length - row * per), col = k % per;
         var x = p.x + (col - (inRow - 1) / 2) * (cw + 1) - cw / 2, y = p.y + 1 + row * (ch + 1);
-        var g = el("g", { "class": "adm-chip " + (f.side === "us" ? "us" : "az") + (sel.indexOf(f.id) >= 0 ? " sel" : "") }, gf);
+        var g = el("g", { "class": "adm-chip " + (f.side === "us" ? "us" : "az") + (sel.indexOf(f.id) >= 0 ? " sel" : ""), "data-id": f.id }, gf);
         el("rect", { x: x, y: y, width: cw, height: ch, rx: 2 }, g);
         var t = el("text", { x: x + cw / 2, y: y + ch / 2 + 0.5 }, g); t.textContent = labels[k];
         g.addEventListener("click", function (ev) { ev.stopPropagation(); if (f.side === "us") toggle(f.id); else { trail = trail === f.id ? null : f.id; tapHex(f.at); } });
@@ -111,11 +137,16 @@
       });
     });
   }
-  // An Azurian force's trail: every system it has been in, from where it began (a ring) to now.
+  // An Azurian force's trail: every system it has been in, from where it began (a ring) to now,
+  // the arrowhead on its last move. Solid: seen (dotted, for reports, comes with fog of war).
   function drawTrail(f, layer) {
     if (!f || !f.trail || f.trail.length < 2) return;
-    var pts = f.trail.map(function (i) { var p = centre(c.hexes[i]); return p.x.toFixed(1) + "," + p.y.toFixed(1); });
-    el("polyline", { points: pts.join(" "), "class": "adm-trail" }, layer);
+    var ps = f.trail.map(function (i) { return centre(c.hexes[i]); }), n = ps.length;
+    // (the arrow stops short of the centre, clear of the system's mark)
+    var a = ps[n - 2], b = ps[n - 1], d = Math.hypot(b.x - a.x, b.y - a.y) || 1, k = Math.max(0, d - 9) / d;
+    ps[n - 1] = { x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k };
+    var pts = ps.map(function (p) { return p.x.toFixed(1) + "," + p.y.toFixed(1); });
+    el("polyline", { points: pts.join(" "), "class": "adm-trail", "marker-end": "url(#adm-arrow)" }, layer);
     var p0 = centre(c.hexes[f.trail[0]]); el("circle", { cx: p0.x, cy: p0.y, r: 4, "class": "adm-trail-start" }, layer);
     f.trail.slice(1, -1).forEach(function (i) { var p = centre(c.hexes[i]); el("circle", { cx: p.x, cy: p.y, r: 1.8, "class": "adm-trail-dot" }, layer); });
   }
@@ -187,8 +218,9 @@
     if (c.setFlag(sel[0])) { click(); draw(); }
   }
   function endTurn() {
-    if (c.state !== "play") return;
+    if (c.state !== "play" || sliding) return;
     if (BL.audio) BL.audio.play("jump");
+    slideFrom = snap();
     c.endTurn();
     after();
   }
@@ -203,8 +235,8 @@
   function tick() {
     ticking = null;
     if (!c || c.state !== "battle") return;
-    var r = c.battleStep();
-    if (r === "done") { battleOver(); return; }
+    var was = snap(), r = c.battleStep();
+    if (r === "done") { slideFrom = was; battleOver(); return; }
     if (BL.audio) BL.audio.play("click");
     renderBattle();
     if (r === "go") ticking = setTimeout(tick, ROUND_MS);
@@ -236,7 +268,7 @@
     Array.prototype.forEach.call(m.querySelectorAll("button[data-ask]"), function (b) {
       b.onclick = function () { click(); c.battleChoice(+b.getAttribute("data-ask")); battleView(); };
     });
-    $("adm-pull").onclick = function () { click(); c.battleChoice("withdraw"); battleOver(); };
+    $("adm-pull").onclick = function () { click(); slideFrom = snap(); c.battleChoice("withdraw"); battleOver(); };
   }
   // (after the turn ends: drop the selected forces that are gone)
   function after() { sel = sel.filter(function (id) { var f = c.force(id); return f && !f.lost && !f.merged; }); draw(); }

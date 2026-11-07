@@ -834,7 +834,9 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 .adm-bstop { font-weight: 600; }
 .adm-blog { font-size: 13px; color: var(--muted); min-height: 5em; margin: 6px 0 10px; }
 .adm-write h3 { margin: 12px 0 4px; } .adm-write { max-height: 90vh; overflow-y: auto; } .adm-write div { font-size: 14px; }
-.adm-trail { fill: none; stroke: var(--bad); stroke-width: 1.6; stroke-dasharray: 3 2; opacity: .85; pointer-events: none; }
+.adm-trail { fill: none; stroke: var(--bad); stroke-width: 1.6; opacity: .9; pointer-events: none; }
+.adm-trail.stale { stroke-dasharray: 3 2; }
+.adm-arrowhead { fill: var(--bad); }
 .adm-trail-start { fill: none; stroke: var(--bad); stroke-width: 1.4; pointer-events: none; }
 .adm-trail-dot { fill: var(--bad); pointer-events: none; }
 .adm-rep .sub { padding-left: 12px; color: var(--muted); }
