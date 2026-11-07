@@ -221,6 +221,7 @@
     });
     f.top.kids = []; this.refresh(f);
     if (!this.alive(f).length) f.merged = true;           // (its top ship already lost: nothing left to command)
+    this.forces = this.forces.filter(function (x) { return !x.merged; });
     this.syncFlag();
     return out;
   };
@@ -231,6 +232,8 @@
     if (fs.length < 2 || this.state !== "play" || fs.some(function (f) { return f.at !== fs[0].at; })) return null;
     var lead = fs.slice().sort(function (a, b) { return A.classes.indexOf(b.cls) - A.classes.indexOf(a.cls); })[0];
     fs.forEach(function (f) { if (f === lead) return; lead.top.kids.push(f.top); f.merged = true; });
+    // (a force joined into another is gone from the map: its ships are the lead's now)
+    this.forces = this.forces.filter(function (x) { return !x.merged; });
     this.refresh(lead); this.syncFlag();
     return lead;
   };
@@ -329,6 +332,8 @@
   Campaign.prototype.fight = function (at, us, az, lines) {
     var F = this.A.fight, A = this.A, r = this.rng, self = this, h = this.hexes[at];
     var before = us.concat(az).map(function (f) { return self.alive(f).length; });
+    // (the names as the forces came in, before the shooting)
+    var names = {}; us.concat(az).forEach(function (f) { names[f.id] = f.side === "us" ? self.desc(f) : self.name(f); });
     var gone = {};
     function side(fs) { return fs.filter(function (f) { return !gone[f.id] && self.alive(f).length; }); }
     function volley(from, to) {
@@ -357,15 +362,15 @@
     // The result, one line per side.
     var shipsLost = function (fs) { return fs.reduce(function (n, f) { return n + before[us.concat(az).indexOf(f)] - self.alive(f).length; }, 0); };
     var wl = shipsLost(us), el = shipsLost(az);
-    var who = list(us.map(function (f) { return self.desc(f); }));
-    lines.push("At " + h.name + ": our " + who + " met " + list(az.map(function (f) { return self.name(f); })) + ".");
+    var who = list(us.map(function (f) { return names[f.id]; }));
+    lines.push("At " + h.name + ": our " + who + " met " + list(az.map(function (f) { return names[f.id]; })) + ".");
     lines.push("    We lost " + wl + " ship" + (wl === 1 ? "" : "s") + "; they lost " + el + ".");
     var flagWas = this.flagShip.hp > 0;
     us.concat(az).forEach(function (f) {
       f.ships.forEach(function (s) { if (s.hp < 0) s.hp = 0; });
       if (!self.alive(f).length) {
         f.lost = true;
-        lines.push("    " + (f.side === "us" ? f.cmd.name + "'s force" : cap(self.name(f))) + " is destroyed.");
+        lines.push("    " + (f.side === "us" ? f.cmd.name + "'s force" : cap(names[f.id])) + " is destroyed.");
       } else if (gone[f.id]) {
         // (back where it came from; one that didn't move falls back toward its own side)
         var back = f.prev !== at ? f.prev : self.stepToward(at, f.side === "us" ? self.home : self.world);
