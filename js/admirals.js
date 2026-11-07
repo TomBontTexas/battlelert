@@ -332,7 +332,7 @@
   };
 
   /* ---------------------------------------------------------- The fight
-     Decided off screen: rounds of fire both ways, each side's fire spread over the other's ships
+     Decided off screen, to the finish (one side destroyed or broken off, at most `rounds`): rounds of fire both ways, each side's fire spread over the other's ships
      that are left; a commander breaks off when his side is outmatched (by his temper), back to
      the system he came from. A garrison and the world's defences fight to the end. */
   Campaign.prototype.fight = function (at, us, az, lines) {
@@ -340,7 +340,8 @@
     var before = us.concat(az).map(function (f) { return self.alive(f).length; });
     // (the names as the forces came in, before the shooting)
     var names = {}; us.concat(az).forEach(function (f) { names[f.id] = f.side === "us" ? self.desc(f) : self.name(f); });
-    var gone = {};
+    function hp(fs) { return fs.reduce(function (a, f) { return a + f.ships.reduce(function (b, s) { return b + Math.max(0, s.hp); }, 0); }, 0); }
+    var hpUs = hp(us), hpAz = hp(az), gone = {};
     function side(fs) { return fs.filter(function (f) { return !gone[f.id] && self.alive(f).length; }); }
     function volley(from, to) {
       var dmg = 0;
@@ -370,7 +371,9 @@
     var wl = shipsLost(us), el = shipsLost(az);
     var who = list(us.map(function (f) { return names[f.id]; }));
     lines.push("At " + h.name + ": our " + who + " met " + list(az.map(function (f) { return names[f.id]; })) + ".");
-    lines.push("    We lost " + wl + " ship" + (wl === 1 ? "" : "s") + "; they lost " + el + ".");
+    // (and the damage: the share of each side's strength the fight took)
+    var dmg = function (fs, was) { return Math.round(100 * (1 - hp(fs) / Math.max(1, was))); };
+    lines.push("    We lost " + wl + " ship" + (wl === 1 ? "" : "s") + " (" + dmg(us, hpUs) + "% damage); they lost " + el + " (" + dmg(az, hpAz) + "% damage).");
     var flagWas = this.flagShip.hp > 0;
     us.concat(az).forEach(function (f) {
       f.ships.forEach(function (s) { if (s.hp < 0) s.hp = 0; });

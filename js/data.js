@@ -1307,7 +1307,7 @@
      `pyramid.pickets` picket ships. No gunboat squadrons: a capital ship's gunboats stay with her.
      turns: Fleet HQ's turns for the campaign (base at F3, plus perLevel for each level above).
      lose: the share of his ships lost that fails it. ship: a ship's strength in a fight (hp:
-     hull + shields x shieldK; fire: her guns' MW). fight: rounds in a turn's fight; k: the share
+     hull + shields x shieldK; fire: her guns' MW). fight: rounds at most in a turn's fight (it goes on until one side is destroyed or breaks off: TexasBont, Nov 7, 2026); k: the share
      of fire that lands each round; spread: luck per round; breakAt: a commander breaks off when
      his side's strength falls below that share of the enemy's (by temper); a garrison and the
      world's defences never do. temper: [fire dealt, fire taken]. skill: our commanders' (a
@@ -1333,10 +1333,10 @@
     lose: 0.5,
     map: { cols: 11, rows: 7 },
     ship: { shieldK: 0.25 },
-    fight: { rounds: 4, k: 0.3, spread: [0.75, 1.25], breakAt: { cautious: 0.8, steady: 0.6, aggressive: 0.4 } },
+    fight: { rounds: 30, k: 0.3, spread: [0.75, 1.25], breakAt: { cautious: 0.8, steady: 0.6, aggressive: 0.4 } },
     temper: { cautious: [0.92, 0.9], steady: [1, 1], aggressive: [1.1, 1.1] },
     skill: [0.4, 0.95], skillK: 0.5,
-    enemy: { skill: [0.4, 0.85], bases: [2, 3], kinds: ["base", "shipyard", "depot"], combo: [0.2, 0.08], below: 1, worldGarrison: 0.5, defences: { hp: 0.7, fire: 0.4, level: { F3: 0.6 } },
+    enemy: { skill: [0.4, 0.85], bases: [2, 3], kinds: ["base", "shipyard", "depot"], combo: [0.2, 0.08], below: 1, worldGarrison: 0.5, defences: { hp: 0.95, fire: 0.52, level: { F3: 0.8 } },
              patrols: [1, 2], roam: 2, main: 0.5, chase: 3 }
   };
 })(typeof window !== "undefined" ? window : globalThis);
