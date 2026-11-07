@@ -10,7 +10,8 @@
    world at the end of a turn; he fails if Fleet HQ's turns run out or his whole fleet is lost.
    If his flagship is destroyed he shifts the flag (fight on) or withdraws (a loss). Once the
    world is taken (state "won") he must hold it to the end of the last turn (then "over", won)
-   against the Azurians' counterattack. A force that spends a whole turn, unfought, in a system
+   against the Azurians' counterattack. He may withdraw any time; every campaign scores points
+   (the world 10, each facility held 1), and 10 at a level earn the next. A force that spends a whole turn, unfought, in a system
    with a shipyard we hold (the worlds are bases, shipyards and depots) is fully repaired. Tuning:
    BL.ADMIRALS (data.js).
    Stage 2 (TexasBont, Nov 7, 2026): fog of war (he sees what his ships see, a detached picket
@@ -293,10 +294,26 @@
     if (this.flagSet || this.turn > 1) return false;
     this.flagShip = ship; this.syncFlag(); return true;
   };
-  // With the flagship lost: give up the campaign (after the world is taken: it's over, and won).
+  // Withdraw: the mission ends now (any time, or with the flagship lost). What his forces hold
+  // still scores (points); the target world counts only held to the last turn.
   Campaign.prototype.withdraw = function () {
-    if (this.state !== "flag") return;
-    this.state = "lost"; this.why = "withdrew"; this.note("The fleet withdraws. The campaign is lost.");
+    if (this.state !== "flag" && this.state !== "play" && this.state !== "won") return;
+    this.why = this.state === "flag" ? "withdrew" : "pulled"; this.state = "lost";
+    this.note("The fleet withdraws. The campaign is over.");
+  };
+  // Campaign points (TexasBont, Nov 7, 2026): each facility he holds is one (a system with a
+  // shipyard and a base is two); the target world held to the last turn a flat 10 (F3: the
+  // convoy through), its own facilities nothing more. The whole fleet lost: nothing. Before the
+  // end: what he'd score if it ended now (the world not yet).
+  Campaign.prototype.points = function () {
+    var P = this.A.points, items = [];
+    if (this.state === "lost" && this.why === "losses") return { total: 0, items: items };
+    if (this.state === "over") items.push({ name: this.hexes[this.world].name, what: this.convoyMode ? "the convoy through" : "the target world", pts: this.convoyMode ? P.convoy : P.world });
+    this.hexes.forEach(function (h) {
+      if (h.owner !== "us" || h.kind === "home" || h.kind === "world") return;
+      items.push({ name: h.name, what: list(h.kinds), pts: P.facility * h.kinds.length });
+    });
+    return { total: items.reduce(function (s, x) { return s + x.pts; }, 0), items: items };
   };
   // After the world is taken: hold it through the turns left.
   Campaign.prototype.carryOn = function () { if (this.state === "won" && this.turn <= this.turns && this.ours().length) this.state = "play"; };
@@ -692,6 +709,6 @@
       c.ours().forEach(function (f) { c.order(f.id, f.at === lead ? c.world : lead); });
       c.endTurn();
     }
-    return { state: c.state, why: c.why, turn: c.turn - 1, turns: c.turns, lost: c.shipsLost(), of: c.shipsTotal };
+    return { state: c.state, why: c.why, turn: c.turn - 1, turns: c.turns, lost: c.shipsLost(), of: c.shipsTotal, points: c.points().total };
   };
 })(typeof window !== "undefined" ? window : globalThis);

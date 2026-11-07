@@ -54,16 +54,18 @@
     opts = o; c = new BL.Campaign({ seed: o.seed, level: o.level }); sel = []; focus = c.home; trail = null; cheered = false;
     if (ticking) { clearTimeout(ticking); ticking = null; }
     $("adm-modal").hidden = true;
-    hintDefault = $("adm-hint").textContent = "1–9 select · A all · S split · J join · H hold · F fly the flag (first turn) · Enter end turn · Esc clear";
+    hintDefault = $("adm-hint").textContent = "1–9 select · A all · S split · J join · H hold · F fly the flag (first turn) · W withdraw · Enter end turn · Esc clear";
     draw();
   }
 
   /* --------------------------------------------------------------- Drawing */
   function draw() {
     $("adm-title").textContent = "Admirals · " + c.level + " " + BL.ADMIRALS.titles[c.level] + (c.convoyMode ? " · convoy escort" : "");
-    $("adm-turn").textContent = "Turn " + Math.min(c.turn, c.turns) + " of " + c.turns;
+    var pts = c.points().total;
+    $("adm-turn").textContent = "Turn " + Math.min(c.turn, c.turns) + " of " + c.turns + " · " + pts + " point" + (pts === 1 ? "" : "s") + " held";
     $("adm-seed").textContent = "seed " + c.seed;
     $("btn-adm-end").disabled = c.state !== "play";
+    $("btn-adm-withdraw").disabled = c.state !== "play";
     drawMap(); drawFleet(); drawSystem(); drawReport();
     // (the markers slide first, then the battle or the write-up comes up)
     if (slide()) { sliding = true; setTimeout(function () { sliding = false; modals(); }, SLIDE_MS + 50); } else modals();
@@ -299,7 +301,7 @@
   function after() { sel = sel.filter(function (id) { var f = c.force(id); return f && !f.lost && !f.merged; }); draw(); }
   function flagModal() {
     var m = $("adm-modal"), us = c.ours().filter(function (f) { return f.role !== "convoy"; });
-    m.innerHTML = "<div class='ov-card'><h1>The flagship is lost</h1><p>Shift your flag to another force and fight on (take the world and it's still a win), or withdraw: the campaign is lost.</p>" +
+    m.innerHTML = "<div class='ov-card'><h1>The flagship is lost</h1><p>Shift your flag to another force and fight on (take the world and it's still a win), or withdraw: the campaign ends, scoring what your forces hold.</p>" +
       "<div class='menu'>" + us.map(function (f) { return "<button data-id='" + f.id + "'>Shift the flag to the " + esc(c.desc(f)) + "</button>"; }).join("") +
       "<button id='adm-withdraw'>Withdraw</button></div></div>";
     m.hidden = false;
@@ -314,19 +316,46 @@
     return c.why === "convoy" ? "Fewer than half the cargo ships are left (" + u.cargoLeft + " of " + u.cargoTotal + "): the convoy has failed."
       : c.why === "late" ? "At the end of turn " + u.turns + " only " + cg + " were at " + u.world + "."
       : c.why === "retaken" ? "The Azurians hold " + u.world + " at the end of turn " + u.turns + "."
-      : c.why === "losses" ? "The whole fleet is lost." : "The fleet withdrew after losing its flagship.";
+      : c.why === "losses" ? "The whole fleet is lost." : c.why === "pulled" ? "You withdrew the fleet on turn " + u.turn + "." : "The fleet withdrew after losing its flagship.";
+  }
+  // Points carry over from campaign to campaign, by level (this browser; the career keeps them in
+  // stage 4); `rank` at a level earns the next one. Counted once a campaign.
+  var PTS_KEY = "BATTLELERT_admiralsPoints";
+  function score(n) {
+    var P = BL.ADMIRALS.points, L = BL.ADMIRALS.levels, all = {};
+    try { all = JSON.parse(localStorage.getItem(PTS_KEY)) || {}; } catch (e) { all = {}; }
+    if (!c.scored) { c.scored = { was: all[c.level] || 0 }; all[c.level] = c.scored.was + n; }
+    var have = c.scored.was + n, nx = L[L.indexOf(c.level) + 1];
+    if (have >= P.rank && nx && !c.scored.up) { c.scored.up = true; all[c.level] = have - P.rank; }
+    try { localStorage.setItem(PTS_KEY, JSON.stringify(all)); } catch (e) { /* (private window: this campaign only) */ }
+    if (c.scored.up) return { next: nx, line: "That makes " + have + " at " + c.level + ": promoted to " + nx + " " + BL.ADMIRALS.titles[nx] + "!" };
+    return { line: c.level + " total: " + have + (nx ? " of the " + P.rank + " for " + nx : "") + "." };
+  }
+  // Withdraw (any time): what the fleet holds still scores.
+  function withdrawModal() {
+    if (!c || c.state !== "play" || sliding) return;
+    var m = $("adm-modal"), p = c.points();
+    m.innerHTML = "<div class='ov-card'><h1>Withdraw?</h1><p>The campaign ends now. You keep " + p.total + " point" + (p.total === 1 ? "" : "s") +
+      (p.items.length ? " (" + esc(p.items.map(function (x) { return x.name + " " + x.pts; }).join(", ")) + ")" : "") +
+      (c.won ? ". The target world counts only if you hold it to the last turn." : ".") + "</p>" +
+      "<div class='menu'><button id='adm-wyes'>Withdraw</button><button id='adm-wno' class='primary'>Carry on</button></div></div>";
+    m.hidden = false;
+    $("adm-wyes").onclick = function () { click(); c.withdraw(); m.hidden = true; draw(); };
+    $("adm-wno").onclick = function () { click(); m.hidden = true; };
   }
   // The write-up: the world taken (carry on with the turns left, or stop), the campaign over, or lost.
   function endModal() {
     var m = $("adm-modal"), u = c.summary(), st = c.state, pcx = function (x) { return Math.round(100 * x) + "%"; };
     var left = c.turns - c.turn + 1;
-    var head = st === "won" ? (u.convoy ? "The convoy is in" : "The world is taken") : st === "over" ? "Campaign won" : "Campaign lost";
+    var p = c.points(), done = st === "over" || st === "lost", tally = done ? score(p.total) : null;
+    var head = st === "won" ? (u.convoy ? "The convoy is in" : "The world is taken") : st === "over" ? "Campaign won" : p.total ? "Partial success" : "Campaign lost";
     var why = u.convoy ? convoyWhy(u, st, left) : st === "won" ? "The target world " + u.world + " is taken on turn " + u.wonTurn + " of " + u.turns + ". Now hold it to the end of turn " + u.turns +
         " (" + left + " turn" + (left === 1 ? "" : "s") + "): the Azurians will throw everything they have left at it, and more is coming. Your ships repair at its shipyard: a whole turn there without a fight and they're good as new."
       : st === "over" ? "The target world " + u.world + " was taken on turn " + u.wonTurn + " and held to the end of turn " + u.turns + "."
       : c.why === "time" ? "Fleet HQ's " + c.turns + " turns ran out before the world fell."
       : c.why === "retaken" ? "The Azurians hold " + u.world + " at the end of turn " + u.turns + ": it was taken but not held."
       : c.why === "losses" ? "The whole fleet is lost."
+      : c.why === "pulled" ? "You withdrew the fleet on turn " + u.turn + "."
       : "The fleet withdrew after losing its flagship.";
     if (BL.audio && !(st !== "lost" && cheered)) BL.audio.play(st === "lost" ? "lose" : "win");
     if (st !== "lost") cheered = true;
@@ -336,19 +365,28 @@
     var tk = u.taken.map(function (x) { return "<div>Turn " + x.turn + " · " + esc(x.name) + " · " + esc(x.what) + "</div>"; }).join("") || "<div class='muted'>None.</div>";
     m.innerHTML = "<div class='ov-card wide adm-write'><h1>" + head + "</h1><p>" + esc(why) + "</p>" +
       "<p>Ships lost: ours " + u.usLost + " of " + u.usTotal + "; Azurian " + u.azLost + " of " + u.azTotal + ".</p>" +
+      "<h3>Points" + (done ? "" : " (if it ended now)") + "</h3>" + (p.items.map(function (x) { return "<div>" + esc(x.name) + " · " + esc(x.what) + " · " + x.pts + "</div>"; }).join("") ||
+        "<div class='muted'>" + (c.why === "losses" ? "None: the whole fleet is lost." : "None.") + "</div>") +
+      "<p><b>" + p.total + " point" + (p.total === 1 ? "" : "s") + "</b> this campaign." + (tally ? " " + esc(tally.line) : "") + "</p>" +
       "<h3>Systems taken</h3>" + tk + "<h3>Battles (★ your flag's)</h3>" + bt +
       (u.forces.length ? "<h3>The fleet now</h3>" + u.forces.map(function (x) { return "<div>" + esc(x) + "</div>"; }).join("") : "") +
       "<div class='menu'>" + (st === "won" && left > 0 && c.ours().length ? "<button id='adm-carry' class='primary'>" + (u.convoy ? "Hold " + esc(u.world) : "Hold the world") + " (" + left + " turn" + (left === 1 ? "" : "s") + " left)</button>" : "") +
-      "<button id='adm-again'" + (st === "won" && left > 0 ? "" : " class='primary'") + ">New campaign</button><button id='adm-same'>Same seed again</button><button id='adm-quit'>Back to the title screen</button></div></div>";
+      (tally && tally.next ? "<button id='adm-next' class='primary'>New campaign as " + tally.next + " " + esc(BL.ADMIRALS.titles[tally.next]) + "</button>" : "") +
+      "<button id='adm-again'" + (st === "won" && left > 0 || tally && tally.next ? "" : " class='primary'") + ">New campaign</button><button id='adm-same'>Same seed again</button><button id='adm-quit'>Back to the title screen</button></div></div>";
     m.hidden = false;
     if ($("adm-carry")) $("adm-carry").onclick = function () { click(); c.carryOn(); m.hidden = true; draw(); };
     $("adm-again").onclick = function () { click(); start({ seed: BL.randomSeed(), level: c.level, onExit: opts.onExit }); };
     $("adm-same").onclick = function () { click(); start({ seed: c.seed, level: c.level, onExit: opts.onExit }); };
+    if ($("adm-next")) $("adm-next").onclick = function () {
+      click(); var pick = $("adm-pick"); if (pick) { pick.value = tally.next; if (pick.onchange) pick.onchange(); }
+      start({ seed: BL.randomSeed(), level: tally.next, onExit: opts.onExit });
+    };
     $("adm-quit").onclick = function () { click(); m.hidden = true; opts.onExit(); };
   }
 
   function wire() {
     $("btn-adm-end").onclick = endTurn;
+    $("btn-adm-withdraw").onclick = function () { click(); withdrawModal(); };
     $("btn-adm-all").onclick = all;
     $("btn-adm-hold").onclick = hold;
     $("btn-adm-flag").onclick = flagHere;
@@ -369,6 +407,7 @@
       else if (k === "f" || k === "F") flagHere();
       else if (k === "s" || k === "S") split();
       else if (k === "j" || k === "J") join();
+      else if (k === "w" || k === "W") withdrawModal();
       else if (k === "Enter") { ev.preventDefault(); endTurn(); }
       else if (k === "Escape") { sel = []; draw(); }
     });

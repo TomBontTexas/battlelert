@@ -1327,7 +1327,10 @@
      counterattack (TexasBont, Nov 7, 2026: he must hold it to the last turn): their main fleet
      regroups for a turn, then goes for it with the fresh forces: every `every` turns, `size`
      x our top ships pyramids a class below our top ships (as garrisons) arrive at the far edge,
-     nearest the world. */
+     nearest the world.
+     points (TexasBont, Nov 7, 2026): each facility (base, shipyard, depot) he holds when the
+     mission ends is `facility`; the target world held to the last turn is a flat `world` (F3: the
+     convoy through, `convoy`); `rank` points at a level earn the next level. */
   BL.ADMIRALS = {
     levels: ["F3", "F4", "F5", "F6", "F7", "F8", "G9"],
     titles: { F3: "Fleet Commodore", F4: "Fleet Admiral", F5: "Fleet Admiral", F6: "Fleet Admiral", F7: "Fleet Admiral", F8: "Fleet Admiral", G9: "Grand Admiral" },
@@ -1338,6 +1341,7 @@
     abbr: { cargo: "AK", gunboat: "PT", picket: "DL", destroyerEscort: "DE", destroyer: "DD", lightCruiser: "CL", cruiser: "C", heavyCruiser: "CA", battleship: "BB", dreadnought: "DN", defences: "DEF" },     // (the hull codes, BL.HULL_CODES)
     plural: { gunboat: "gunboats", picket: "pickets", destroyerEscort: "destroyer escorts", destroyer: "destroyers", lightCruiser: "light cruisers", cruiser: "cruisers", heavyCruiser: "heavy cruisers", battleship: "battleships", dreadnought: "dreadnoughts" },
     turns: { base: 16, perLevel: 1 },
+    points: { facility: 1, world: 10, convoy: 10, rank: 10 },
     // F3's campaign (TexasBont, Nov 7, 2026: DLs and DEs aren't ships of the line): escort a convoy
     // of `cargo` unarmed cargo ships (each `hp` x a destroyer escort's) from our base to the other
     // Imperial world; at least half must be there, and the world held, at the end of the last
