@@ -825,8 +825,8 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 .adm-hex.az { fill: #24161a; }
 .adm-name { font: 6px var(--font); fill: var(--muted); text-anchor: middle; }
 .adm-star { fill: var(--muted); }
-.adm-mark.us { fill: var(--charge); }
-.adm-mark.az { fill: var(--bad); }
+.adm-mark.us { fill: var(--charge); stroke: var(--charge); }
+.adm-mark.az { fill: var(--bad); stroke: var(--bad); }
 .adm-path { fill: none; stroke: var(--sel); stroke-width: 1.5; stroke-dasharray: 3 2; pointer-events: none; }
 .adm-dest { fill: none; stroke: var(--sel); stroke-width: 2; pointer-events: none; }
 .adm-chip { cursor: pointer; }

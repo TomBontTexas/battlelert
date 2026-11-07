@@ -27,6 +27,20 @@
     return e;
   }
   function pct(x) { return Math.round(100 * x) + "%"; }
+  /* A system's mark (approved by TexasBont, Nov 7, 2026), in a 16 x 16 box centred on (x, y):
+     a base an anchor, a shipyard crossed wrenches, a depot a cargo pod. */
+  var MARK = {
+    base: '<g fill="none" stroke-width="1.6" stroke-linecap="round"><circle cx="0" cy="-5.6" r="1.6"/>' +
+      '<path d="M0,-4 V6.4 M-3.4,-2.2 H3.4 M-5.8,1.6 Q-5.4,6.4 0,6.6 Q5.4,6.4 5.8,1.6"/>' +
+      '<path d="M-5.8,1.6 l-1.2,1.4 M-5.8,1.6 l1.4,0.8 M5.8,1.6 l1.2,1.4 M5.8,1.6 l-1.4,0.8" stroke-width="1.3"/></g>',
+    shipyard: [-45, -135].map(function (r) {
+      return '<g transform="rotate(' + r + ')" stroke="none" mask="url(#adm-jaw)"><rect x="-6" y="-0.95" width="12" height="1.9" rx="0.6"/><circle cx="6.4" cy="0" r="2.5"/><circle cx="-6.2" cy="0" r="2"/></g>';
+    }).join(""),
+    depot: '<path stroke="none" fill-rule="evenodd" d="M0,-7 L6.1,-3.5 L6.1,3.5 L0,7 L-6.1,3.5 L-6.1,-3.5 Z M0,-3.4 L-2.9,-1.7 L-2.9,1.7 L0,3.4 L2.9,1.7 L2.9,-1.7 Z"/><circle cx="0" cy="0" r="1.2" stroke="none"/>'
+  };
+  // (the wrench's open jaw and the hole in its box end)
+  var DEFS = '<defs><mask id="adm-jaw" maskUnits="userSpaceOnUse" x="-10" y="-10" width="20" height="20"><rect x="-10" y="-10" width="20" height="20" fill="#fff"/>' +
+    '<rect x="5.6" y="-1.1" width="4" height="2.2" fill="#000"/><circle cx="-6.2" cy="0" r="0.9" fill="#000"/></mask></defs>';
 
   function start(o) {
     opts = o; c = new BL.Campaign({ seed: o.seed, level: o.level }); sel = []; focus = c.home;
@@ -47,7 +61,7 @@
   function drawMap() {
     var svg = $("adm-svg"), w = PAD * 2 + S * (1.5 * c.cols + 0.5), h = PAD * 2 + RT3 * S * (c.rows + 0.5);
     svg.setAttribute("viewBox", "0 0 " + w.toFixed(0) + " " + h.toFixed(0));
-    while (svg.firstChild) svg.removeChild(svg.firstChild);
+    svg.innerHTML = DEFS;
     var gh = el("g", {}, svg), gp = el("g", {}, svg), gf = el("g", {}, svg);
     c.hexes.forEach(function (x) {
       var p = centre(x), cls = "adm-hex" + (x.owner === "us" ? " us" : x.owner === "az" ? " az" : "");
@@ -56,11 +70,9 @@
       var t = el("text", { x: p.x, y: p.y - S * 0.55, "class": "adm-name" }, gh); t.textContent = x.name;
       var side = x.owner === "us" ? "us" : "az", k = "adm-mark " + side;
       if (x.kind === "home" || x.kind === "world") el("circle", { cx: p.x, cy: p.y - S * 0.18, r: x.kind === "world" ? 7 : 5, "class": k }, gh);
-      else if (x.kind === "base") el("rect", { x: p.x - 5, y: p.y - S * 0.18 - 5, width: 10, height: 10, "class": k }, gh);
-      else if (x.kind === "depot") el("polygon", { points: [p.x, p.y - S * 0.18 - 6, p.x + 6, p.y - S * 0.18, p.x, p.y - S * 0.18 + 6, p.x - 6, p.y - S * 0.18].join(" "), "class": k }, gh);
-      else if (x.kind === "shipyard") el("polygon", { points: [p.x, p.y - S * 0.18 - 6, p.x + 6, p.y - S * 0.18 + 5, p.x - 6, p.y - S * 0.18 + 5].join(" "), "class": k }, gh);
+      else if (MARK[x.kind]) el("g", { transform: "translate(" + p.x.toFixed(1) + "," + (p.y - S * 0.2).toFixed(1) + ") scale(0.8)", "class": k }, gh).innerHTML = MARK[x.kind];
       else el("circle", { cx: p.x, cy: p.y - S * 0.18, r: 1.6, "class": "adm-star" }, gh);
-      Array.prototype.forEach.call(gh.querySelectorAll("text, circle, rect, polygon:not(.adm-hex)"), function (n) { n.style.pointerEvents = "none"; });
+      Array.prototype.forEach.call(gh.querySelectorAll("text, circle, rect, path, g, polygon:not(.adm-hex)"), function (n) { n.style.pointerEvents = "none"; });
     });
     // The selected squadrons' way to where they're sent.
     sel.forEach(function (id) {
