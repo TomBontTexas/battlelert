@@ -36,7 +36,7 @@
 
   /* --------------------------------------------------------------- Drawing */
   function draw() {
-    $("adm-title").textContent = "Admirals · " + c.level;
+    $("adm-title").textContent = "Admirals · " + c.level + " " + BL.ADMIRALS.titles[c.level];
     $("adm-turn").textContent = "Turn " + Math.min(c.turn, c.turns) + " of " + c.turns;
     $("adm-seed").textContent = "seed " + c.seed;
     $("btn-adm-end").disabled = c.state !== "play";

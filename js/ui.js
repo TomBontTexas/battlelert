@@ -131,9 +131,9 @@
   };
   // The Admirals test (approved Nov 6, 2026; stage 1): a Fleet Admiral's campaign on the hex map
   // with the fleet picked, F3 to F8 or G9 (admirals.js, admiralsview.js).
-  BL.ADMIRALS.levels.forEach(function (lv) { var o = document.createElement("option"); o.value = lv; o.textContent = lv; $("adm-pick").appendChild(o); });
+  BL.ADMIRALS.levels.forEach(function (lv) { var o = document.createElement("option"); o.value = lv; o.textContent = lv + " · " + BL.ADMIRALS.titles[lv]; $("adm-pick").appendChild(o); });
   $("adm-pick").value = BL.ADMIRALS.levels.indexOf(settings.admPick) >= 0 ? settings.admPick : "F3";
-  function admCount() { $("adm-n").textContent = $("adm-pick").value.slice(1) + " squadrons"; }
+  function admCount() { $("adm-n").textContent = BL.ADMIRALS.squadrons[$("adm-pick").value] + " squadrons"; }
   admCount();
   $("adm-pick").onchange = function () { settings.admPick = this.value; saveSettings(); admCount(); };
   $("btn-admirals").onclick = function () {

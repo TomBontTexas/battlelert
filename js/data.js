@@ -1301,8 +1301,9 @@
   };
   /* Admirals (approved Nov 6, 2026; stage 1 of 5, the Admirals test): the Fleet Admiral's
      campaign on the hex map (admirals.js). One hex is one star system, one warp; one turn is one
-     warp. levels: F3 to F8 and G9, each a fleet of one squadron per class, smallest first, up to
-     the level's number. turns: Fleet HQ's turns for the campaign (base at F3, plus perLevel for
+     warp. levels: F3 (the Fleet Commodore) to F8 and G9, each a fleet of one squadron per class,
+     smallest first; squadrons: how many (gunboats are only ever carried on capital ships, so
+     none here: TexasBont, Nov 7, 2026). turns: Fleet HQ's turns for the campaign (base at F3, plus perLevel for
      each level above). lose: the share of his squadrons lost that fails it. ship: a squadron
      ship's strength in a fight (hp: hull + shields x shieldK; fire: her guns' MW). fight: rounds
      in a turn's fight; k: the share of fire that lands each round; spread: luck per round;
@@ -1317,7 +1318,9 @@
      the world. */
   BL.ADMIRALS = {
     levels: ["F3", "F4", "F5", "F6", "F7", "F8", "G9"],
-    classes: ["gunboat", "picket", "destroyerEscort", "destroyer", "lightCruiser", "cruiser", "heavyCruiser", "battleship", "dreadnought"],
+    titles: { F3: "Fleet Commodore", F4: "Fleet Admiral", F5: "Fleet Admiral", F6: "Fleet Admiral", F7: "Fleet Admiral", F8: "Fleet Admiral", G9: "Grand Admiral" },
+    squadrons: { F3: 2, F4: 3, F5: 4, F6: 5, F7: 6, F8: 7, G9: 8 },
+    classes: ["picket", "destroyerEscort", "destroyer", "lightCruiser", "cruiser", "heavyCruiser", "battleship", "dreadnought"],
     abbr: { gunboat: "GB", picket: "PK", destroyerEscort: "DE", destroyer: "DD", lightCruiser: "CL", cruiser: "CA", heavyCruiser: "CH", battleship: "BB", dreadnought: "DN", defences: "DEF" },
     plural: { gunboat: "gunboats", picket: "pickets", destroyerEscort: "destroyer escorts", destroyer: "destroyers", lightCruiser: "light cruisers", cruiser: "cruisers", heavyCruiser: "heavy cruisers", battleship: "battleships", dreadnought: "dreadnoughts" },
     turns: { base: 16, perLevel: 1 },

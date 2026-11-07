@@ -27,11 +27,11 @@
     this.A = A;
     this.seed = opts.seed || BL.randomSeed();
     this.level = A.levels.indexOf(opts.level) >= 0 ? opts.level : "F3";
-    this.size = +this.level.slice(1);                 // F3 = 3 squadrons ... G9 = 9
+    this.size = A.squadrons[this.level];              // F3 = 2 squadrons (pickets, destroyer escorts) ... G9 = 8
     this.fleet = A.classes.slice(0, this.size);
     this.rng = BL.rng(this.seed);
     this.turn = 1;
-    this.turns = A.turns.base + A.turns.perLevel * (this.size - 3);
+    this.turns = A.turns.base + A.turns.perLevel * A.levels.indexOf(this.level);
     this.state = "play";                              // play | flag (the flag squadron is lost: shift or withdraw) | won | lost
     this.why = null;
     this.log = [];                                    // [{ turn, lines }]
