@@ -133,7 +133,12 @@
   // with the fleet picked, F3 to F8 or G9 (admirals.js, admiralsview.js).
   BL.ADMIRALS.levels.forEach(function (lv) { var o = document.createElement("option"); o.value = lv; o.textContent = lv + " · " + BL.ADMIRALS.titles[lv]; $("adm-pick").appendChild(o); });
   $("adm-pick").value = BL.ADMIRALS.levels.indexOf(settings.admPick) >= 0 ? settings.admPick : "F3";
-  function admCount() { $("adm-n").textContent = BL.ADMIRALS.squadrons[$("adm-pick").value] + " squadrons"; }
+  // The ships in a level's fleet: its top ships, each with her escort pyramid (admirals.js).
+  function admCount() {
+    var A = BL.ADMIRALS, lv = $("adm-pick").value, P = A.pyramid;
+    function n(cls) { var i = A.classes.indexOf(cls); return cls === "picket" ? P.pickets : 1 + (cls === "destroyerEscort" ? P.pickets : P.escorts * n(A.classes[i - 1])); }
+    $("adm-n").textContent = (A.top[lv] * n(A.tops[lv])).toLocaleString("en-US") + " ships";
+  }
   admCount();
   $("adm-pick").onchange = function () { settings.admPick = this.value; saveSettings(); admCount(); };
   $("btn-admirals").onclick = function () {

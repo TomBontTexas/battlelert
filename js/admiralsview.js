@@ -1,7 +1,8 @@
 /* Battlelert © 2011–2026 Tom Bont. All rights reserved. See LICENSE. */
 /* The Admirals screen (stage 1): the hex map of the campaign (admirals.js, BL.Campaign), the
-   fleet, the system tapped, and the last turn's report. Tap a squadron (or press its number) to
-   select it, tap a system to send it there; END TURN and every move happens at once. */
+   fleet, the system tapped, and the last turn's report. Tap a force (or press its number) to
+   select it, tap a system to send it there; SPLIT and JOIN reshape the forces; END TURN and
+   every move happens at once. */
 (function (root) {
   "use strict";
   var BL = root.BL = root.BL || {};
@@ -30,7 +31,7 @@
   function start(o) {
     opts = o; c = new BL.Campaign({ seed: o.seed, level: o.level }); sel = []; focus = c.home;
     $("adm-modal").hidden = true;
-    hintDefault = $("adm-hint").textContent = "1–" + c.size + " select · A all · H hold · F fly the flag (first turn) · Enter end turn · Esc clear";
+    hintDefault = $("adm-hint").textContent = "1–9 select · A all · S split · J join · H hold · F fly the flag (first turn) · Enter end turn · Esc clear";
     draw();
   }
 
@@ -68,30 +69,31 @@
       el("polyline", { points: pts.join(" "), "class": "adm-path" }, gp);
       el("polygon", { points: corners(centre(c.hexes[f.dest])), "class": "adm-dest" }, gp);
     });
-    // The squadrons: a chip each, ours first, three to a row under the system's mark.
+    // The forces: a chip each, ours first, two to a row under the system's mark.
     var at = {};
     c.forces.forEach(function (f) { if (!f.lost) (at[f.at] = at[f.at] || []).push(f); });
     Object.keys(at).forEach(function (i) {
       var p = centre(c.hexes[i]), list = at[i].sort(function (a, b) { return (a.side === "us" ? 0 : 1) - (b.side === "us" ? 0 : 1); });
-      var cw = 15, ch = 9, per = 3;
+      var ch = 9, per = 2, labels = list.map(function (f) { return c.chip(f) + (f.id === c.flag ? "★" : ""); });
+      var cw = Math.max(15, 4 + 4.4 * Math.max.apply(null, labels.map(function (l) { return l.length; })));
       list.forEach(function (f, k) {
         var row = Math.floor(k / per), inRow = Math.min(per, list.length - row * per), col = k % per;
         var x = p.x + (col - (inRow - 1) / 2) * (cw + 1) - cw / 2, y = p.y + 1 + row * (ch + 1);
         var g = el("g", { "class": "adm-chip " + (f.side === "us" ? "us" : "az") + (sel.indexOf(f.id) >= 0 ? " sel" : "") }, gf);
         el("rect", { x: x, y: y, width: cw, height: ch, rx: 2 }, g);
-        var t = el("text", { x: x + cw / 2, y: y + ch / 2 + 0.5 }, g); t.textContent = BL.ADMIRALS.abbr[f.cls] + (f.id === c.flag ? "★" : "");
+        var t = el("text", { x: x + cw / 2, y: y + ch / 2 + 0.5 }, g); t.textContent = labels[k];
         g.addEventListener("click", function (ev) { ev.stopPropagation(); if (f.side === "us") toggle(f.id); else tapHex(f.at); });
       });
     });
   }
   function line(f) {
-    var A = BL.ADMIRALS, alive = c.alive(f).length, ord = f.dest === f.at ? "Holding at " + c.hexes[f.at].name : "To " + c.hexes[f.dest].name + " · " + c.path(f.at, f.dest).length + " warps";
+    var alive = c.alive(f).length, ord = f.dest === f.at ? "Holding at " + c.hexes[f.at].name : "To " + c.hexes[f.dest].name + " · " + c.path(f.at, f.dest).length + " warps";
     return "<div class='adm-sq" + (sel.indexOf(f.id) >= 0 ? " sel" : "") + (f.lost ? " lost" : "") + "' data-id='" + f.id + "'>" +
-      "<b>" + (fleetList().indexOf(f) + 1) + " · " + esc(A.plural[f.cls].replace(/^./, function (s) { return s.toUpperCase(); })) + (f.id === c.flag ? " ★ flag" : "") + "</b>" +
+      "<b>" + (fleetList().indexOf(f) + 1) + " · " + esc(c.desc(f).replace(/^./, function (s) { return s.toUpperCase(); })) + (f.id === c.flag ? " ★ flag" : "") + "</b>" +
       "<span>" + esc(f.cmd.name) + " · " + f.cmd.temper + " · skill " + Math.round(f.cmd.skill * 100) + "</span>" +
       (f.lost ? "<span class='bad'>Destroyed</span>" : "<span>" + alive + "/" + f.ships.length + " ships · " + pct(c.condition(f)) + "</span><span>" + esc(ord) + "</span>") + "</div>";
   }
-  function fleetList() { var us = c.forces.filter(function (f) { return f.side === "us"; }); return us; }
+  function fleetList() { return c.ours(); }
   function drawFleet() {
     $("adm-fleet").innerHTML = fleetList().map(line).join("");
     Array.prototype.forEach.call($("adm-fleet").querySelectorAll(".adm-sq"), function (d) {
@@ -105,13 +107,13 @@
     $("adm-sys").innerHTML = "<div><b>" + esc(h.name) + "</b></div><div>" + esc(kind) + " · " + c.dist(c.home, focus) + " warps from our base</div>" +
       (here.length ? here.map(function (f) {
         return "<div class='" + (f.side === "us" ? "us" : "az") + "'>" + esc(c.name(f).replace(/^./, function (s) { return s.toUpperCase(); })) + " · " + c.alive(f).length + "/" + f.ships.length + " · " + pct(c.condition(f)) + "</div>";
-      }).join("") : "<div class='muted'>No squadrons here.</div>");
+      }).join("") : "<div class='muted'>No forces here.</div>");
   }
   function drawReport() {
     var last = c.log.slice(-3).reverse();
     $("adm-report").innerHTML = last.length ? last.map(function (e) {
       return "<div class='adm-rep'><b>Turn " + e.turn + "</b>" + e.lines.map(function (l) { return "<div" + (/^ {4}/.test(l) ? " class='sub'" : "") + ">" + esc(l.trim()) + "</div>"; }).join("") + "</div>";
-    }).join("") : "<div class='muted'>Send your squadrons, then END TURN. Every move happens at once.</div>";
+    }).join("") : "<div class='muted'>Send your forces, then END TURN. Every move happens at once.</div>";
   }
 
   /* ------------------------------------------------------------- Input */
@@ -131,34 +133,48 @@
   }
   function all() { if (c.state !== "play") return; click(); var us = c.ours().map(function (f) { return f.id; }); sel = sel.length === us.length ? [] : us; draw(); }
   function hold() { if (c.state !== "play") return; click(); sel.forEach(function (id) { var f = c.force(id); if (f) c.order(id, f.at); }); draw(); }
+  // Split each force selected into its top ship and her escorts' pyramids (the new forces selected too).
+  function split() {
+    if (c.state !== "play") return;
+    if (!sel.length) { $("adm-hint").textContent = "Select a force to split."; return; }
+    var made = []; sel.forEach(function (id) { made = made.concat(c.split(id).map(function (f) { return f.id; })); });
+    if (!made.length) { $("adm-hint").textContent = "A picket squadron, or a ship on her own, can't be split."; return; }
+    click(); sel = sel.filter(function (id) { var f = c.force(id); return f && !f.lost && !f.merged; }).concat(made); draw();
+  }
+  function join() {
+    if (c.state !== "play") return;
+    var lead = c.join(sel);
+    if (!lead) { $("adm-hint").textContent = "Select two or more forces in the same system to join them."; return; }
+    click(); sel = [lead.id]; draw();
+  }
   function flagHere() {
-    if (sel.length !== 1) { $("adm-hint").textContent = "Select one squadron to fly your flag with."; return; }
+    if (sel.length !== 1) { $("adm-hint").textContent = "Select one force to fly your flag with."; return; }
     if (c.setFlag(sel[0])) { click(); draw(); }
   }
   function endTurn() {
     if (c.state !== "play") return;
     if (BL.audio) BL.audio.play("jump");
     c.endTurn();
-    sel = sel.filter(function (id) { var f = c.force(id); return f && !f.lost; });
+    sel = sel.filter(function (id) { var f = c.force(id); return f && !f.lost && !f.merged; });
     draw();
   }
   function flagModal() {
     var m = $("adm-modal"), us = c.ours();
-    m.innerHTML = "<div class='ov-card'><h1>The flag squadron is gone</h1><p>Shift your flag to another squadron and fight on (take the world and it's still a win), or withdraw: the campaign is lost.</p>" +
-      "<div class='menu'>" + us.map(function (f) { return "<button data-id='" + f.id + "'>Shift the flag to the " + esc(BL.ADMIRALS.plural[f.cls]) + "</button>"; }).join("") +
+    m.innerHTML = "<div class='ov-card'><h1>The flagship is lost</h1><p>Shift your flag to another force and fight on (take the world and it's still a win), or withdraw: the campaign is lost.</p>" +
+      "<div class='menu'>" + us.map(function (f) { return "<button data-id='" + f.id + "'>Shift the flag to the " + esc(c.desc(f)) + "</button>"; }).join("") +
       "<button id='adm-withdraw'>Withdraw</button></div></div>";
     m.hidden = false;
     Array.prototype.forEach.call(m.querySelectorAll("button[data-id]"), function (b) { b.onclick = function () { click(); c.setFlag(+b.getAttribute("data-id")); m.hidden = true; draw(); }; });
     $("adm-withdraw").onclick = function () { click(); c.withdraw(); m.hidden = true; draw(); };
   }
   function endModal() {
-    var m = $("adm-modal"), lost = c.forces.filter(function (f) { return f.side === "us" && f.lost; }).length, won = c.state === "won";
+    var m = $("adm-modal"), lost = c.shipsLost(), won = c.state === "won";
     var why = won ? "The target world " + c.hexes[c.world].name + " is taken on turn " + (c.turn - 1) + " of " + c.turns + "."
       : c.why === "time" ? "Fleet HQ's " + c.turns + " turns ran out before the world fell."
-      : c.why === "losses" ? "Half the fleet is lost: Fleet HQ calls off the campaign."
-      : "The fleet withdrew after losing its flag squadron.";
+      : c.why === "losses" ? "Half the fleet's ships are lost: Fleet HQ calls off the campaign."
+      : "The fleet withdrew after losing its flagship.";
     if (BL.audio) BL.audio.play(won ? "win" : "lose");
-    m.innerHTML = "<div class='ov-card'><h1>" + (won ? "Campaign won" : "Campaign lost") + "</h1><p>" + esc(why) + "</p><p class='muted'>Squadrons lost: " + lost + " of " + c.size + ".</p>" +
+    m.innerHTML = "<div class='ov-card'><h1>" + (won ? "Campaign won" : "Campaign lost") + "</h1><p>" + esc(why) + "</p><p class='muted'>Ships lost: " + lost + " of " + c.shipsTotal + ".</p>" +
       "<div class='menu'><button id='adm-again' class='primary'>New campaign</button><button id='adm-same'>Same seed again</button><button id='adm-quit'>Back to the title screen</button></div></div>";
     m.hidden = false;
     $("adm-again").onclick = function () { click(); start({ seed: BL.randomSeed(), level: c.level, onExit: opts.onExit }); };
@@ -171,6 +187,8 @@
     $("btn-adm-all").onclick = all;
     $("btn-adm-hold").onclick = hold;
     $("btn-adm-flag").onclick = flagHere;
+    $("btn-adm-split").onclick = split;
+    $("btn-adm-join").onclick = join;
     $("btn-adm-how").onclick = function () { click(); $("ov-how").hidden = false; };
     $("btn-adm-quit").onclick = function () { click(); opts.onExit(); };
     $("scr-admirals").addEventListener("mouseover", function (ev) {
@@ -184,6 +202,8 @@
       else if (k === "a" || k === "A") all();
       else if (k === "h" || k === "H") hold();
       else if (k === "f" || k === "F") flagHere();
+      else if (k === "s" || k === "S") split();
+      else if (k === "j" || k === "J") join();
       else if (k === "Enter") { ev.preventDefault(); endTurn(); }
       else if (k === "Escape") { sel = []; draw(); }
     });

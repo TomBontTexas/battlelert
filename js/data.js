@@ -1301,26 +1301,30 @@
   };
   /* Admirals (approved Nov 6, 2026; stage 1 of 5, the Admirals test): the Fleet Admiral's
      campaign on the hex map (admirals.js). One hex is one star system, one warp; one turn is one
-     warp. levels: F3 (the Fleet Commodore) to F8 and G9, each a fleet of one squadron per class,
-     smallest first; squadrons: how many. No gunboat squadrons: a capital ship's gunboats stay
-     with her and aren't deployed by the admiral (they still fight at squadron level and below:
-     TexasBont, Nov 7, 2026). turns: Fleet HQ's turns for the campaign (base at F3, plus perLevel for
-     each level above). lose: the share of his squadrons lost that fails it. ship: a squadron
-     ship's strength in a fight (hp: hull + shields x shieldK; fire: her guns' MW). fight: rounds
-     in a turn's fight; k: the share of fire that lands each round; spread: luck per round;
-     breakAt: a commander breaks off when his side's strength falls below that share of the
-     enemy's (by temper); a garrison and the world's defences never do. temper: [fire dealt,
-     fire taken]. skill: our commanders' (a commander's fire is x 1 - skillK + skill x skillK).
-     enemy: the Azurian forces: a garrison squadron at each of `bases` bases (kinds), the
-     world's garrison (`worldGarrison` of the fleet's size) and its defences (hp and fire as
-     shares of our whole fleet's), patrols (wander within `roam` hexes of their base, and jump a lone squadron
-     next to them that's no stronger than they are), and the main fleet (`main` of the fleet's
-     size, at least 1), which goes for any of our squadrons within `chase` hexes, else guards
-     the world. */
+     warp. levels: F3 (the Fleet Commodore) to F8 and G9. Fleets are escort pyramids (TexasBont,
+     Nov 7, 2026): `top` ships of the level's class (tops), each ship with `pyramid.escorts`
+     escorts of the class below, all the way down, and each destroyer escort with a squadron of
+     `pyramid.pickets` picket ships. No gunboat squadrons: a capital ship's gunboats stay with her.
+     turns: Fleet HQ's turns for the campaign (base at F3, plus perLevel for each level above).
+     lose: the share of his ships lost that fails it. ship: a ship's strength in a fight (hp:
+     hull + shields x shieldK; fire: her guns' MW). fight: rounds in a turn's fight; k: the share
+     of fire that lands each round; spread: luck per round; breakAt: a commander breaks off when
+     his side's strength falls below that share of the enemy's (by temper); a garrison and the
+     world's defences never do. temper: [fire dealt, fire taken]. skill: our commanders' (a
+     commander's fire is x 1 - skillK + skill x skillK). enemy: the Azurian forces, pyramids too:
+     a garrison at each of `bases` bases (kinds) and `patrols` patrols, each a pyramid `below`
+     classes under our top class (pickets at the least); the world's garrison (`worldGarrison` x
+     our top ships, rounded, pyramids of that size) and its defences (hp and fire as shares of our
+     whole fleet's, times its level's multiplier: F3's pickets are fragile);
+     patrols wander within `roam` hexes of their base and jump a lone force next to them that's
+     no stronger; the main fleet (`main` x our top ships, pyramids of our top class) goes for any of our forces
+     within `chase` hexes, else guards the world. */
   BL.ADMIRALS = {
     levels: ["F3", "F4", "F5", "F6", "F7", "F8", "G9"],
     titles: { F3: "Fleet Commodore", F4: "Fleet Admiral", F5: "Fleet Admiral", F6: "Fleet Admiral", F7: "Fleet Admiral", F8: "Fleet Admiral", G9: "Grand Admiral" },
-    squadrons: { F3: 2, F4: 3, F5: 4, F6: 5, F7: 6, F8: 7, G9: 8 },
+    tops: { F3: "destroyerEscort", F4: "destroyer", F5: "lightCruiser", F6: "cruiser", F7: "heavyCruiser", F8: "battleship", G9: "dreadnought" },
+    top: { F3: 2, F4: 2, F5: 2, F6: 2, F7: 2, F8: 2, G9: 4 },
+    pyramid: { escorts: 2, pickets: 4 },
     classes: ["picket", "destroyerEscort", "destroyer", "lightCruiser", "cruiser", "heavyCruiser", "battleship", "dreadnought"],
     abbr: { gunboat: "GB", picket: "PK", destroyerEscort: "DE", destroyer: "DD", lightCruiser: "CL", cruiser: "CA", heavyCruiser: "CH", battleship: "BB", dreadnought: "DN", defences: "DEF" },
     plural: { gunboat: "gunboats", picket: "pickets", destroyerEscort: "destroyer escorts", destroyer: "destroyers", lightCruiser: "light cruisers", cruiser: "cruisers", heavyCruiser: "heavy cruisers", battleship: "battleships", dreadnought: "dreadnoughts" },
@@ -1331,7 +1335,7 @@
     fight: { rounds: 4, k: 0.3, spread: [0.75, 1.25], breakAt: { cautious: 0.8, steady: 0.6, aggressive: 0.4 } },
     temper: { cautious: [0.92, 0.9], steady: [1, 1], aggressive: [1.1, 1.1] },
     skill: [0.4, 0.95], skillK: 0.5,
-    enemy: { skill: [0.4, 0.85], bases: [2, 3], kinds: ["base", "depot", "shipyard"], worldGarrison: 0.25, defences: { hp: 0.5, fire: 0.3 },
+    enemy: { skill: [0.4, 0.85], bases: [2, 3], kinds: ["base", "depot", "shipyard"], below: 1, worldGarrison: 0.5, defences: { hp: 0.7, fire: 0.4, level: { F3: 0.6 } },
              patrols: [1, 2], roam: 2, main: 0.5, chase: 3 }
   };
 })(typeof window !== "undefined" ? window : globalThis);

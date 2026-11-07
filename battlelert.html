@@ -581,16 +581,18 @@
     <span class="adm-gap"></span>
     <button id="btn-adm-how" class="small" data-hint="How to play.">How to play</button>
     <button id="btn-adm-quit" class="small" data-hint="Leave the campaign (nothing is saved).">Quit</button>
-    <button id="btn-adm-end" class="primary" data-hint="Every squadron makes its move, the Azurians make theirs, all at once; then the report. Key: Enter.">End turn</button>
+    <button id="btn-adm-end" class="primary" data-hint="Every force makes its move, the Azurians make theirs, all at once; then the report. Key: Enter.">End turn</button>
   </header>
   <div class="adm-body">
     <div class="adm-map"><svg id="adm-svg" role="img" aria-label="hex map"></svg></div>
     <aside class="adm-side">
       <h3>Your fleet</h3>
       <div class="adm-btns">
-        <button id="btn-adm-all" class="small" data-hint="Select every squadron (again: none). Key: A.">All</button>
-        <button id="btn-adm-hold" class="small" data-hint="The squadrons selected stay where they are. Key: H.">Hold</button>
-        <button id="btn-adm-flag" class="small" data-hint="Fly your flag with the squadron selected (first turn only). Key: F.">Fly flag</button>
+        <button id="btn-adm-all" class="small" data-hint="Select every force (again: none). Key: A.">All</button>
+        <button id="btn-adm-hold" class="small" data-hint="The forces selected stay where they are. Key: H.">Hold</button>
+        <button id="btn-adm-split" class="small" data-hint="Split each force selected: its top ship stays, and each escort's pyramid becomes a force of its own. Key: S.">Split</button>
+        <button id="btn-adm-join" class="small" data-hint="Join the forces selected (all in one system): the biggest ship leads, the others become her escorts. Key: J.">Join</button>
+        <button id="btn-adm-flag" class="small" data-hint="Fly your flag in the force selected (first turn only). Key: F.">Fly flag</button>
       </div>
       <div id="adm-fleet"></div>
       <h3>System</h3>
@@ -620,7 +622,7 @@
       <button id="btn-helm" class="small">Pilot helm</button><span class="muted">ship</span><select id="ship-pick" aria-label="ship"></select>
       <button id="btn-captain" class="small">Captain bridge</button><span class="muted">ship</span><select id="cap-pick" aria-label="ship"></select>
       <button id="btn-squadron" class="small">Squadron</button><span id="sq-n" class="muted">4 ships</span><select id="sq-pick" aria-label="squadron"></select>
-      <button id="btn-admirals" class="small">Admirals</button><span id="adm-n" class="muted">3 squadrons</span><select id="adm-pick" aria-label="fleet"></select>
+      <button id="btn-admirals" class="small">Admirals</button><span id="adm-n" class="muted">10 ships</span><select id="adm-pick" aria-label="fleet"></select>
     </div>
     <div class="test-seed">
       <label for="seed-input">Seed</label>
@@ -741,10 +743,11 @@
     </table>
     <h2>Admirals</h2>
     <table class="keys">
-      <tr><td>1 to 9</td><td>Select that squadron (again to drop it); tapping its chip on the map or its line in YOUR FLEET does the same</td></tr>
-      <tr><td>Tap a system</td><td>With squadrons selected: send them there (one warp a turn, the shortest way). With none: what's there</td></tr>
-      <tr><td>A / H</td><td>ALL: select every squadron (again: none) / HOLD: the ones selected stay where they are</td></tr>
-      <tr><td>F</td><td>FLY FLAG: your flag goes with the squadron selected (first turn only)</td></tr>
+      <tr><td>1 to 9</td><td>Select that force (again to drop it); tapping its chip on the map or its line in YOUR FLEET does the same</td></tr>
+      <tr><td>Tap a system</td><td>With forces selected: send them there (one warp a turn, the shortest way). With none: what's there</td></tr>
+      <tr><td>A / H</td><td>ALL: select every force (again: none) / HOLD: the ones selected stay where they are</td></tr>
+      <tr><td>S / J</td><td>SPLIT: each force selected becomes its top ship and her escorts' pyramids / JOIN: the forces selected (in one system) become one, the biggest ship leading</td></tr>
+      <tr><td>F</td><td>FLY FLAG: your flag goes in the force selected (first turn only)</td></tr>
       <tr><td>Enter / Esc</td><td>END TURN / clear the selection</td></tr>
     </table>
     <div class="menu"><button id="btn-options-close" class="primary">Done</button></div>
@@ -847,15 +850,16 @@
       <li><b>Score.</b> The objective is half the share of each system's objective destroyed (a dreadnought squadron: all of it, with none to destroy) and half the share of your ships brought home (the flagship one of them; if she's destroyed, the mission is lost); the flagship's condition and navigation as on the bridge; command is half the bridge's and half the share of the systems' targets destroyed.</li>
     </ol>
     <h2>Admirals</h2>
-    <p>A Fleet Admiral fights a campaign, not a mission: take one Azurian world. To try it: title screen, <b>Tests</b>, <b>Admirals</b>, and pick the fleet: <b>F3</b>, the Fleet Commodore (pickets and destroyer escorts: a squadron of each), and each level up adds the next class, to <b>F8</b> (battleships) and <b>G9</b>, the Grand Admiral (dreadnoughts too). The admiral doesn't deploy gunboat squadrons: a capital ship's gunboats stay with her. The campaign is played in turns on a hex map: each hex is a star system, one warp from the next, and one turn is one warp.</p>
+    <p>A Fleet Admiral fights a campaign, not a mission: take one Azurian world. To try it: title screen, <b>Tests</b>, <b>Admirals</b>, and pick the fleet. Fleets are escort pyramids: every ship has two escorts of the class below, all the way down, and every destroyer escort has a squadron of 4 picket ships as escorts and scouts. Each level has 2 ships at the top, each with her whole pyramid: <b>F3</b>, the Fleet Commodore, 2 destroyer escorts (10 ships); <b>F4</b> 2 destroyers (22); <b>F5</b> 2 light cruisers (46); <b>F6</b> 2 cruisers (94); <b>F7</b> 2 heavy cruisers (190); <b>F8</b> 2 battleships (382); and <b>G9</b>, the Grand Admiral, 4 dreadnoughts (1,532). The admiral doesn't deploy gunboat squadrons: a capital ship's gunboats stay with her. The campaign is played in turns on a hex map: each hex is a star system, one warp from the next, and one turn is one warp.</p>
     <ol class="tight">
-      <li><b>The map.</b> Your fleet starts at our base (blue, at the left). The target world is the big red circle at the right. Red squares, diamonds and triangles are Azurian bases, depots and shipyards, each with a garrison squadron; the world has its own garrison and its defences. Chips are squadrons, with their class (GB gunboats, PK pickets, DE destroyer escorts, DD destroyers, CL light cruisers, CA cruisers, CH heavy cruisers, BB battleships, DN dreadnoughts): blue ours, red theirs. ★ marks your flag.</li>
-      <li><b>Orders.</b> Tap a squadron (or press its number) to select it, then tap a system to send it there: it warps one system a turn, the shortest way, and the dashed line shows its way. Select several to send them together. <b>HOLD</b> keeps the ones selected where they are.</li>
-      <li><b>The turn.</b> <b>END TURN</b> (Enter): your squadrons move, the Azurians move, all at once. Their patrols wander near their bases and jump a lone squadron next to them that's no stronger; their main fleet goes after any of your squadrons within 3 warps, else guards the world; garrisons stay put.</li>
-      <li><b>Fights.</b> Squadrons that come out in the same system fight there, decided off screen; the report says what happened. Firepower and toughness come from the ships' guns, hulls and shields, and each commander's skill and temper count: a cautious one breaks off sooner, an aggressive one fights harder and takes more. A side that breaks off falls back to where it came from. Garrisons and the world's defences fight to the end. Damage stays with a squadron from system to system.</li>
-      <li><b>Taking systems.</b> Your squadrons alone in an Azurian system at the end of a turn take it.</li>
-      <li><b>Winning and losing.</b> Take the target world and the campaign is won. It's lost if Fleet HQ's turns run out, or you lose half your squadrons.</li>
-      <li><b>Your flag.</b> You fly it with one squadron (the biggest to start; on the first turn, select another and <b>FLY FLAG</b> to move it). If the flag squadron is destroyed, shift the flag to another squadron and fight on (take the world and it's still a win), or withdraw, and the campaign is lost.</li>
+      <li><b>The map.</b> Your fleet starts at our base (blue, at the left). The target world is the big red circle at the right. Red squares, diamonds and triangles are Azurian bases, depots and shipyards, each with a garrison; the world has its own garrison and its defences. Chips are forces: the biggest class in it and how many ships with her (DD+10 is a destroyer and 10 escorts; PK4 is 4 pickets), blue ours, red theirs. The classes: PK pickets, DE destroyer escorts, DD destroyers, CL light cruisers, CA cruisers, CH heavy cruisers, BB battleships, DN dreadnoughts, DEF the world's defences. ★ marks your flag.</li>
+      <li><b>Orders.</b> Tap a force (or press its number) to select it, then tap a system to send it there: it warps one system a turn, the shortest way, and the dashed line shows its way. Select several to send them together. <b>HOLD</b> (H) keeps the ones selected where they are.</li>
+      <li><b>Split and join.</b> <b>SPLIT</b> (S) breaks each force selected into its top ship and her escorts, each escort with her own pyramid, all in the same system: a destroyer escort's pickets can scout on their own, for instance. <b>JOIN</b> (J) puts the forces selected back together (they must be in one system): the biggest ship leads and the others become her escorts.</li>
+      <li><b>The turn.</b> <b>END TURN</b> (Enter): your forces move, the Azurians move, all at once. Their patrols wander near their bases and jump a lone force next to them that's no stronger; their main fleet goes after any of your forces within 3 warps, else guards the world; garrisons stay put.</li>
+      <li><b>Fights.</b> Forces that come out in the same system fight there, decided off screen; the report says what happened. Firepower and toughness come from the ships' guns, hulls and shields, and each commander's skill and temper count: a cautious one breaks off sooner, an aggressive one fights harder and takes more. A side that breaks off falls back to where it came from. Garrisons and the world's defences fight to the end. Damage stays with a ship from system to system.</li>
+      <li><b>Taking systems.</b> Your forces alone in an Azurian system at the end of a turn take it.</li>
+      <li><b>Winning and losing.</b> Take the target world and the campaign is won. It's lost if Fleet HQ's turns run out, or you lose half your ships.</li>
+      <li><b>Your flag.</b> It flies in one ship (a top ship to start; on the first turn, select another force and <b>FLY FLAG</b> to move it). If your flagship is destroyed, shift the flag to another force and fight on (take the world and it's still a win), or withdraw, and the campaign is lost.</li>
     </ol>
     <p class="muted">Still to come: detachments under commodores and fleet admirals, fog of war and Fleet HQ's reports, hazards, supply and repair, the Azurians' own plans, the career (Fleet Commodore F3, Fleet Admiral F4 to F8, then Grand Admiral), and the Grand Admiral's three fleet admirals.</p>
     <h2>Pilot training</h2>
@@ -865,9 +869,9 @@
   </div>
 </section>
 
-<script src="version.js?b=dc660982"></script>
+<script src="version.js?b=f10d06d8"></script>
 <script src="update-banner.js?b=ec7860dd"></script>
-<script src="js/data.js?b=bcc05436"></script>
+<script src="js/data.js?b=6630d299"></script>
 <script src="js/sim.js?b=c35bac51"></script>
 <script src="js/agents.js?b=39dd86f3"></script>
 <script src="js/gunnery.js?b=8882d97b"></script>
@@ -887,8 +891,8 @@
 <script src="js/speech.js?b=73f09200"></script>
 <script src="js/audio.js?b=7bd9e9f9"></script>
 <script src="js/ribbons.js?b=2346cc71"></script>
-<script src="js/admirals.js?b=927a4b5f"></script>
-<script src="js/admiralsview.js?b=0a4b5fb0"></script>
-<script src="js/ui.js?b=a28c07a5"></script>
+<script src="js/admirals.js?b=5642a3b5"></script>
+<script src="js/admiralsview.js?b=9060d850"></script>
+<script src="js/ui.js?b=62e8f44e"></script>
 </body>
 </html>

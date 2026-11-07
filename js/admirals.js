@@ -1,12 +1,15 @@
 /* Battlelert © 2011–2026 Tom Bont. All rights reserved. See LICENSE. */
 /* Admirals (approved Nov 6, 2026; stage 1 of 5): the Fleet Admiral's campaign on the hex map.
    Pure JavaScript, no screen code (admiralsview.js draws it). Each hex is one star system, one
-   warp from the next; one turn is one warp. He sends each squadron to a system, the Azurians
-   plot their own moves, then every move happens at once. Squadrons that come out in the same
-   system fight there, decided off screen; he reads the report after the turn. He wins when a
-   squadron holds the target world at the end of a turn; he fails if Fleet HQ's turns run out or
-   he loses half his squadrons. If his flag squadron is destroyed he shifts the flag (fight on)
-   or withdraws (a loss). Tuning: BL.ADMIRALS (data.js).
+   warp from the next; one turn is one warp. His fleet is escort pyramids (each ship with two
+   escorts of the class below, each destroyer escort with a picket squadron); each pyramid is one
+   force on the map, and he can split a force into its top ship and her escorts' pyramids, or
+   join forces in one system. He sends each force to a system, the Azurians plot their own
+   moves, then every move happens at once. Forces that come out in the same system fight there,
+   decided off screen; he reads the report after the turn. He wins when a force holds the target
+   world at the end of a turn; he fails if Fleet HQ's turns run out or he loses half his ships.
+   If his flagship is destroyed he shifts the flag (fight on) or withdraws (a loss). Tuning:
+   BL.ADMIRALS (data.js).
    Later stages: detachments and fog of war (2), supply, repair and the enemy planner (3), the
    career (4), the Grand Admiral's three fleet admirals (5). */
 (function (root) {
@@ -27,12 +30,12 @@
     this.A = A;
     this.seed = opts.seed || BL.randomSeed();
     this.level = A.levels.indexOf(opts.level) >= 0 ? opts.level : "F3";
-    this.size = A.squadrons[this.level];              // F3 = 2 squadrons (pickets, destroyer escorts) ... G9 = 8
-    this.fleet = A.classes.slice(0, this.size);
+    this.top = A.tops[this.level];                    // F3: 2 destroyer escorts at the top ... G9: 4 dreadnoughts
+    this.size = A.top[this.level];
     this.rng = BL.rng(this.seed);
     this.turn = 1;
     this.turns = A.turns.base + A.turns.perLevel * A.levels.indexOf(this.level);
-    this.state = "play";                              // play | flag (the flag squadron is lost: shift or withdraw) | won | lost
+    this.state = "play";                              // play | flag (the flagship is lost: shift or withdraw) | won | lost
     this.why = null;
     this.log = [];                                    // [{ turn, lines }]
     this.forces = [];
@@ -40,8 +43,9 @@
     this.makeMap();
     this.makeFleet();
     this.makeEnemy();
-    this.flag = this.ours().slice(-1)[0].id;          // (the flag flies with the biggest squadron to start)
+    this.flagShip = this.ours()[0].top.ships[0];      // (the flag flies in the first top ship to start)
     this.flagSet = false;                             // (he may move it until the first turn ends)
+    this.syncFlag();
   }
   BL.Campaign = Campaign;
 
@@ -98,44 +102,70 @@
   // One warp from a toward b.
   Campaign.prototype.stepToward = function (a, b) { var p = this.path(a, b); return p.length ? p[0] : a; };
 
-  /* ------------------------------------------------------------ The forces */
-  // A squadron of a class: its ships' strength (BL.ADMIRALS.ship) and its commander.
-  Campaign.prototype.squadron = function (side, cls, at, cmd, role) {
-    var d = BL.shipFor(cls, BL.TECH.base(cls)), sh = d.systems.filter(function (s) { return s.id === "shield"; })[0];
-    var fire = d.systems.filter(function (s) { return s.kind === "gun" || s.id === "main"; }).reduce(function (a, s) { return a + s.maxMW; }, 0);
-    var hp = Math.round(d.hull + (sh ? sh.maxMJ : 0) * this.A.ship.shieldK), n = BL.COMMAND.squad.size[cls] || 4, ships = [];
-    for (var k = 0; k < n; k++) ships.push({ hp: hp, hpMax: hp, fire: fire });
-    var f = { id: this.nextId++, side: side, cls: cls, ships: ships, cmd: cmd, at: at, prev: at, dest: at, role: role || null, base: at, lost: false };
+  /* ------------------------------------------------------------ The forces
+     A pyramid is a tree of nodes, { cls, ships, kids, cmd }: one ship and her escorts' pyramids,
+     or a picket squadron (no kids). A force is one pyramid on the map: f.top is its node, and
+     f.ships (every ship in it), f.cls and f.cmd come from it (refresh). */
+  var STATS = {};
+  // A ship: hp (hull + shields x shieldK) and fire (her guns' MW).
+  Campaign.prototype.ship = function (cls) {
+    if (!STATS[cls]) {
+      var d = BL.shipFor(cls, BL.TECH.base(cls)), sh = d.systems.filter(function (s) { return s.id === "shield"; })[0];
+      STATS[cls] = { hp: Math.round(d.hull + (sh ? sh.maxMJ : 0) * this.A.ship.shieldK), fire: d.systems.filter(function (s) { return s.kind === "gun" || s.id === "main"; }).reduce(function (a, s) { return a + s.maxMW; }, 0) };
+    }
+    return { cls: cls, hp: STATS[cls].hp, hpMax: STATS[cls].hp, fire: STATS[cls].fire };
+  };
+  Campaign.prototype.pyramid = function (cls) {
+    var P = this.A.pyramid, k, n = { cls: cls, ships: [], kids: [], cmd: null };
+    if (cls === "picket") { for (k = 0; k < P.pickets; k++) n.ships.push(this.ship(cls)); return n; }
+    n.ships.push(this.ship(cls));
+    if (cls === "destroyerEscort") n.kids.push(this.pyramid("picket"));
+    else for (k = 0; k < P.escorts; k++) n.kids.push(this.pyramid(this.A.classes[this.A.classes.indexOf(cls) - 1]));
+    return n;
+  };
+  function flatten(n) { return n.kids.reduce(function (a, k) { return a.concat(flatten(k)); }, n.ships.slice()); }
+  Campaign.prototype.group = function (side, node, at, role) {
+    if (!node.cmd) node.cmd = side === "us" ? this.commander("Commodore", this.A.skill) : this.commander("Azurian", this.A.enemy.skill);
+    var f = { id: this.nextId++, side: side, top: node, at: at, prev: at, dest: at, role: role || null, base: at, lost: false };
+    this.refresh(f);
     this.forces.push(f);
     return f;
   };
+  Campaign.prototype.refresh = function (f) { f.cls = f.top.cls; f.ships = flatten(f.top); f.cmd = f.top.cmd; };
   Campaign.prototype.commander = function (rank, skill) {
     var E = BL.GUNNERY.engineer, r = this.rng, first = r.pick(E.first), last = r.pick(E.last);
     return { name: rank + " " + first + " " + last, last: last, skill: Math.round(r.range(skill) * 100) / 100, temper: r.pick(["cautious", "steady", "aggressive"]) };
   };
   Campaign.prototype.makeFleet = function () {
-    var self = this;
-    this.fleet.forEach(function (cls) { self.squadron("us", cls, self.home, self.commander("Commodore", self.A.skill)); });
+    for (var k = 0; k < this.size; k++) this.group("us", this.pyramid(this.top), this.home);
+    this.shipsTotal = this.ourShips().length;
   };
   Campaign.prototype.makeEnemy = function () {
-    var E = this.A.enemy, r = this.rng, self = this, fleet = this.fleet;
-    function az(at, role) { return self.squadron("az", r.pick(fleet), at, self.commander("Azurian", E.skill), role); }
-    this.hexes.forEach(function (h) { if (h.owner === "az" && h.kind !== "world") az(h.i, "garrison"); });
-    for (var g = Math.round(this.size * E.worldGarrison); g > 0; g--) az(this.world, "garrison");
+    var E = this.A.enemy, A = this.A, r = this.rng, self = this;
+    var below = A.classes[Math.max(0, A.classes.indexOf(this.top) - E.below)];
+    function az(at, role, cls) { return self.group("az", self.pyramid(cls), at, role); }
+    this.hexes.forEach(function (h) { if (h.owner === "az" && h.kind !== "world") az(h.i, "garrison", below); });
+    for (var g = Math.round(this.size * E.worldGarrison); g > 0; g--) az(this.world, "garrison", below);
     // The world's defences: one fixed force, as strong as a share of our whole fleet.
-    var hp = 0, fire = 0; this.ours().forEach(function (f) { f.ships.forEach(function (s) { hp += s.hpMax; fire += s.fire; }); });
-    var big = this.squadron("az", fleet[fleet.length - 1], this.world, { name: "World defences", last: "defences", skill: 0.7, temper: "steady" }, "defences");
-    big.cls = "defences"; big.ships = [{ hp: Math.round(hp * E.defences.hp), hpMax: Math.round(hp * E.defences.hp), fire: Math.round(fire * E.defences.fire) }];
+    var hp = 0, fire = 0; this.ourShips().forEach(function (s) { hp += s.hpMax; fire += s.fire; });
+    var dk = E.defences.level[this.level] || 1, dhp = Math.round(hp * E.defences.hp * dk);
+    var d = { cls: "defences", hp: dhp, hpMax: dhp, fire: Math.round(fire * E.defences.fire * dk) };
+    this.group("az", { cls: "defences", ships: [d], kids: [], cmd: { name: "World defences", last: "defences", skill: 0.7, temper: "steady" } }, this.world, "defences");
     var bases = this.hexes.filter(function (h) { return h.owner === "az" && h.kind !== "world"; });
-    for (var p = r.int(E.patrols); p > 0 && bases.length; p--) az(r.pick(bases).i, "patrol");
-    var nm = Math.max(1, Math.round(this.size * E.main));
-    for (var m = 0; m < nm; m++) az(this.neighbors(this.world)[m % this.neighbors(this.world).length], "main");
+    for (var p = r.int(E.patrols); p > 0 && bases.length; p--) az(r.pick(bases).i, "patrol", below);
+    var nb = this.neighbors(this.world);
+    for (var m = 0; m < Math.round(this.size * E.main); m++) az(nb[m % nb.length], "main", this.top);
   };
-  Campaign.prototype.ours = function () { return this.forces.filter(function (f) { return f.side === "us" && !f.lost; }); };
+  // Every ship of ours (the losses count them all).
+  Campaign.prototype.ourShips = function () {
+    return this.forces.filter(function (f) { return f.side === "us" && !f.merged; }).reduce(function (a, f) { return a.concat(f.ships); }, []);
+  };
+  Campaign.prototype.shipsLost = function () { return this.shipsTotal - this.ourShips().filter(function (s) { return s.hp > 0; }).length; };
+  Campaign.prototype.ours = function () { return this.forces.filter(function (f) { return f.side === "us" && !f.lost && !f.merged; }); };
   Campaign.prototype.theirs = function () { return this.forces.filter(function (f) { return f.side === "az" && !f.lost; }); };
   Campaign.prototype.force = function (id) { return this.forces.filter(function (f) { return f.id === id; })[0]; };
   Campaign.prototype.alive = function (f) { return f.ships.filter(function (s) { return s.hp > 0; }); };
-  // A squadron's condition: the share of its ships' strength left.
+  // A force's condition: the share of its ships' strength left.
   Campaign.prototype.condition = function (f) {
     var a = 0, b = 0; f.ships.forEach(function (s) { a += Math.max(0, s.hp); b += s.hpMax; });
     return b ? a / b : 0;
@@ -146,28 +176,77 @@
     fs.forEach(function (f) { self.alive(f).forEach(function (s) { hp += s.hp; fire += s.fire * self.fireK(f); }); });
     return hp * fire;
   };
+  // What's in a force: "destroyer with 2 destroyer escorts and 8 pickets", "4 pickets".
+  Campaign.prototype.desc = function (f) {
+    var A = this.A, n = {};
+    if (f.cls === "defences") return "the world's defences";
+    this.alive(f).forEach(function (s) { n[s.cls] = (n[s.cls] || 0) + 1; });
+    var cl = A.classes.slice().reverse().filter(function (c) { return n[c]; });
+    function one(c) { return n[c] === 1 ? BL.classById(c).name.toLowerCase() : n[c] + " " + A.plural[c]; }
+    if (!cl.length) return "no ships";
+    if (n[cl[0]] === 1 && cl.length > 1) return one(cl[0]) + " with " + list(cl.slice(1).map(one));
+    return list(cl.map(one));
+  };
+  // Its chip on the map: the biggest class and how many escorts ("DD+10", "DE+4", "PK4").
+  Campaign.prototype.chip = function (f) {
+    var A = this.A, al = this.alive(f);
+    if (f.cls === "defences") return A.abbr.defences;
+    var big = A.classes.slice().reverse().filter(function (c) { return al.some(function (s) { return s.cls === c; }); })[0];
+    var nb = al.filter(function (s) { return s.cls === big; }).length, rest = al.length - nb;
+    return A.abbr[big] + (nb > 1 ? nb : "") + (rest ? "+" + rest : "");
+  };
   Campaign.prototype.fireK = function (f) {
     var A = this.A; return (1 - A.skillK + f.cmd.skill * A.skillK) * (A.temper[f.cmd.temper] || [1, 1])[0];
   };
   Campaign.prototype.name = function (f) {
     var A = this.A;
     if (f.cls === "defences") return "the world's defences";
-    return f.side === "us" ? cap(A.plural[f.cls]) + " (" + f.cmd.name + ")" : "an Azurian " + BL.classById(f.cls).name.toLowerCase() + " squadron";
+    return f.side === "us" ? cap(this.desc(f)) + " (" + f.cmd.name + ")" : "an Azurian force (" + this.desc(f) + ")";
   };
 
   /* ------------------------------------------------------------- Orders */
-  // Send our squadron to a system (it warps one system a turn, the shortest way); to where it is: hold.
+  // Send our force to a system (it warps one system a turn, the shortest way); to where it is: hold.
   Campaign.prototype.order = function (id, dest) {
     var f = this.force(id); if (!f || f.side !== "us" || f.lost || this.state !== "play") return;
     f.dest = dest;
   };
-  Campaign.prototype.setFlag = function (id) {
-    var f = this.force(id); if (!f || f.side !== "us" || f.lost) return false;
-    if (this.state === "flag") { this.flag = id; this.state = "play"; this.note("The flag shifts to the " + this.A.plural[f.cls] + "."); this.check(); return true; }
-    if (this.flagSet || this.turn > 1) return false;
-    this.flag = id; return true;
+  // Split a force: its top ship stays, and each escort's pyramid becomes a force of its own in
+  // the same system, holding there. Returns the new forces.
+  Campaign.prototype.split = function (id) {
+    var f = this.force(id), self = this, out = [];
+    if (!f || f.side !== "us" || f.lost || f.merged || this.state !== "play" || !f.top.kids.length) return out;
+    f.top.kids.forEach(function (k) {
+      if (!flatten(k).some(function (s) { return s.hp > 0; })) return;
+      out.push(self.group("us", k, f.at));
+    });
+    f.top.kids = []; this.refresh(f);
+    if (!this.alive(f).length) f.merged = true;           // (its top ship already lost: nothing left to command)
+    this.syncFlag();
+    return out;
   };
-  // With the flag squadron lost: give up the campaign.
+  // Join forces in one system: the one with the biggest top ship leads, the others become her escorts.
+  Campaign.prototype.join = function (ids) {
+    var A = this.A, self = this;
+    var fs = ids.map(function (id) { return self.force(id); }).filter(function (f) { return f && f.side === "us" && !f.lost && !f.merged; });
+    if (fs.length < 2 || this.state !== "play" || fs.some(function (f) { return f.at !== fs[0].at; })) return null;
+    var lead = fs.slice().sort(function (a, b) { return A.classes.indexOf(b.cls) - A.classes.indexOf(a.cls); })[0];
+    fs.forEach(function (f) { if (f === lead) return; lead.top.kids.push(f.top); f.merged = true; });
+    this.refresh(lead); this.syncFlag();
+    return lead;
+  };
+  // The force the flagship is in.
+  Campaign.prototype.syncFlag = function () {
+    var s = this.flagShip, f = this.ours().filter(function (x) { return x.ships.indexOf(s) >= 0; })[0];
+    this.flag = f ? f.id : null;
+  };
+  Campaign.prototype.setFlag = function (id) {
+    var f = this.force(id); if (!f || f.side !== "us" || f.lost || f.merged) return false;
+    var ship = f.top.ships.filter(function (s) { return s.hp > 0; })[0] || this.alive(f)[0];
+    if (this.state === "flag") { this.flagShip = ship; this.syncFlag(); this.state = "play"; this.note("The flag shifts to the " + this.desc(f) + "."); this.check(); return true; }
+    if (this.flagSet || this.turn > 1) return false;
+    this.flagShip = ship; this.syncFlag(); return true;
+  };
+  // With the flagship lost: give up the campaign.
   Campaign.prototype.withdraw = function () {
     if (this.state !== "flag") return;
     this.state = "lost"; this.why = "withdrew"; this.note("The fleet withdraws. The campaign is lost.");
@@ -222,6 +301,7 @@
       var here = hexes[k], us = here.filter(function (f) { return f.side === "us"; }), az = here.filter(function (f) { return f.side === "az"; });
       if (us.length && az.length) self.fight(+k, us, az, lines);
     });
+    this.syncFlag();
     // Systems taken: ours alone in an Azurian system at the end of the turn.
     this.hexes.forEach(function (h) {
       if (h.owner !== "az") return;
@@ -234,13 +314,11 @@
     this.check();
     return lines;
   };
-  // Won, lost, or the flag squadron gone (he decides: BL.Campaign.setFlag or withdraw).
+  // Won, lost, or the flagship gone (he decides: BL.Campaign.setFlag or withdraw).
   Campaign.prototype.check = function () {
-    var all = this.forces.filter(function (f) { return f.side === "us"; }), lost = all.filter(function (f) { return f.lost; }).length;
     if (this.hexes[this.world].owner === "us") { this.state = "won"; this.why = "world"; return; }
-    if (lost >= all.length * this.A.lose) { this.state = "lost"; this.why = "losses"; return; }
-    var flag = this.force(this.flag);
-    if (flag.lost) { this.state = "flag"; return; }
+    if (this.shipsLost() >= this.shipsTotal * this.A.lose) { this.state = "lost"; this.why = "losses"; return; }
+    if (this.flagShip.hp <= 0) { this.state = "flag"; return; }
     if (this.turn > this.turns) { this.state = "lost"; this.why = "time"; return; }
   };
 
@@ -279,14 +357,15 @@
     // The result, one line per side.
     var shipsLost = function (fs) { return fs.reduce(function (n, f) { return n + before[us.concat(az).indexOf(f)] - self.alive(f).length; }, 0); };
     var wl = shipsLost(us), el = shipsLost(az);
-    var who = list(us.map(function (f) { return A.plural[f.cls]; }));
+    var who = list(us.map(function (f) { return self.desc(f); }));
     lines.push("At " + h.name + ": our " + who + " met " + list(az.map(function (f) { return self.name(f); })) + ".");
     lines.push("    We lost " + wl + " ship" + (wl === 1 ? "" : "s") + "; they lost " + el + ".");
+    var flagWas = this.flagShip.hp > 0;
     us.concat(az).forEach(function (f) {
       f.ships.forEach(function (s) { if (s.hp < 0) s.hp = 0; });
       if (!self.alive(f).length) {
         f.lost = true;
-        lines.push("    " + cap(self.name(f)) + (f.side === "us" ? " is destroyed." + (f.id === self.flag ? " The flag squadron is gone." : "") : " is destroyed."));
+        lines.push("    " + (f.side === "us" ? f.cmd.name + "'s force" : cap(self.name(f))) + " is destroyed.");
       } else if (gone[f.id]) {
         // (back where it came from; one that didn't move falls back toward its own side)
         var back = f.prev !== at ? f.prev : self.stepToward(at, f.side === "us" ? self.home : self.world);
@@ -294,10 +373,11 @@
         lines.push("    " + cap(self.name(f)) + " broke off to " + self.hexes[back].name + ".");
       }
     });
+    if (flagWas && this.flagShip.hp <= 0) lines.push("    Our flagship is lost.");
   };
 
   /* --------------------------------------------- Headless runs (dev-tools)
-     A simple test admiral: every squadron together, the shortest way to the target world. */
+     A simple test admiral: every force together, the shortest way to the target world. */
   BL.runAdmiralsHeadless = function (seed, level) {
     var c = new Campaign({ seed: seed, level: level }), guard = 0;
     while (c.state !== "won" && c.state !== "lost" && guard++ < 100) {
@@ -306,6 +386,6 @@
       c.ours().forEach(function (f) { c.order(f.id, f.at === lead ? c.world : lead); });
       c.endTurn();
     }
-    return { state: c.state, why: c.why, turn: c.turn - 1, turns: c.turns, lost: c.forces.filter(function (f) { return f.side === "us" && f.lost; }).length, of: c.size };
+    return { state: c.state, why: c.why, turn: c.turn - 1, turns: c.turns, lost: c.shipsLost(), of: c.shipsTotal };
   };
 })(typeof window !== "undefined" ? window : globalThis);
