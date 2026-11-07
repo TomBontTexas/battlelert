@@ -9,7 +9,9 @@
    decided off screen; he reads the report after the turn. He wins when a force holds the target
    world at the end of a turn; he fails if Fleet HQ's turns run out or his whole fleet is lost.
    If his flagship is destroyed he shifts the flag (fight on) or withdraws (a loss). Once the
-   world is taken he may carry on to the last turn (state "won", then "over"). Tuning:
+   world is taken (state "won") he must hold it to the end of the last turn (then "over", won)
+   against the Azurians' counterattack. A force that spends a whole turn, unfought, in a system
+   with a shipyard we hold (the worlds are bases, shipyards and depots) is fully repaired. Tuning:
    BL.ADMIRALS (data.js).
    Later stages: detachments and fog of war (2), supply, repair and the enemy planner (3), the
    career (4), the Grand Admiral's three fleet admirals (5). */
@@ -41,7 +43,7 @@
     this.log = [];                                    // [{ turn, lines }]
     this.battles = [];                                // every fight: { turn, at, flag, usLost, azLost, usDmg, azDmg, result }
     this.taken = [];                                  // systems taken: { turn, name, what }
-    this.won = false;                                 // (the world taken: he may carry on to the last turn)
+    this.won = false;                                 // (the world taken once: now he must hold it to the last turn)
     this.forces = [];
     this.nextId = 1;
     this.makeMap();
@@ -70,6 +72,8 @@
     this.world = this.at(M.cols - 1, r.int([1, M.rows - 2]));
     this.hexes[this.home].kind = "home"; this.hexes[this.home].owner = "us";
     this.hexes[this.world].kind = "world"; this.hexes[this.world].owner = "az";
+    // (every world is a base, a shipyard and a depot too: TexasBont, Nov 7, 2026)
+    [this.home, this.world].forEach(function (i) { self.hexes[i].yard = ["base", "shipyard", "depot"]; });
     // The Azurian bases, shipyards and depots: between the two, never next to each other. Some
     // systems hold two or all three (the big money systems: TexasBont, Nov 7, 2026), each with
     // its own garrison. h.kind is the first of h.kinds.
@@ -262,12 +266,13 @@
   // With the flagship lost: give up the campaign (after the world is taken: it's over, and won).
   Campaign.prototype.withdraw = function () {
     if (this.state !== "flag") return;
-    if (this.won) { this.state = "over"; this.note("The fleet withdraws. The campaign is over."); return; }
     this.state = "lost"; this.why = "withdrew"; this.note("The fleet withdraws. The campaign is lost.");
   };
-  // After the world is taken: carry on with the turns left (more systems, more recon).
+  // After the world is taken: hold it through the turns left.
   Campaign.prototype.carryOn = function () { if (this.state === "won" && this.turn <= this.turns && this.ours().length) this.state = "play"; };
+  // A line for the report: during a turn, that turn's; between turns, the last one's.
   Campaign.prototype.note = function (line) {
+    if (this.turnLines && this.state !== "flag") { this.turnLines.push(line); return; }
     var last = this.log[this.log.length - 1];
     if (last && last.turn === this.turn - 1) last.lines.push(line); else this.log.push({ turn: this.turn - 1, lines: [line] });
   };
@@ -276,6 +281,10 @@
   // Each Azurian force picks its move from where our squadrons are at the start of the turn.
   Campaign.prototype.enemyMoves = function () {
     var E = this.A.enemy, r = this.rng, self = this, ours = this.ours();
+    // Once the world is taken: the counterattack. Their main fleet regroups where
+    // they are (a turn's grace for him to repair), then go for it with the fresh forces that come
+    // in at the far edge every `counter.every` turns (reinforce).
+    if (this.won) this.theirs().forEach(function (f) { if (f.role === "main") f.role = "regroup"; });
     this.theirs().forEach(function (f) {
       var next = f.at;
       if (f.role === "patrol") {
@@ -288,6 +297,10 @@
           var opts = self.neighbors(f.at).concat([f.at]).filter(function (j) { return self.dist(j, f.base) <= E.roam; });
           next = r.pick(opts);
         }
+      } else if (f.role === "regroup") {
+        next = f.at;
+      } else if (f.role === "retake") {
+        next = f.at === self.world ? f.at : self.stepToward(f.at, self.world);
       } else if (f.role === "main") {
         var near = ours.map(function (o) { return { o: o, d: self.dist(o.at, f.at) }; }).filter(function (x) { return x.d <= E.chase; })
           .sort(function (a, b) { return a.d - b.d; })[0];
@@ -295,6 +308,21 @@
       }
       f.next = next;
     });
+  };
+
+  // The counterattack's fresh forces: after the moves, every `counter.every` turns from the turn
+  // after the world fell, at the far edge nearest the world (they move in from the next turn).
+  Campaign.prototype.reinforce = function () {
+    var E = this.A.enemy, self = this;
+    if (!this.won || (this.turn - this.wonTurn) % E.counter.every !== 1 % E.counter.every) return;
+    var edge = this.hexes.filter(function (h) { return h.col === self.cols - 1 && h.i !== self.world && h.owner !== "us"; })
+      .sort(function (a, b) { return self.dist(a.i, self.world) - self.dist(b.i, self.world); });
+    var n = Math.max(1, Math.round(this.size * E.counter.size));
+    this.theirs().forEach(function (f) { if (f.role === "regroup") f.role = "retake"; });
+    for (var k = 0; k < n && edge.length; k++) {
+      var g = this.group("az", this.pyramid(this.A.classes[Math.max(0, this.A.classes.indexOf(this.top) - E.below)]), edge[k % Math.min(3, edge.length)].i, "retake");
+      this.note("Azurian reinforcements arrive at " + this.hexes[g.at].name + ".");
+    }
   };
 
   /* --------------------------------------------------------------- A turn
@@ -306,6 +334,7 @@
     if (this.state !== "play") return null;
     var self = this, lines = [], flagFight = null;
     this.flagSet = true;
+    this.turnLines = lines;
     this.enemyMoves();
     this.forces.forEach(function (f) {
       if (f.lost) return;
@@ -314,18 +343,20 @@
       else f.at = f.next;
       if (f.at !== f.prev) f.trail.push(f.at);
     });
+    this.reinforce();
     // Fights: every system with both sides in it.
     var hexes = {}, flag = this.force(this.flag);
+    this.fought = {};
     this.forces.forEach(function (f) { if (!f.lost) (hexes[f.at] = hexes[f.at] || []).push(f); });
     Object.keys(hexes).forEach(function (k) {
       var here = hexes[k], us = here.filter(function (f) { return f.side === "us"; }), az = here.filter(function (f) { return f.side === "az"; });
       if (!us.length || !az.length) return;
+      self.fought[k] = true;
       if (flag && us.indexOf(flag) >= 0) { flagFight = [+k, us, az]; return; }
       var b = self.battleStart(+k, us, az, false);
       while (self.round(b)) { /* to the finish */ }
       self.battleEnd(b, lines);
     });
-    this.turnLines = lines;
     if (!flagFight) return this.finishTurn();
     this.battle = this.battleStart(flagFight[0], flagFight[1], flagFight[2], true);
     this.state = "battle";
@@ -368,6 +399,25 @@
     var self = this, lines = this.turnLines;
     this.state = "play";
     this.syncFlag();
+    // Repairs: a force that spent the whole turn, unfought, where we hold a shipyard.
+    var fixed = {};
+    this.ours().forEach(function (f) {
+      var h = self.hexes[f.at];
+      if (f.prev !== f.at || self.fought[f.at] || h.owner !== "us" || (h.yard || h.kinds).indexOf("shipyard") < 0) return;
+      var hurt = f.ships.filter(function (s) { return s.hp > 0 && s.hp < s.hpMax; });
+      if (!hurt.length) return;
+      hurt.forEach(function (s) { s.hp = s.hpMax; });
+      (fixed[h.name] = fixed[h.name] || []).push(self.desc(f));
+    });
+    Object.keys(fixed).forEach(function (n) { lines.push("Repaired at " + n + "'s shipyard: our " + list(fixed[n]) + "."); });
+    // Systems retaken: the Azurians alone in a system of theirs we took (never our base).
+    this.hexes.forEach(function (h) {
+      if (h.owner !== "us" || h.kind === "home") return;
+      var ours = self.ours().filter(function (f) { return f.at === h.i; }), theirs = self.theirs().filter(function (f) { return f.at === h.i; });
+      if (ours.length || !theirs.length) return;
+      h.owner = "az";
+      lines.push((h.kind === "world" ? "The Azurians retake the target world " : "The Azurians retake ") + h.name + ".");
+    });
     // Systems taken: ours alone in an Azurian system at the end of the turn.
     this.hexes.forEach(function (h) {
       if (h.owner !== "az") return;
@@ -379,20 +429,26 @@
       lines.push(h.kind === "world" ? "The target world " + h.name + " is taken." : h.name + "'s " + what + (h.kinds.length > 1 ? " are" : " is") + " taken.");
     });
     if (!lines.length) lines.push("No contact.");
-    this.log.push({ turn: this.turn, lines: lines });
+    var last = this.log[this.log.length - 1];        // (notes already made this turn come first)
+    if (last && last.turn === this.turn) { last.lines = last.lines.concat(lines); } else this.log.push({ turn: this.turn, lines: lines });
+    this.turnLines = null;
     this.turn++;
     this.check();
     return lines;
   };
   // Won, lost, or the flagship gone (he decides: BL.Campaign.setFlag or withdraw).
   Campaign.prototype.check = function () {
-    // The world taken: won (once; he may carry on to the last turn, and then it's over).
-    if (!this.won && this.hexes[this.world].owner === "us") { this.won = true; this.wonTurn = this.turn - 1; this.state = "won"; this.why = "world"; return; }
-    if (this.won && (this.turn > this.turns || !this.ours().length)) { this.state = "over"; return; }
+    var held = this.hexes[this.world].owner === "us";
+    // The last turn over: won if the world is ours.
+    if (this.turn > this.turns) {
+      if (held) { if (!this.won) { this.won = true; this.wonTurn = this.turn - 1; } this.state = "over"; return; }
+      this.state = "lost"; this.why = this.won ? "retaken" : "time"; return;
+    }
+    // The world taken (the first time): now hold it.
+    if (!this.won && held) { this.won = true; this.wonTurn = this.turn - 1; this.state = "won"; this.why = "world"; return; }
     // (no losses rule: he decides when to pull out of his flag's fights; TexasBont, Nov 7, 2026)
     if (!this.ours().length) { this.state = "lost"; this.why = "losses"; return; }
     if (this.flagShip.hp <= 0 && this.ours().length) { this.state = "flag"; return; }
-    if (this.turn > this.turns) { this.state = "lost"; this.why = "time"; return; }
   };
 
   /* ---------------------------------------------------------- The fight
@@ -488,10 +544,11 @@
      A simple test admiral: every force together, the shortest way to the target world. */
   BL.runAdmiralsHeadless = function (seed, level) {
     var c = new Campaign({ seed: seed, level: level }), guard = 0;
-    while (c.state !== "won" && c.state !== "lost" && guard++ < 100) {
+    while (c.state !== "over" && c.state !== "lost" && guard++ < 100) {
+      if (c.state === "won") { c.carryOn(); continue; }
       if (c.state === "flag") { var o = c.ours(); if (o.length) c.setFlag(o[o.length - 1].id); else c.withdraw(); continue; }
       if (c.state === "battle") { if (c.battleStep() === "paused") c.battleChoice(1); continue; }
-      var lead = c.ours()[0].at;
+      var lead = c.ours()[0].at;      // (and once it's taken: everyone to the world, and hold it)
       c.ours().forEach(function (f) { c.order(f.id, f.at === lead ? c.world : lead); });
       c.endTurn();
     }

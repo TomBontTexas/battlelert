@@ -1321,7 +1321,11 @@
      whole fleet's, times its level's multiplier: F3's pickets are fragile);
      patrols wander within `roam` hexes of their base and jump a lone force next to them that's
      no stronger; the main fleet (`main` x our top ships, pyramids of our top class) goes for any of our forces
-     within `chase` hexes, else guards the world. */
+     within `chase` hexes, else guards the world. counter: once the world is taken, the
+     counterattack (TexasBont, Nov 7, 2026: he must hold it to the last turn): their main fleet
+     regroups for a turn, then goes for it with the fresh forces: every `every` turns, `size`
+     x our top ships pyramids a class below our top ships (as garrisons) arrive at the far edge,
+     nearest the world. */
   BL.ADMIRALS = {
     levels: ["F3", "F4", "F5", "F6", "F7", "F8", "G9"],
     titles: { F3: "Fleet Commodore", F4: "Fleet Admiral", F5: "Fleet Admiral", F6: "Fleet Admiral", F7: "Fleet Admiral", F8: "Fleet Admiral", G9: "Grand Admiral" },
@@ -1338,6 +1342,6 @@
     temper: { cautious: [0.92, 0.9], steady: [1, 1], aggressive: [1.1, 1.1] },
     skill: [0.4, 0.95], skillK: 0.5,
     enemy: { skill: [0.4, 0.85], bases: [2, 3], kinds: ["base", "shipyard", "depot"], combo: [0.2, 0.08], below: 1, worldGarrison: 0.5, defences: { hp: 0.95, fire: 0.52, level: { F3: 0.8 } },
-             patrols: [1, 2], roam: 2, main: 0.5, chase: 3 }
+             patrols: [1, 2], roam: 2, main: 0.5, chase: 3, counter: { every: 2, size: 0.5 } }
   };
 })(typeof window !== "undefined" ? window : globalThis);

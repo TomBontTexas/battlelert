@@ -136,7 +136,8 @@
   }
   function drawSystem() {
     var h = c.hexes[focus], here = c.forces.filter(function (f) { return !f.lost && f.at === focus; });
-    var what = h.kinds.length ? "Azurian " + h.kinds.slice(0, -1).join(", ") + (h.kinds.length > 1 ? " and " : "") + h.kinds[h.kinds.length - 1] : KIND[h.kind];
+    var what = h.kinds.length ? "Azurian " + h.kinds.slice(0, -1).join(", ") + (h.kinds.length > 1 ? " and " : "") + h.kinds[h.kinds.length - 1]
+      : h.yard ? KIND[h.kind] + " (base, shipyard and depot)" : KIND[h.kind];
     var kind = what ? what + (h.kind !== "home" && h.owner === "us" ? " (taken)" : "") : "Empty system";
     $("adm-sys").innerHTML = "<div><b>" + esc(h.name) + "</b></div><div>" + esc(kind) + " · " + c.dist(c.home, focus) + " warps from our base</div>" +
       (here.length ? here.map(function (f) {
@@ -251,14 +252,17 @@
   // The write-up: the world taken (carry on with the turns left, or stop), the campaign over, or lost.
   function endModal() {
     var m = $("adm-modal"), u = c.summary(), st = c.state, pcx = function (x) { return Math.round(100 * x) + "%"; };
+    var left = c.turns - c.turn + 1;
     var head = st === "won" ? "The world is taken" : st === "over" ? "Campaign won" : "Campaign lost";
-    var why = st !== "lost" ? "The target world " + u.world + " was taken on turn " + u.wonTurn + " of " + u.turns + "." + (st === "over" ? " The campaign ended on turn " + u.turn + "." : "")
+    var why = st === "won" ? "The target world " + u.world + " is taken on turn " + u.wonTurn + " of " + u.turns + ". Now hold it to the end of turn " + u.turns +
+        " (" + left + " turn" + (left === 1 ? "" : "s") + "): the Azurians will throw everything they have left at it, and more is coming. Your ships repair at its shipyard: a whole turn there without a fight and they're good as new."
+      : st === "over" ? "The target world " + u.world + " was taken on turn " + u.wonTurn + " and held to the end of turn " + u.turns + "."
       : c.why === "time" ? "Fleet HQ's " + c.turns + " turns ran out before the world fell."
+      : c.why === "retaken" ? "The Azurians hold " + u.world + " at the end of turn " + u.turns + ": it was taken but not held."
       : c.why === "losses" ? "The whole fleet is lost."
       : "The fleet withdrew after losing its flagship.";
     if (BL.audio && !(st !== "lost" && cheered)) BL.audio.play(st === "lost" ? "lose" : "win");
     if (st !== "lost") cheered = true;
-    var left = c.turns - c.turn + 1;
     var bt = u.battles.map(function (b) {
       return "<div>Turn " + b.turn + " · " + esc(b.at) + (b.flag ? " ★" : "") + " · " + b.result + " · we lost " + b.usLost + " (" + pcx(b.usDmg) + "), they lost " + b.azLost + " (" + pcx(b.azDmg) + ")</div>";
     }).join("") || "<div class='muted'>None.</div>";
@@ -267,7 +271,7 @@
       "<p>Ships lost: ours " + u.usLost + " of " + u.usTotal + "; Azurian " + u.azLost + " of " + u.azTotal + ".</p>" +
       "<h3>Systems taken</h3>" + tk + "<h3>Battles (★ your flag's)</h3>" + bt +
       (u.forces.length ? "<h3>The fleet now</h3>" + u.forces.map(function (x) { return "<div>" + esc(x) + "</div>"; }).join("") : "") +
-      "<div class='menu'>" + (st === "won" && left > 0 && c.ours().length ? "<button id='adm-carry' class='primary'>Carry on (" + left + " turn" + (left === 1 ? "" : "s") + " left)</button>" : "") +
+      "<div class='menu'>" + (st === "won" && left > 0 && c.ours().length ? "<button id='adm-carry' class='primary'>Hold the world (" + left + " turn" + (left === 1 ? "" : "s") + " left)</button>" : "") +
       "<button id='adm-again'" + (st === "won" && left > 0 ? "" : " class='primary'") + ">New campaign</button><button id='adm-same'>Same seed again</button><button id='adm-quit'>Back to the title screen</button></div></div>";
     m.hidden = false;
     if ($("adm-carry")) $("adm-carry").onclick = function () { click(); c.carryOn(); m.hidden = true; draw(); };
