@@ -290,13 +290,15 @@
     });
   };
 
-  /* --------------------------------------------------------------- A turn */
+  /* --------------------------------------------------------------- A turn
+     Every move at once, then the fights. The fight his flag is in comes last, and it stops for
+     him (state "battle") each time our side's damage reaches the mark he set (first
+     fight.ask): he withdraws or fights on (battleChoice); the turn ends once it's decided. */
   Campaign.prototype.endTurn = function () {
     if (this.state !== "play") return null;
-    var self = this, lines = [];
+    var self = this, lines = [], flagFight = null;
     this.flagSet = true;
     this.enemyMoves();
-    // Every move at once.
     this.forces.forEach(function (f) {
       if (f.lost) return;
       f.prev = f.at;
@@ -304,12 +306,45 @@
       else f.at = f.next;
     });
     // Fights: every system with both sides in it.
-    var hexes = {};
+    var hexes = {}, flag = this.force(this.flag);
     this.forces.forEach(function (f) { if (!f.lost) (hexes[f.at] = hexes[f.at] || []).push(f); });
     Object.keys(hexes).forEach(function (k) {
       var here = hexes[k], us = here.filter(function (f) { return f.side === "us"; }), az = here.filter(function (f) { return f.side === "az"; });
-      if (us.length && az.length) self.fight(+k, us, az, lines);
+      if (!us.length || !az.length) return;
+      if (flag && us.indexOf(flag) >= 0) { flagFight = [+k, us, az]; return; }
+      var b = self.battleStart(+k, us, az, false); self.rounds(b); self.battleEnd(b, lines);
     });
+    this.turnLines = lines;
+    if (!flagFight) return this.finishTurn();
+    this.battle = this.battleStart(flagFight[0], flagFight[1], flagFight[2], true);
+    return this.resume();
+  };
+  // Go on with the flag's fight: it stops again at his next mark, or ends the turn.
+  Campaign.prototype.resume = function () {
+    var b = this.battle;
+    this.rounds(b);
+    if (b.paused) { this.state = "battle"; return null; }
+    this.battleEnd(b, this.turnLines); this.battle = null;
+    return this.finishTurn();
+  };
+  // His answer when the flag's fight stops: "withdraw", or the next mark (0.5, 0.75; 1 = to the finish).
+  Campaign.prototype.battleChoice = function (x) {
+    var b = this.battle; if (this.state !== "battle" || !b) return null;
+    this.state = "play";
+    if (x === "withdraw") { b.us.forEach(function (f) { b.gone[f.id] = true; }); b.paused = false; this.battleEnd(b, this.turnLines); this.battle = null; return this.finishTurn(); }
+    b.ask = x;
+    return this.resume();
+  };
+  // Where the flag's fight stands (the pop-up's tally).
+  Campaign.prototype.tally = function () {
+    var b = this.battle, self = this; if (!b) return null;
+    function row(f) { return { f: f, name: f.side === "us" ? cap(self.desc(f)) + " (" + f.cmd.name + ")" : cap(b.names[f.id]), alive: self.alive(f).length, total: f.ships.length, cond: self.condition(f), gone: !!b.gone[f.id] }; }
+    return { at: this.hexes[b.at].name, round: b.round, us: b.us.map(row), az: b.az.map(row), usDmg: this.damage(b, "us"), azDmg: this.damage(b, "az"),
+      usLost: this.lostIn(b, b.us), azLost: this.lostIn(b, b.az), asks: this.A.fight.asks };
+  };
+  Campaign.prototype.finishTurn = function () {
+    var self = this, lines = this.turnLines;
+    this.state = "play";
     this.syncFlag();
     // Systems taken: ours alone in an Azurian system at the end of the turn.
     this.hexes.forEach(function (h) {
@@ -332,17 +367,25 @@
   };
 
   /* ---------------------------------------------------------- The fight
-     Decided off screen, to the finish (one side destroyed or broken off, at most `rounds`): rounds of fire both ways, each side's fire spread over the other's ships
-     that are left; a commander breaks off when his side is outmatched (by his temper), back to
-     the system he came from. A garrison and the world's defences fight to the end. */
-  Campaign.prototype.fight = function (at, us, az, lines) {
-    var F = this.A.fight, A = this.A, r = this.rng, self = this, h = this.hexes[at];
-    var before = us.concat(az).map(function (f) { return self.alive(f).length; });
-    // (the names as the forces came in, before the shooting)
-    var names = {}; us.concat(az).forEach(function (f) { names[f.id] = f.side === "us" ? self.desc(f) : self.name(f); });
-    function hp(fs) { return fs.reduce(function (a, f) { return a + f.ships.reduce(function (b, s) { return b + Math.max(0, s.hp); }, 0); }, 0); }
-    var hpUs = hp(us), hpAz = hp(az), gone = {};
-    function side(fs) { return fs.filter(function (f) { return !gone[f.id] && self.alive(f).length; }); }
+     Decided off screen, rounds of fire both ways, each side's fire spread over the other's ships
+     that are left, until one side is destroyed or breaks off (at most `rounds`). A commander
+     breaks off when his side is outmatched, by his temper (the more aggressive, the longer he
+     stays), back to the system he came from; a garrison and the world's defences fight to the
+     end. In the fight his flag is in, our side breaks off only when he says (battleChoice). */
+  Campaign.prototype.battleStart = function (at, us, az, flag) {
+    var self = this, b = { at: at, us: us, az: az, flag: flag, ask: flag ? this.A.fight.ask : 1, round: 0, paused: false, gone: {}, names: {}, before: {} };
+    us.concat(az).forEach(function (f) { b.names[f.id] = f.side === "us" ? self.desc(f) : self.name(f); b.before[f.id] = self.alive(f).length; });
+    b.hpUs = this.hpOf(us); b.hpAz = this.hpOf(az);
+    b.flagAlive = this.flagShip.hp > 0 && us.some(function (f) { return f.ships.indexOf(self.flagShip) >= 0; });
+    return b;
+  };
+  Campaign.prototype.hpOf = function (fs) { return fs.reduce(function (a, f) { return a + f.ships.reduce(function (c, s) { return c + Math.max(0, s.hp); }, 0); }, 0); };
+  // The share of a side's strength (ships lost and hull damage) this fight has taken.
+  Campaign.prototype.damage = function (b, side) { return side === "us" ? 1 - this.hpOf(b.us) / Math.max(1, b.hpUs) : 1 - this.hpOf(b.az) / Math.max(1, b.hpAz); };
+  Campaign.prototype.lostIn = function (b, fs) { var self = this; return fs.reduce(function (n, f) { return n + b.before[f.id] - self.alive(f).length; }, 0); };
+  Campaign.prototype.rounds = function (b) {
+    var F = this.A.fight, A = this.A, r = this.rng, self = this;
+    function side(fs) { return fs.filter(function (f) { return !b.gone[f.id] && self.alive(f).length; }); }
     function volley(from, to) {
       var dmg = 0;
       from.forEach(function (f) { self.alive(f).forEach(function (s) { dmg += s.fire * self.fireK(f) * F.k * r.range(F.spread); }); });
@@ -352,42 +395,43 @@
       var tot = targets.reduce(function (a, t) { return a + t.s.hpMax; }, 0);
       targets.forEach(function (t) { t.s.hp -= dmg * (t.s.hpMax / tot) * (A.temper[t.f.cmd.temper] || [1, 1])[1] * r.range([0.6, 1.4]); });
     }
-    for (var round = 0; round < F.rounds; round++) {
-      var a = side(us), b = side(az);
-      if (!a.length || !b.length) break;
-      volley(a, b); volley(b, a);
-      // Who breaks off: a side well outmatched, by its commanders' tempers (the boldest decides).
-      [[side(us), side(az)], [side(az), side(us)]].forEach(function (pair) {
+    b.paused = false;
+    while (b.round < F.rounds) {
+      var a = side(b.us), z = side(b.az);
+      if (!a.length || !z.length) break;
+      volley(a, z); volley(z, a); b.round++;
+      // Who breaks off: a side well outmatched, by its commanders' tempers.
+      [[side(b.us), side(b.az)], [side(b.az), side(b.us)]].forEach(function (pair) {
         var mine = pair[0], foe = pair[1]; if (!mine.length || !foe.length) return;
         var ratio = Math.sqrt(self.power(mine) / Math.max(1, self.power(foe)));
         mine.forEach(function (f) {
-          if (f.role === "garrison" || f.role === "defences") return;
-          if (ratio < F.breakAt[f.cmd.temper]) gone[f.id] = true;
+          if (f.role === "garrison" || f.role === "defences" || (b.flag && f.side === "us")) return;
+          if (ratio < F.breakAt[f.cmd.temper]) b.gone[f.id] = true;
         });
       });
+      // The flag's fight: stop for him at his mark (if the fight isn't over).
+      if (b.flag && side(b.us).length && side(b.az).length && this.damage(b, "us") >= b.ask) { b.paused = true; return; }
     }
-    // The result, one line per side.
-    var shipsLost = function (fs) { return fs.reduce(function (n, f) { return n + before[us.concat(az).indexOf(f)] - self.alive(f).length; }, 0); };
-    var wl = shipsLost(us), el = shipsLost(az);
-    var who = list(us.map(function (f) { return names[f.id]; }));
-    lines.push("At " + h.name + ": our " + who + " met " + list(az.map(function (f) { return names[f.id]; })) + ".");
-    // (and the damage: the share of each side's strength the fight took)
-    var dmg = function (fs, was) { return Math.round(100 * (1 - hp(fs) / Math.max(1, was))); };
-    lines.push("    We lost " + wl + " ship" + (wl === 1 ? "" : "s") + " (" + dmg(us, hpUs) + "% damage); they lost " + el + " (" + dmg(az, hpAz) + "% damage).");
-    var flagWas = this.flagShip.hp > 0;
+  };
+  // The result: one line per side, then each force destroyed or broken off.
+  Campaign.prototype.battleEnd = function (b, lines) {
+    var self = this, h = this.hexes[b.at], us = b.us, az = b.az;
+    us.concat(az).forEach(function (f) { f.ships.forEach(function (s) { if (s.hp < 0) s.hp = 0; }); });
+    var wl = this.lostIn(b, us), el = this.lostIn(b, az), pc = function (x) { return Math.round(100 * x) + "%"; };
+    lines.push("At " + h.name + ": our " + list(us.map(function (f) { return b.names[f.id]; })) + " met " + list(az.map(function (f) { return b.names[f.id]; })) + ".");
+    lines.push("    We lost " + wl + " ship" + (wl === 1 ? "" : "s") + " (" + pc(this.damage(b, "us")) + " damage); they lost " + el + " (" + pc(this.damage(b, "az")) + " damage).");
     us.concat(az).forEach(function (f) {
-      f.ships.forEach(function (s) { if (s.hp < 0) s.hp = 0; });
       if (!self.alive(f).length) {
         f.lost = true;
-        lines.push("    " + (f.side === "us" ? f.cmd.name + "'s force" : cap(names[f.id])) + " is destroyed.");
-      } else if (gone[f.id]) {
+        lines.push("    " + (f.side === "us" ? f.cmd.name + "'s force" : cap(b.names[f.id])) + " is destroyed.");
+      } else if (b.gone[f.id]) {
         // (back where it came from; one that didn't move falls back toward its own side)
-        var back = f.prev !== at ? f.prev : self.stepToward(at, f.side === "us" ? self.home : self.world);
+        var back = f.prev !== b.at ? f.prev : self.stepToward(b.at, f.side === "us" ? self.home : self.world);
         f.at = back; if (f.side === "us") f.dest = back;
-        lines.push("    " + cap(self.name(f)) + " broke off to " + self.hexes[back].name + ".");
+        lines.push("    " + cap(self.name(f)) + (f.side === "us" && b.flag ? " withdrew to " : " broke off to ") + self.hexes[back].name + ".");
       }
     });
-    if (flagWas && this.flagShip.hp <= 0) lines.push("    Our flagship is lost.");
+    if (b.flagAlive && this.flagShip.hp <= 0) lines.push("    Our flagship is lost.");
   };
 
   /* --------------------------------------------- Headless runs (dev-tools)
@@ -396,6 +440,7 @@
     var c = new Campaign({ seed: seed, level: level }), guard = 0;
     while (c.state !== "won" && c.state !== "lost" && guard++ < 100) {
       if (c.state === "flag") { var o = c.ours(); if (o.length) c.setFlag(o[o.length - 1].id); else c.withdraw(); continue; }
+      if (c.state === "battle") { c.battleChoice(1); continue; }
       var lead = c.ours()[0].at;
       c.ours().forEach(function (f) { c.order(f.id, f.at === lead ? c.world : lead); });
       c.endTurn();

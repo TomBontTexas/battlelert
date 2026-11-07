@@ -817,6 +817,8 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 .adm-sq .bad, #adm-sys .az { color: var(--bad); }
 #adm-sys .us { color: var(--charge); }
 .adm-rep { margin-bottom: 8px; }
+.adm-tally { margin: 8px 0 12px; font-size: 14px; line-height: 1.5; }
+.adm-tally .us { color: var(--charge); } .adm-tally .az { color: var(--bad); }
 .adm-rep .sub { padding-left: 12px; color: var(--muted); }
 .adm-hint { padding: 4px 10px; font-size: 12px; color: var(--muted); border-top: 1px solid var(--line); }
 .adm-hex { fill: var(--panel); stroke: var(--line); stroke-width: 1; cursor: pointer; }

@@ -56,7 +56,7 @@
     $("adm-seed").textContent = "seed " + c.seed;
     $("btn-adm-end").disabled = c.state !== "play";
     drawMap(); drawFleet(); drawSystem(); drawReport();
-    if (c.state === "flag") flagModal(); else if (c.state === "won" || c.state === "lost") endModal();
+    if (c.state === "battle") battleModal(); else if (c.state === "flag") flagModal(); else if (c.state === "won" || c.state === "lost") endModal();
   }
   function drawMap() {
     var svg = $("adm-svg"), w = PAD * 2 + S * (1.5 * c.cols + 0.5), h = PAD * 2 + RT3 * S * (c.rows + 0.5);
@@ -174,9 +174,26 @@
     if (c.state !== "play") return;
     if (BL.audio) BL.audio.play("jump");
     c.endTurn();
-    sel = sel.filter(function (id) { var f = c.force(id); return f && !f.lost && !f.merged; });
-    draw();
+    after();
   }
+  // The fight your flag is in stops at your mark: the tally so far, then withdraw or fight on.
+  function battleModal() {
+    var m = $("adm-modal"), t = c.tally(), pc = function (x) { return Math.round(100 * x) + "%"; };
+    function rows(list, cls) {
+      return list.map(function (r) { return "<div class='" + cls + "'>" + esc(r.name) + " · " + r.alive + "/" + r.total + " ships · " + pc(r.cond) + (r.gone ? " · broke off" : "") + "</div>"; }).join("");
+    }
+    var asks = t.asks.filter(function (a) { return a > t.usDmg; });
+    m.innerHTML = "<div class='ov-card'><h1>Battle at " + esc(t.at) + "</h1>" +
+      "<p>After " + t.round + " round" + (t.round === 1 ? "" : "s") + ": we've lost " + t.usLost + " ship" + (t.usLost === 1 ? "" : "s") + " and taken " + pc(t.usDmg) + " damage; they've lost " + t.azLost + " and taken " + pc(t.azDmg) + ".</p>" +
+      "<div class='adm-tally'>" + rows(t.us, "us") + rows(t.az, "az") + "</div>" +
+      "<div class='menu'>" + asks.map(function (a) { return "<button data-ask='" + a + "'>Fight on to " + pc(a) + " damage</button>"; }).join("") +
+      "<button data-ask='1'>Fight to the finish</button><button id='adm-pull' class='primary'>Withdraw</button></div></div>";
+    m.hidden = false;
+    Array.prototype.forEach.call(m.querySelectorAll("button[data-ask]"), function (b) { b.onclick = function () { click(); m.hidden = true; c.battleChoice(+b.getAttribute("data-ask")); after(); }; });
+    $("adm-pull").onclick = function () { click(); m.hidden = true; c.battleChoice("withdraw"); after(); };
+  }
+  // (after the turn ends: drop the selected forces that are gone)
+  function after() { sel = sel.filter(function (id) { var f = c.force(id); return f && !f.lost && !f.merged; }); draw(); }
   function flagModal() {
     var m = $("adm-modal"), us = c.ours();
     m.innerHTML = "<div class='ov-card'><h1>The flagship is lost</h1><p>Shift your flag to another force and fight on (take the world and it's still a win), or withdraw: the campaign is lost.</p>" +
