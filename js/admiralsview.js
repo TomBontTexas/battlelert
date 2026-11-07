@@ -50,7 +50,7 @@
     while (svg.firstChild) svg.removeChild(svg.firstChild);
     var gh = el("g", {}, svg), gp = el("g", {}, svg), gf = el("g", {}, svg);
     c.hexes.forEach(function (x) {
-      var p = centre(x), cls = "adm-hex" + (x.owner === "us" ? " us" : x.owner === "az" ? " az" : "") + (focus === x.i ? " focus" : "");
+      var p = centre(x), cls = "adm-hex" + (x.owner === "us" ? " us" : x.owner === "az" ? " az" : "");
       var poly = el("polygon", { points: corners(p), "class": cls }, gh);
       poly.addEventListener("click", function () { tapHex(x.i); });
       var t = el("text", { x: p.x, y: p.y - S * 0.55, "class": "adm-name" }, gh); t.textContent = x.name;
