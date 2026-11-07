@@ -839,6 +839,6 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 .adm-chip text { font: 600 5.5px var(--font); fill: var(--text); text-anchor: middle; dominant-baseline: middle; pointer-events: none; }
 @media (max-width: 760px) {
   .adm-body { flex-direction: column; overflow-y: auto; }
-  .adm-map { flex: none; aspect-ratio: 1.25; }
+  .adm-map { flex: none; aspect-ratio: 1.3; }
   .adm-side { width: auto; overflow: visible; }
 }

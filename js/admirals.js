@@ -13,9 +13,9 @@
   "use strict";
   var BL = root.BL = root.BL || {};
 
-  // Hexes: pointy-top, odd rows shifted half a hex right ("odd-r"); index = row * cols + col.
-  var NB = [[[1, 0], [-1, 0], [0, -1], [-1, -1], [0, 1], [-1, 1]], [[1, 0], [-1, 0], [1, -1], [0, -1], [1, 1], [0, 1]]];
-  function cube(col, row) { var x = col - (row - (row & 1)) / 2; return [x, row, -x - row]; }
+  // Hexes: flat-top, odd columns shifted half a hex down ("odd-q"); index = row * cols + col.
+  var NB = [[[1, 0], [1, -1], [0, -1], [-1, -1], [-1, 0], [0, 1]], [[1, 1], [1, 0], [0, -1], [-1, 0], [-1, 1], [0, 1]]];
+  function cube(col, row) { var z = row - (col - (col & 1)) / 2; return [col, -col - z, z]; }
 
   var SYL = ["ka", "vor", "esh", "tal", "mir", "zan", "oth", "rel", "quin", "sar", "dul", "nex", "ivo", "bra", "cyr", "lun", "teg", "or", "pha", "ul", "ken", "dra", "vel", "im"];
   function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
@@ -73,7 +73,7 @@
   Campaign.prototype.at = function (col, row) { return row * this.cols + col; };
   Campaign.prototype.neighbors = function (i) {
     var h = this.hexes[i], out = [], self = this;
-    NB[h.row & 1].forEach(function (d) {
+    NB[h.col & 1].forEach(function (d) {
       var c = h.col + d[0], rr = h.row + d[1];
       if (c >= 0 && c < self.cols && rr >= 0 && rr < self.rows) out.push(self.at(c, rr));
     });

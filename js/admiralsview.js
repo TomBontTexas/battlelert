@@ -14,9 +14,9 @@
   var c = null, opts = null, sel = [], focus = null, hintDefault = "";
   var KIND = { home: "Our base", world: "Target world", base: "Azurian base", depot: "Azurian depot", shipyard: "Azurian shipyard", empty: "" };
 
-  function centre(h) { return { x: PAD + RT3 * S * (h.col + 0.5 * (h.row & 1) + 0.5), y: PAD + S + 1.5 * S * h.row }; }
+  function centre(h) { return { x: PAD + S + 1.5 * S * h.col, y: PAD + RT3 * S * (h.row + 0.5 * (h.col & 1) + 0.5) }; }   // flat-top, odd columns down
   function corners(p) {
-    var out = []; for (var k = 0; k < 6; k++) { var a = Math.PI / 180 * (60 * k - 30); out.push((p.x + S * Math.cos(a)).toFixed(1) + "," + (p.y + S * Math.sin(a)).toFixed(1)); }
+    var out = []; for (var k = 0; k < 6; k++) { var a = Math.PI / 180 * 60 * k; out.push((p.x + S * Math.cos(a)).toFixed(1) + "," + (p.y + S * Math.sin(a)).toFixed(1)); }
     return out.join(" ");
   }
   function el(tag, attrs, parent) {
@@ -44,7 +44,7 @@
     if (c.state === "flag") flagModal(); else if (c.state === "won" || c.state === "lost") endModal();
   }
   function drawMap() {
-    var svg = $("adm-svg"), w = PAD * 2 + RT3 * S * (c.cols + 0.5), h = PAD * 2 + S * (1.5 * c.rows + 0.5);
+    var svg = $("adm-svg"), w = PAD * 2 + S * (1.5 * c.cols + 0.5), h = PAD * 2 + RT3 * S * (c.rows + 0.5);
     svg.setAttribute("viewBox", "0 0 " + w.toFixed(0) + " " + h.toFixed(0));
     while (svg.firstChild) svg.removeChild(svg.firstChild);
     var gh = el("g", {}, svg), gp = el("g", {}, svg), gf = el("g", {}, svg);
