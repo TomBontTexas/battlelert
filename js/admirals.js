@@ -201,7 +201,7 @@
     if (n[cl[0]] === 1 && cl.length > 1) return one(cl[0]) + " with " + list(cl.slice(1).map(one));
     return list(cl.map(one));
   };
-  // Its chip on the map: the biggest class and how many escorts ("DD+10", "DE+4", "PK4").
+  // Its chip on the map: the biggest class and how many escorts ("DD+10", "DE+4", "DL4").
   Campaign.prototype.chip = function (f) {
     var A = this.A, al = this.alive(f);
     if (f.cls === "defences") return A.abbr.defences;

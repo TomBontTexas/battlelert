@@ -1333,7 +1333,7 @@
     top: { F3: 2, F4: 2, F5: 2, F6: 2, F7: 2, F8: 2, G9: 4 },
     pyramid: { escorts: 2, pickets: 4 },
     classes: ["picket", "destroyerEscort", "destroyer", "lightCruiser", "cruiser", "heavyCruiser", "battleship", "dreadnought"],
-    abbr: { gunboat: "GB", picket: "PK", destroyerEscort: "DE", destroyer: "DD", lightCruiser: "CL", cruiser: "CA", heavyCruiser: "CH", battleship: "BB", dreadnought: "DN", defences: "DEF" },
+    abbr: { gunboat: "PT", picket: "DL", destroyerEscort: "DE", destroyer: "DD", lightCruiser: "CL", cruiser: "C", heavyCruiser: "CA", battleship: "BB", dreadnought: "DN", defences: "DEF" },     // (the hull codes, BL.HULL_CODES)
     plural: { gunboat: "gunboats", picket: "pickets", destroyerEscort: "destroyer escorts", destroyer: "destroyers", lightCruiser: "light cruisers", cruiser: "cruisers", heavyCruiser: "heavy cruisers", battleship: "battleships", dreadnought: "dreadnoughts" },
     turns: { base: 16, perLevel: 1 },
     map: { cols: 11, rows: 7 },
