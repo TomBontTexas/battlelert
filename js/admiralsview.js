@@ -16,7 +16,9 @@
   // Markers slide to their new systems when a turn ends (TexasBont, Nov 7, 2026): where each force
   // was before (id -> hex), and whether a slide is playing.
   var slideFrom = null, sliding = false, SLIDE_MS = 650;
-  function snap() { var m = {}; c.forces.forEach(function (f) { if (!f.lost) m[f.id] = f.at; }); return m; }
+  // (where each marker is drawn: ours where they are, the Azurians where he knows them)
+  var shown = {};
+  function snap() { var m = {}; Object.keys(shown).forEach(function (id) { m[id] = shown[id]; }); return m; }
   var KIND = { home: "Our base", world: "Target world", empty: "" };
 
   function centre(h) { return { x: PAD + S + 1.5 * S * h.col, y: PAD + RT3 * S * (h.row + 0.5 * (h.col & 1) + 0.5) }; }   // flat-top, odd columns down
@@ -58,7 +60,7 @@
 
   /* --------------------------------------------------------------- Drawing */
   function draw() {
-    $("adm-title").textContent = "Admirals · " + c.level + " " + BL.ADMIRALS.titles[c.level];
+    $("adm-title").textContent = "Admirals · " + c.level + " " + BL.ADMIRALS.titles[c.level] + (c.convoyMode ? " · convoy escort" : "");
     $("adm-turn").textContent = "Turn " + Math.min(c.turn, c.turns) + " of " + c.turns;
     $("adm-seed").textContent = "seed " + c.seed;
     $("btn-adm-end").disabled = c.state !== "play";
@@ -74,10 +76,10 @@
     if (!slideFrom) return false;
     var from = slideFrom, moved = false; slideFrom = null;
     Array.prototype.forEach.call($("adm-svg").querySelectorAll("g.adm-chip[data-id]"), function (g) {
-      var f = c.force(+g.getAttribute("data-id")), was = from[f.id];
-      if (was === undefined) { g.style.opacity = "0"; g.getBoundingClientRect(); g.style.transition = "opacity " + SLIDE_MS + "ms"; g.style.opacity = "1"; moved = true; return; }
-      if (was === f.at) return;
-      var a = centre(c.hexes[was]), b = centre(c.hexes[f.at]);
+      var id = g.getAttribute("data-id"), was = from[id], now = shown[id];
+      if (was === undefined) { g.style.opacity = "0"; g.getBoundingClientRect(); g.style.transition = "opacity " + SLIDE_MS + "ms"; g.style.opacity = ""; moved = true; return; }
+      if (was === now) return;
+      var a = centre(c.hexes[was]), b = centre(c.hexes[now]);
       g.style.transform = "translate(" + (a.x - b.x).toFixed(1) + "px," + (a.y - b.y).toFixed(1) + "px)";
       g.getBoundingClientRect();
       g.style.transition = "transform " + SLIDE_MS + "ms ease-in-out"; g.style.transform = "none";
@@ -90,8 +92,9 @@
     svg.setAttribute("viewBox", "0 0 " + w.toFixed(0) + " " + h.toFixed(0));
     svg.innerHTML = DEFS;
     var gh = el("g", {}, svg), gp = el("g", {}, svg), gt = el("g", { id: "adm-trails" }, svg), gf = el("g", {}, svg);
+    var vis = c.visibleSet();                         // (fog of war: the systems none of his ships can see are dimmed)
     c.hexes.forEach(function (x) {
-      var p = centre(x), cls = "adm-hex" + (x.owner === "us" ? " us" : x.owner === "az" ? " az" : "");
+      var p = centre(x), cls = "adm-hex" + (x.owner === "us" ? " us" : x.owner === "az" ? " az" : "") + (vis[x.i] ? "" : " fog");
       var poly = el("polygon", { points: corners(p), "class": cls }, gh);
       poly.addEventListener("click", function () { tapHex(x.i); });
       var t = el("text", { x: p.x, y: p.y - S * 0.55, "class": "adm-name" }, gh); t.textContent = x.name;
@@ -114,41 +117,50 @@
       el("polyline", { points: pts.join(" "), "class": "adm-path" }, gp);
       el("polygon", { points: corners(centre(c.hexes[f.dest])), "class": "adm-dest" }, gp);
     });
-    if (trail) drawTrail(c.force(trail), gt);
-    // The forces: a chip each, ours first, two to a row under the system's mark.
-    var at = {};
-    c.forces.forEach(function (f) { if (!f.lost) (at[f.at] = at[f.at] || []).push(f); });
+    var known = {}; c.known().forEach(function (k) { known[k.id] = k; });
+    if (trail && known[trail]) drawTrail(known[trail], gt); else trail = null;
+    // The forces: a chip each, ours first, two to a row under the system's mark. Ours are where
+    // they are; the Azurians where he knows them (seen now: solid; reported: dashed and faded).
+    var at = {}; shown = {};
+    c.ours().forEach(function (f) { (at[f.at] = at[f.at] || []).push({ id: f.id, side: "us", f: f, label: c.chip(f) + (f.id === c.flag ? "★" : "") }); shown[f.id] = f.at; });
+    Object.keys(known).forEach(function (id) {
+      var k = known[id]; (at[k.at] = at[k.at] || []).push({ id: k.id, side: "az", k: k, label: k.label + (k.seen ? "" : "?") }); shown[id] = k.at;
+    });
     Object.keys(at).forEach(function (i) {
       var p = centre(c.hexes[i]), list = at[i].sort(function (a, b) { return (a.side === "us" ? 0 : 1) - (b.side === "us" ? 0 : 1); });
-      var ch = 9, per = 2, labels = list.map(function (f) { return c.chip(f) + (f.id === c.flag ? "★" : ""); });
+      var ch = 9, per = 2, labels = list.map(function (x) { return x.label; });
       var cw = Math.max(15, 4 + 4.4 * Math.max.apply(null, labels.map(function (l) { return l.length; })));
-      list.forEach(function (f, k) {
+      list.forEach(function (it, k) {
         var row = Math.floor(k / per), inRow = Math.min(per, list.length - row * per), col = k % per;
         var x = p.x + (col - (inRow - 1) / 2) * (cw + 1) - cw / 2, y = p.y + 1 + row * (ch + 1);
-        var g = el("g", { "class": "adm-chip " + (f.side === "us" ? "us" : "az") + (sel.indexOf(f.id) >= 0 ? " sel" : ""), "data-id": f.id }, gf);
+        var g = el("g", { "class": "adm-chip " + it.side + (it.side === "az" && !it.k.seen ? " stale" : "") + (sel.indexOf(it.id) >= 0 ? " sel" : ""), "data-id": it.id }, gf);
         el("rect", { x: x, y: y, width: cw, height: ch, rx: 2 }, g);
         var t = el("text", { x: x + cw / 2, y: y + ch / 2 + 0.5 }, g); t.textContent = labels[k];
-        g.addEventListener("click", function (ev) { ev.stopPropagation(); if (f.side === "us") toggle(f.id); else { trail = trail === f.id ? null : f.id; tapHex(f.at); } });
+        g.addEventListener("click", function (ev) { ev.stopPropagation(); if (it.side === "us") toggle(it.id); else { trail = trail === it.id ? null : it.id; tapHex(it.k.at); } });
         // (an Azurian force: the way it has come since the campaign began, while the pointer is on it)
-        if (f.side === "az") {
-          g.addEventListener("mouseenter", function () { var l = $("adm-trails"); l.innerHTML = ""; drawTrail(f, l); });
-          g.addEventListener("mouseleave", function () { var l = $("adm-trails"); l.innerHTML = ""; if (trail) drawTrail(c.force(trail), l); });
+        if (it.side === "az") {
+          g.addEventListener("mouseenter", function () { var l = $("adm-trails"); l.innerHTML = ""; drawTrail(it.k, l); });
+          g.addEventListener("mouseleave", function () { var l = $("adm-trails"); l.innerHTML = ""; if (trail && known[trail]) drawTrail(known[trail], l); });
         }
       });
     });
   }
-  // An Azurian force's trail: every system it has been in, from where it began (a ring) to now,
-  // the arrowhead on its last move. Solid: seen (dotted, for reports, comes with fog of war).
-  function drawTrail(f, layer) {
-    if (!f || !f.trail || f.trail.length < 2) return;
-    var ps = f.trail.map(function (i) { return centre(c.hexes[i]); }), n = ps.length;
+  // An Azurian force's trail as he knows it: every system it was seen or reported in, from the
+  // first (a ring) to the last, the arrowhead on its last move. A leg is solid if his ships saw it
+  // get there (current), dotted if it comes from a report (stale).
+  function drawTrail(k, layer) {
+    if (!k || !k.trail || !k.trail.length) return;
+    var tr = k.trail, ps = tr.map(function (x) { return centre(c.hexes[x.at]); }), n = ps.length;
+    var p0 = ps[0]; el("circle", { cx: p0.x, cy: p0.y, r: 4, "class": "adm-trail-start" + (tr[0].seen ? "" : " stale") }, layer);
+    if (n < 2) return;
     // (the arrow stops short of the centre, clear of the system's mark)
-    var a = ps[n - 2], b = ps[n - 1], d = Math.hypot(b.x - a.x, b.y - a.y) || 1, k = Math.max(0, d - 9) / d;
-    ps[n - 1] = { x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k };
-    var pts = ps.map(function (p) { return p.x.toFixed(1) + "," + p.y.toFixed(1); });
-    el("polyline", { points: pts.join(" "), "class": "adm-trail", "marker-end": "url(#adm-arrow)" }, layer);
-    var p0 = centre(c.hexes[f.trail[0]]); el("circle", { cx: p0.x, cy: p0.y, r: 4, "class": "adm-trail-start" }, layer);
-    f.trail.slice(1, -1).forEach(function (i) { var p = centre(c.hexes[i]); el("circle", { cx: p.x, cy: p.y, r: 1.8, "class": "adm-trail-dot" }, layer); });
+    var a = ps[n - 2], b = ps[n - 1], d = Math.hypot(b.x - a.x, b.y - a.y) || 1, q = Math.max(0, d - 9) / d;
+    ps[n - 1] = { x: a.x + (b.x - a.x) * q, y: a.y + (b.y - a.y) * q };
+    for (var j = 1; j < n; j++) {
+      el("line", { x1: ps[j - 1].x.toFixed(1), y1: ps[j - 1].y.toFixed(1), x2: ps[j].x.toFixed(1), y2: ps[j].y.toFixed(1),
+        "class": "adm-trail" + (tr[j].seen ? "" : " stale"), "marker-end": j === n - 1 ? "url(#adm-arrow)" : "" }, layer);
+      if (j < n - 1) el("circle", { cx: ps[j].x, cy: ps[j].y, r: 1.8, "class": "adm-trail-dot" }, layer);
+    }
   }
   function line(f) {
     var alive = c.alive(f).length, ord = f.dest === f.at ? "Holding at " + c.hexes[f.at].name : "To " + c.hexes[f.dest].name + " · " + c.path(f.at, f.dest).length + " warps";
@@ -166,14 +178,20 @@
     $("btn-adm-flag").hidden = !(c.turn === 1 && !c.flagSet && c.state === "play");
   }
   function drawSystem() {
-    var h = c.hexes[focus], here = c.forces.filter(function (f) { return !f.lost && f.at === focus; });
+    var h = c.hexes[focus], mine = c.ours().filter(function (f) { return f.at === focus; }), theirs = c.known().filter(function (k) { return k.at === focus; });
     var what = h.kinds.length ? "Azurian " + h.kinds.slice(0, -1).join(", ") + (h.kinds.length > 1 ? " and " : "") + h.kinds[h.kinds.length - 1]
-      : h.yard ? KIND[h.kind] + " (base, shipyard and depot)" : KIND[h.kind];
+      : h.yard ? (h.kind === "world" && c.convoyMode ? "Destination world" : KIND[h.kind]) + " (base, shipyard and depot)" : KIND[h.kind];
     var kind = what ? what + (h.kind !== "home" && h.owner === "us" ? " (taken)" : "") : "Empty system";
     $("adm-sys").innerHTML = "<div><b>" + esc(h.name) + "</b></div><div>" + esc(kind) + " · " + c.dist(c.home, focus) + " warps from our base</div>" +
-      (here.length ? here.map(function (f) {
-        return "<div class='" + (f.side === "us" ? "us" : "az") + "'>" + esc(c.name(f).replace(/^./, function (s) { return s.toUpperCase(); })) + " · " + c.alive(f).length + "/" + f.ships.length + " · " + pct(c.condition(f)) + "</div>";
-      }).join("") : "<div class='muted'>No forces here.</div>");
+      mine.map(function (f) {
+        return "<div class='us'>" + esc(c.name(f).replace(/^./, function (s) { return s.toUpperCase(); })) + " · " + c.alive(f).length + "/" + f.ships.length + " · " + pct(c.condition(f)) + "</div>";
+      }).join("") +
+      theirs.map(function (k) {
+        var cap1 = k.name.replace(/^./, function (s) { return s.toUpperCase(); });
+        return k.seen && k.f ? "<div class='az'>" + esc(cap1) + " · " + c.alive(k.f).length + "/" + k.f.ships.length + " · " + pct(c.condition(k.f)) + " · seen now</div>"
+          : "<div class='az stale'>" + esc(cap1) + " · " + (k.age > 0 ? "reported " + k.age + " turn" + (k.age === 1 ? "" : "s") + " ago" : "reported") + "</div>";
+      }).join("") +
+      (mine.length || theirs.length ? "" : "<div class='muted'>" + (c.visibleSet()[focus] ? "No forces here." : "Nothing reported here (out of sight).") + "</div>");
   }
   function drawReport() {
     var last = c.log.slice(-3).reverse();
@@ -273,7 +291,7 @@
   // (after the turn ends: drop the selected forces that are gone)
   function after() { sel = sel.filter(function (id) { var f = c.force(id); return f && !f.lost && !f.merged; }); draw(); }
   function flagModal() {
-    var m = $("adm-modal"), us = c.ours();
+    var m = $("adm-modal"), us = c.ours().filter(function (f) { return f.role !== "convoy"; });
     m.innerHTML = "<div class='ov-card'><h1>The flagship is lost</h1><p>Shift your flag to another force and fight on (take the world and it's still a win), or withdraw: the campaign is lost.</p>" +
       "<div class='menu'>" + us.map(function (f) { return "<button data-id='" + f.id + "'>Shift the flag to the " + esc(c.desc(f)) + "</button>"; }).join("") +
       "<button id='adm-withdraw'>Withdraw</button></div></div>";
@@ -281,12 +299,22 @@
     Array.prototype.forEach.call(m.querySelectorAll("button[data-id]"), function (b) { b.onclick = function () { click(); c.setFlag(+b.getAttribute("data-id")); m.hidden = true; draw(); }; });
     $("adm-withdraw").onclick = function () { click(); c.withdraw(); m.hidden = true; draw(); };
   }
+  // (F3, the convoy escort)
+  function convoyWhy(u, st, left) {
+    var cg = u.cargoIn + " of " + u.cargoTotal + " cargo ships";
+    if (st === "won") return cg + " are in at " + u.world + " (turn " + u.wonTurn + "). Now hold the world to the end of turn " + u.turns + " (" + left + " turn" + (left === 1 ? "" : "s") + "): Azurian raiders are coming for it. Your ships repair at its shipyard: a whole turn there without a fight.";
+    if (st === "over") return "The convoy got through: " + cg + " at " + u.world + ", and the world held to the end of turn " + u.turns + ".";
+    return c.why === "convoy" ? "Fewer than half the cargo ships are left (" + u.cargoLeft + " of " + u.cargoTotal + "): the convoy has failed."
+      : c.why === "late" ? "At the end of turn " + u.turns + " only " + cg + " were at " + u.world + "."
+      : c.why === "retaken" ? "The Azurians hold " + u.world + " at the end of turn " + u.turns + "."
+      : c.why === "losses" ? "The whole fleet is lost." : "The fleet withdrew after losing its flagship.";
+  }
   // The write-up: the world taken (carry on with the turns left, or stop), the campaign over, or lost.
   function endModal() {
     var m = $("adm-modal"), u = c.summary(), st = c.state, pcx = function (x) { return Math.round(100 * x) + "%"; };
     var left = c.turns - c.turn + 1;
-    var head = st === "won" ? "The world is taken" : st === "over" ? "Campaign won" : "Campaign lost";
-    var why = st === "won" ? "The target world " + u.world + " is taken on turn " + u.wonTurn + " of " + u.turns + ". Now hold it to the end of turn " + u.turns +
+    var head = st === "won" ? (u.convoy ? "The convoy is in" : "The world is taken") : st === "over" ? "Campaign won" : "Campaign lost";
+    var why = u.convoy ? convoyWhy(u, st, left) : st === "won" ? "The target world " + u.world + " is taken on turn " + u.wonTurn + " of " + u.turns + ". Now hold it to the end of turn " + u.turns +
         " (" + left + " turn" + (left === 1 ? "" : "s") + "): the Azurians will throw everything they have left at it, and more is coming. Your ships repair at its shipyard: a whole turn there without a fight and they're good as new."
       : st === "over" ? "The target world " + u.world + " was taken on turn " + u.wonTurn + " and held to the end of turn " + u.turns + "."
       : c.why === "time" ? "Fleet HQ's " + c.turns + " turns ran out before the world fell."
@@ -303,7 +331,7 @@
       "<p>Ships lost: ours " + u.usLost + " of " + u.usTotal + "; Azurian " + u.azLost + " of " + u.azTotal + ".</p>" +
       "<h3>Systems taken</h3>" + tk + "<h3>Battles (★ your flag's)</h3>" + bt +
       (u.forces.length ? "<h3>The fleet now</h3>" + u.forces.map(function (x) { return "<div>" + esc(x) + "</div>"; }).join("") : "") +
-      "<div class='menu'>" + (st === "won" && left > 0 && c.ours().length ? "<button id='adm-carry' class='primary'>Hold the world (" + left + " turn" + (left === 1 ? "" : "s") + " left)</button>" : "") +
+      "<div class='menu'>" + (st === "won" && left > 0 && c.ours().length ? "<button id='adm-carry' class='primary'>" + (u.convoy ? "Hold " + esc(u.world) : "Hold the world") + " (" + left + " turn" + (left === 1 ? "" : "s") + " left)</button>" : "") +
       "<button id='adm-again'" + (st === "won" && left > 0 ? "" : " class='primary'") + ">New campaign</button><button id='adm-same'>Same seed again</button><button id='adm-quit'>Back to the title screen</button></div></div>";
     m.hidden = false;
     if ($("adm-carry")) $("adm-carry").onclick = function () { click(); c.carryOn(); m.hidden = true; draw(); };

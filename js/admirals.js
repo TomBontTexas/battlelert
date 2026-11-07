@@ -13,6 +13,10 @@
    against the Azurians' counterattack. A force that spends a whole turn, unfought, in a system
    with a shipyard we hold (the worlds are bases, shipyards and depots) is fully repaired. Tuning:
    BL.ADMIRALS (data.js).
+   Stage 2 (TexasBont, Nov 7, 2026): fog of war (he sees what his ships see, a detached picket
+   squadron further; Fleet HQ reports the rest, late and sometimes wrong: intel), Azurian
+   raiders that go for whatever he leaves bare, ambushes (a force that warps blind into an enemy
+   fights at a disadvantage), and F3's campaign: a convoy escort between two Imperial worlds.
    Later stages: detachments and fog of war (2), supply, repair and the enemy planner (3), the
    career (4), the Grand Admiral's three fleet admirals (5). */
 (function (root) {
@@ -36,6 +40,9 @@
     this.top = A.tops[this.level];                    // F3: 2 destroyer escorts at the top ... G9: 4 dreadnoughts
     this.size = A.top[this.level];
     this.rng = BL.rng(this.seed);
+    this.irng = BL.rng((this.seed * 7919 + 17) >>> 0);  // (Fleet HQ's reports: their own dice, so the fog never changes the fighting)
+    this.convoyMode = A.convoy.levels.indexOf(this.level) >= 0;   // F3: escort a convoy between two Imperial worlds
+    this.intel = {};                                  // what he knows of each Azurian force: { at, turn, seen, label, name, trail: [{ at, seen }] }
     this.turn = 1;
     this.turns = A.turns.base + A.turns.perLevel * A.levels.indexOf(this.level);
     this.state = "play";                              // play | flag (the flagship is lost: shift or withdraw) | won | lost
@@ -52,6 +59,7 @@
     this.flagShip = this.ours()[0].top.ships[0];      // (the flag flies in the first top ship to start)
     this.flagSet = false;                             // (he may move it until the first turn ends)
     this.syncFlag();
+    this.briefing();
   }
   BL.Campaign = Campaign;
 
@@ -71,7 +79,7 @@
     this.home = this.at(0, r.int([mid - 1, mid + 1]));
     this.world = this.at(M.cols - 1, r.int([1, M.rows - 2]));
     this.hexes[this.home].kind = "home"; this.hexes[this.home].owner = "us";
-    this.hexes[this.world].kind = "world"; this.hexes[this.world].owner = "az";
+    this.hexes[this.world].kind = "world"; this.hexes[this.world].owner = this.convoyMode ? "us" : "az";
     // (every world is a base, a shipyard and a depot too: TexasBont, Nov 7, 2026)
     [this.home, this.world].forEach(function (i) { self.hexes[i].yard = ["base", "shipyard", "depot"]; });
     // The Azurian bases, shipyards and depots: between the two, never next to each other. Some
@@ -152,20 +160,40 @@
   };
   Campaign.prototype.makeFleet = function () {
     for (var k = 0; k < this.size; k++) this.group("us", this.pyramid(this.top), this.home);
+    // F3: the convoy, its cargo ships unarmed, a cautious convoy master in charge.
+    if (this.convoyMode) {
+      var C = this.A.convoy, hp = Math.round(this.ship("destroyerEscort").hp * C.hp), cargo = [];
+      for (var k2 = 0; k2 < C.cargo; k2++) cargo.push({ cls: "cargo", hp: hp, hpMax: hp, fire: 0 });
+      var cm = this.commander("Convoy master", this.A.skill); cm.temper = "cautious";
+      this.group("us", { cls: "cargo", ships: cargo, kids: [], cmd: cm }, this.home, "convoy");
+      this.cargoTotal = C.cargo;
+    }
     this.shipsTotal = this.ourShips().length;
   };
+  Campaign.prototype.convoy = function () { return this.forces.filter(function (f) { return f.role === "convoy" && !f.lost; })[0] || null; };
+  // Cargo ships still afloat, and those at the destination world.
+  Campaign.prototype.cargoLeft = function () { var v = this.convoy(); return v ? this.alive(v).length : 0; };
+  Campaign.prototype.cargoIn = function () { var v = this.convoy(); return v && v.at === this.world ? this.alive(v).length : 0; };
   Campaign.prototype.makeEnemy = function () {
     var E = this.A.enemy, A = this.A, r = this.rng, self = this;
     var below = A.classes[Math.max(0, A.classes.indexOf(this.top) - E.below)];
     function az(at, role, cls) { return self.group("az", self.pyramid(cls), at, role); }
     this.hexes.forEach(function (h) { h.kinds.forEach(function () { az(h.i, "garrison", below); }); });
+    var bases = this.hexes.filter(function (h) { return h.owner === "az" && h.kind !== "world"; });
+    for (var q = r.int(E.raiders); q > 0 && bases.length; q--) az(r.pick(bases).i, "raid", below);
+    if (this.convoyMode) {
+      // (F3: no target world to guard; the main fleet hunts the convoy)
+      for (var p2 = r.int(E.patrols); p2 > 0 && bases.length; p2--) az(r.pick(bases).i, "patrol", below);
+      var mid = this.at(Math.floor(this.cols / 2) + 1, r.int([1, this.rows - 2]));
+      for (var m2 = 0; m2 < Math.round(this.size * E.main); m2++) az(mid, "hunt", this.top);
+      return;
+    }
     for (var g = Math.round(this.size * E.worldGarrison); g > 0; g--) az(this.world, "garrison", below);
     // The world's defences: one fixed force, as strong as a share of our whole fleet.
-    var hp = 0, fire = 0; this.ourShips().forEach(function (s) { hp += s.hpMax; fire += s.fire; });
+    var hp = 0, fire = 0; this.ourShips().forEach(function (s) { if (s.cls !== "cargo") { hp += s.hpMax; fire += s.fire; } });
     var dk = E.defences.level[this.level] || 1, dhp = Math.round(hp * E.defences.hp * dk);
     var d = { cls: "defences", hp: dhp, hpMax: dhp, fire: Math.round(fire * E.defences.fire * dk) };
     this.group("az", { cls: "defences", ships: [d], kids: [], cmd: { name: "World defences", last: "defences", skill: 0.7, temper: "steady" } }, this.world, "defences");
-    var bases = this.hexes.filter(function (h) { return h.owner === "az" && h.kind !== "world"; });
     for (var p = r.int(E.patrols); p > 0 && bases.length; p--) az(r.pick(bases).i, "patrol", below);
     var nb = this.neighbors(this.world);
     for (var m = 0; m < Math.round(this.size * E.main); m++) az(nb[m % nb.length], "main", this.top);
@@ -194,6 +222,7 @@
   Campaign.prototype.desc = function (f) {
     var A = this.A, n = {};
     if (f.cls === "defences") return "the world's defences";
+    if (f.role === "convoy") { var nc = this.alive(f).length; return "convoy of " + nc + " cargo ship" + (nc === 1 ? "" : "s"); }
     this.alive(f).forEach(function (s) { n[s.cls] = (n[s.cls] || 0) + 1; });
     var cl = A.classes.slice().reverse().filter(function (c) { return n[c]; });
     function one(c) { return n[c] === 1 ? BL.classById(c).name.toLowerCase() : n[c] + " " + A.plural[c]; }
@@ -205,6 +234,7 @@
   Campaign.prototype.chip = function (f) {
     var A = this.A, al = this.alive(f);
     if (f.cls === "defences") return A.abbr.defences;
+    if (f.role === "convoy") return A.abbr.cargo + al.length;
     var big = A.classes.slice().reverse().filter(function (c) { return al.some(function (s) { return s.cls === c; }); })[0];
     var nb = al.filter(function (s) { return s.cls === big; }).length, rest = al.length - nb;
     return A.abbr[big] + (nb > 1 ? nb : "") + (rest ? "+" + rest : "");
@@ -228,7 +258,7 @@
   // the same system, holding there. Returns the new forces.
   Campaign.prototype.split = function (id) {
     var f = this.force(id), self = this, out = [];
-    if (!f || f.side !== "us" || f.lost || f.merged || this.state !== "play" || !f.top.kids.length) return out;
+    if (!f || f.side !== "us" || f.lost || f.merged || this.state !== "play" || !f.top.kids.length || f.role === "convoy") return out;
     f.top.kids.forEach(function (k) {
       if (!flatten(k).some(function (s) { return s.hp > 0; })) return;
       out.push(self.group("us", k, f.at));
@@ -242,7 +272,7 @@
   // Join forces in one system: the one with the biggest top ship leads, the others become her escorts.
   Campaign.prototype.join = function (ids) {
     var A = this.A, self = this;
-    var fs = ids.map(function (id) { return self.force(id); }).filter(function (f) { return f && f.side === "us" && !f.lost && !f.merged; });
+    var fs = ids.map(function (id) { return self.force(id); }).filter(function (f) { return f && f.side === "us" && !f.lost && !f.merged && f.role !== "convoy"; });
     if (fs.length < 2 || this.state !== "play" || fs.some(function (f) { return f.at !== fs[0].at; })) return null;
     var lead = fs.slice().sort(function (a, b) { return A.classes.indexOf(b.cls) - A.classes.indexOf(a.cls); })[0];
     fs.forEach(function (f) { if (f === lead) return; lead.top.kids.push(f.top); f.merged = true; });
@@ -257,7 +287,7 @@
     this.flag = f ? f.id : null;
   };
   Campaign.prototype.setFlag = function (id) {
-    var f = this.force(id); if (!f || f.side !== "us" || f.lost || f.merged) return false;
+    var f = this.force(id); if (!f || f.side !== "us" || f.lost || f.merged || f.role === "convoy") return false;
     var ship = f.top.ships.filter(function (s) { return s.hp > 0; })[0] || this.alive(f)[0];
     if (this.state === "flag") { this.flagShip = ship; this.syncFlag(); this.state = "play"; this.note("The flag shifts to the " + this.desc(f) + "."); this.check(); return true; }
     if (this.flagSet || this.turn > 1) return false;
@@ -297,6 +327,20 @@
           var opts = self.neighbors(f.at).concat([f.at]).filter(function (j) { return self.dist(j, f.base) <= E.roam; });
           next = r.pick(opts);
         }
+      } else if (f.role === "hunt") {
+        // (F3's main fleet: the convoy if it's within reach, else it waits near the destination)
+        var v = self.convoy();
+        if (v && self.dist(v.at, f.at) <= E.chase) next = self.stepToward(f.at, v.at);
+        else next = self.dist(f.at, self.world) > 2 ? self.stepToward(f.at, self.world) : f.at;
+      } else if (f.role === "raid") {
+        // A raider goes for what he's left bare: a system he took with nobody in it (to retake
+        // it), the convoy, or a force of ours no stronger than the raider, the nearest first.
+        var marks = [];
+        // (never a world: the counterattack and F3's raids see to those)
+        self.hexes.forEach(function (h) { if (h.owner === "us" && h.kind !== "home" && h.kind !== "world" && !ours.some(function (o) { return o.at === h.i; })) marks.push(h.i); });
+        ours.forEach(function (o) { if (o.role === "convoy" || self.power([o]) <= self.power([f])) marks.push(o.at); });
+        marks.sort(function (a, b) { return self.dist(f.at, a) - self.dist(f.at, b); });
+        next = marks.length ? self.stepToward(f.at, marks[0]) : r.pick(self.neighbors(f.at).concat([f.at]));
       } else if (f.role === "regroup") {
         next = f.at;
       } else if (f.role === "retake") {
@@ -314,6 +358,7 @@
   // after the world fell, at the far edge nearest the world (they move in from the next turn).
   Campaign.prototype.reinforce = function () {
     var E = this.A.enemy, self = this;
+    if (this.convoyMode) return this.raidWorld();
     if (!this.won || (this.turn - this.wonTurn) % E.counter.every !== 1 % E.counter.every) return;
     var edge = this.hexes.filter(function (h) { return h.col === self.cols - 1 && h.i !== self.world && h.owner !== "us"; })
       .sort(function (a, b) { return self.dist(a.i, self.world) - self.dist(b.i, self.world); });
@@ -321,8 +366,82 @@
     this.theirs().forEach(function (f) { if (f.role === "regroup") f.role = "retake"; });
     for (var k = 0; k < n && edge.length; k++) {
       var g = this.group("az", this.pyramid(this.A.classes[Math.max(0, this.A.classes.indexOf(this.top) - E.below)]), edge[k % Math.min(3, edge.length)].i, "retake");
-      this.note("Azurian reinforcements arrive at " + this.hexes[g.at].name + ".");
+      this.report(g, "Azurian reinforcements arrive at " + this.hexes[g.at].name + ".");
     }
+  };
+  // F3: from turn `convoy.raid.start`, every `every` turns, Azurian raiders come in at the map's
+  // edge near the destination world and go for it.
+  Campaign.prototype.raidWorld = function () {
+    var R = this.A.convoy.raid, self = this;
+    if (this.turn < R.start || (this.turn - R.start) % R.every) return;
+    var edge = this.hexes.filter(function (h) {
+      var d = self.dist(h.i, self.world); return d >= 2 && d <= 3 && h.owner !== "us" && (h.row === 0 || h.row === self.rows - 1 || h.col === self.cols - 1);
+    }).sort(function (a, b) { return self.dist(a.i, self.world) - self.dist(b.i, self.world); });
+    var cls = this.A.classes[Math.max(0, this.A.classes.indexOf(this.top) - this.A.enemy.below)];
+    for (var k = 0, n = Math.max(1, Math.round(this.size * R.size)); k < n && edge.length; k++) {
+      var g = this.group("az", this.pyramid(cls), this.rng.pick(edge.slice(0, 4)).i, "retake");
+      this.report(g, "Fleet HQ: Azurian raiders reported near " + this.hexes[g.at].name + ", heading for " + this.hexes[this.world].name + ".");
+    }
+  };
+
+  /* -------------------------------------------------------- Fog of war
+     He sees what his ships see: `fog.sight` warps around each force (a force whose biggest ship
+     is a picket ship, a detached DL squadron: `fog.scout`), and `fog.held` around the systems he
+     holds. Everything else is Fleet HQ's reports: each turn a force out of sight may be reported
+     (`fog.report`), where it was `fog.lag` turns ago, and now and then (`fog.off`) a system off. */
+  Campaign.prototype.sight = function (f) {
+    var A = this.A, big = A.classes.slice().reverse().filter(function (c) { return f.ships.some(function (s) { return s.hp > 0 && s.cls === c; }); })[0];
+    return big === "picket" ? A.fog.scout : A.fog.sight;
+  };
+  Campaign.prototype.visibleSet = function () {
+    var self = this, vis = {}, F = this.A.fog;
+    function around(at, r) { self.hexes.forEach(function (h) { if (self.dist(at, h.i) <= r) vis[h.i] = true; }); }
+    this.ours().forEach(function (f) { around(f.at, self.sight(f)); });
+    this.hexes.forEach(function (h) { if (h.owner === "us") around(h.i, F.held); });
+    return vis;
+  };
+  // What he knows, after a turn (and at the start): forces in sight are seen where they are; a
+  // report he finds empty is struck; the rest may be reported, late.
+  Campaign.prototype.updateIntel = function (turn) {
+    var self = this, F = this.A.fog, r = this.irng, vis = this.visibleSet();
+    Object.keys(this.intel).forEach(function (id) {
+      var k = self.intel[id], f = self.force(+id);
+      if (vis[k.at] && (!f || f.lost || f.at !== k.at)) delete self.intel[id];
+    });
+    this.theirs().forEach(function (f) {
+      if (vis[f.at]) { self.know(f, f.at, turn, true); return; }
+      if (!r.chance(F.report)) return;
+      var lag = r.int(F.lag), at = f.trail[Math.max(0, f.trail.length - 1 - lag)];
+      if (r.chance(F.off)) at = r.pick(self.neighbors(at));
+      if (vis[at]) return;                              // (no report of a place he can see is empty)
+      self.know(f, at, turn - lag, false);
+    });
+  };
+  Campaign.prototype.know = function (f, at, turn, seen) {
+    var k = this.intel[f.id] || (this.intel[f.id] = { trail: [] });
+    if (k.turn !== undefined && turn < k.turn) return;
+    if (!k.trail.length || k.trail[k.trail.length - 1].at !== at) k.trail.push({ at: at, seen: seen });
+    else if (seen) k.trail[k.trail.length - 1].seen = true;
+    k.at = at; k.turn = turn; k.seen = seen; k.label = this.chip(f); k.name = this.name(f);
+  };
+  // A force Fleet HQ reports (reinforcements, raiders): known at once, not seen.
+  Campaign.prototype.report = function (f, line) {
+    this.know(f, f.at, this.turn, false);
+    this.note(line);
+  };
+  // The start: Fleet HQ's briefing (every base's and the world's garrison, a guess at the rest).
+  Campaign.prototype.briefing = function () {
+    var self = this, r = this.irng;
+    this.theirs().forEach(function (f) { if (f.role === "garrison" || f.role === "defences" || r.chance(this.A.fog.report)) self.know(f, f.at, 0, false); }, this);
+    this.updateIntel(0);
+  };
+  // The Azurian forces as he knows them, for the map: { f, at, label, name, seen, age, trail }.
+  Campaign.prototype.known = function () {
+    var self = this, now = this.turn - 1;
+    return Object.keys(this.intel).map(function (id) {
+      var k = self.intel[id], f = self.force(+id);
+      return { id: +id, f: f, at: k.at, label: k.label, name: k.name, seen: k.seen && k.turn === now, age: now - k.turn, trail: k.trail };
+    });
   };
 
   /* --------------------------------------------------------------- A turn
@@ -335,6 +454,7 @@
     var self = this, lines = [], flagFight = null;
     this.flagSet = true;
     this.turnLines = lines;
+    this.visBefore = this.visibleSet();               // (warping into a system he couldn't see: an ambush, if they're there)
     this.enemyMoves();
     this.forces.forEach(function (f) {
       if (f.lost) return;
@@ -392,7 +512,7 @@
       return { f: f, name: f.side === "us" ? cap(self.desc(f)) + " (" + f.cmd.name + ")" : cap(b.names[f.id]), alive: self.alive(f).length, total: f.ships.length,
         cond: self.condition(f), gone: !!b.gone[f.id], ships: f.ships.map(function (s) { return Math.max(0, s.hp) / s.hpMax; }), flag: f.ships.indexOf(self.flagShip) >= 0 };
     }
-    return { at: this.hexes[b.at].name, round: b.round, paused: b.paused, ask: b.ask, us: b.us.map(row), az: b.az.map(row), usDmg: this.damage(b, "us"), azDmg: this.damage(b, "az"),
+    return { at: this.hexes[b.at].name, round: b.round, paused: b.paused, ambush: b.ambush, ask: b.ask, us: b.us.map(row), az: b.az.map(row), usDmg: this.damage(b, "us"), azDmg: this.damage(b, "az"),
       usLost: this.lostIn(b, b.us), azLost: this.lostIn(b, b.az), asks: this.A.fight.asks, events: b.events };
   };
   Campaign.prototype.finishTurn = function () {
@@ -416,8 +536,9 @@
       var ours = self.ours().filter(function (f) { return f.at === h.i; }), theirs = self.theirs().filter(function (f) { return f.at === h.i; });
       if (ours.length || !theirs.length) return;
       h.owner = "az";
-      lines.push((h.kind === "world" ? "The Azurians retake the target world " : "The Azurians retake ") + h.name + ".");
+      lines.push((h.kind === "world" ? (self.convoyMode ? "The Azurians take the destination world " : "The Azurians retake the target world ") : "The Azurians retake ") + h.name + ".");
     });
+    this.updateIntel(this.turn);
     // Systems taken: ours alone in an Azurian system at the end of the turn.
     this.hexes.forEach(function (h) {
       if (h.owner !== "az") return;
@@ -439,6 +560,20 @@
   // Won, lost, or the flagship gone (he decides: BL.Campaign.setFlag or withdraw).
   Campaign.prototype.check = function () {
     var held = this.hexes[this.world].owner === "us";
+    if (this.convoyMode) {
+      // F3: at least half the cargo ships at the destination world, and the world held, at the
+      // end of the last turn.
+      var left = this.cargoLeft(), inn = this.cargoIn(), half = this.cargoTotal / 2;
+      if (left < half) { this.state = "lost"; this.why = "convoy"; return; }
+      if (this.turn > this.turns) {
+        if (held && inn >= half) { this.state = "over"; return; }
+        this.state = "lost"; this.why = !held ? "retaken" : "late"; return;
+      }
+      if (!this.won && held && inn >= half) { this.won = true; this.wonTurn = this.turn - 1; this.state = "won"; this.why = "arrived"; return; }
+      if (!this.ours().length) { this.state = "lost"; this.why = "losses"; return; }
+      if (this.flagShip.hp <= 0 && this.ours().some(function (f) { return f.role !== "convoy"; })) { this.state = "flag"; return; }
+      return;
+    }
     // The last turn over: won if the world is ours.
     if (this.turn > this.turns) {
       if (held) { if (!this.won) { this.won = true; this.wonTurn = this.turn - 1; } this.state = "over"; return; }
@@ -459,6 +594,9 @@
      end. In the fight his flag is in, our side breaks off only when he says (battleChoice). */
   Campaign.prototype.battleStart = function (at, us, az, flag) {
     var self = this, b = { at: at, us: us, az: az, flag: flag, ask: flag ? this.A.fight.ask : 1, round: 0, paused: false, gone: {}, names: {}, before: {}, events: [] };
+    // (an ambush: he warped in blind, a system none of his ships could see at the turn's start)
+    b.ambush = !!this.visBefore && !this.visBefore[at] && us.some(function (f) { return f.prev !== at; });
+    if (b.ambush) b.events.push("Ambush! We warped in blind: our fire is down for the first " + this.A.ambush.rounds + " rounds.");
     us.concat(az).forEach(function (f) { b.names[f.id] = f.side === "us" ? self.desc(f) : self.name(f); b.before[f.id] = self.alive(f).length; });
     b.hpUs = this.hpOf(us); b.hpAz = this.hpOf(az);
     b.flagAlive = this.flagShip.hp > 0 && us.some(function (f) { return f.ships.indexOf(self.flagShip) >= 0; });
@@ -472,9 +610,9 @@
   Campaign.prototype.round = function (b) {
     var F = this.A.fight, A = this.A, r = this.rng, self = this;
     function side(fs) { return fs.filter(function (f) { return !b.gone[f.id] && self.alive(f).length; }); }
-    function volley(from, to) {
+    function volley(from, to, mult) {
       var dmg = 0;
-      from.forEach(function (f) { self.alive(f).forEach(function (s) { dmg += s.fire * self.fireK(f) * F.k * r.range(F.spread); }); });
+      from.forEach(function (f) { self.alive(f).forEach(function (s) { dmg += s.fire * self.fireK(f) * F.k * mult * r.range(F.spread); }); });
       // (the fire spread over the ships left, each target's share by its size; a defending
       // temper takes a little less)
       var targets = []; to.forEach(function (f) { self.alive(f).forEach(function (s) { targets.push({ s: s, f: f }); }); });
@@ -484,14 +622,15 @@
     // (the ships each side loses this round, by class, for the account)
     function count(fs) { var n = {}; fs.forEach(function (f) { self.alive(f).forEach(function (s) { n[s.cls] = (n[s.cls] || 0) + 1; }); }); return n; }
     function sunk(was, now) {
-      return A.classes.concat(["defences"]).slice().reverse().filter(function (c) { return (was[c] || 0) > (now[c] || 0); }).map(function (c) {
-        var k = was[c] - (now[c] || 0); return c === "defences" ? "the world's defences" : k === 1 ? "a " + BL.classById(c).name.toLowerCase() : k + " " + A.plural[c];
+      return ["cargo"].concat(A.classes, ["defences"]).slice().reverse().filter(function (c) { return (was[c] || 0) > (now[c] || 0); }).map(function (c) {
+        var k = was[c] - (now[c] || 0);
+        return c === "defences" ? "the world's defences" : c === "cargo" ? (k === 1 ? "a cargo ship" : k + " cargo ships") : k === 1 ? "a " + BL.classById(c).name.toLowerCase() : k + " " + A.plural[c];
       });
     }
     var a = side(b.us), z = side(b.az);
     if (!a.length || !z.length || b.round >= F.rounds) return false;
     var wasUs = count(b.us), wasAz = count(b.az);
-    volley(a, z); volley(z, a); b.round++;
+    volley(a, z, b.ambush && b.round < A.ambush.rounds ? A.ambush.k : 1); volley(z, a, 1); b.round++;
     var ev = [], lu = sunk(wasUs, count(b.us)), la = sunk(wasAz, count(b.az));
     if (lu.length) ev.push("we lost " + list(lu));
     if (la.length) ev.push("they lost " + list(la));
@@ -512,7 +651,7 @@
     var self = this, h = this.hexes[b.at], us = b.us, az = b.az;
     us.concat(az).forEach(function (f) { f.ships.forEach(function (s) { if (s.hp < 0) s.hp = 0; }); });
     var wl = this.lostIn(b, us), el = this.lostIn(b, az), pc = function (x) { return Math.round(100 * x) + "%"; };
-    lines.push("At " + h.name + ": our " + list(us.map(function (f) { return b.names[f.id]; })) + " met " + list(az.map(function (f) { return b.names[f.id]; })) + ".");
+    lines.push("At " + h.name + ": our " + list(us.map(function (f) { return b.names[f.id]; })) + " met " + list(az.map(function (f) { return b.names[f.id]; })) + "." + (b.ambush ? " An ambush: we warped in blind." : ""));
     lines.push("    We lost " + wl + " ship" + (wl === 1 ? "" : "s") + " (" + pc(this.damage(b, "us")) + " damage); they lost " + el + " (" + pc(this.damage(b, "az")) + " damage).");
     us.concat(az).forEach(function (f) {
       if (!self.alive(f).length) {
@@ -535,7 +674,8 @@
   Campaign.prototype.summary = function () {
     var self = this, az = this.forces.filter(function (f) { return f.side === "az"; }), azShips = 0, azLost = 0;
     az.forEach(function (f) { azShips += f.ships.length; azLost += f.ships.filter(function (s) { return s.hp <= 0; }).length; });
-    return { won: this.won, wonTurn: this.wonTurn, turn: Math.min(this.turn - 1, this.turns), turns: this.turns, world: this.hexes[this.world].name,
+    return { convoy: this.convoyMode, cargoLeft: this.convoyMode ? this.cargoLeft() : 0, cargoIn: this.convoyMode ? this.cargoIn() : 0, cargoTotal: this.cargoTotal,
+      won: this.won, wonTurn: this.wonTurn, turn: Math.min(this.turn - 1, this.turns), turns: this.turns, world: this.hexes[this.world].name,
       usLost: this.shipsLost(), usTotal: this.shipsTotal, azLost: azLost, azTotal: azShips, battles: this.battles, taken: this.taken,
       forces: this.ours().map(function (f) { return cap(self.desc(f)) + " (" + f.cmd.name + ") · " + self.alive(f).length + "/" + f.ships.length + " ships · " + Math.round(100 * self.condition(f)) + "%"; }) };
   };
@@ -544,9 +684,9 @@
      A simple test admiral: every force together, the shortest way to the target world. */
   BL.runAdmiralsHeadless = function (seed, level) {
     var c = new Campaign({ seed: seed, level: level }), guard = 0;
-    while (c.state !== "over" && c.state !== "lost" && guard++ < 100) {
+    while (c.state !== "over" && c.state !== "lost" && guard++ < 5000) {
       if (c.state === "won") { c.carryOn(); continue; }
-      if (c.state === "flag") { var o = c.ours(); if (o.length) c.setFlag(o[o.length - 1].id); else c.withdraw(); continue; }
+      if (c.state === "flag") { var o = c.ours().filter(function (f) { return f.role !== "convoy"; }); if (o.length) c.setFlag(o[o.length - 1].id); else c.withdraw(); continue; }
       if (c.state === "battle") { if (c.battleStep() === "paused") c.battleChoice(1); continue; }
       var lead = c.ours()[0].at;      // (and once it's taken: everyone to the world, and hold it)
       c.ours().forEach(function (f) { c.order(f.id, f.at === lead ? c.world : lead); });

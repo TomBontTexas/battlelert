@@ -1321,7 +1321,9 @@
      whole fleet's, times its level's multiplier: F3's pickets are fragile);
      patrols wander within `roam` hexes of their base and jump a lone force next to them that's
      no stronger; the main fleet (`main` x our top ships, pyramids of our top class) goes for any of our forces
-     within `chase` hexes, else guards the world. counter: once the world is taken, the
+     within `chase` hexes, else guards the world (F3: it hunts the convoy). raiders: pyramids a
+     class below our top ships that go for whatever he leaves bare: a system of ours with nobody
+     in it, the convoy, a force of ours no stronger. counter: once the world is taken, the
      counterattack (TexasBont, Nov 7, 2026: he must hold it to the last turn): their main fleet
      regroups for a turn, then goes for it with the fresh forces: every `every` turns, `size`
      x our top ships pyramids a class below our top ships (as garrisons) arrive at the far edge,
@@ -1333,15 +1335,28 @@
     top: { F3: 2, F4: 2, F5: 2, F6: 2, F7: 2, F8: 2, G9: 4 },
     pyramid: { escorts: 2, pickets: 4 },
     classes: ["picket", "destroyerEscort", "destroyer", "lightCruiser", "cruiser", "heavyCruiser", "battleship", "dreadnought"],
-    abbr: { gunboat: "PT", picket: "DL", destroyerEscort: "DE", destroyer: "DD", lightCruiser: "CL", cruiser: "C", heavyCruiser: "CA", battleship: "BB", dreadnought: "DN", defences: "DEF" },     // (the hull codes, BL.HULL_CODES)
+    abbr: { cargo: "CV", gunboat: "PT", picket: "DL", destroyerEscort: "DE", destroyer: "DD", lightCruiser: "CL", cruiser: "C", heavyCruiser: "CA", battleship: "BB", dreadnought: "DN", defences: "DEF" },     // (the hull codes, BL.HULL_CODES)
     plural: { gunboat: "gunboats", picket: "pickets", destroyerEscort: "destroyer escorts", destroyer: "destroyers", lightCruiser: "light cruisers", cruiser: "cruisers", heavyCruiser: "heavy cruisers", battleship: "battleships", dreadnought: "dreadnoughts" },
     turns: { base: 16, perLevel: 1 },
+    // F3's campaign (TexasBont, Nov 7, 2026: DLs and DEs aren't ships of the line): escort a convoy
+    // of `cargo` unarmed cargo ships (each `hp` x a destroyer escort's) from our base to the other
+    // Imperial world; at least half must be there, and the world held, at the end of the last
+    // turn. raid: from turn `start`, every `every` turns, `size` x our top ships pyramids a class
+    // below them come in at the map's edge near the world and go for it.
+    convoy: { levels: ["F3"], cargo: 6, hp: 0.8, raid: { start: 10, every: 2, size: 0.5 } },
+    // Fog of war: sight in warps around each force (a detached picket squadron: scout) and each
+    // system he holds (held); Fleet HQ reports a force out of sight with the chance `report` a
+    // turn, `lag` turns late, and `off` of the time a system off.
+    fog: { sight: 1, scout: 2, held: 1, report: 0.35, lag: [1, 2], off: 0.3 },
+    // An ambush: a force that warps into a system none of his ships could see, onto an enemy,
+    // fires at `k` for the first `rounds` rounds.
+    ambush: { k: 0.6, rounds: 2 },
     map: { cols: 11, rows: 7 },
     ship: { shieldK: 0.25 },
     fight: { rounds: 30, ask: 0.25, asks: [0.5, 0.75], k: 0.3, spread: [0.75, 1.25], breakAt: { cautious: 0.8, steady: 0.6, aggressive: 0.4 } },
     temper: { cautious: [0.92, 0.9], steady: [1, 1], aggressive: [1.1, 1.1] },
     skill: [0.4, 0.95], skillK: 0.5,
     enemy: { skill: [0.4, 0.85], bases: [2, 3], kinds: ["base", "shipyard", "depot"], combo: [0.2, 0.08], below: 1, worldGarrison: 0.5, defences: { hp: 0.95, fire: 0.52, level: { F3: 0.8 } },
-             patrols: [1, 2], roam: 2, main: 0.5, chase: 3, counter: { every: 2, size: 0.5 } }
+             patrols: [1, 2], raiders: [1, 1], roam: 2, main: 0.5, chase: 3, counter: { every: 2, size: 0.5 } }
   };
 })(typeof window !== "undefined" ? window : globalThis);
