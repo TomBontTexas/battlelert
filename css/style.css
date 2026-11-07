@@ -817,8 +817,26 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 .adm-sq .bad, #adm-sys .az { color: var(--bad); }
 #adm-sys .us { color: var(--charge); }
 .adm-rep { margin-bottom: 8px; }
-.adm-tally { margin: 8px 0 12px; font-size: 14px; line-height: 1.5; }
-.adm-tally .us { color: var(--charge); } .adm-tally .az { color: var(--bad); }
+/* The battle panel (the flag's fight, round by round) and the write-up */
+.adm-battle h1 { margin-bottom: 8px; }
+.adm-bsides { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 8px; }
+.adm-btot { font-size: 15px; padding: 6px 8px; border-radius: 6px; background: var(--panel2, rgba(255,255,255,.04)); }
+.adm-btot.us b, .adm-bf.us .nm { color: var(--charge); } .adm-btot.az b, .adm-bf.az .nm { color: var(--bad); }
+.adm-bf { margin-bottom: 8px; font-size: 13px; } .adm-bf.gone { opacity: .55; }
+.adm-bf .st { color: var(--muted); }
+.adm-bar { height: 6px; border-radius: 3px; background: rgba(255,255,255,.08); overflow: hidden; margin: 3px 0; }
+.adm-bar b { display: block; height: 100%; transition: width .5s; }
+.adm-bf.us .adm-bar b { background: var(--charge); } .adm-bf.az .adm-bar b { background: var(--bad); }
+.adm-pips { display: flex; flex-wrap: wrap; gap: 2px; margin-top: 3px; }
+.adm-pips i { width: 8px; height: 8px; border-radius: 2px; background: currentColor; }
+.adm-bf.us .adm-pips { color: var(--charge); } .adm-bf.az .adm-pips { color: var(--bad); }
+.adm-pips i.mid { opacity: .65; } .adm-pips i.low { opacity: .35; } .adm-pips i.dead { background: none; box-shadow: inset 0 0 0 1px rgba(255,255,255,.25); }
+.adm-bstop { font-weight: 600; }
+.adm-blog { font-size: 13px; color: var(--muted); min-height: 5em; margin: 6px 0 10px; }
+.adm-write h3 { margin: 12px 0 4px; } .adm-write { max-height: 90vh; overflow-y: auto; } .adm-write div { font-size: 14px; }
+.adm-trail { fill: none; stroke: var(--bad); stroke-width: 1.6; stroke-dasharray: 3 2; opacity: .85; pointer-events: none; }
+.adm-trail-start { fill: none; stroke: var(--bad); stroke-width: 1.4; pointer-events: none; }
+.adm-trail-dot { fill: var(--bad); pointer-events: none; }
 .adm-rep .sub { padding-left: 12px; color: var(--muted); }
 .adm-hint { padding: 4px 10px; font-size: 12px; color: var(--muted); border-top: 1px solid var(--line); }
 .adm-hex { fill: var(--panel); stroke: var(--line); stroke-width: 1; cursor: pointer; }

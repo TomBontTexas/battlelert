@@ -8,7 +8,8 @@
    moves, then every move happens at once. Forces that come out in the same system fight there,
    decided off screen; he reads the report after the turn. He wins when a force holds the target
    world at the end of a turn; he fails if Fleet HQ's turns run out or his whole fleet is lost.
-   If his flagship is destroyed he shifts the flag (fight on) or withdraws (a loss). Tuning:
+   If his flagship is destroyed he shifts the flag (fight on) or withdraws (a loss). Once the
+   world is taken he may carry on to the last turn (state "won", then "over"). Tuning:
    BL.ADMIRALS (data.js).
    Later stages: detachments and fog of war (2), supply, repair and the enemy planner (3), the
    career (4), the Grand Admiral's three fleet admirals (5). */
@@ -38,6 +39,9 @@
     this.state = "play";                              // play | flag (the flagship is lost: shift or withdraw) | won | lost
     this.why = null;
     this.log = [];                                    // [{ turn, lines }]
+    this.battles = [];                                // every fight: { turn, at, flag, usLost, azLost, usDmg, azDmg, result }
+    this.taken = [];                                  // systems taken: { turn, name, what }
+    this.won = false;                                 // (the world taken: he may carry on to the last turn)
     this.forces = [];
     this.nextId = 1;
     this.makeMap();
@@ -132,7 +136,7 @@
   function flatten(n) { return n.kids.reduce(function (a, k) { return a.concat(flatten(k)); }, n.ships.slice()); }
   Campaign.prototype.group = function (side, node, at, role) {
     if (!node.cmd) node.cmd = side === "us" ? this.commander("Commodore", this.A.skill) : this.commander("Azurian", this.A.enemy.skill);
-    var f = { id: this.nextId++, side: side, top: node, at: at, prev: at, dest: at, role: role || null, base: at, lost: false };
+    var f = { id: this.nextId++, side: side, top: node, at: at, prev: at, dest: at, role: role || null, base: at, lost: false, trail: [at] };
     this.refresh(f);
     this.forces.push(f);
     return f;
@@ -255,11 +259,14 @@
     if (this.flagSet || this.turn > 1) return false;
     this.flagShip = ship; this.syncFlag(); return true;
   };
-  // With the flagship lost: give up the campaign.
+  // With the flagship lost: give up the campaign (after the world is taken: it's over, and won).
   Campaign.prototype.withdraw = function () {
     if (this.state !== "flag") return;
+    if (this.won) { this.state = "over"; this.note("The fleet withdraws. The campaign is over."); return; }
     this.state = "lost"; this.why = "withdrew"; this.note("The fleet withdraws. The campaign is lost.");
   };
+  // After the world is taken: carry on with the turns left (more systems, more recon).
+  Campaign.prototype.carryOn = function () { if (this.state === "won" && this.turn <= this.turns && this.ours().length) this.state = "play"; };
   Campaign.prototype.note = function (line) {
     var last = this.log[this.log.length - 1];
     if (last && last.turn === this.turn - 1) last.lines.push(line); else this.log.push({ turn: this.turn - 1, lines: [line] });
@@ -291,9 +298,10 @@
   };
 
   /* --------------------------------------------------------------- A turn
-     Every move at once, then the fights. The fight his flag is in comes last, and it stops for
-     him (state "battle") each time our side's damage reaches the mark he set (first
-     fight.ask): he withdraws or fights on (battleChoice); the turn ends once it's decided. */
+     Every move at once, then the fights. The fight his flag is in comes last, and he watches it
+     (state "battle"): battleStep fights one round at a time, and it stops for him each time our
+     side's damage reaches the mark he set (first fight.ask); he withdraws or fights on
+     (battleChoice) and the turn ends once it's decided. */
   Campaign.prototype.endTurn = function () {
     if (this.state !== "play") return null;
     var self = this, lines = [], flagFight = null;
@@ -304,6 +312,7 @@
       f.prev = f.at;
       if (f.side === "us") f.at = f.dest === f.at ? f.at : self.stepToward(f.at, f.dest);
       else f.at = f.next;
+      if (f.at !== f.prev) f.trail.push(f.at);
     });
     // Fights: every system with both sides in it.
     var hexes = {}, flag = this.force(this.flag);
@@ -312,35 +321,48 @@
       var here = hexes[k], us = here.filter(function (f) { return f.side === "us"; }), az = here.filter(function (f) { return f.side === "az"; });
       if (!us.length || !az.length) return;
       if (flag && us.indexOf(flag) >= 0) { flagFight = [+k, us, az]; return; }
-      var b = self.battleStart(+k, us, az, false); self.rounds(b); self.battleEnd(b, lines);
+      var b = self.battleStart(+k, us, az, false);
+      while (self.round(b)) { /* to the finish */ }
+      self.battleEnd(b, lines);
     });
     this.turnLines = lines;
     if (!flagFight) return this.finishTurn();
     this.battle = this.battleStart(flagFight[0], flagFight[1], flagFight[2], true);
-    return this.resume();
+    this.state = "battle";
+    return null;
   };
-  // Go on with the flag's fight: it stops again at his next mark, or ends the turn.
-  Campaign.prototype.resume = function () {
-    var b = this.battle;
-    this.rounds(b);
-    if (b.paused) { this.state = "battle"; return null; }
-    this.battleEnd(b, this.turnLines); this.battle = null;
-    return this.finishTurn();
+  // One round of the flag's fight: "go" (more to come), "paused" (at his mark: battleChoice),
+  // or "done" (the fight is over and the turn ended).
+  Campaign.prototype.battleStep = function () {
+    var b = this.battle; if (this.state !== "battle" || !b) return "done";
+    if (b.paused) return "paused";
+    if (!this.round(b)) return this.closeBattle();
+    if (this.damage(b, "us") >= b.ask) { b.paused = true; return "paused"; }
+    return "go";
   };
-  // His answer when the flag's fight stops: "withdraw", or the next mark (0.5, 0.75; 1 = to the finish).
+  // His answer when the flag's fight stops (or any time while it's on): "withdraw", or the next
+  // mark (0.5, 0.75; 1 = to the finish).
   Campaign.prototype.battleChoice = function (x) {
-    var b = this.battle; if (this.state !== "battle" || !b) return null;
-    this.state = "play";
-    if (x === "withdraw") { b.us.forEach(function (f) { b.gone[f.id] = true; }); b.paused = false; this.battleEnd(b, this.turnLines); this.battle = null; return this.finishTurn(); }
-    b.ask = x;
-    return this.resume();
+    var b = this.battle; if (this.state !== "battle" || !b) return "done";
+    if (x === "withdraw") { b.us.forEach(function (f) { b.gone[f.id] = true; }); return this.closeBattle(); }
+    b.ask = x; b.paused = false;
+    return "go";
   };
-  // Where the flag's fight stands (the pop-up's tally).
+  Campaign.prototype.closeBattle = function () {
+    this.battleEnd(this.battle, this.turnLines); this.battle = null;
+    this.finishTurn();
+    return "done";
+  };
+  // Where the flag's fight stands, for the battle panel: every force and its ships, the totals,
+  // and the round by round account.
   Campaign.prototype.tally = function () {
     var b = this.battle, self = this; if (!b) return null;
-    function row(f) { return { f: f, name: f.side === "us" ? cap(self.desc(f)) + " (" + f.cmd.name + ")" : cap(b.names[f.id]), alive: self.alive(f).length, total: f.ships.length, cond: self.condition(f), gone: !!b.gone[f.id] }; }
-    return { at: this.hexes[b.at].name, round: b.round, us: b.us.map(row), az: b.az.map(row), usDmg: this.damage(b, "us"), azDmg: this.damage(b, "az"),
-      usLost: this.lostIn(b, b.us), azLost: this.lostIn(b, b.az), asks: this.A.fight.asks };
+    function row(f) {
+      return { f: f, name: f.side === "us" ? cap(self.desc(f)) + " (" + f.cmd.name + ")" : cap(b.names[f.id]), alive: self.alive(f).length, total: f.ships.length,
+        cond: self.condition(f), gone: !!b.gone[f.id], ships: f.ships.map(function (s) { return Math.max(0, s.hp) / s.hpMax; }), flag: f.ships.indexOf(self.flagShip) >= 0 };
+    }
+    return { at: this.hexes[b.at].name, round: b.round, paused: b.paused, ask: b.ask, us: b.us.map(row), az: b.az.map(row), usDmg: this.damage(b, "us"), azDmg: this.damage(b, "az"),
+      usLost: this.lostIn(b, b.us), azLost: this.lostIn(b, b.az), asks: this.A.fight.asks, events: b.events };
   };
   Campaign.prototype.finishTurn = function () {
     var self = this, lines = this.turnLines;
@@ -350,7 +372,11 @@
     this.hexes.forEach(function (h) {
       if (h.owner !== "az") return;
       var ours = self.ours().filter(function (f) { return f.at === h.i; }), theirs = self.theirs().filter(function (f) { return f.at === h.i; });
-      if (ours.length && !theirs.length) { h.owner = "us"; lines.push(h.kind === "world" ? "The target world " + h.name + " is taken." : h.name + "'s " + list(h.kinds) + (h.kinds.length > 1 ? " are" : " is") + " taken."); }
+      if (!ours.length || theirs.length) return;
+      h.owner = "us";
+      var what = h.kind === "world" ? "the target world" : list(h.kinds);
+      self.taken.push({ turn: self.turn, name: h.name, what: what });
+      lines.push(h.kind === "world" ? "The target world " + h.name + " is taken." : h.name + "'s " + what + (h.kinds.length > 1 ? " are" : " is") + " taken.");
     });
     if (!lines.length) lines.push("No contact.");
     this.log.push({ turn: this.turn, lines: lines });
@@ -360,10 +386,12 @@
   };
   // Won, lost, or the flagship gone (he decides: BL.Campaign.setFlag or withdraw).
   Campaign.prototype.check = function () {
-    if (this.hexes[this.world].owner === "us") { this.state = "won"; this.why = "world"; return; }
+    // The world taken: won (once; he may carry on to the last turn, and then it's over).
+    if (!this.won && this.hexes[this.world].owner === "us") { this.won = true; this.wonTurn = this.turn - 1; this.state = "won"; this.why = "world"; return; }
+    if (this.won && (this.turn > this.turns || !this.ours().length)) { this.state = "over"; return; }
     // (no losses rule: he decides when to pull out of his flag's fights; TexasBont, Nov 7, 2026)
     if (!this.ours().length) { this.state = "lost"; this.why = "losses"; return; }
-    if (this.flagShip.hp <= 0) { this.state = "flag"; return; }
+    if (this.flagShip.hp <= 0 && this.ours().length) { this.state = "flag"; return; }
     if (this.turn > this.turns) { this.state = "lost"; this.why = "time"; return; }
   };
 
@@ -374,7 +402,7 @@
      stays), back to the system he came from; a garrison and the world's defences fight to the
      end. In the fight his flag is in, our side breaks off only when he says (battleChoice). */
   Campaign.prototype.battleStart = function (at, us, az, flag) {
-    var self = this, b = { at: at, us: us, az: az, flag: flag, ask: flag ? this.A.fight.ask : 1, round: 0, paused: false, gone: {}, names: {}, before: {} };
+    var self = this, b = { at: at, us: us, az: az, flag: flag, ask: flag ? this.A.fight.ask : 1, round: 0, paused: false, gone: {}, names: {}, before: {}, events: [] };
     us.concat(az).forEach(function (f) { b.names[f.id] = f.side === "us" ? self.desc(f) : self.name(f); b.before[f.id] = self.alive(f).length; });
     b.hpUs = this.hpOf(us); b.hpAz = this.hpOf(az);
     b.flagAlive = this.flagShip.hp > 0 && us.some(function (f) { return f.ships.indexOf(self.flagShip) >= 0; });
@@ -384,7 +412,8 @@
   // The share of a side's strength (ships lost and hull damage) this fight has taken.
   Campaign.prototype.damage = function (b, side) { return side === "us" ? 1 - this.hpOf(b.us) / Math.max(1, b.hpUs) : 1 - this.hpOf(b.az) / Math.max(1, b.hpAz); };
   Campaign.prototype.lostIn = function (b, fs) { var self = this; return fs.reduce(function (n, f) { return n + b.before[f.id] - self.alive(f).length; }, 0); };
-  Campaign.prototype.rounds = function (b) {
+  // One round of a fight; false once it's over (a side gone or broken off, or `rounds` fought).
+  Campaign.prototype.round = function (b) {
     var F = this.A.fight, A = this.A, r = this.rng, self = this;
     function side(fs) { return fs.filter(function (f) { return !b.gone[f.id] && self.alive(f).length; }); }
     function volley(from, to) {
@@ -396,23 +425,31 @@
       var tot = targets.reduce(function (a, t) { return a + t.s.hpMax; }, 0);
       targets.forEach(function (t) { t.s.hp -= dmg * (t.s.hpMax / tot) * (A.temper[t.f.cmd.temper] || [1, 1])[1] * r.range([0.6, 1.4]); });
     }
-    b.paused = false;
-    while (b.round < F.rounds) {
-      var a = side(b.us), z = side(b.az);
-      if (!a.length || !z.length) break;
-      volley(a, z); volley(z, a); b.round++;
-      // Who breaks off: a side well outmatched, by its commanders' tempers.
-      [[side(b.us), side(b.az)], [side(b.az), side(b.us)]].forEach(function (pair) {
-        var mine = pair[0], foe = pair[1]; if (!mine.length || !foe.length) return;
-        var ratio = Math.sqrt(self.power(mine) / Math.max(1, self.power(foe)));
-        mine.forEach(function (f) {
-          if (f.role === "garrison" || f.role === "defences" || (b.flag && f.side === "us")) return;
-          if (ratio < F.breakAt[f.cmd.temper]) b.gone[f.id] = true;
-        });
+    // (the ships each side loses this round, by class, for the account)
+    function count(fs) { var n = {}; fs.forEach(function (f) { self.alive(f).forEach(function (s) { n[s.cls] = (n[s.cls] || 0) + 1; }); }); return n; }
+    function sunk(was, now) {
+      return A.classes.concat(["defences"]).slice().reverse().filter(function (c) { return (was[c] || 0) > (now[c] || 0); }).map(function (c) {
+        var k = was[c] - (now[c] || 0); return c === "defences" ? "the world's defences" : k === 1 ? "a " + BL.classById(c).name.toLowerCase() : k + " " + A.plural[c];
       });
-      // The flag's fight: stop for him at his mark (if the fight isn't over).
-      if (b.flag && side(b.us).length && side(b.az).length && this.damage(b, "us") >= b.ask) { b.paused = true; return; }
     }
+    var a = side(b.us), z = side(b.az);
+    if (!a.length || !z.length || b.round >= F.rounds) return false;
+    var wasUs = count(b.us), wasAz = count(b.az);
+    volley(a, z); volley(z, a); b.round++;
+    var ev = [], lu = sunk(wasUs, count(b.us)), la = sunk(wasAz, count(b.az));
+    if (lu.length) ev.push("we lost " + list(lu));
+    if (la.length) ev.push("they lost " + list(la));
+    // Who breaks off: a side well outmatched, by its commanders' tempers.
+    [[side(b.us), side(b.az)], [side(b.az), side(b.us)]].forEach(function (pair) {
+      var mine = pair[0], foe = pair[1]; if (!mine.length || !foe.length) return;
+      var ratio = Math.sqrt(self.power(mine) / Math.max(1, self.power(foe)));
+      mine.forEach(function (f) {
+        if (f.role === "garrison" || f.role === "defences" || (b.flag && f.side === "us")) return;
+        if (ratio < F.breakAt[f.cmd.temper]) { b.gone[f.id] = true; ev.push((f.side === "us" ? "our " + self.desc(f) : "an Azurian force (" + self.desc(f) + ")") + " broke off"); }
+      });
+    });
+    b.events.push("Round " + b.round + ": " + (ev.length ? ev.join("; ") : "no ships lost") + ".");
+    return side(b.us).length > 0 && side(b.az).length > 0 && b.round < F.rounds;
   };
   // The result: one line per side, then each force destroyed or broken off.
   Campaign.prototype.battleEnd = function (b, lines) {
@@ -428,11 +465,23 @@
       } else if (b.gone[f.id]) {
         // (back where it came from; one that didn't move falls back toward its own side)
         var back = f.prev !== b.at ? f.prev : self.stepToward(b.at, f.side === "us" ? self.home : self.world);
-        f.at = back; if (f.side === "us") f.dest = back;
+        f.at = back; f.trail.push(back); if (f.side === "us") f.dest = back;
         lines.push("    " + cap(self.name(f)) + (f.side === "us" && b.flag ? " withdrew to " : " broke off to ") + self.hexes[back].name + ".");
       }
     });
     if (b.flagAlive && this.flagShip.hp <= 0) lines.push("    Our flagship is lost.");
+    // (for the write-up)
+    var held = us.some(function (f) { return !f.lost && f.at === b.at; }), theirs = az.some(function (f) { return !f.lost && f.at === b.at; });
+    this.battles.push({ turn: this.turn, at: h.name, flag: b.flag, usLost: wl, azLost: el, usDmg: this.damage(b, "us"), azDmg: this.damage(b, "az"),
+      result: held && !theirs ? "won" : !held && theirs ? "lost" : "drawn" });
+  };
+  // The campaign so far, for the write-up.
+  Campaign.prototype.summary = function () {
+    var self = this, az = this.forces.filter(function (f) { return f.side === "az"; }), azShips = 0, azLost = 0;
+    az.forEach(function (f) { azShips += f.ships.length; azLost += f.ships.filter(function (s) { return s.hp <= 0; }).length; });
+    return { won: this.won, wonTurn: this.wonTurn, turn: Math.min(this.turn - 1, this.turns), turns: this.turns, world: this.hexes[this.world].name,
+      usLost: this.shipsLost(), usTotal: this.shipsTotal, azLost: azLost, azTotal: azShips, battles: this.battles, taken: this.taken,
+      forces: this.ours().map(function (f) { return cap(self.desc(f)) + " (" + f.cmd.name + ") · " + self.alive(f).length + "/" + f.ships.length + " ships · " + Math.round(100 * self.condition(f)) + "%"; }) };
   };
 
   /* --------------------------------------------- Headless runs (dev-tools)
@@ -441,7 +490,7 @@
     var c = new Campaign({ seed: seed, level: level }), guard = 0;
     while (c.state !== "won" && c.state !== "lost" && guard++ < 100) {
       if (c.state === "flag") { var o = c.ours(); if (o.length) c.setFlag(o[o.length - 1].id); else c.withdraw(); continue; }
-      if (c.state === "battle") { c.battleChoice(1); continue; }
+      if (c.state === "battle") { if (c.battleStep() === "paused") c.battleChoice(1); continue; }
       var lead = c.ours()[0].at;
       c.ours().forEach(function (f) { c.order(f.id, f.at === lead ? c.world : lead); });
       c.endTurn();

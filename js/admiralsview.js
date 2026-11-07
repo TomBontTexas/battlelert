@@ -12,7 +12,7 @@
   var NS = "http://www.w3.org/2000/svg";
   var S = 30, RT3 = Math.sqrt(3), PAD = 8;            // hex size (centre to corner) and margin, in map units
 
-  var c = null, opts = null, sel = [], focus = null, hintDefault = "";
+  var c = null, opts = null, sel = [], focus = null, hintDefault = "", trail = null, ticking = null, cheered = false;
   var KIND = { home: "Our base", world: "Target world", empty: "" };
 
   function centre(h) { return { x: PAD + S + 1.5 * S * h.col, y: PAD + RT3 * S * (h.row + 0.5 * (h.col & 1) + 0.5) }; }   // flat-top, odd columns down
@@ -43,7 +43,8 @@
     '<rect x="5.6" y="-1.1" width="4" height="2.2" fill="#000"/><circle cx="-6.2" cy="0" r="0.9" fill="#000"/></mask></defs>';
 
   function start(o) {
-    opts = o; c = new BL.Campaign({ seed: o.seed, level: o.level }); sel = []; focus = c.home;
+    opts = o; c = new BL.Campaign({ seed: o.seed, level: o.level }); sel = []; focus = c.home; trail = null; cheered = false;
+    if (ticking) { clearTimeout(ticking); ticking = null; }
     $("adm-modal").hidden = true;
     hintDefault = $("adm-hint").textContent = "1–9 select · A all · S split · J join · H hold · F fly the flag (first turn) · Enter end turn · Esc clear";
     draw();
@@ -56,13 +57,13 @@
     $("adm-seed").textContent = "seed " + c.seed;
     $("btn-adm-end").disabled = c.state !== "play";
     drawMap(); drawFleet(); drawSystem(); drawReport();
-    if (c.state === "battle") battleModal(); else if (c.state === "flag") flagModal(); else if (c.state === "won" || c.state === "lost") endModal();
+    if (c.state === "battle") battleView(); else if (c.state === "flag") flagModal(); else if (c.state === "won" || c.state === "lost" || c.state === "over") endModal();
   }
   function drawMap() {
     var svg = $("adm-svg"), w = PAD * 2 + S * (1.5 * c.cols + 0.5), h = PAD * 2 + RT3 * S * (c.rows + 0.5);
     svg.setAttribute("viewBox", "0 0 " + w.toFixed(0) + " " + h.toFixed(0));
     svg.innerHTML = DEFS;
-    var gh = el("g", {}, svg), gp = el("g", {}, svg), gf = el("g", {}, svg);
+    var gh = el("g", {}, svg), gp = el("g", {}, svg), gt = el("g", { id: "adm-trails" }, svg), gf = el("g", {}, svg);
     c.hexes.forEach(function (x) {
       var p = centre(x), cls = "adm-hex" + (x.owner === "us" ? " us" : x.owner === "az" ? " az" : "");
       var poly = el("polygon", { points: corners(p), "class": cls }, gh);
@@ -87,6 +88,7 @@
       el("polyline", { points: pts.join(" "), "class": "adm-path" }, gp);
       el("polygon", { points: corners(centre(c.hexes[f.dest])), "class": "adm-dest" }, gp);
     });
+    if (trail) drawTrail(c.force(trail), gt);
     // The forces: a chip each, ours first, two to a row under the system's mark.
     var at = {};
     c.forces.forEach(function (f) { if (!f.lost) (at[f.at] = at[f.at] || []).push(f); });
@@ -100,9 +102,22 @@
         var g = el("g", { "class": "adm-chip " + (f.side === "us" ? "us" : "az") + (sel.indexOf(f.id) >= 0 ? " sel" : "") }, gf);
         el("rect", { x: x, y: y, width: cw, height: ch, rx: 2 }, g);
         var t = el("text", { x: x + cw / 2, y: y + ch / 2 + 0.5 }, g); t.textContent = labels[k];
-        g.addEventListener("click", function (ev) { ev.stopPropagation(); if (f.side === "us") toggle(f.id); else tapHex(f.at); });
+        g.addEventListener("click", function (ev) { ev.stopPropagation(); if (f.side === "us") toggle(f.id); else { trail = trail === f.id ? null : f.id; tapHex(f.at); } });
+        // (an Azurian force: the way it has come since the campaign began, while the pointer is on it)
+        if (f.side === "az") {
+          g.addEventListener("mouseenter", function () { var l = $("adm-trails"); l.innerHTML = ""; drawTrail(f, l); });
+          g.addEventListener("mouseleave", function () { var l = $("adm-trails"); l.innerHTML = ""; if (trail) drawTrail(c.force(trail), l); });
+        }
       });
     });
+  }
+  // An Azurian force's trail: every system it has been in, from where it began (a ring) to now.
+  function drawTrail(f, layer) {
+    if (!f || !f.trail || f.trail.length < 2) return;
+    var pts = f.trail.map(function (i) { var p = centre(c.hexes[i]); return p.x.toFixed(1) + "," + p.y.toFixed(1); });
+    el("polyline", { points: pts.join(" "), "class": "adm-trail" }, layer);
+    var p0 = centre(c.hexes[f.trail[0]]); el("circle", { cx: p0.x, cy: p0.y, r: 4, "class": "adm-trail-start" }, layer);
+    f.trail.slice(1, -1).forEach(function (i) { var p = centre(c.hexes[i]); el("circle", { cx: p.x, cy: p.y, r: 1.8, "class": "adm-trail-dot" }, layer); });
   }
   function line(f) {
     var alive = c.alive(f).length, ord = f.dest === f.at ? "Holding at " + c.hexes[f.at].name : "To " + c.hexes[f.dest].name + " · " + c.path(f.at, f.dest).length + " warps";
@@ -176,21 +191,51 @@
     c.endTurn();
     after();
   }
-  // The fight your flag is in stops at your mark: the tally so far, then withdraw or fight on.
-  function battleModal() {
-    var m = $("adm-modal"), t = c.tally(), pc = function (x) { return Math.round(100 * x) + "%"; };
-    function rows(list, cls) {
-      return list.map(function (r) { return "<div class='" + cls + "'>" + esc(r.name) + " · " + r.alive + "/" + r.total + " ships · " + pc(r.cond) + (r.gone ? " · broke off" : "") + "</div>"; }).join("");
+  /* The fight your flag is in, round by round: every force on both sides with its ships, the
+     totals and the account. It stops at your mark (25% damage, then the one you pick) for you to
+     withdraw or fight on; you can withdraw any time. */
+  var ROUND_MS = 700;
+  function battleView() {
+    renderBattle();
+    if (!ticking && !c.tally().paused) ticking = setTimeout(tick, ROUND_MS);
+  }
+  function tick() {
+    ticking = null;
+    if (!c || c.state !== "battle") return;
+    var r = c.battleStep();
+    if (r === "done") { battleOver(); return; }
+    if (BL.audio) BL.audio.play("click");
+    renderBattle();
+    if (r === "go") ticking = setTimeout(tick, ROUND_MS);
+  }
+  function battleOver() { if (ticking) { clearTimeout(ticking); ticking = null; } $("adm-modal").hidden = true; after(); }
+  function renderBattle() {
+    var m = $("adm-modal"), t = c.tally(), pcx = function (x) { return Math.round(100 * x) + "%"; };
+    function force(r, side) {
+      // (a pip per ship, by her hull left; a big force just the bar)
+      var pips = r.total <= 48 ? "<div class='adm-pips'>" + r.ships.map(function (h) {
+        return "<i class='" + (h <= 0 ? "dead" : h < 0.34 ? "low" : h < 0.67 ? "mid" : "") + "'></i>"; }).join("") + "</div>" : "";
+      return "<div class='adm-bf " + side + (r.gone ? " gone" : "") + "'><div class='nm'>" + esc(r.name) + (r.flag ? " ★" : "") + (r.gone ? " · broke off" : "") + "</div>" +
+        "<div class='adm-bar'><b style='width:" + Math.round(100 * r.cond) + "%'></b></div>" +
+        "<div class='st'>" + r.alive + "/" + r.total + " ships · " + pcx(r.cond) + "</div>" + pips + "</div>";
     }
     var asks = t.asks.filter(function (a) { return a > t.usDmg; });
-    m.innerHTML = "<div class='ov-card'><h1>Battle at " + esc(t.at) + "</h1>" +
-      "<p>After " + t.round + " round" + (t.round === 1 ? "" : "s") + ": we've lost " + t.usLost + " ship" + (t.usLost === 1 ? "" : "s") + " and taken " + pc(t.usDmg) + " damage; they've lost " + t.azLost + " and taken " + pc(t.azDmg) + ".</p>" +
-      "<div class='adm-tally'>" + rows(t.us, "us") + rows(t.az, "az") + "</div>" +
-      "<div class='menu'>" + asks.map(function (a) { return "<button data-ask='" + a + "'>Fight on to " + pc(a) + " damage</button>"; }).join("") +
-      "<button data-ask='1'>Fight to the finish</button><button id='adm-pull' class='primary'>Withdraw</button></div></div>";
+    var buttons = t.paused
+      ? asks.map(function (a) { return "<button data-ask='" + a + "'>Fight on to " + pcx(a) + " damage</button>"; }).join("") +
+        "<button data-ask='1'>Fight to the last ship</button><button id='adm-pull' class='primary'>Withdraw</button>"
+      : "<button id='adm-pull'>Withdraw now</button>";
+    m.innerHTML = "<div class='ov-card wide adm-battle'><h1>Battle at " + esc(t.at) + " · round " + t.round + "</h1>" +
+      "<div class='adm-bsides'><div class='adm-btot us'><b>Ours</b> lost " + t.usLost + " ship" + (t.usLost === 1 ? "" : "s") + " · " + pcx(t.usDmg) + " damage</div>" +
+      "<div class='adm-btot az'><b>Azurian</b> lost " + t.azLost + " ship" + (t.azLost === 1 ? "" : "s") + " · " + pcx(t.azDmg) + " damage</div></div>" +
+      "<div class='adm-bsides'><div>" + t.us.map(function (r) { return force(r, "us"); }).join("") + "</div><div>" + t.az.map(function (r) { return force(r, "az"); }).join("") + "</div></div>" +
+      (t.paused ? "<p class='adm-bstop'>Your side has taken " + pcx(t.usDmg) + " damage. Your call: withdraw, or fight on.</p>" : "") +
+      "<div class='adm-blog'>" + t.events.slice(-6).reverse().map(function (e) { return "<div>" + esc(e) + "</div>"; }).join("") + "</div>" +
+      "<div class='menu'>" + buttons + "</div></div>";
     m.hidden = false;
-    Array.prototype.forEach.call(m.querySelectorAll("button[data-ask]"), function (b) { b.onclick = function () { click(); m.hidden = true; c.battleChoice(+b.getAttribute("data-ask")); after(); }; });
-    $("adm-pull").onclick = function () { click(); m.hidden = true; c.battleChoice("withdraw"); after(); };
+    Array.prototype.forEach.call(m.querySelectorAll("button[data-ask]"), function (b) {
+      b.onclick = function () { click(); c.battleChoice(+b.getAttribute("data-ask")); battleView(); };
+    });
+    $("adm-pull").onclick = function () { click(); c.battleChoice("withdraw"); battleOver(); };
   }
   // (after the turn ends: drop the selected forces that are gone)
   function after() { sel = sel.filter(function (id) { var f = c.force(id); return f && !f.lost && !f.merged; }); draw(); }
@@ -203,16 +248,29 @@
     Array.prototype.forEach.call(m.querySelectorAll("button[data-id]"), function (b) { b.onclick = function () { click(); c.setFlag(+b.getAttribute("data-id")); m.hidden = true; draw(); }; });
     $("adm-withdraw").onclick = function () { click(); c.withdraw(); m.hidden = true; draw(); };
   }
+  // The write-up: the world taken (carry on with the turns left, or stop), the campaign over, or lost.
   function endModal() {
-    var m = $("adm-modal"), lost = c.shipsLost(), won = c.state === "won";
-    var why = won ? "The target world " + c.hexes[c.world].name + " is taken on turn " + (c.turn - 1) + " of " + c.turns + "."
+    var m = $("adm-modal"), u = c.summary(), st = c.state, pcx = function (x) { return Math.round(100 * x) + "%"; };
+    var head = st === "won" ? "The world is taken" : st === "over" ? "Campaign won" : "Campaign lost";
+    var why = st !== "lost" ? "The target world " + u.world + " was taken on turn " + u.wonTurn + " of " + u.turns + "." + (st === "over" ? " The campaign ended on turn " + u.turn + "." : "")
       : c.why === "time" ? "Fleet HQ's " + c.turns + " turns ran out before the world fell."
       : c.why === "losses" ? "The whole fleet is lost."
       : "The fleet withdrew after losing its flagship.";
-    if (BL.audio) BL.audio.play(won ? "win" : "lose");
-    m.innerHTML = "<div class='ov-card'><h1>" + (won ? "Campaign won" : "Campaign lost") + "</h1><p>" + esc(why) + "</p><p class='muted'>Ships lost: " + lost + " of " + c.shipsTotal + ".</p>" +
-      "<div class='menu'><button id='adm-again' class='primary'>New campaign</button><button id='adm-same'>Same seed again</button><button id='adm-quit'>Back to the title screen</button></div></div>";
+    if (BL.audio && !(st !== "lost" && cheered)) BL.audio.play(st === "lost" ? "lose" : "win");
+    if (st !== "lost") cheered = true;
+    var left = c.turns - c.turn + 1;
+    var bt = u.battles.map(function (b) {
+      return "<div>Turn " + b.turn + " · " + esc(b.at) + (b.flag ? " ★" : "") + " · " + b.result + " · we lost " + b.usLost + " (" + pcx(b.usDmg) + "), they lost " + b.azLost + " (" + pcx(b.azDmg) + ")</div>";
+    }).join("") || "<div class='muted'>None.</div>";
+    var tk = u.taken.map(function (x) { return "<div>Turn " + x.turn + " · " + esc(x.name) + " · " + esc(x.what) + "</div>"; }).join("") || "<div class='muted'>None.</div>";
+    m.innerHTML = "<div class='ov-card wide adm-write'><h1>" + head + "</h1><p>" + esc(why) + "</p>" +
+      "<p>Ships lost: ours " + u.usLost + " of " + u.usTotal + "; Azurian " + u.azLost + " of " + u.azTotal + ".</p>" +
+      "<h3>Systems taken</h3>" + tk + "<h3>Battles (★ your flag's)</h3>" + bt +
+      (u.forces.length ? "<h3>The fleet now</h3>" + u.forces.map(function (x) { return "<div>" + esc(x) + "</div>"; }).join("") : "") +
+      "<div class='menu'>" + (st === "won" && left > 0 && c.ours().length ? "<button id='adm-carry' class='primary'>Carry on (" + left + " turn" + (left === 1 ? "" : "s") + " left)</button>" : "") +
+      "<button id='adm-again'" + (st === "won" && left > 0 ? "" : " class='primary'") + ">New campaign</button><button id='adm-same'>Same seed again</button><button id='adm-quit'>Back to the title screen</button></div></div>";
     m.hidden = false;
+    if ($("adm-carry")) $("adm-carry").onclick = function () { click(); c.carryOn(); m.hidden = true; draw(); };
     $("adm-again").onclick = function () { click(); start({ seed: BL.randomSeed(), level: c.level, onExit: opts.onExit }); };
     $("adm-same").onclick = function () { click(); start({ seed: c.seed, level: c.level, onExit: opts.onExit }); };
     $("adm-quit").onclick = function () { click(); m.hidden = true; opts.onExit(); };
@@ -226,7 +284,7 @@
     $("btn-adm-split").onclick = split;
     $("btn-adm-join").onclick = join;
     $("btn-adm-how").onclick = function () { click(); $("ov-how").hidden = false; };
-    $("btn-adm-quit").onclick = function () { click(); opts.onExit(); };
+    $("btn-adm-quit").onclick = function () { click(); if (ticking) { clearTimeout(ticking); ticking = null; } opts.onExit(); };
     $("scr-admirals").addEventListener("mouseover", function (ev) {
       var t = ev.target.closest && ev.target.closest("[data-hint]");
       $("adm-hint").textContent = t ? t.getAttribute("data-hint") : hintDefault;
