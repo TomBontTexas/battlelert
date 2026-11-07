@@ -254,14 +254,15 @@
     ticking = null;
     if (!c || c.state !== "battle") return;
     var was = snap(), r = c.battleStep();
-    if (r === "done") { slideFrom = was; battleOver(); return; }
+    // (the fight is over: the panel shows how it ended until he closes it)
+    if (r === "done") { slideFrom = was; renderBattle(c.tally(c.lastBattle)); return; }
     if (BL.audio) BL.audio.play("click");
     renderBattle();
     if (r === "go") ticking = setTimeout(tick, ROUND_MS);
   }
   function battleOver() { if (ticking) { clearTimeout(ticking); ticking = null; } $("adm-modal").hidden = true; after(); }
-  function renderBattle() {
-    var m = $("adm-modal"), t = c.tally(), pcx = function (x) { return Math.round(100 * x) + "%"; };
+  function renderBattle(over) {
+    var m = $("adm-modal"), t = over || c.tally(), pcx = function (x) { return Math.round(100 * x) + "%"; };
     function force(r, side) {
       // (a pip per ship, by her hull left; a big force just the bar)
       var pips = r.total <= 48 ? "<div class='adm-pips'>" + r.ships.map(function (h) {
@@ -271,7 +272,11 @@
         "<div class='st'>" + r.alive + "/" + r.total + " ships · " + pcx(r.cond) + "</div>" + pips + "</div>";
     }
     var asks = t.asks.filter(function (a) { return a > t.usDmg; });
-    var buttons = t.paused
+    var standing = function (rs) { return rs.some(function (r) { return r.alive && !r.gone; }); };
+    var ending = !over ? "" : !standing(t.us) && !standing(t.az) ? "Both sides are out of the fight."
+      : !standing(t.us) ? (t.us.some(function (r) { return r.alive; }) ? "Our forces broke off." : "Our forces are destroyed.")
+      : t.az.some(function (r) { return r.alive; }) ? "The Azurians broke off. We hold the field." : "The Azurians are destroyed. We hold the field.";
+    var buttons = over ? "<button id='adm-bclose' class='primary'>Close</button>" : t.paused
       ? asks.map(function (a) { return "<button data-ask='" + a + "'>Fight on to " + pcx(a) + " damage</button>"; }).join("") +
         "<button data-ask='1'>Fight to the last ship</button><button id='adm-pull' class='primary'>Withdraw</button>"
       : "<button id='adm-pull'>Withdraw now</button>";
@@ -279,6 +284,7 @@
       "<div class='adm-bsides'><div class='adm-btot us'><b>Ours</b> lost " + t.usLost + " ship" + (t.usLost === 1 ? "" : "s") + " · " + pcx(t.usDmg) + " damage</div>" +
       "<div class='adm-btot az'><b>Azurian</b> lost " + t.azLost + " ship" + (t.azLost === 1 ? "" : "s") + " · " + pcx(t.azDmg) + " damage</div></div>" +
       "<div class='adm-bsides'><div>" + t.us.map(function (r) { return force(r, "us"); }).join("") + "</div><div>" + t.az.map(function (r) { return force(r, "az"); }).join("") + "</div></div>" +
+      (over ? "<p class='adm-bstop'>The fight is over. " + esc(ending) + "</p>" : "") +
       (t.paused ? "<p class='adm-bstop'>Your side has taken " + pcx(t.usDmg) + " damage. Your call: withdraw, or fight on.</p>" : "") +
       "<div class='adm-blog'>" + t.events.slice(-6).reverse().map(function (e) { return "<div>" + esc(e) + "</div>"; }).join("") + "</div>" +
       "<div class='menu'>" + buttons + "</div></div>";
@@ -286,6 +292,7 @@
     Array.prototype.forEach.call(m.querySelectorAll("button[data-ask]"), function (b) {
       b.onclick = function () { click(); c.battleChoice(+b.getAttribute("data-ask")); battleView(); };
     });
+    if (over) { $("adm-bclose").onclick = function () { click(); battleOver(); }; return; }
     $("adm-pull").onclick = function () { click(); slideFrom = snap(); c.battleChoice("withdraw"); battleOver(); };
   }
   // (after the turn ends: drop the selected forces that are gone)

@@ -500,16 +500,16 @@
     return "go";
   };
   Campaign.prototype.closeBattle = function () {
-    this.battleEnd(this.battle, this.turnLines); this.battle = null;
+    this.battleEnd(this.battle, this.turnLines); this.lastBattle = this.battle; this.battle = null;    // (the panel shows how it ended until he closes it)
     this.finishTurn();
     return "done";
   };
-  // Where the flag's fight stands, for the battle panel: every force and its ships, the totals,
-  // and the round by round account.
-  Campaign.prototype.tally = function () {
-    var b = this.battle, self = this; if (!b) return null;
+  // Where the flag's fight stands (or, given it, how a fight ended), for the battle panel: every
+  // force and its ships, the totals, and the round by round account.
+  Campaign.prototype.tally = function (fight) {
+    var b = fight || this.battle, self = this; if (!b) return null;
     function row(f) {
-      return { f: f, name: f.side === "us" ? cap(self.desc(f)) + " (" + f.cmd.name + ")" : cap(b.names[f.id]), alive: self.alive(f).length, total: f.ships.length,
+      return { f: f, name: f.side === "us" ? cap(self.alive(f).length ? self.desc(f) : b.names[f.id]) + " (" + f.cmd.name + ")" : cap(b.names[f.id]), alive: self.alive(f).length, total: f.ships.length,
         cond: self.condition(f), gone: !!b.gone[f.id], ships: f.ships.map(function (s) { return Math.max(0, s.hp) / s.hpMax; }), flag: f.ships.indexOf(self.flagShip) >= 0 };
     }
     return { at: this.hexes[b.at].name, round: b.round, paused: b.paused, ambush: b.ambush, ask: b.ask, us: b.us.map(row), az: b.az.map(row), usDmg: this.damage(b, "us"), azDmg: this.damage(b, "az"),
