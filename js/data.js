@@ -1312,7 +1312,8 @@
      his side's strength falls below that share of the enemy's (by temper); a garrison and the
      world's defences never do. temper: [fire dealt, fire taken]. skill: our commanders' (a
      commander's fire is x 1 - skillK + skill x skillK). enemy: the Azurian forces, pyramids too:
-     a garrison at each of `bases` bases (kinds) and `patrols` patrols, each a pyramid `below`
+     a garrison for each of the kinds at each of `bases` systems (combo: the chances a system
+     holds two of the kinds, and all three) and `patrols` patrols, each a pyramid `below`
      classes under our top class (pickets at the least); the world's garrison (`worldGarrison` x
      our top ships, rounded, pyramids of that size) and its defences (hp and fire as shares of our
      whole fleet's, times its level's multiplier: F3's pickets are fragile);
@@ -1335,7 +1336,7 @@
     fight: { rounds: 4, k: 0.3, spread: [0.75, 1.25], breakAt: { cautious: 0.8, steady: 0.6, aggressive: 0.4 } },
     temper: { cautious: [0.92, 0.9], steady: [1, 1], aggressive: [1.1, 1.1] },
     skill: [0.4, 0.95], skillK: 0.5,
-    enemy: { skill: [0.4, 0.85], bases: [2, 3], kinds: ["base", "depot", "shipyard"], below: 1, worldGarrison: 0.5, defences: { hp: 0.7, fire: 0.4, level: { F3: 0.6 } },
+    enemy: { skill: [0.4, 0.85], bases: [2, 3], kinds: ["base", "shipyard", "depot"], combo: [0.2, 0.08], below: 1, worldGarrison: 0.5, defences: { hp: 0.7, fire: 0.4, level: { F3: 0.6 } },
              patrols: [1, 2], roam: 2, main: 0.5, chase: 3 }
   };
 })(typeof window !== "undefined" ? window : globalThis);

@@ -55,7 +55,7 @@
     this.cols = M.cols; this.rows = M.rows;
     this.hexes = [];
     for (var row = 0; row < M.rows; row++) for (var col = 0; col < M.cols; col++)
-      this.hexes.push({ i: row * M.cols + col, col: col, row: row, kind: "empty", owner: null, name: "" });
+      this.hexes.push({ i: row * M.cols + col, col: col, row: row, kind: "empty", kinds: [], owner: null, name: "" });
     function name() {
       for (var t = 0; t < 50; t++) { var n = cap(r.pick(SYL) + r.pick(SYL)); if (n.length > 3 && !used[n]) { used[n] = true; return n; } }
       return "System " + (Object.keys(used).length + 1);
@@ -66,12 +66,18 @@
     this.world = this.at(M.cols - 1, r.int([1, M.rows - 2]));
     this.hexes[this.home].kind = "home"; this.hexes[this.home].owner = "us";
     this.hexes[this.world].kind = "world"; this.hexes[this.world].owner = "az";
-    // The Azurian bases, depots and shipyards: between the two, never next to each other.
-    var nb = r.int(this.A.enemy.bases), kinds = this.A.enemy.kinds;
+    // The Azurian bases, shipyards and depots: between the two, never next to each other. Some
+    // systems hold two or all three (the big money systems: TexasBont, Nov 7, 2026), each with
+    // its own garrison. h.kind is the first of h.kinds.
+    var E = this.A.enemy, nb = r.int(E.bases), kinds = E.kinds;
     for (var k = 0, tries = 0; k < nb && tries < 200; tries++) {
       var h = this.hexes[this.at(r.int([3, M.cols - 2]), r.int([0, M.rows - 1]))];
       if (h.kind !== "empty" || this.neighbors(h.i).some(function (j) { return self.hexes[j].kind !== "empty"; })) continue;
-      h.kind = kinds[k % kinds.length]; h.owner = "az"; k++;
+      var x = r.next(), n = x < E.combo[1] ? 3 : x < E.combo[0] + E.combo[1] ? 2 : 1, first = kinds[k % kinds.length];
+      h.kinds = [first];
+      while (h.kinds.length < n) { var more = r.pick(kinds); if (h.kinds.indexOf(more) < 0) h.kinds.push(more); }
+      h.kinds.sort(function (a, b) { return kinds.indexOf(a) - kinds.indexOf(b); });
+      h.kind = h.kinds[0]; h.owner = "az"; k++;
     }
   };
   Campaign.prototype.at = function (col, row) { return row * this.cols + col; };
@@ -144,7 +150,7 @@
     var E = this.A.enemy, A = this.A, r = this.rng, self = this;
     var below = A.classes[Math.max(0, A.classes.indexOf(this.top) - E.below)];
     function az(at, role, cls) { return self.group("az", self.pyramid(cls), at, role); }
-    this.hexes.forEach(function (h) { if (h.owner === "az" && h.kind !== "world") az(h.i, "garrison", below); });
+    this.hexes.forEach(function (h) { h.kinds.forEach(function () { az(h.i, "garrison", below); }); });
     for (var g = Math.round(this.size * E.worldGarrison); g > 0; g--) az(this.world, "garrison", below);
     // The world's defences: one fixed force, as strong as a share of our whole fleet.
     var hp = 0, fire = 0; this.ourShips().forEach(function (s) { hp += s.hpMax; fire += s.fire; });
@@ -309,7 +315,7 @@
     this.hexes.forEach(function (h) {
       if (h.owner !== "az") return;
       var ours = self.ours().filter(function (f) { return f.at === h.i; }), theirs = self.theirs().filter(function (f) { return f.at === h.i; });
-      if (ours.length && !theirs.length) { h.owner = "us"; lines.push((h.kind === "world" ? "The target world " : cap(h.kind) + " ") + h.name + " is taken."); }
+      if (ours.length && !theirs.length) { h.owner = "us"; lines.push(h.kind === "world" ? "The target world " + h.name + " is taken." : h.name + "'s " + list(h.kinds) + (h.kinds.length > 1 ? " are" : " is") + " taken."); }
     });
     if (!lines.length) lines.push("No contact.");
     this.log.push({ turn: this.turn, lines: lines });

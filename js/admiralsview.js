@@ -13,7 +13,7 @@
   var S = 30, RT3 = Math.sqrt(3), PAD = 8;            // hex size (centre to corner) and margin, in map units
 
   var c = null, opts = null, sel = [], focus = null, hintDefault = "";
-  var KIND = { home: "Our base", world: "Target world", base: "Azurian base", depot: "Azurian depot", shipyard: "Azurian shipyard", empty: "" };
+  var KIND = { home: "Our base", world: "Target world", empty: "" };
 
   function centre(h) { return { x: PAD + S + 1.5 * S * h.col, y: PAD + RT3 * S * (h.row + 0.5 * (h.col & 1) + 0.5) }; }   // flat-top, odd columns down
   function corners(p) {
@@ -70,7 +70,13 @@
       var t = el("text", { x: p.x, y: p.y - S * 0.55, "class": "adm-name" }, gh); t.textContent = x.name;
       var side = x.owner === "us" ? "us" : "az", k = "adm-mark " + side;
       if (x.kind === "home" || x.kind === "world") el("circle", { cx: p.x, cy: p.y - S * 0.18, r: x.kind === "world" ? 7 : 5, "class": k }, gh);
-      else if (MARK[x.kind]) el("g", { transform: "translate(" + p.x.toFixed(1) + "," + (p.y - S * 0.2).toFixed(1) + ") scale(0.8)", "class": k }, gh).innerHTML = MARK[x.kind];
+      else if (x.kinds.length) {
+        // (two or three marks side by side, smaller to fit)
+        var n = x.kinds.length, sc = [0.8, 0.62, 0.5][n - 1], gap = 16 * sc + 1.5;
+        x.kinds.forEach(function (kd, j) {
+          el("g", { transform: "translate(" + (p.x + (j - (n - 1) / 2) * gap).toFixed(1) + "," + (p.y - S * 0.2).toFixed(1) + ") scale(" + sc + ")", "class": k }, gh).innerHTML = MARK[kd];
+        });
+      }
       else el("circle", { cx: p.x, cy: p.y - S * 0.18, r: 1.6, "class": "adm-star" }, gh);
       Array.prototype.forEach.call(gh.querySelectorAll("text, circle, rect, path, g, polygon:not(.adm-hex)"), function (n) { n.style.pointerEvents = "none"; });
     });
@@ -115,7 +121,8 @@
   }
   function drawSystem() {
     var h = c.hexes[focus], here = c.forces.filter(function (f) { return !f.lost && f.at === focus; });
-    var kind = KIND[h.kind] ? KIND[h.kind] + (h.kind !== "home" && h.owner === "us" ? " (taken)" : "") : "Empty system";
+    var what = h.kinds.length ? "Azurian " + h.kinds.slice(0, -1).join(", ") + (h.kinds.length > 1 ? " and " : "") + h.kinds[h.kinds.length - 1] : KIND[h.kind];
+    var kind = what ? what + (h.kind !== "home" && h.owner === "us" ? " (taken)" : "") : "Empty system";
     $("adm-sys").innerHTML = "<div><b>" + esc(h.name) + "</b></div><div>" + esc(kind) + " · " + c.dist(c.home, focus) + " warps from our base</div>" +
       (here.length ? here.map(function (f) {
         return "<div class='" + (f.side === "us" ? "us" : "az") + "'>" + esc(c.name(f).replace(/^./, function (s) { return s.toUpperCase(); })) + " · " + c.alive(f).length + "/" + f.ships.length + " · " + pct(c.condition(f)) + "</div>";
