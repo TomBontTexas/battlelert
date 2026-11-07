@@ -1302,8 +1302,9 @@
   /* Admirals (approved Nov 6, 2026; stage 1 of 5, the Admirals test): the Fleet Admiral's
      campaign on the hex map (admirals.js). One hex is one star system, one warp; one turn is one
      warp. levels: F3 (the Fleet Commodore) to F8 and G9, each a fleet of one squadron per class,
-     smallest first; squadrons: how many (gunboats are only ever carried on capital ships, so
-     none here: TexasBont, Nov 7, 2026). turns: Fleet HQ's turns for the campaign (base at F3, plus perLevel for
+     smallest first; squadrons: how many. No gunboat squadrons: a capital ship's gunboats stay
+     with her and aren't deployed by the admiral (they still fight at squadron level and below:
+     TexasBont, Nov 7, 2026). turns: Fleet HQ's turns for the campaign (base at F3, plus perLevel for
      each level above). lose: the share of his squadrons lost that fails it. ship: a squadron
      ship's strength in a fight (hp: hull + shields x shieldK; fire: her guns' MW). fight: rounds
      in a turn's fight; k: the share of fire that lands each round; spread: luck per round;
