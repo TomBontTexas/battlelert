@@ -797,3 +797,48 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 .cp-side .cp-drop-pick button { flex: 1 1 30%; }
 #cp-drop.on { background: #3a2f66; border-color: var(--aux); }
 .cp-back { border-color: var(--warn); color: var(--warn); }
+
+/* ---------------------------------------------------------------- Admirals */
+#scr-admirals { display: flex; flex-direction: column; }
+#scr-admirals[hidden] { display: none; }
+.adm-head { display: flex; align-items: center; gap: 12px; padding: 6px 10px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.adm-gap { flex: 1; }
+.adm-body { flex: 1; min-height: 0; display: flex; gap: 10px; padding: 8px 10px; }
+.adm-map { flex: 1; min-width: 0; min-height: 0; display: flex; align-items: center; justify-content: center; }
+#adm-svg { width: 100%; height: 100%; }
+.adm-side { width: 300px; flex: none; overflow-y: auto; font-size: 13px; }
+.adm-side h3 { margin: 10px 0 6px; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.adm-side h3:first-child { margin-top: 0; }
+.adm-btns { display: flex; gap: 6px; margin-bottom: 6px; }
+.adm-sq { display: flex; flex-direction: column; padding: 5px 8px; margin-bottom: 4px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); cursor: pointer; }
+.adm-sq span { color: var(--muted); }
+.adm-sq.sel { border-color: var(--sel); background: var(--panel-2); }
+.adm-sq.lost { opacity: .5; cursor: default; }
+.adm-sq .bad, #adm-sys .az { color: var(--bad); }
+#adm-sys .us { color: var(--charge); }
+.adm-rep { margin-bottom: 8px; }
+.adm-rep .sub { padding-left: 12px; color: var(--muted); }
+.adm-hint { padding: 4px 10px; font-size: 12px; color: var(--muted); border-top: 1px solid var(--line); }
+.adm-hex { fill: var(--panel); stroke: var(--line); stroke-width: 1; cursor: pointer; }
+.adm-hex:hover { fill: var(--panel-2); }
+.adm-hex.us { fill: #12222e; }
+.adm-hex.az { fill: #24161a; }
+.adm-hex.focus { stroke: var(--text); stroke-width: 1.5; }
+.adm-name { font: 6px var(--font); fill: var(--muted); text-anchor: middle; }
+.adm-star { fill: var(--muted); }
+.adm-mark.us { fill: var(--charge); }
+.adm-mark.az { fill: var(--bad); }
+.adm-path { fill: none; stroke: var(--sel); stroke-width: 1.5; stroke-dasharray: 3 2; pointer-events: none; }
+.adm-dest { fill: none; stroke: var(--sel); stroke-width: 2; pointer-events: none; }
+.adm-chip { cursor: pointer; }
+.adm-chip rect { stroke-width: 0.8; }
+.adm-chip.us rect { fill: #1d4a5c; stroke: var(--charge); }
+.adm-chip.az rect { fill: #5a1f1f; stroke: var(--bad); }
+.adm-chip.sel rect { fill: var(--sel); stroke: var(--text); }
+.adm-chip.sel text { fill: #000; }
+.adm-chip text { font: 600 5.5px var(--font); fill: var(--text); text-anchor: middle; dominant-baseline: middle; pointer-events: none; }
+@media (max-width: 760px) {
+  .adm-body { flex-direction: column; overflow-y: auto; }
+  .adm-map { flex: none; aspect-ratio: 1.25; }
+  .adm-side { width: auto; overflow: visible; }
+}

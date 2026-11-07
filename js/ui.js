@@ -48,7 +48,7 @@
   }
 
   /* ------------------------------------------------------------- Screens */
-  var SCREENS = ["scr-title", "scr-enlist", "scr-hub", "scr-offers", "scr-crew", "scr-record", "scr-reports", "scr-registry", "scr-shipcard", "scr-briefing", "scr-console", "scr-turret", "scr-debrief"];
+  var SCREENS = ["scr-title", "scr-enlist", "scr-hub", "scr-offers", "scr-crew", "scr-record", "scr-reports", "scr-registry", "scr-shipcard", "scr-briefing", "scr-console", "scr-turret", "scr-debrief", "scr-admirals"];
   function show(id) { SCREENS.forEach(function (s) { $(s).hidden = s !== id; }); }
   function overlay(id, on) { $(id).hidden = !on; }
   function inConsole() { return !$("scr-console").hidden; }
@@ -128,6 +128,21 @@
     BL.audio.init(); click();
     var seed = parseInt($("seed-input").value, 10);
     startBriefing(squadronJob(seed > 0 ? seed : BL.randomSeed()));
+  };
+  // The Admirals test (approved Nov 6, 2026; stage 1): a Fleet Admiral's campaign on the hex map
+  // with the fleet picked, F3 to F8 or G9 (admirals.js, admiralsview.js).
+  BL.ADMIRALS.levels.forEach(function (lv) { var o = document.createElement("option"); o.value = lv; o.textContent = lv; $("adm-pick").appendChild(o); });
+  $("adm-pick").value = BL.ADMIRALS.levels.indexOf(settings.admPick) >= 0 ? settings.admPick : "F3";
+  function admCount() { $("adm-n").textContent = $("adm-pick").value.slice(1) + " squadrons"; }
+  admCount();
+  $("adm-pick").onchange = function () { settings.admPick = this.value; saveSettings(); admCount(); };
+  $("btn-admirals").onclick = function () {
+    BL.audio.init(); click();
+    var seed = parseInt($("seed-input").value, 10);
+    if (!(seed > 0)) seed = BL.randomSeed();
+    $("seed-input").value = seed;
+    overlay("ov-tests", false); show("scr-admirals");
+    BL.admiralsView.start({ seed: seed, level: $("adm-pick").value, onExit: function () { show("scr-title"); } });
   };
   // Another mission of the same test (the captain's or the squadron's).
   function bridgeTestJob(seed) { return job && job.flag ? squadronJob(seed) : captainJob(seed); }

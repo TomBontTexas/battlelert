@@ -6,7 +6,7 @@
 <meta name="copyright" content="© 2011–2026 Tom Bont. All rights reserved.">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Battlelert</title>
-<link rel="stylesheet" href="css/style.css?b=687a6098">
+<link rel="stylesheet" href="css/style.css?b=c6a8e1c9">
 </head>
 <body>
 
@@ -571,6 +571,38 @@
   </div>
 </section>
 
+<!-- ========================================================= Admirals -->
+<!-- The Fleet Admiral's campaign on the hex map (admirals.js, admiralsview.js; the Admirals test) -->
+<section id="scr-admirals" class="screen" hidden>
+  <header class="adm-head">
+    <b id="adm-title">Admirals</b>
+    <span id="adm-turn" data-hint="Fleet HQ's turns for the campaign. One turn is one warp."></span>
+    <span id="adm-seed" class="muted"></span>
+    <span class="adm-gap"></span>
+    <button id="btn-adm-how" class="small" data-hint="How to play.">How to play</button>
+    <button id="btn-adm-quit" class="small" data-hint="Leave the campaign (nothing is saved).">Quit</button>
+    <button id="btn-adm-end" class="primary" data-hint="Every squadron makes its move, the Azurians make theirs, all at once; then the report. Key: Enter.">End turn</button>
+  </header>
+  <div class="adm-body">
+    <div class="adm-map"><svg id="adm-svg" role="img" aria-label="hex map"></svg></div>
+    <aside class="adm-side">
+      <h3>Your fleet</h3>
+      <div class="adm-btns">
+        <button id="btn-adm-all" class="small" data-hint="Select every squadron (again: none). Key: A.">All</button>
+        <button id="btn-adm-hold" class="small" data-hint="The squadrons selected stay where they are. Key: H.">Hold</button>
+        <button id="btn-adm-flag" class="small" data-hint="Fly your flag with the squadron selected (first turn only). Key: F.">Fly flag</button>
+      </div>
+      <div id="adm-fleet"></div>
+      <h3>System</h3>
+      <div id="adm-sys"></div>
+      <h3>Reports</h3>
+      <div id="adm-report"></div>
+    </aside>
+  </div>
+  <div id="adm-hint" class="adm-hint"></div>
+  <div id="adm-modal" class="overlay" hidden></div>
+</section>
+
 <!-- ============================================================= Tests -->
 <section id="ov-tests" class="overlay" hidden>
   <div class="ov-card">
@@ -588,6 +620,7 @@
       <button id="btn-helm" class="small">Pilot helm</button><span class="muted">ship</span><select id="ship-pick" aria-label="ship"></select>
       <button id="btn-captain" class="small">Captain bridge</button><span class="muted">ship</span><select id="cap-pick" aria-label="ship"></select>
       <button id="btn-squadron" class="small">Squadron</button><span id="sq-n" class="muted">4 ships</span><select id="sq-pick" aria-label="squadron"></select>
+      <button id="btn-admirals" class="small">Admirals</button><span id="adm-n" class="muted">3 squadrons</span><select id="adm-pick" aria-label="fleet"></select>
     </div>
     <div class="test-seed">
       <label for="seed-input">Seed</label>
@@ -706,6 +739,14 @@
       <tr><td>V, + − / F, Esc</td><td>Swap the map and the battle view, zoom, pause, as on the bridge</td></tr>
       <tr><td>Plotting screen</td><td>Plot the flagship's course; tap a ship in YOUR SHIPS to send her to the next target in the report</td></tr>
     </table>
+    <h2>Admirals</h2>
+    <table class="keys">
+      <tr><td>1 to 9</td><td>Select that squadron (again to drop it); tapping its chip on the map or its line in YOUR FLEET does the same</td></tr>
+      <tr><td>Tap a system</td><td>With squadrons selected: send them there (one warp a turn, the shortest way). With none: what's there</td></tr>
+      <tr><td>A / H</td><td>ALL: select every squadron (again: none) / HOLD: the ones selected stay where they are</td></tr>
+      <tr><td>F</td><td>FLY FLAG: your flag goes with the squadron selected (first turn only)</td></tr>
+      <tr><td>Enter / Esc</td><td>END TURN / clear the selection</td></tr>
+    </table>
     <div class="menu"><button id="btn-options-close" class="primary">Done</button></div>
   </div>
 </section>
@@ -805,6 +846,18 @@
       <li><b>Flag bridge</b> (D) drops you down to the flagship's bridge: you captain her yourself, with the bridge's own orders and STATIONS, and her flag captain stands aside. <b>SQUADRON</b> (Q) brings you back. Meanwhile the other ships keep the last orders you gave. In the career it costs, once a mission, 1 squadron reputation and 1 morale to the flag captain.</li>
       <li><b>Score.</b> The objective is half the share of each system's objective destroyed (a dreadnought squadron: all of it, with none to destroy) and half the share of your ships brought home (the flagship one of them; if she's destroyed, the mission is lost); the flagship's condition and navigation as on the bridge; command is half the bridge's and half the share of the systems' targets destroyed.</li>
     </ol>
+    <h2>Admirals</h2>
+    <p>A Fleet Admiral fights a campaign, not a mission: take one Azurian world. To try it: title screen, <b>Tests</b>, <b>Admirals</b>, and pick the fleet: <b>F3</b> (gunboats, pickets and destroyer escorts: a squadron of each) and each level up adds the next class, to <b>F8</b> (battleships) and <b>G9</b> (dreadnoughts too, all nine). The campaign is played in turns on a hex map: each hex is a star system, one warp from the next, and one turn is one warp.</p>
+    <ol class="tight">
+      <li><b>The map.</b> Your fleet starts at our base (blue, at the left). The target world is the big red circle at the right. Red squares, diamonds and triangles are Azurian bases, depots and shipyards, each with a garrison squadron; the world has its own garrison and its defences. Chips are squadrons, with their class (GB gunboats, PK pickets, DE destroyer escorts, DD destroyers, CL light cruisers, CA cruisers, CH heavy cruisers, BB battleships, DN dreadnoughts): blue ours, red theirs. ★ marks your flag.</li>
+      <li><b>Orders.</b> Tap a squadron (or press its number) to select it, then tap a system to send it there: it warps one system a turn, the shortest way, and the dashed line shows its way. Select several to send them together. <b>HOLD</b> keeps the ones selected where they are.</li>
+      <li><b>The turn.</b> <b>END TURN</b> (Enter): your squadrons move, the Azurians move, all at once. Their patrols wander near their bases and jump a lone squadron next to them that's no stronger; their main fleet goes after any of your squadrons within 3 warps, else guards the world; garrisons stay put.</li>
+      <li><b>Fights.</b> Squadrons that come out in the same system fight there, decided off screen; the report says what happened. Firepower and toughness come from the ships' guns, hulls and shields, and each commander's skill and temper count: a cautious one breaks off sooner, an aggressive one fights harder and takes more. A side that breaks off falls back to where it came from. Garrisons and the world's defences fight to the end. Damage stays with a squadron from system to system.</li>
+      <li><b>Taking systems.</b> Your squadrons alone in an Azurian system at the end of a turn take it.</li>
+      <li><b>Winning and losing.</b> Take the target world and the campaign is won. It's lost if Fleet HQ's turns run out, or you lose half your squadrons.</li>
+      <li><b>Your flag.</b> You fly it with one squadron (the biggest to start; on the first turn, select another and <b>FLY FLAG</b> to move it). If the flag squadron is destroyed, shift the flag to another squadron and fight on (take the world and it's still a win), or withdraw, and the campaign is lost.</li>
+    </ol>
+    <p class="muted">Still to come: detachments under commodores and fleet admirals, fog of war and Fleet HQ's reports, hazards, supply and repair, the Azurians' own plans, the career (Fleet Admiral F3 to F8, then Grand Admiral), and the Grand Admiral's four fleet admirals.</p>
     <h2>Pilot training</h2>
     <p>From the career screen, <b>Pilot training</b> puts you at the helm of any ship you're qualified on as a pilot (the gunboat if you aren't yet) on an endless buoy course: no enemies, no captain's orders, all the usual controls. Keep <b>red</b> buoys to port (on your left) and <b>green</b> to starboard; the next one is ringed, with a chevron on the side to pass, and marked in its color on the compass and the ring. The helm panel shows its side, bearing and seconds away, and a tally: passed on the right side, wrong side, hit (the hull touched it) and missed (too wide, or you wandered off and the course starts again ahead). The rating is the share passed on the right side: Excellent 90% and up, Good 75%, Fair 50%, else Needs work. Turning too hard still fills the stress bar and counts structural hits, but does the hull no harm. Fly as long as you like; <b>Exit training</b> shows the summary. Training earns no reputation and isn't saved to your record.</p>
     <p class="muted small-text">Battlelert © 2011–2026 Tom Bont. All rights reserved. Free to play. The code, art and sounds may not be copied, changed or shared without written permission.</p>
@@ -814,7 +867,7 @@
 
 <script src="version.js?b=a654728a"></script>
 <script src="update-banner.js?b=ec7860dd"></script>
-<script src="js/data.js?b=612bfc02"></script>
+<script src="js/data.js?b=2dd301c3"></script>
 <script src="js/sim.js?b=c35bac51"></script>
 <script src="js/agents.js?b=39dd86f3"></script>
 <script src="js/gunnery.js?b=8882d97b"></script>
@@ -834,6 +887,8 @@
 <script src="js/speech.js?b=73f09200"></script>
 <script src="js/audio.js?b=7bd9e9f9"></script>
 <script src="js/ribbons.js?b=2346cc71"></script>
-<script src="js/ui.js?b=cbc3b0c9"></script>
+<script src="js/admirals.js?b=c8abcb4b"></script>
+<script src="js/admiralsview.js?b=8f298d9a"></script>
+<script src="js/ui.js?b=af9a8d66"></script>
 </body>
 </html>
