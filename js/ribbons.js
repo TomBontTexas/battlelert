@@ -6,7 +6,7 @@
    Pilot: sky blue with aviator's wings: P2 one wing, P3 to P5 a spread pair, stars as before.
    Command: royal purple with a gold stripe near each end, with anchors (crossed, rings up).
    Squadron: the command ribbon with twin gold stripes near each end (Nov 6, 2026). Admiral (Nov 7,
-   2026, "deep-space black"): black with a blue centre band and twin silver stripes near each end,
+   2026, "deep-space black"): black sprinkled with stardust, a blue centre band and twin silver stripes near each end,
    one notched arrow, point up, an orbit swept round it: F3 bronze, F4 silver, F5 gold; F6 to F8 a bronze, silver or gold
    star on it; G9 a gold star there and one on either side.
    BL.ribbonSvg(station, rank, width) -> an SVG string, or "" for a path without ribbons yet. */
@@ -21,6 +21,20 @@
   var COLOR = { engineer: "#6e1426", gunner: "#1f8a3e", pilot: "#2f72b8", captain: "#55287f", squadron: "#55287f", admiral: "#0d0f14" };
   var EDGE = { captain: "#d8ab3c", squadron: "#d8ab3c", admiral: "#c3c9d2" };      // (a gold stripe near each end; the admiral's silver)
   var BAND = { admiral: "#2f72b8" };                                           // (a centre band)
+  // The admiral's starfield (TexasBont, Nov 7, 2026: stardust in the black): the same specks on
+  // every ribbon, clear of the stripes and the band, a few brighter.
+  var DUST = (function () {
+    var out = "", x = 7;
+    for (var i = 0; i < 46; i++) {
+      x = (x * 9301 + 49297) % 233280; var px = 10 + (x / 233280) * 90;
+      x = (x * 9301 + 49297) % 233280; var py = 1.5 + (x / 233280) * 27;
+      x = (x * 9301 + 49297) % 233280; var big = x / 233280 > 0.82;
+      if (px > 48 && px < 62) continue;
+      out += '<circle cx="' + px.toFixed(1) + '" cy="' + py.toFixed(1) + '" r="' + (big ? 0.5 : 0.28) + '" fill="#fff" opacity="' + (big ? 0.9 : 0.55) + '"/>';
+    }
+    return out;
+  })();
+  var FIELD = { admiral: DUST };
   var TWIN = { squadron: true, admiral: true };                                // (two, side by side)
   var uid = 0;      // (each ribbon's gradients and masks get their own ids)
 
@@ -122,7 +136,7 @@
       '<rect x="11.4" y="-1.7" width="5" height="3.4" fill="#000"/><circle cx="-11.4" cy="0" r="1.5" fill="#000"/></mask>' +
       '<filter id="' + id + 'sh" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx=".35" dy=".55" stdDeviation=".35" flood-color="#000" flood-opacity=".65"/></filter>' +
       grad(id + "bronze", "bronze") + grad(id + "silver", "silver") + grad(id + "gold", "gold") + "</defs>";
-    var body = '<rect width="110" height="30" fill="' + base + '"/>' + (BAND[station] ? '<rect x="50" width="10" height="30" fill="' + BAND[station] + '"/>' : "") + '<rect width="110" height="30" fill="url(#' + id + 'tx)"/>' +
+    var body = '<rect width="110" height="30" fill="' + base + '"/>' + (BAND[station] ? '<rect x="50" width="10" height="30" fill="' + BAND[station] + '"/>' : "") + (FIELD[station] || "") + '<rect width="110" height="30" fill="url(#' + id + 'tx)"/>' +
       (EDGE[station] ? (TWIN[station] ? [3.2, 7, 101.2, 105] : [4, 103.4]).map(function (x) { return '<rect x="' + x + '" width="' + (TWIN[station] ? 1.8 : 2.6) + '" height="30" fill="' + EDGE[station] + '"/>'; }).join("") : "") +
       '<rect width="110" height="30" fill="url(#' + id + 'sheen)"/><rect x=".4" y=".4" width="109.2" height="29.2" fill="none" stroke="#000" stroke-opacity=".45" stroke-width=".8"/>';
     return '<svg class="ribbon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 110 30" width="' + w + '" height="' + (w * 3 / 11).toFixed(1) + '" role="img" aria-label="' + station + " " + rank + ' ribbon">' +
