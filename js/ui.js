@@ -3319,7 +3319,7 @@
       }).join("") : '<tr><td colspan="7" class="muted">No missions yet.</td></tr>');
     show("scr-record");
   }
-  $("btn-record-back").onclick = function () { click(); showHub(); };
+  $("btn-record-back").onclick = $("btn-record-top").onclick = function () { click(); showHub(); };
   $("rec-grid").onclick = $("rec-history").onclick = function (ev) { var r = ev.target.closest("[data-rep]"); if (r) { click(); showReports(r.dataset.rep, "record"); } };
 
   /* ------------------------------------------------------ Mission reports
