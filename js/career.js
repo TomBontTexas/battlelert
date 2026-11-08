@@ -199,8 +199,15 @@
   // Squadron command, class by class: open once you've had BL.CAPTAINS.opens successful command
   // missions on the class; held once you've had a successful squadron mission on it.
   function commandWins(c, n) { return (c.stations.captain.wins || {})[n] || 0; }
-  function squadronOpen(c, n) { return built("squadron", n) && commandWins(c, n) >= BL.CAPTAINS.opens; }
-  function squadronWins(c, n) { return (c.stations.squadron.wins || {})[n] || 0; }
+  // (a ladder too: above the gunboat, BL.CAPTAINS.opens successful squadron missions on the class
+  // below as well (TexasBont, Nov 7, 2026); a class already commanded stays open)
+  // (command's part done: its BL.CAPTAINS.opens command successes, which once alone opened the squadron)
+  function commandDone(c, n) { return built("squadron", n) && commandWins(c, n) >= BL.CAPTAINS.opens; }
+  function squadronOpen(c, n) {
+    return built("squadron", n) && commandWins(c, n) >= BL.CAPTAINS.opens &&
+      (n === 1 || squadronWins(c, n - 1) >= BL.CAPTAINS.opens || squadronWins(c, n) > 0);
+  }
+  function squadronWins(c, n) { return ((c.stations.squadron || {}).wins || {})[n] || 0; }
   function squadronClasses(c) { return BL.CLASSES.filter(function (k) { return squadronWins(c, k.n) > 0; }).map(function (k) { return k.n; }); }
 
   /* ------------------------------------------------------------ Offers
@@ -264,7 +271,7 @@
       if (!BL.classByN(n) || !built(station, n)) return;
       if (cmd && n > q && !canCommand(c, n)) return;      // (command of a class: the command ladder, canCommand)
       // (a class whose squadron is open: the rest of its story moves to the requalifying jobs; TexasBont, Nov 6, 2026)
-      if (cmd && squadronOpen(c, n)) return;
+      if (cmd && commandDone(c, n)) return;
       var left = storyLeft(c, station, n);
       left.forEach(function (m, i) { out.push(makeJob(rng, station, n, i === 0 ? lowTL(n) : anyTL(rng, n), true, m)); });
       if (!left.length && n > q && !storyComplete(c, station)) {
@@ -274,7 +281,7 @@
     });
     // Command: the class you command has no story left and the next isn't open yet: plain jobs on it
     // (not once its squadron is open: then it's Squadron jobs and requalifying; TexasBont, Nov 6, 2026).
-    if (cmd && q >= 1 && !squadronOpen(c, q) && !out.some(function (j) { return j.n === q; }) && !out.some(function (j) { return j.n > q; })) {
+    if (cmd && q >= 1 && !commandDone(c, q) && !out.some(function (j) { return j.n === q; }) && !out.some(function (j) { return j.n > q; })) {
       out.push(makeJob(rng, station, q, lowTL(q)));
       for (var i = rng.int([1, 2]); i > 0; i--) out.push(makeJob(rng, station, q, anyTL(rng, q)));
     }
@@ -286,12 +293,12 @@
      reputation: a story mission you haven't flown there, else a plain one (TexasBont, Nov 4, 2026). */
   function squadronWork(c, rng, out) {
     for (var n = 1; n < qualified(c, "captain"); n++) {
-      if (!built("captain", n) || !built("squadron", n) || squadronOpen(c, n)) continue;
+      if (!built("captain", n) || !built("squadron", n) || commandDone(c, n)) continue;
       var m = storyLeft(c, "captain", n)[0];
       out.push(m ? makeJob(rng, "captain", n, anyTL(rng, n), false, m) : makeJob(rng, "captain", n, lowTL(n), false));
     }
   }
-  function needsSquadronWork(c, n) { return n < qualified(c, "captain") && built("captain", n) && built("squadron", n) && !squadronOpen(c, n); }
+  function needsSquadronWork(c, n) { return n < qualified(c, "captain") && built("captain", n) && built("squadron", n) && !commandDone(c, n); }
   function offers(c, station) { return c.offersBy[station] || []; }
   // Every ship in a list of jobs is a different ship: a repeat gets a new name of its class and tech level.
   // A lost gunboat's PT number is never drawn again; a named ship lost in action comes back as a new
@@ -434,7 +441,7 @@
     var sq = offers(c, "squadron");
     if (BL.CLASSES.some(function (k) { return squadronOpen(c, k.n) && !squadronDone(c, k.n) && !sq.some(function (o) { return o.n === k.n; }); })) generateOffers(c, "squadron");
     // (a job on a class whose squadron is now open: drawn again without it)
-    if (offers(c, "captain").some(function (o) { return o.serious && squadronOpen(c, o.n); })) generateOffers(c, "captain");
+    if (offers(c, "captain").some(function (o) { return o.serious && commandDone(c, o.n); })) generateOffers(c, "captain");
     if (offers(c, "captain").some(function (o) { return !o.by; })) offeredBy(c, offers(c, "captain"), BL.rng(c.offerSeed + 13));
   }
   // Tech levels for a class (BL.TECH.levels): the lowest, and any one at random.
@@ -471,7 +478,7 @@
       return uniqueShips(out, rng, c);
     }
     for (var n = 1; n <= q; n++) {
-      if (n === q && !(station === "captain" && hasStory(station) && squadronOpen(c, n))) continue;
+      if (n === q && !(station === "captain" && hasStory(station) && commandDone(c, n))) continue;
       if (!built(station, n)) continue;
       if (hasStory(station)) { storyLeft(c, station, n).forEach(function (m) { out.push(makeJob(rng, station, n, anyTL(rng, n), false, m)); }); continue; }
       BL.TECH.levels(BL.classByN(n).id).forEach(function (tl) { out.push(makeJob(rng, station, n, tl, false)); });
@@ -752,7 +759,7 @@
     signoffsTotal: signoffsTotal, signoffsHeld: signoffsHeld, signoffOptions: signoffOptions, spendSignoff: spendSignoff,
     offers: offers, generateOffers: generateOffers, lowerJobs: lowerJobs, repFor: repFor, REP: REP,
     applyResult: applyResult, profile: profile, serviceRecord: serviceRecord,
-    squadronOpen: squadronOpen, squadronWins: squadronWins, squadronClasses: squadronClasses, commandWins: commandWins, brass: brass, brassName: brassName,
+    squadronOpen: squadronOpen, squadronWins: squadronWins, squadronClasses: squadronClasses, commandWins: commandWins, commandDone: commandDone, brass: brass, brassName: brassName,
     storyComplete: storyComplete, storyLeft: storyLeft,
     admiralOffer: admiralOffer, admiralRank: admiralRank, admiralNeeds: admiralNeeds, admiralTitle: admiralTitle, admiralPicker: admiralPicker, applyAdmiral: applyAdmiral, ADM_TL: ADM_TL
   };

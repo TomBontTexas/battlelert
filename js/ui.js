@@ -2830,13 +2830,16 @@
         if (!BL.career.PLAYABLE[st]) return k.n === 1 ? '<td class="later" colspan="9">' + later[st] + "</td>" : "";
         // (squadron command: class by class, open after 3 successful command missions on it)
         var sqRib = st === "squadron" && BL.career.squadronWins(c, k.n) && BL.ribbonSvg ? BL.ribbonSvg(st, k.n, 80) : "";
+        // (squadron: the count of squadron successes beside the ribbon until 3/3, as on the Command row)
+        var sw = st === "squadron" ? BL.career.squadronWins(c, k.n) : 0, need = BL.CAPTAINS.opens;
+        if (sqRib && sw < need) return '<td class="qpart rib" data-rep="' + st + ":" + k.n + '" title="Squadron commanded; ' + sw + " of " + need + ' successes (the next class\u2019s squadron opens at ' + need + ')">' + BL.ribbonSvg(st, k.n, 58) + '<span class="cg-cnt">' + sw + "/" + need + "</span></td>";
         if (sqRib) return '<td class="q rib" data-rep="' + st + ":" + k.n + '" title="Squadron commanded: S' + k.n + ' ribbon: tap for its mission reports">' + sqRib + "</td>";
-        if (st === "squadron") return BL.career.squadronWins(c, k.n) ? '<td class="q" title="Squadron commanded">✔</td>' : BL.career.squadronOpen(c, k.n) ? '<td class="next" title="Open to you">▶</td>' :
+        if (st === "squadron") return sw ? '<td class="q" title="Squadron commanded">✔</td>' : BL.career.squadronOpen(c, k.n) ? '<td class="next" title="Open to you: 0 of ' + need + ' successes">▶ 0/' + need + "</td>" :
           '<td class="off">' + (BL.career.built(st, k.n) ? "" : "·") + "</td>";
         var ready = BL.career.built(st, k.n);
         // (command: the square shows the command successes and turns green at 3/3, when that
         // class's squadron opens: TexasBont, Nov 4, 2026)
-        if (k.n <= q && st === "captain" && BL.career.built("squadron", k.n) && !BL.career.squadronOpen(c, k.n))
+        if (k.n <= q && st === "captain" && BL.career.built("squadron", k.n) && !BL.career.commandDone(c, k.n))
           return '<td class="qpart' + (BL.ribbonSvg ? " rib" : "") + '" data-rep="' + st + ":" + k.n + '" title="Qualified; ' + BL.career.commandWins(c, k.n) + " of " + BL.CAPTAINS.opens + ' command successes toward this class’s squadron">' +
             (BL.ribbonSvg ? BL.ribbonSvg(st, k.n, 58) + '<span class="cg-cnt">' : "✔ ") + BL.career.commandWins(c, k.n) + "/" + BL.CAPTAINS.opens + (BL.ribbonSvg ? "</span>" : "") + "</td>";     // (the ribbon, and the count beside it)
         // (a path with ribbons shows each rank's ribbon in place of the tick: BL.ribbonSvg)
@@ -2847,7 +2850,7 @@
         return '<td class="off">' + (ready ? "" : "·") + "</td>";
       }).join("") + "</tr>";
     }).join("") + admiralRow(c, jobs);
-    return '<table class="cgrid' + (jobs ? " jobs" : "") + '">' + head + "<tbody>" + rows + "</tbody></table><p class=\"muted small-text\">" + (jobs ? "Tap a row's name for its job offers, a ribbon for its mission reports · " : "Tap a ribbon for its mission reports · ") + "✔ qualified (each path shows the rank's ribbon) · ▶ working toward · dot = not built yet · Command: 1/3 beside a ribbon counts command successes; at 3/3 that class's squadron opens · Squadron: ribbon commanded, ▶ open</p>";
+    return '<table class="cgrid' + (jobs ? " jobs" : "") + '">' + head + "<tbody>" + rows + "</tbody></table><p class=\"muted small-text\">" + (jobs ? "Tap a row's name for its job offers, a ribbon for its mission reports · " : "Tap a ribbon for its mission reports · ") + "✔ qualified (each path shows the rank's ribbon) · ▶ working toward · dot = not built yet · Command: 1/3 beside a ribbon counts command successes; at 3/3 that class's squadron opens · Squadron: 1/3 beside a ribbon counts squadron successes; a class's squadron opens with 3/3 on its command and 3/3 on the squadron class below; ▶ open</p>";
   }
   // The admiral path's row (TexasBont, Nov 7, 2026): F3 to F8 and G9 under the class at the top of
   // each level's fleet (destroyer escort 3 ... dreadnought 9): ✔ stepped up from, ▶ the level he's at.
@@ -3053,7 +3056,7 @@
     var cls = BL.classByN(j.n), q = BL.career.qualified(career, j.station), up = j.n > q, rankName = BL.career.STATION_NAME[j.station];
     var tag = up ? '<span class="tag up">' + (q ? "STEP UP" : "FIRST QUALIFICATION") + "</span>" : !j.serious ? '<span class="tag low">REQUALIFYING</span>' : "";
     // (a lower class's command job still short of its squadron: how far along)
-    if (j.station === "captain" && !up && career && j.n < q && !BL.career.squadronOpen(career, j.n))
+    if (j.station === "captain" && !up && career && j.n < q && !BL.career.commandDone(career, j.n))
       tag += '<span class="tag">SQUADRON ' + BL.career.commandWins(career, j.n) + "/" + BL.CAPTAINS.opens + "</span>";
     if (j.escort) tag += '<span class="tag">ESCORT MISSION</span>';
     // Ship and hull number with the tech level; reputation; then who you'd serve with and the guns.
@@ -3115,9 +3118,9 @@
       var cq = BL.career.qualified(career, "captain"), needs = BL.career.commandNeeds(career, cq + 1);
       var open = BL.CLASSES.filter(function (k) { return BL.career.squadronOpen(career, k.n); }).length;
       $("offers-lede").textContent = station === "squadron" ? "Squadron postings, offered by the fleet admirals: you command a squadron of like ships from the flagship, plotting its course and giving its orders; your flag captain runs the flagship and a captain runs every other ship. Each job suggests captains from your captains pool and the flagship's crew from your crew pool; you can change any of them before the briefing. " +
-        (open ? "Squadron command is open on " + open + " class" + (open === 1 ? "" : "es") + ". " : "None yet: ") + "A class's squadron opens after " + BL.CAPTAINS.opens + " successful command missions on it; once you have " + BL.CAPTAINS.opens + " successful squadron missions on a class (what the admiral path asks), its jobs move to Requalifying jobs. Each ship lost costs a point of squadron reputation, and so does taking the flagship's bridge." : station === "captain" ? (
+        (open ? "Squadron command is open on " + open + " class" + (open === 1 ? "" : "es") + ". " : "None yet: ") + "A class's squadron opens after " + BL.CAPTAINS.opens + " successful command missions on it and, above the gunboat, " + BL.CAPTAINS.opens + " successful squadron missions on the class below; once you have " + BL.CAPTAINS.opens + " successful squadron missions on a class (what the admiral path asks), its jobs move to Requalifying jobs. Each ship lost costs a point of squadron reputation, and so does taking the flagship's bridge." : station === "captain" ? (
         "Command postings: you're on the bridge, plotting each system's course and giving the orders; your crew carry them out. Each job suggests a crew from your crew pool, and you can change any post before the briefing. A gunboat's commander is its coxswain. On the gunboat and destroyer escort some are escort missions." +
-        (!shownJobs.length && BL.career.squadronOpen(career, cq) ? " No command jobs now: your " + BL.classByN(cq).name.toLowerCase() + " squadron is open, so take Squadron jobs; story missions you skipped are under Requalifying jobs." : "") +
+        (!shownJobs.length && BL.career.commandDone(career, cq) ? " No command jobs now: your " + BL.classByN(cq).name.toLowerCase() + " command successes are done, so take Squadron jobs; story missions you skipped are under Requalifying jobs." : "") +
         (cq >= 9 ? "" : needs.length ? " Command of the " + BL.classByN(cq + 1).name.toLowerCase() + " needs " + needs.join(" and ") + "." : " Command of the " + BL.classByN(cq + 1).name.toLowerCase() + " is open to you.")) : (station === "gunner"
         ? "Postings for gunners at your level. Each lists the ship's guns and names the engineer who'll run your power and the gun crew."
         : station === "pilot"
