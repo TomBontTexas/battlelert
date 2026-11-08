@@ -470,6 +470,9 @@
           .sort(function (a, b) { return a.d - b.d; })[0];
         next = near ? self.stepToward(f.at, near.o.at) : self.dist(f.at, self.world) > 1 ? self.stepToward(f.at, self.world) : f.at;
       }
+      // (F3: nobody goes into the destination world until the convoy is in; they wait outside:
+      // TexasBont, Nov 7, 2026)
+      if (self.convoyMode && !self.won && next === self.world) next = f.at;
       f.next = next;
     });
   };
