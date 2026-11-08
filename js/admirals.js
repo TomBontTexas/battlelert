@@ -572,11 +572,25 @@
      (state "battle"): battleStep fights one round at a time, and it stops for him each time our
      side's damage reaches the mark he set (first fight.ask); he withdraws or fights on
      (battleChoice) and the turn ends once it's decided. */
+  /* Damage control (TexasBont, Nov 8, 2026): the crews patching up between fights. The turn after a
+     battle, each ship still afloat, on either side, gets back half of that battle's damage, whether
+     it warps, stays or fights again; the rest takes a full turn without combat at a shipyard. True
+     if anything was mended. */
+  Campaign.prototype.dcRepair = function (f) {
+    var any = false;
+    this.alive(f).forEach(function (s) {
+      if (s.lastHit > 0) { s.hp = Math.min(s.hpMax, s.hp + s.lastHit / 2); any = true; }
+      s.lastHit = 0;
+    });
+    return any;
+  };
   Campaign.prototype.endTurn = function () {
     if (this.state !== "play") return null;
-    var self = this, lines = [], flagFight = null;
+    var self = this, lines = [], flagFight = null, mended = [];
     this.flagSet = true;
     this.turnLines = lines;
+    this.forces.forEach(function (f) { if (!f.lost && self.dcRepair(f) && f.side === "us") mended.push(self.desc(f)); });
+    if (mended.length) lines.push("Damage control: our " + list(mended) + " repaired half of their last battle's damage.");
     this.visBefore = this.visibleSet();               // (warping into a system he couldn't see: an ambush, if they're there)
     this.enemyMoves();
     this.forces.forEach(function (f) {
@@ -620,8 +634,10 @@
       arriving.forEach(function (f) { self.alive(f).forEach(function (s) { targets.push({ s: s, f: f }); before[s.cls] = (before[s.cls] || 0) + 1; }); });
       var tot = targets.reduce(function (a, t) { return a + t.s.hpMax; }, 0), gone = {};
       targets.forEach(function (t) {
+        var h0 = t.s.hp;
         t.s.hp -= dmg * (t.s.hpMax / tot) * (A.temper[t.f.cmd.temper] || [1, 1])[1] * r.range([0.6, 1.4]);
         if (t.s.hp <= 0) { t.s.hp = 0; gone[t.s.cls] = (gone[t.s.cls] || 0) + 1; }
+        t.s.lastHit = (t.s.lastHit || 0) + Math.max(0, h0 - t.s.hp);
       });
       arriving.forEach(function (f) { if (!self.alive(f).length) f.lost = true; });
       var ls = A.classes.slice().reverse().filter(function (c) { return gone[c]; }).map(function (c) { return gone[c] === 1 ? "a " + BL.classById(c).name.toLowerCase() : gone[c] + " " + A.plural[c]; });
@@ -676,7 +692,7 @@
       if (f.prev !== f.at || self.fought[f.at] || h.owner !== "us" || (h.yard || h.kinds).indexOf("shipyard") < 0) return;
       var hurt = f.ships.filter(function (s) { return s.hp > 0 && s.hp < s.hpMax; });
       if (!hurt.length) return;
-      hurt.forEach(function (s) { s.hp = s.hpMax; });
+      hurt.forEach(function (s) { s.hp = s.hpMax; s.lastHit = 0; });
       (fixed[h.name] = fixed[h.name] || []).push(self.desc(f));
     });
     Object.keys(fixed).forEach(function (n) { lines.push("Repaired at " + n + "'s shipyard: our " + list(fixed[n]) + "."); });
@@ -761,7 +777,7 @@
     // (an ambush: he warped in blind, a system none of his ships could see at the turn's start)
     b.ambush = !!this.visBefore && !this.visBefore[at] && us.some(function (f) { return f.prev !== at; });
     if (b.ambush) b.events.push("Ambush! We warped in blind: our fire is down for the first " + this.A.ambush.rounds + " rounds.");
-    us.concat(az).forEach(function (f) { b.names[f.id] = f.side === "us" ? self.desc(f) : self.name(f); b.before[f.id] = self.alive(f).length; });
+    us.concat(az).forEach(function (f) { b.names[f.id] = f.side === "us" ? self.desc(f) : self.name(f); b.before[f.id] = self.alive(f).length; f.ships.forEach(function (s) { s.hp0 = Math.max(0, s.hp); }); });
     b.hpUs = this.hpOf(us); b.hpAz = this.hpOf(az);
     b.flagAlive = this.flagShip.hp > 0 && us.some(function (f) { return f.ships.indexOf(self.flagShip) >= 0; });
     return b;
@@ -813,7 +829,7 @@
   // The result: one line per side, then each force destroyed or broken off.
   Campaign.prototype.battleEnd = function (b, lines) {
     var self = this, h = this.hexes[b.at], us = b.us, az = b.az;
-    us.concat(az).forEach(function (f) { f.ships.forEach(function (s) { if (s.hp < 0) s.hp = 0; }); });
+    us.concat(az).forEach(function (f) { f.ships.forEach(function (s) { if (s.hp < 0) s.hp = 0; s.lastHit = (s.lastHit || 0) + Math.max(0, (s.hp0 || 0) - s.hp); }); });
     var wl = this.lostIn(b, us), el = this.lostIn(b, az), pc = function (x) { return Math.round(100 * x) + "%"; };
     lines.push("At " + h.name + ": our " + list(us.map(function (f) { return b.names[f.id]; })) + " met " + list(az.map(function (f) { return b.names[f.id]; })) + "." + (b.ambush ? " An ambush: we warped in blind." : ""));
     lines.push("    We lost " + wl + " ship" + (wl === 1 ? "" : "s") + " (" + pc(this.damage(b, "us")) + " damage); they lost " + el + " (" + pc(this.damage(b, "az")) + " damage).");
