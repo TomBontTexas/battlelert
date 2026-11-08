@@ -48,7 +48,7 @@
   }
 
   /* ------------------------------------------------------------- Screens */
-  var SCREENS = ["scr-title", "scr-enlist", "scr-hub", "scr-offers", "scr-crew", "scr-record", "scr-reports", "scr-registry", "scr-shipcard", "scr-briefing", "scr-console", "scr-turret", "scr-debrief", "scr-admirals"];
+  var SCREENS = ["scr-title", "scr-enlist", "scr-hub", "scr-offers", "scr-crew", "scr-record", "scr-reports", "scr-memoriam", "scr-registry", "scr-shipcard", "scr-briefing", "scr-console", "scr-turret", "scr-debrief", "scr-admirals"];
   function show(id) { SCREENS.forEach(function (s) { $(s).hidden = s !== id; }); }
   function overlay(id, on) { $(id).hidden = !on; }
   function inConsole() { return !$("scr-console").hidden; }
@@ -3301,6 +3301,33 @@
      station on that class, newest first, each with its ship, systems, outcome and score, and a story
      mission's after-action line. (The career keeps the last 1000 missions.) */
   var rpFrom = "hub";
+  /* In Memoriam (TexasBont, Nov 8, 2026): every man killed in action on his ships, crew and
+     squadron captains, newest first: name and his qualification (the path's letter and the class
+     he served on: E-3 an engineer on destroyer escorts, G-4 a gunner on destroyers, P pilot,
+     C a ship's captain), his post and ship, and when. */
+  function memClass(k) {
+    if (k.classId) return BL.classById(k.classId).n;
+    var code = (/(?:^| )([A-Z]+)-\d+$/.exec(k.ship || "") || [])[1], id = code && Object.keys(BL.HULL_CODES).filter(function (c) { return BL.HULL_CODES[c] === code; })[0];
+    return id ? BL.classById(id).n : code === "PT" ? 1 : 0;
+  }
+  function showMemoriam() {
+    var c = career, all = [];
+    ((c.crew || {}).kia || []).forEach(function (k, i) {
+      var gun = /^gun /.test(k.at || ""), pil = k.at === "pilot" || k.post === "pilot";
+      all.push({ k: k, i: i, q: gun ? "G" : pil ? "P" : "E", post: gun ? "Gun " + k.at.slice(4) : pil ? "Helm" : "Engineering" });
+    });
+    ((c.captains || {}).kia || []).forEach(function (k, i) { all.push({ k: k, i: i + 0.5, q: "C", post: "Commanding officer" }); });
+    all.sort(function (a, b) { var x = (b.k.date || "") + (b.k.time || ""), y = (a.k.date || "") + (a.k.time || ""); return x < y ? -1 : x > y ? 1 : a.i - b.i; });
+    $("mem-sum").textContent = all.length ? all.length + " killed in action under your command." : "No one has been lost under your command.";
+    $("mem-list").innerHTML = all.map(function (x) {
+      var k = x.k, n = memClass(k), g = n ? x.q + "-" + n : "";
+      return '<div class="rp-card mem"><div class="rp-top"><b>' + esc(k.name) + (g ? ", " + g : "") + "</b></div>" +
+        '<div class="rp-facts"><div>' + x.post + "</div><div>" + esc(k.ship) + (k.tl != null ? " (TL" + k.tl + ")" : "") + "</div><div>Killed in action " + starDate(k) + "</div></div></div>";
+    }).join("");
+    show("scr-memoriam"); window.scrollTo(0, 0);
+  }
+  $("btn-hub-memoriam").onclick = function () { click(); showMemoriam(); };
+  $("btn-mem-back").onclick = $("btn-mem-top").onclick = function () { click(); showHub(); };
   /* Report dates a thousand years on, to the minute: 3026.11.08.21.56 (TexasBont, Nov 8, 2026;
      older records have no time). */
   function starDate(x) {

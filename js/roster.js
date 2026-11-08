@@ -179,7 +179,7 @@
       if (r.captain && (r.captain.replaced || []).indexOf(m.id) >= 0) m.morale = Math.round(clamp(m.morale + R.morale.replaced, 0, 100));
     });
     lost.forEach(function (x) {
-      cr.kia.unshift({ name: name(x.m), post: x.m.post, at: x.at, ship: ship, date: entry.date });
+      cr.kia.unshift({ name: name(x.m), post: x.m.post, at: x.at, ship: ship, classId: job.classId, tl: job.tl, date: entry.date, time: entry.time });
       cr.men.splice(cr.men.indexOf(x.m), 1);
     });
     cr.last = { engineer: ids.engineer, pilot: ids.pilot, guns: ids.guns.slice() };

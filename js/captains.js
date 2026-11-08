@@ -156,7 +156,7 @@
       if (x.gone) { m.out = C.out; out.push({ name: name(m), ship: x.ship }); }
     });
     lost.forEach(function (x) {
-      P.kia.unshift({ name: name(x.m), ship: x.ship, classId: job.classId, date: entry.date });
+      P.kia.unshift({ name: name(x.m), ship: x.ship, classId: job.classId, tl: job.tl, date: entry.date, time: entry.time, flag: !!x.flag });
       var list = P.byClass[job.classId]; list.splice(list.indexOf(x.m), 1);
     });
     P.last[job.classId] = { flag: ids.flag, wing: ids.wing.slice() };

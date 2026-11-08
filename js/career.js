@@ -572,9 +572,9 @@
     if (success) p.wins++; else p.losses++;
     report.profileAfter = profile(c, job.station);
     // Command: the roster crew's losses, growth and morale (BL.roster.afterMission); then reputation.
-    if (cp && BL.roster) report.crew = BL.roster.afterMission(c, job, r, { date: today() });
+    if (cp && BL.roster) report.crew = BL.roster.afterMission(c, job, r, { date: today(), time: now() });
     // Squadron command: the captains' losses, growth and morale (BL.captains.afterMission).
-    if (squad && BL.captains) report.captains = BL.captains.afterMission(c, job, r, { date: today() });
+    if (squad && BL.captains) report.captains = BL.captains.afterMission(c, job, r, { date: today(), time: now() });
     var sqRep = squad && cp && cp.squad ? { shipsLost: cp.squad.lost + cp.squad.left, flagBridge: !!cp.squad.flagBridge } : null;
     report.repParts = repParts(job.station, r.outcome, job.tl, cp && r.detail ? r.detail.squadronsLost || 0 : 0, report.crew ? report.crew.lost.length : 0, cp && cp.dropped, sqRep);
     var repWas = st.rep;

@@ -6,7 +6,7 @@
 <meta name="copyright" content="© 2011–2026 Tom Bont. All rights reserved.">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Battlelert</title>
-<link rel="stylesheet" href="css/style.css?b=d353dd3c">
+<link rel="stylesheet" href="css/style.css?b=3f3a9b56">
 </head>
 <body>
 
@@ -61,6 +61,7 @@
       <button id="btn-hub-signoffs">Rapid sign-offs</button>
       <button id="btn-hub-record">Service record</button>
       <button id="btn-hub-registry">Naval registry</button>
+      <button id="btn-hub-memoriam">In Memoriam</button>
       <button id="btn-hub-export">Export career</button>
       <button id="btn-hub-options">Options</button>
       <button id="btn-hub-title">Title screen</button>
@@ -111,6 +112,16 @@
     <p id="rp-sum" class="muted"></p>
     <div id="rp-list" class="rp-list"></div>
     <div class="actions"><button id="btn-rp-back">Back</button></div>
+  </div>
+</section>
+
+<!-- ===================================================== In Memoriam (every man killed in action under him) -->
+<section id="scr-memoriam" class="screen page" hidden>
+  <div class="sheet">
+    <div class="rp-head"><h1>In Memoriam</h1><span></span><button id="btn-mem-top">Career hub</button></div>
+    <p id="mem-sum" class="muted"></p>
+    <div id="mem-list" class="rp-list"></div>
+    <div class="actions"><button id="btn-mem-back">Career hub</button></div>
   </div>
 </section>
 
@@ -774,7 +785,7 @@
 <section id="ov-how" class="overlay" hidden>
   <div class="ov-card wide">
     <h1>How to play</h1>
-    <p>A career aboard the warships carrying humanity's planet buster. Take jobs as engineer, gunner or pilot from the gunboat up to the dreadnought. Once you're qualified at all three stations on a class, and have commanded the class below, you may command it: <b>Command jobs</b>, from coxswain of a gunboat to captain of a dreadnought (rank Command-N; rapid sign-offs don't count toward command, but the station qualifications they give do). Every row shows each rank's ribbon (maroon: E1 plain, E2 a bronze wrench, E3 to E5 crossed wrenches in bronze, silver and gold, E6 to E8 a bronze, silver or gold star where they cross, E9 a gold star there and one either side); the gunner row the same in green, with crossed sabers for wrenches; the pilot row in sky blue, with aviator's wings (P2 one wing, then a spread pair); the command row in royal purple with a gold bar near each end, with anchors; the squadron row the same as command with twin gold bars at each end. The admiral row is a black starfield with a blue centre band and twin silver bars at each end, with a notched arrow in an orbit ring: F3 bronze, F4 silver, F5 gold, F6 to F8 a bronze, silver or gold star on it, G9 a gold star there and one either side. Tap a ribbon for that class's mission reports on that path. On the career hub, tap a row's name on the career chart (<b>Engineer ›</b>, <b>Command ›</b> and so on) for that path's job offers. Each station has its own storyline of the war: three story missions per ship class, in any order, each offered until you complete it, and the dreadnought's three are versions of the storyline's finale (winning one completes it). Story missions you skip show under Requalifying jobs; a successful mission qualifies you on that class. Two failures on one class's missions (your own class or the one above it) send you back to two classes below it, on every path: E3 failing twice on E4 jobs is E2, and C4 failing twice on destroyers is C2. Win there to requalify. Command jobs are story missions too: the Captain storyline, from Coxswain on a gunboat to the planet buster on a dreadnought, with your orders from Commodore Rusk and advice from Captain Vale; some on the gunboat and destroyer escort are escort missions. Once you've played every story mission on the class you command and can't yet command the next, plain Command jobs fill in, until that class's squadron opens. Every Command job is offered by one of the class's three named commodores, and the job says what he values (bold commanders, ships brought home, objectives met and so on). After 3 successful command missions on a class you can command a squadron of that class (the career grid counts them beside the Command ribbon, 2/3, until 3/3). Until then, every class below the one you command keeps one job in your Command jobs, tagged with your count (SQUADRON 2/3); it's a requalifying job, at half reputation. Once a class's squadron is open, the rest of its story moves to Requalifying jobs, your own class's too. Then come <b>Squadron jobs</b>, offered by four named fleet admirals (see Commanding a squadron). Squadron command is a ladder too: above the gunboat, a class's squadron also needs 3 successful squadron missions on the class below (the Squadron row counts them, 1/3 beside the ribbon). Squadron jobs list only the classes still short of 3 successful squadron missions; a class with its 3 moves to Requalifying jobs. After 3 successful squadron missions on the destroyer escort, the <b>Admiral</b> row opens: fleet campaigns, F3 (Fleet Commodore) up to F8, then G9, the Grand Admiral (see Admirals). Each level opens with 3 successful squadron missions on the class at the top of its fleet (F3 destroyer escorts, F4 destroyers ... G9 dreadnoughts) and promotion from the level below; the offer waits while you fly as many squadron missions as you like. <b>Reputation</b> is your standing in the fleet, one for each path (a fine engineer can be a poor pilot): it starts at 50 and goes up and down with every mission. A success +1, and +2 more at tech level 5 or +1 at tech level 6 (a success in an old ship gets talked about); a failure −1; ship destroyed −2; abandoned ship −1. On the bridge also: escorted ship lost −1, planet buster drop missed −3, a gunboat squadron left behind −3, and −1 for each crewman killed. Squadron command has its own reputation, scored the same way, with −1 for each ship of the squadron lost (left behind included) and −1 for taking the flagship's bridge. It never goes below 0. Your command reputation decides who will sign on with you, your squadron reputation which captains will serve under you. Every ship is named after a real warship and keeps a service record in your career file. A ship destroyed or abandoned is lost: its record is closed, and the next ship of that name is a new one with a new hull number (a lost gunboat's PT number never comes back). The career hub's <b>Naval registry</b> lists every ship by class and tech level; tap one for its card: its picture, its statistics and its service career.</p>
+    <p>A career aboard the warships carrying humanity's planet buster. Take jobs as engineer, gunner or pilot from the gunboat up to the dreadnought. Once you're qualified at all three stations on a class, and have commanded the class below, you may command it: <b>Command jobs</b>, from coxswain of a gunboat to captain of a dreadnought (rank Command-N; rapid sign-offs don't count toward command, but the station qualifications they give do). Every row shows each rank's ribbon (maroon: E1 plain, E2 a bronze wrench, E3 to E5 crossed wrenches in bronze, silver and gold, E6 to E8 a bronze, silver or gold star where they cross, E9 a gold star there and one either side); the gunner row the same in green, with crossed sabers for wrenches; the pilot row in sky blue, with aviator's wings (P2 one wing, then a spread pair); the command row in royal purple with a gold bar near each end, with anchors; the squadron row the same as command with twin gold bars at each end. The admiral row is a black starfield with a blue centre band and twin silver bars at each end, with a notched arrow in an orbit ring: F3 bronze, F4 silver, F5 gold, F6 to F8 a bronze, silver or gold star on it, G9 a gold star there and one either side. Tap a ribbon for that class's mission reports on that path. On the career hub, tap a row's name on the career chart (<b>Engineer ›</b>, <b>Command ›</b> and so on) for that path's job offers. Each station has its own storyline of the war: three story missions per ship class, in any order, each offered until you complete it, and the dreadnought's three are versions of the storyline's finale (winning one completes it). Story missions you skip show under Requalifying jobs; a successful mission qualifies you on that class. Two failures on one class's missions (your own class or the one above it) send you back to two classes below it, on every path: E3 failing twice on E4 jobs is E2, and C4 failing twice on destroyers is C2. Win there to requalify. Command jobs are story missions too: the Captain storyline, from Coxswain on a gunboat to the planet buster on a dreadnought, with your orders from Commodore Rusk and advice from Captain Vale; some on the gunboat and destroyer escort are escort missions. Once you've played every story mission on the class you command and can't yet command the next, plain Command jobs fill in, until that class's squadron opens. Every Command job is offered by one of the class's three named commodores, and the job says what he values (bold commanders, ships brought home, objectives met and so on). After 3 successful command missions on a class you can command a squadron of that class (the career grid counts them beside the Command ribbon, 2/3, until 3/3). Until then, every class below the one you command keeps one job in your Command jobs, tagged with your count (SQUADRON 2/3); it's a requalifying job, at half reputation. Once a class's squadron is open, the rest of its story moves to Requalifying jobs, your own class's too. Then come <b>Squadron jobs</b>, offered by four named fleet admirals (see Commanding a squadron). Squadron command is a ladder too: above the gunboat, a class's squadron also needs 3 successful squadron missions on the class below (the Squadron row counts them, 1/3 beside the ribbon). Squadron jobs list only the classes still short of 3 successful squadron missions; a class with its 3 moves to Requalifying jobs. After 3 successful squadron missions on the destroyer escort, the <b>Admiral</b> row opens: fleet campaigns, F3 (Fleet Commodore) up to F8, then G9, the Grand Admiral (see Admirals). Each level opens with 3 successful squadron missions on the class at the top of its fleet (F3 destroyer escorts, F4 destroyers ... G9 dreadnoughts) and promotion from the level below; the offer waits while you fly as many squadron missions as you like. <b>Reputation</b> is your standing in the fleet, one for each path (a fine engineer can be a poor pilot): it starts at 50 and goes up and down with every mission. A success +1, and +2 more at tech level 5 or +1 at tech level 6 (a success in an old ship gets talked about); a failure −1; ship destroyed −2; abandoned ship −1. On the bridge also: escorted ship lost −1, planet buster drop missed −3, a gunboat squadron left behind −3, and −1 for each crewman killed. Squadron command has its own reputation, scored the same way, with −1 for each ship of the squadron lost (left behind included) and −1 for taking the flagship's bridge. It never goes below 0. Your command reputation decides who will sign on with you, your squadron reputation which captains will serve under you. Every ship is named after a real warship and keeps a service record in your career file. A ship destroyed or abandoned is lost: its record is closed, and the next ship of that name is a new one with a new hull number (a lost gunboat's PT number never comes back). The career hub's <b>Naval registry</b> lists every ship by class and tech level; tap one for its card: its picture, its statistics and its service career. <b>In Memoriam</b> lists every man killed in action under you, crew and squadron captains, newest first: his name and qualification (the path's letter and the class he served on: E-3 an engineer on destroyer escorts, G-4 a gunner on destroyers, P a pilot, C a ship's captain), his post, his ship and when.</p>
     <h2>The engine room</h2>
     <p>The reactor can't feed everything at once, so you decide where the power goes, second by second.</p>
     <ol class="tight">
@@ -894,7 +905,7 @@
   </div>
 </section>
 
-<script src="version.js?b=e5cf7f13"></script>
+<script src="version.js?b=a9db5957"></script>
 <script src="update-banner.js?b=ec7860dd"></script>
 <script src="js/data.js?b=02ac997f"></script>
 <script src="js/sim.js?b=c35bac51"></script>
@@ -910,14 +921,14 @@
 <script src="js/bridgeview.js?b=d06c2cb7"></script>
 <script src="js/names.js?b=08410f0b"></script>
 <script src="js/story.js?b=b3779fd3"></script>
-<script src="js/captains.js?b=21c22b10"></script>
-<script src="js/roster.js?b=6ef1bed9"></script>
-<script src="js/career.js?b=414aceac"></script>
+<script src="js/captains.js?b=48672b3e"></script>
+<script src="js/roster.js?b=351b9b61"></script>
+<script src="js/career.js?b=72029b15"></script>
 <script src="js/speech.js?b=73f09200"></script>
 <script src="js/audio.js?b=7bd9e9f9"></script>
 <script src="js/ribbons.js?b=7eceb924"></script>
 <script src="js/admirals.js?b=51c203e2"></script>
 <script src="js/admiralsview.js?b=2e091e53"></script>
-<script src="js/ui.js?b=c519cd84"></script>
+<script src="js/ui.js?b=72459fc3"></script>
 </body>
 </html>
