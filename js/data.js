@@ -659,7 +659,7 @@
     // holding targets get hit); pace = how much slower than the gun's best rate they fire;
     // strain = how much worse all of it gets once the hull is under half or the crew is crippled.
     crew: { skill: [0.25, 0.85], react: [1.6, 0.6], notice: 1.5, aimErr: [16, 5], loose: [2.5, 1.3], wrong: [0.5, 0.1], settle: 2.5, pace: [1.8, 1.2], strain: 1.2,
-            ranks: ["Gunner's Mate", "Petty Officer", "Chief"] },
+            ranks: ["Gunner's Mate", "Gunner's Mate", "Gunner's Mate"] }, // (one title for every grade, E-1 to E-9 and so on: TexasBont, Nov 8, 2026)
     // Standing orders for the gun crew, one per gun. Each fight one of them is suggested: hunt if
     // the gun's weapon is best against the enemy, else point defense against torpedoes. A gun whose
     // order was never picked ("auto") follows the suggestion. key = its letter in the menu.
@@ -684,7 +684,7 @@
     // The AI engineer at the gunner station: skill rolled per mission (1 = the old perfect AI).
     // Gunboats draw from the better end: they are the easy first job.
     engineer: { skill: { gunboat: [0.6, 0.95], other: [0.3, 0.95] },
-      ranks: ["Engineer's Mate", "Petty Officer", "Chief"],
+      ranks: ["Engineer's Mate", "Engineer's Mate", "Engineer's Mate"], // (one title for every grade, E-1 to E-9 and so on: TexasBont, Nov 8, 2026)
       // Every crewman's names, drawn from the Dallas–Fort Worth population: Texas's common given
       // names (SSA state lists) and the area's common surnames, in rough proportion to its people.
       // The captain's crew pool never gives two men the same first or last name (js/roster.js).
@@ -708,7 +708,7 @@
         "Nguyen", "Tran", "Le", "Pham", "Patel", "Shah", "Kim", "Lee", "Park", "Chen", "Wang", "Huang", "Singh", "Reddy",
         "Okafor", "Adeyemi", "Mensah", "Tesfaye"] },
     // The bridge pilot (BL.pickPilot): skill as the engineer's; names from the engineer's lists.
-    pilot: { ranks: ["Pilot's Mate", "Petty Officer", "Chief"] },
+    pilot: { ranks: ["Helmsman", "Helmsman", "Helmsman"] }, // (one title for every grade, E-1 to E-9 and so on: TexasBont, Nov 8, 2026)
     // How each encounter's enemies look and fly. count = ships per wave (the wave's toughness is
     // split between them); band = the height they hold; sway = side-to-side swing; dive = how far
     // they swoop down now and then.

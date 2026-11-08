@@ -3321,7 +3321,9 @@
     $("mem-sum").textContent = all.length ? all.length + " killed in action under your command." : "No one has been lost under your command.";
     $("mem-list").innerHTML = all.map(function (x) {
       var k = x.k, n = memClass(k), g = n ? x.q + "-" + n : "";
-      return '<div class="rp-card mem"><div class="rp-top"><b>' + esc(k.name) + (g ? ", " + g : "") + "</b></div>" +
+      // (crew by their one title: older records carry the old Petty Officer and Chief)
+      var nm = x.q === "C" ? k.name : { G: "Gunner's Mate", E: "Engineer's Mate", P: "Helmsman" }[x.q] + " " + k.name.replace(/^(Gunner's Mate|Engineer's Mate|Pilot's Mate|Helmsman|Petty Officer|Chief) /, "");
+      return '<div class="rp-card mem"><div class="rp-top"><b>' + esc(nm) + (g ? ", " + g : "") + "</b></div>" +
         '<div class="rp-facts"><div>' + x.post + "</div><div>" + esc(k.ship) + (k.tl != null ? " (TL" + k.tl + ")" : "") + "</div><div>Killed in action " + starDate(k) + "</div></div></div>";
     }).join("");
     show("scr-memoriam"); window.scrollTo(0, 0);
