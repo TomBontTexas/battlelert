@@ -367,12 +367,15 @@
     return offers;
   }
   /* Squadron jobs, offered by the named fleet admirals (BL.BRASS): on every class whose squadron
-     command is open, a lowest-tech job from the admiral who rates you best, and one more at any
-     tech level from an admiral whose bar you pass. */
+     command is open and that doesn't yet have the BL.CAPTAINS.opens successful squadron missions
+     the admiral path asks of it (TexasBont, Nov 7, 2026; the rest are requals: lowerJobs), a
+     lowest-tech job from the admiral who rates you best, and one more at any tech level from an
+     admiral whose bar you pass. */
+  function squadronDone(c, n) { return squadronWins(c, n) >= BL.CAPTAINS.opens; }
   function squadronOffers(c, rng) {
     var offers = [], B = brass(c);
     BL.CLASSES.forEach(function (k) {
-      if (!squadronOpen(c, k.n)) return;
+      if (!squadronOpen(c, k.n) || squadronDone(c, k.n)) return;
       var rated = B.admirals.map(function (a) { return { a: a, v: weigh(c, a, "squadron") }; }).sort(function (x, y) { return y.v - x.v; });
       offers.push(byWhom(makeJob(rng, "squadron", k.n, lowTL(k.n)), rated[0].a));
       var pass = rated.filter(function (x) { return x.v >= x.a.bar; });
@@ -429,7 +432,7 @@
     // (a squadron command newly open: the squadron offers are drawn again; command offers saved
     // before the named commodores get theirs)
     var sq = offers(c, "squadron");
-    if (BL.CLASSES.some(function (k) { return squadronOpen(c, k.n) && !sq.some(function (o) { return o.n === k.n; }); })) generateOffers(c, "squadron");
+    if (BL.CLASSES.some(function (k) { return squadronOpen(c, k.n) && !squadronDone(c, k.n) && !sq.some(function (o) { return o.n === k.n; }); })) generateOffers(c, "squadron");
     // (a job on a class whose squadron is now open: drawn again without it)
     if (offers(c, "captain").some(function (o) { return o.serious && squadronOpen(c, o.n); })) generateOffers(c, "captain");
     if (offers(c, "captain").some(function (o) { return !o.by; })) offeredBy(c, offers(c, "captain"), BL.rng(c.offerSeed + 13));
@@ -456,6 +459,17 @@
   function lowerJobs(c, station) {
     var q = qualified(c, station), out = [];
     var rng = BL.rng(c.offerSeed + 7);
+    // (squadron: the classes with their squadron missions done, a job each from the admiral who rates you best)
+    if (station === "squadron") {
+      var B = brass(c);
+      BL.CLASSES.forEach(function (k) {
+        if (!squadronOpen(c, k.n) || !squadronDone(c, k.n)) return;
+        var best = B.admirals.map(function (a) { return { a: a, v: weigh(c, a, "squadron") }; }).sort(function (x, y) { return y.v - x.v; })[0];
+        out.push(byWhom(makeJob(rng, "squadron", k.n, anyTL(rng, k.n), false), best.a));
+      });
+      out.sort(function (a, b) { return b.n - a.n; });
+      return uniqueShips(out, rng, c);
+    }
     for (var n = 1; n <= q; n++) {
       if (n === q && !(station === "captain" && hasStory(station) && squadronOpen(c, n))) continue;
       if (!built(station, n)) continue;

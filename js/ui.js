@@ -3108,14 +3108,14 @@
     offersMode = mode; offersStation = station = station || offersStation;
     var q = BL.career.qualified(career, station), who = BL.career.STATION_NAME[station];
     $("btn-offers-lower").textContent = mode === "lower" ? who + " job offers" : "Requalifying jobs";
-    $("btn-offers-lower").hidden = station === "squadron";
+    $("btn-offers-lower").hidden = false;
     if (mode === "offers") {
       shownJobs = BL.career.offers(career, station);
       $("offers-title").textContent = who + " jobs";
       var cq = BL.career.qualified(career, "captain"), needs = BL.career.commandNeeds(career, cq + 1);
       var open = BL.CLASSES.filter(function (k) { return BL.career.squadronOpen(career, k.n); }).length;
       $("offers-lede").textContent = station === "squadron" ? "Squadron postings, offered by the fleet admirals: you command a squadron of like ships from the flagship, plotting its course and giving its orders; your flag captain runs the flagship and a captain runs every other ship. Each job suggests captains from your captains pool and the flagship's crew from your crew pool; you can change any of them before the briefing. " +
-        (open ? "Squadron command is open on " + open + " class" + (open === 1 ? "" : "es") + ". " : "None yet: ") + "A class's squadron opens after " + BL.CAPTAINS.opens + " successful command missions on it. Each ship lost costs a point of squadron reputation, and so does taking the flagship's bridge." : station === "captain" ? (
+        (open ? "Squadron command is open on " + open + " class" + (open === 1 ? "" : "es") + ". " : "None yet: ") + "A class's squadron opens after " + BL.CAPTAINS.opens + " successful command missions on it; once you have " + BL.CAPTAINS.opens + " successful squadron missions on a class (what the admiral path asks), its jobs move to Requalifying jobs. Each ship lost costs a point of squadron reputation, and so does taking the flagship's bridge." : station === "captain" ? (
         "Command postings: you're on the bridge, plotting each system's course and giving the orders; your crew carry them out. Each job suggests a crew from your crew pool, and you can change any post before the briefing. A gunboat's commander is its coxswain. On the gunboat and destroyer escort some are escort missions." +
         (!shownJobs.length && BL.career.squadronOpen(career, cq) ? " No command jobs now: your " + BL.classByN(cq).name.toLowerCase() + " squadron is open, so take Squadron jobs; story missions you skipped are under Requalifying jobs." : "") +
         (cq >= 9 ? "" : needs.length ? " Command of the " + BL.classByN(cq + 1).name.toLowerCase() + " needs " + needs.join(" and ") + "." : " Command of the " + BL.classByN(cq + 1).name.toLowerCase() + " is open to you.")) : (station === "gunner"
