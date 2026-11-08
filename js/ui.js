@@ -147,7 +147,7 @@
     if (!(seed > 0)) seed = BL.randomSeed();
     $("seed-input").value = seed;
     overlay("ov-tests", false); show("scr-admirals");
-    BL.admiralsView.start({ seed: seed, level: $("adm-pick").value, onExit: function () { show("scr-title"); } });
+    BL.admiralsView.start({ seed: seed, level: $("adm-pick").value, onExit: function () { home(); } });
   };
   // Another mission of the same test (the captain's or the squadron's).
   function bridgeTestJob(seed) { return job && job.flag ? squadronJob(seed) : captainJob(seed); }
@@ -278,7 +278,7 @@
   }
   // A roster man's temperament and morale (Command jobs; the skill shown is his skill in battle, morale included).
   function tmLine(p) { return p && p.temper ? ", " + p.temper + " temper, morale " + p.morale : ""; }
-  $("btn-brief-back").onclick = function () { click(); if (job.test) show("scr-title"); else if (job.captain && BL.roster) showCrew(job); else showOffers(offersMode); };
+  $("btn-brief-back").onclick = function () { click(); if (job.test) home(); else if (job.captain && BL.roster) showCrew(job); else showOffers(offersMode); };
   $("btn-brief-go").onclick = function () { click(); startMission(); };
   // The captain test: another mission on the same ship, at random (the briefing, or the first plot).
   $("btn-brief-new").onclick = function () { click(); startBriefing(bridgeTestJob(BL.randomSeed())); };
@@ -2987,8 +2987,10 @@
   $("btn-adm-offer-close").onclick = function () { click(); overlay("ov-adm-offer", false); };
   /* Pilot training (training.js): any class the pilot is qualified on (a new pilot: the gunboat). */
   var trainClass = null;
+  // (the Starforce Academy, from the career hub: back there after; TexasBont, Nov 7, 2026)
+  function home() { if (career) showHub(); else show("scr-title"); }
   $("btn-hub-train").onclick = function () {
-    click();
+    click(); overlay("ov-tests", false);
     var q = Math.max(1, BL.career.qualified(career, "pilot"));
     $("train-ships").innerHTML = BL.CLASSES.filter(function (c) { return c.n <= q && c.built && BL.GUNNERY.ring.classes[c.id]; }).map(function (c) {
       return '<button class="primary" data-cls="' + c.id + '">' + c.name + "</button>";
