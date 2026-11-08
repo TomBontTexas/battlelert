@@ -522,7 +522,7 @@
   // once a mission; dropping down from there to a station counts on top, as at command)
   function repParts(station, outcome, tl, squadrons, killed, dropped, sq) {
     var cmd = station === "captain" || station === "squadron", out = [];
-    if (outcome === "success") { out.push(["success", REP.success]); if (REP.tlBonus[tl]) out.push(["tech level " + tl, REP.tlBonus[tl]]); }
+    if (outcome === "success") { out.push(["success", REP.success]); if (REP.tlBonus[tl]) out.push(["Tech Level " + tl, REP.tlBonus[tl]]); }
     else if (outcome === "destroyed") out.push(["ship destroyed", REP.destroyed]);
     else if (outcome === "abandoned") out.push(["abandoned ship", REP.abandoned]);
     else if (cmd && outcome === "wardLost") out.push(["escorted ship lost", REP.wardLost]);

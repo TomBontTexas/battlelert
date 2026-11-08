@@ -308,7 +308,7 @@
         "<button data-ask='1'>Fight to the last ship</button><button id='adm-pull' class='primary'>Withdraw</button>"
       : "<button id='adm-pull'>Withdraw now</button>";
     var away = c.dist(t.atI, c.home);
-    m.innerHTML = "<div class='ov-card wide adm-battle'><h1><span class='adm-bsw'>⚔</span> Battle at " + esc(t.at) + " · round " + t.round + "</h1>" +
+    m.innerHTML = "<div class='ov-card wide adm-battle'><h1><span class='adm-bsw'>⚔</span> Battle at " + esc(t.at) + " · Round " + t.round + "</h1>" +
       "<p class='adm-bwhere'>★ Your flag's fight · " + esc(t.at) + ", " + (away ? away + " warp" + (away === 1 ? "" : "s") + " from " + esc(c.hexes[c.home].name) : "our base") + " · the gold ring on the map</p>" +
       "<div class='adm-bsides'><div class='adm-btot us'><b>Ours</b> lost " + t.usLost + " ship" + (t.usLost === 1 ? "" : "s") + " · " + pcx(t.usDmg) + " damage</div>" +
       "<div class='adm-btot az'><b>Azurian</b> lost " + t.azLost + " ship" + (t.azLost === 1 ? "" : "s") + " · " + pcx(t.azDmg) + " damage</div></div>" +
@@ -329,7 +329,7 @@
   function flagModal() {
     $("adm-modal").classList.remove("docked");
     var m = $("adm-modal"), us = c.ours().filter(function (f) { return f.role !== "convoy" && f.role !== "defences"; });
-    m.innerHTML = "<div class='ov-card'><h1>The flagship is lost</h1><p>Shift your flag to another force and fight on (take the world and it's still a win), or withdraw: the campaign ends, scoring what your forces hold.</p>" +
+    m.innerHTML = "<div class='ov-card'><h1>The Flagship Is Lost</h1><p>Shift your flag to another force and fight on (take the world and it's still a win), or withdraw: the campaign ends, scoring what your forces hold.</p>" +
       "<div class='menu'>" + us.map(function (f) { return "<button data-id='" + f.id + "'>Shift the flag to the " + esc(c.desc(f)) + "</button>"; }).join("") +
       "<button id='adm-withdraw'>Withdraw</button></div></div>";
     m.hidden = false;
@@ -456,14 +456,14 @@
     }).join("");
     var T = BL.career.admiralTitle(c.levelNum), who = opts.career && opts.career.name ? T.who + " " + opts.career.name : T.who;
     var ready = tally && tally.banked != null ? tally.banked : null;
-    m.innerHTML = "<div class='ov-card wide adm-write'><h1>" + (done ? "After-Action Report" : head) + "</h1>" +
+    m.innerHTML = "<div class='ov-card wide adm-write'><h1>" + (done ? "After-Action Report" : BL.titleCase(head)) + "</h1>" +
       "<p class='orders-head'>FLEET COMMAND" + (done ? " · AFTER-ACTION REPORT" : "") + "</p>" +
       "<p><b>From:</b> " + esc(who) + ", " + T.fleet + " · <b>Operation:</b> " + esc(u.world) + "</p>" +
       "<p>" + obj + esc(why) + "</p>" +
       (sec ? "<p><b>Secondary objective:</b> " + sec + "</p>" : "") +
       "<p><b>Losses:</b> " + (u.usLost ? "We lost " + u.usLost + " of " + u.usTotal + " ships." : "None. All " + u.usTotal + " ships came through.") + " The Azurians lost " + u.azLost + " of " + u.azTotal + ".</p>" +
-      "<h3>Engagements (★ under your flag)</h3>" + bt +
-      (fit ? "<h3>Fleet status</h3>" + fit : "") +
+      "<h3>Engagements (★ Under Your Flag)</h3>" + bt +
+      (fit ? "<h3>Fleet Status</h3>" + fit : "") +
       (ready != null ? "<p><b>Intelligence:</b> " + (c.busterMode ? "Azurian homeworld readiness was down " + ready + "% when the Grand Fleet went in." : ready ? "Your operations to date have cut Azurian homeworld readiness by <b>" + ready + "%</b>." : "The Azurian homeworld stands at full readiness.") + "</p>" : "") +
       (tally && tally.command ? "<p><b>Command:</b> " + esc(tally.command) + "</p>" : "") +
       (tally && tally.rep != null ? "<p class='muted'>Admiral reputation " + (tally.rep >= 0 ? "+" : "") + tally.rep + "</p>" : "") +

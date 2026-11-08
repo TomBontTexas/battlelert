@@ -171,6 +171,20 @@
     var k = BL.COMMAND.squad.skipper[classId];
     return k ? text.replace(/captain/g, k[0]).replace(/Captain/g, k[1]) : text;
   }
+  /* Titles as titles (TexasBont, Nov 8, 2026): every major word capitalized ("Plot the Course"),
+     small words (a, the, of, in ...) lower case unless first, last or after a colon. */
+  var MINOR = /^(a|an|the|and|but|or|nor|of|in|on|at|by|to|for|with|from|as|per|vs)$/;
+  function tc(s) {
+    var ws = []; String(s).replace(/[A-Za-z][A-Za-z']*/g, function (w, i) { ws.push([w, i]); return w; });
+    var out = String(s);
+    for (var k = ws.length - 1; k >= 0; k--) {
+      var w = ws[k][0], i = ws[k][1], pre = out.slice(0, i).replace(/\s+$/, "");
+      var force = k === 0 || k === ws.length - 1 || /[:·(—?!]$/.test(pre);
+      if ((force || !MINOR.test(w)) && /^[a-z]/.test(w)) out = out.slice(0, i) + w.charAt(0).toUpperCase() + w.slice(1) + out.slice(i + w.length);
+    }
+    return out;
+  }
+  BL.titleCase = tc;
   // (after "flag coxswain" his rank isn't said again)
   function noCox(classId, name) { var k = BL.COMMAND.squad.skipper[classId]; return k ? String(name).replace(new RegExp("^" + k[1] + " "), "") : name; }
   /* ------------------------------------------------------------ Briefing */
@@ -213,7 +227,7 @@
         (sim.sys("buster") && i === sim.cfg.jumps - 1 ? ". The drop: no warp out. The planet buster must be launched from the drop zone within " + sim.cfg.dropLate + " s of the window opening " + sim.windowFor(i) + " s after arrival, or the mission fails."
           : sim.hasDrive ? ". Warp window opens " + sim.windowFor(i) + " s after arrival." : ". The carrier recovers you " + sim.windowFor(i) + " s after launch.") + "</li>";
     }).join("") + (sim.sys("buster") ? "<li>The target: an Azurian " + sim.world + " world. Drop the planet buster on it.</li>" : "");
-    $("brief-ship-title").textContent = (j.flag ? "Your flagship: " : "Your ship: ") + (j.test ? cls.name : BL.shipLabel(j.classId, j.ship, j.hull)) + " (TL" + j.tl + ")";
+    $("brief-ship-title").textContent = (j.flag ? "Your Flagship: " : "Your Ship: ") + (j.test ? cls.name : BL.shipLabel(j.classId, j.ship, j.hull)) + " (TL" + j.tl + ")";
     var html = [
       d.reactors.length > 1 ? "<div><span>Reactors</span> " + d.reactors.map(function (x) { return x.name + " " + x.mw + " MW"; }).join(", ") + "</div>"
         : "<div><span>Reactor safe output</span> " + d.reactorMW + " MW</div>",
@@ -239,6 +253,8 @@
     $("brief-eng").hidden = gunner; $("brief-gun").hidden = !gunner;
     $("brief-station").textContent = sim.flag ? cap(j.classId, "Your post: squadron commander (you plot the squadron's course and give its orders; your flag captain runs the flagship)") : sim.captain ? "Your post: the bridge (you plot the course and give the orders; your crew carry them out)" : sim.helm ? "Your station: the helm (the " + sim.helm.who.toLowerCase() + " gives the orders; the engineer runs the power)" :
       gunner ? "Your station: Gun 1 (the engineer runs the power)" : "Your station: Main Engineering";
+    // (the title part title-cased, its explanation in brackets left as a sentence)
+    $("brief-station").textContent = $("brief-station").textContent.replace(/^[^(]*/, function (t) { return tc(t); });
     $("brief-helm").hidden = !sim.helm || !!sim.captain;
     $("brief-captain").hidden = !sim.captain || sim.flag;
     // A squadron: its ships, the flag captain and the captains (each order takes a few seconds to reach them).
@@ -2195,7 +2211,7 @@
     if (c.escort && !c.escort.flag) { c.setPlot(i, BL.navPlot(map, plotGOf)); BL.speech.unlock(); sim.beginJump(); running = true; speakNew(); return; }
     plotEd = { i: i, map: map, plot: old ? { pts: old.pts.map(function (p) { return { x: p.x, y: p.y }; }), eng: old.eng.slice() }
       : blankPlot(map) };
-    $("pl-title").textContent = sim.flag ? "Plan the attack · system " + (i + 1) + " of " + sim.cfg.jumps : "Plot the course · system " + (i + 1) + " of " + sim.cfg.jumps + " · " + BL.ENCOUNTERS[sim.reported(i)].name;
+    $("pl-title").textContent = tc(sim.flag ? "Plan the attack · system " + (i + 1) + " of " + sim.cfg.jumps : "Plot the course · system " + (i + 1) + " of " + sim.cfg.jumps + " · " + BL.ENCOUNTERS[sim.reported(i)].name);
     $("pl-squad").hidden = !sim.flag;
     $("pl-new").hidden = !(job && job.test && i === 0);
     overlay("ov-plot", true);
@@ -2310,7 +2326,7 @@
       "<li>Torpedoes stopped by shields: " + js.shielded + " of " + js.salvos + "</li>" +
       "<li>Hull damage taken: " + js.hullLost + "</li>" +
       (dmg.length ? "<li>Damage: " + dmg.map(function (d) { return d.what; }).join("; ") + "</li>" : "") + "</ul>" +
-      (next ? "<h2>Next: " + next.name + "</h2><p>" + next.what + ". The drive will be empty again on arrival. Plot its course next; the clock is stopped.</p>" : "");
+      (next ? "<h2>Next: " + tc(next.name) + "</h2><p>" + next.what + ". The drive will be empty again on arrival. Plot its course next; the clock is stopped.</p>" : "");
   }
   // The warp space report's squadron line: each ship's hull (a squadron only).
   function squadLine() {
@@ -2448,7 +2464,7 @@
       "<li>Hull damage taken: " + js.hullLost + "</li>" +
       (dmg.length ? "<li>Damage: " + dmg.map(function (d) { return d.what; }).join("; ") + "</li>" : "") +
       (next && sim.lastRepairs && sim.lastRepairs.length ? "<li>Damage control repaired half of it: " + sim.lastRepairs.join("; ") + "</li>" : "") +
-      "</ul>" + (next ? "<h2>Next: " + next.name + "</h2><p>" + gunnerTip(sim.route[sim.jumpIndex]) + (sim.hasDrive ? "" : " You'll be back in the launch tube.") + "</p>" +
+      "</ul>" + (next ? "<h2>Next: " + tc(next.name) + "</h2><p>" + gunnerTip(sim.route[sim.jumpIndex]) + (sim.hasDrive ? "" : " You'll be back in the launch tube.") + "</p>" +
       "<p class='muted'>Take a breath; the clock is stopped.</p>" : "");
   }
   function debriefHelm(r) {
@@ -2510,8 +2526,8 @@
     gravFinal = !!final;
     var n = sim.stats.jumps.length, js = sim.stats.jumps[n - 1], next = final ? null : BL.ENCOUNTERS[sim.shown(sim.jumpIndex)];
     var dmg = sim.stats.damageReports.filter(function (d) { return d.jump === n; });
-    $("grav-title").textContent = final ? (sim.sys("buster") ? "The drop: planet buster away on the " + sim.world + " world" : sim.hasDrive ? "Warp " + n + " of " + sim.cfg.jumps + " complete" : "Sortie " + n + " of " + sim.cfg.jumps + " complete: back aboard the carrier")
-      : sim.hasDrive ? "In warp space: warp " + n + " of " + sim.cfg.jumps + " complete" : "Aboard the carrier: sortie " + n + " of " + sim.cfg.jumps + " complete";
+    $("grav-title").textContent = tc(final ? (sim.sys("buster") ? "The drop: planet buster away on the " + sim.world + " world" : sim.hasDrive ? "Warp " + n + " of " + sim.cfg.jumps + " complete" : "Sortie " + n + " of " + sim.cfg.jumps + " complete: back aboard the carrier")
+      : sim.hasDrive ? "In warp space: warp " + n + " of " + sim.cfg.jumps + " complete" : "Aboard the carrier: sortie " + n + " of " + sim.cfg.jumps + " complete");
     $("btn-grav-go").textContent = final ? "Mission debriefing" : sim.captain ? "Plot the next course" : sim.hasDrive ? "Drop out of warp space" : "Launch";
     if (sim.turret) { $("grav-body").innerHTML = sim.captain ? gravCaptain(js, dmg, next, n) : sim.helm ? gravHelm(js, dmg, next, n) : gravGunner(js, dmg, next, n); overlay("ov-grav", true); return; }
     $("grav-body").innerHTML =
@@ -2525,7 +2541,7 @@
       (dmg.length ? "<li>Damage: " + dmg.map(function (d) { return d.what; }).join("; ") + "</li>" : "") +
       (!final && sim.lastRepairs && sim.lastRepairs.length ? "<li>Damage control repaired half of it: " + sim.lastRepairs.join("; ") + "</li>" : "") +
       "</ul>" +
-      (final ? "" : "<h2>Next: " + next.name + "</h2><p>" + next.what + ". Tests: " + next.tests.toLowerCase() + (sim.hasDrive ? ". The drive will be empty again on arrival." : ". The carrier launches you again on arrival.") + "</p>" +
+      (final ? "" : "<h2>Next: " + tc(next.name) + "</h2><p>" + next.what + ". Tests: " + next.tests.toLowerCase() + (sim.hasDrive ? ". The drive will be empty again on arrival." : ". The carrier launches you again on arrival.") + "</p>" +
       "<p class='muted'>Take a breath; the clock is stopped. You can adjust the priority order once you're back on the console.</p>");
     overlay("ov-grav", true);
   }
@@ -2550,7 +2566,7 @@
       "<li>Hull damage taken: " + js.hullLost + "</li>" +
       (dmg.length ? "<li>Damage: " + dmg.map(function (d) { return d.what; }).join("; ") + "</li>" : "") +
       (next && sim.lastRepairs && sim.lastRepairs.length ? "<li>Damage control repaired half of it: " + sim.lastRepairs.join("; ") + "</li>" : "") +
-      "</ul>" + (next ? "<h2>Next: " + next.name + "</h2><p>" + gunnerTip(sim.route[sim.jumpIndex]) + (sim.hasDrive ? "" : " The carrier launches you again on arrival.") + "</p>" +
+      "</ul>" + (next ? "<h2>Next: " + tc(next.name) + "</h2><p>" + gunnerTip(sim.route[sim.jumpIndex]) + (sim.hasDrive ? "" : " The carrier launches you again on arrival.") + "</p>" +
       "<p class='muted'>Take a breath; the clock is stopped.</p>" : "");
   }
   var ENGINEER_NOTE = {
@@ -2600,12 +2616,13 @@
     show("scr-debrief");
     $("db-title").textContent = r.outcome === "success" ? (r.hasDrive ? (sim.sys("buster") ? "Mission complete: planet buster delivered" : "Mission complete") : "Sortie complete: recovered by the carrier") :
       r.outcome === "destroyed" ? "Ship destroyed" : r.outcome === "dropMissed" ? "Drop window missed: the planet buster never launched" : r.outcome === "wardLost" ? (r.captain && r.captain.escort ? r.captain.escort.name.replace(/^./, function (x) { return x.toUpperCase(); }) : "Carrier") + " lost" : r.outcome === "leftBehind" ? "Left behind: the carrier's hangar bay was destroyed" : r.outcome === "objectiveMissed" ? "Objective missed: the squadron warped on with it still standing" : "Abandoned ship";
+    $("db-title").textContent = tc($("db-title").textContent);
     if (r.testWin) $("db-title").textContent += " (test win)";
     $("db-lede").textContent = (job.test ? "" : BL.shipLabel(job.classId, job.ship, job.hull) + " (TL" + r.tl + ") · ") + "Seed " + r.seed + " · " +
       r.jumpsDone + " of " + sim.cfg.jumps + (r.hasDrive ? " warps · " : " sorties · ") + d.minutes + " minutes · hull " + r.hull + " / " + r.hullMax +
       (r.looks ? " · looked at the paused console " + r.looks + (r.looks === 1 ? " time" : " times") + " (−" + (100 - Math.round(100 * r.score / Math.max(1, r.raw))) + "%)" : "");
     $("db-score").textContent = r.score;
-    $("db-jumps-title").textContent = r.hasDrive ? "Warp by warp" : "Sortie by sortie";
+    $("db-jumps-title").textContent = r.hasDrive ? "Warp by Warp" : "Sortie by Sortie";
     var names = r.station === "captain" ? { objective: "Objective", condition: "Ship condition", navigation: "Navigation", command: "Command" }
       : r.station === "pilot" ? { objective: "Objective", condition: "Ship condition", orders: "Orders met", handling: "Ship handling" }
       : r.station === "gunner" ? { objective: "Objective", condition: "Ship condition", accuracy: "Accuracy", threats: "Threats stopped" }
@@ -2676,7 +2693,7 @@
       (rc.lost.length ? "Killed with their ships: " + rc.lost.map(function (x) { return esc(x.name) + " (" + esc(x.ship) + ")"; }).join(", ") + ". " : "") +
       (rc.out.length ? "Survived the loss of their ships, awaiting new ones (they sit out the next squadron mission): " + rc.out.map(function (x) { return esc(x.name) + " (" + esc(x.ship) + ")"; }).join(", ") + ". " : "") +
       (rc.hired ? cap(job.classId, rc.hired + " new captain" + (rc.hired === 1 ? "" : "s") + " joined your captains pool.") : "") + "</p>");
-    rows.push("<h2>" + BL.career.STATION_NAME[job.station] + " reputation profile</h2>" + profileHtml(report.profileAfter, report.profileBefore, job.station));
+    rows.push("<h2>" + BL.career.STATION_NAME[job.station] + " Reputation Profile</h2>" + profileHtml(report.profileAfter, report.profileBefore, job.station));
     $("db-career").innerHTML = "<h2>Career: " + esc(career.name) + "</h2>" + rows.join("");
   }
   $("btn-db-hub").onclick = function () { click(); showHub(); };
@@ -3192,7 +3209,7 @@
     $("btn-offers-lower").hidden = $("btn-offers-lower-top").hidden = false;
     if (mode === "offers") {
       shownJobs = BL.career.offers(career, station);
-      $("offers-title").textContent = who + " jobs";
+      $("offers-title").textContent = tc(who + " jobs");
       var cq = BL.career.qualified(career, "captain"), needs = BL.career.commandNeeds(career, cq + 1);
       var open = BL.CLASSES.filter(function (k) { return BL.career.squadronOpen(career, k.n); }).length;
       $("offers-lede").textContent = station === "squadron" ? "Squadron postings, offered by the fleet admirals: you command a squadron of like ships from the flagship, plotting its course and giving its orders; your flag captain runs the flagship and a captain runs every other ship. Each job suggests captains from your captains pool and the flagship's crew from your crew pool; you can change any of them before the briefing. " +
@@ -3203,13 +3220,13 @@
         ? "Postings for gunners at your level. Each lists the ship's guns and names the engineer who'll run your power and the gun crew."
         : station === "pilot"
         ? "Postings for pilots at your level. Each names the engineer who'll run the power and the gun crew who'll work the guns while you fly. Bigger ships turn slower and answer the helm later."
-        : "Postings for engineers at your level. Lower tech levels are harder (smaller reactor and capacitors, weaker guns) and earn more reputation.") +
+        : "Postings for engineers at your level. Lower Tech Levels are harder (smaller reactor and capacitors, weaker guns) and earn more reputation.") +
         (BL.STORY && BL.STORY[station]
           ? (BL.career.storyComplete(career, station) ? " Your " + who.toLowerCase() + " storyline is complete." : " Each is a story mission, offered until you complete it, on your class and the class above.")
           : q && BL.career.built(station, q + 1) ? " There's always a lowest-tech posting for your class and for the class above it." : " There's always a lowest-tech posting.");
     } else {
       shownJobs = BL.career.lowerJobs(career, station);
-      $("offers-title").textContent = who + ": requalifying";
+      $("offers-title").textContent = tc(who + ": requalifying");
       $("offers-lede").textContent = shownJobs.length ? "Story missions you skipped on classes you've already qualified on. You're welcome aboard, but they earn half that class's reputation, and failures here don't count against you." :
         "Nothing below your current class: no skipped story missions there.";
     }
@@ -3258,7 +3275,7 @@
   }
   function renderCrew() {
     var j = crewJob, posts = crewPosts();
-    $("crew-title").textContent = j.flag ? cap(j.classId, "Your captains and crew") : "Your crew";
+    $("crew-title").textContent = j.flag ? cap(j.classId, "Your Captains and Crew") : "Your Crew";
     $("crew-lede").textContent = j.flag
       ? cap(j.classId, "A squadron of " + (1 + j.wingShips.length) + " " + BL.classById(j.classId).name.toLowerCase() + "s (TL" + j.tl + "). The job suggests a captain for every ship from your captains pool, the flag captain first, and the flagship's crew from your crew pool. Tap a post to choose someone else. Anyone you ask may refuse (the better he is, the likelier; squadron reputation helps with captains, command reputation with the crew); the job asks the best first and stops at the first who agrees. Each captain gains a point of skill for every successful mission. When a ship is lost, her captain's chance of surviving is his skill, and a survivor sits out the next squadron mission while he waits for a new ship.")
       : BL.shipLabel(j.classId, j.ship, j.hull) + " (TL" + j.tl + "). The job suggests this crew from your crew pool. Tap a post to choose another man for it; a man you ask may refuse to sign on with you (the better he is, the likelier, and your command reputation helps). The job asks the best men first and stops at the first who signs on, so the men below him haven't been asked yet. A man gains a point of skill for every successful mission; morale rises with successes and falls with failures and shipmates lost; if the ship is destroyed, each man's chance of surviving is his skill.";
@@ -3302,7 +3319,7 @@
     $("rec-summary").innerHTML = "<span>Enlisted <b>" + starDate({ date: c.created }) + "</b></span>" + "<span>Rapid sign-offs <b>" + BL.career.signoffsHeld(c) + "</b></span>" +
       "<span>Missions <b>" + sumProfiles(c, "missions") + "</b> (" + sumProfiles(c, "wins") + " won)</span>";
     $("rec-profile").innerHTML = BL.career.STATIONS.filter(function (s) { return BL.career.PLAYABLE[s]; }).map(function (s) {
-      return "<h2>" + BL.career.STATION_NAME[s] + " reputation profile</h2>" + profileHtml(BL.career.profile(c, s), null, s);
+      return "<h2>" + BL.career.STATION_NAME[s] + " Reputation Profile</h2>" + profileHtml(BL.career.profile(c, s), null, s);
     }).join("");
     $("rec-grid").innerHTML = gridHtml(c, false, true);
     /* Mission history dressed like the reports (TexasBont, Nov 8, 2026): stardate, mission, his post,
@@ -3438,7 +3455,7 @@
   }
   $("btn-rp-back").onclick = $("btn-rp-top").onclick = function () { click(); if (rpFrom === "record") showRecord(); else showHub(); };
 
-  /* ------------------------------------------------------ Naval registry
+  /* ------------------------------------------------------ Naval Registry
      Every named ship by class and tech level (each name's past ships, lost in action, then the one
      in service now under its current hull number), and the gunboats you've served on. Each opens
      a card: the ship's picture, its statistics at its tech level and its service career. */
@@ -3483,7 +3500,7 @@
       BL.TECH.levels(cls.id).forEach(function (tl) {
         var here = ships.filter(function (e) { return e.tl === tl; });
         if (!here.length) return;
-        body += '<div class="reg-tl"><h3>Tech level ' + tl + '</h3><div class="reg-ships">' + here.map(function (e) {
+        body += '<div class="reg-tl"><h3>Tech Level ' + tl + '</h3><div class="reg-ships">' + here.map(function (e) {
           regShown.push(e);
           return '<button class="reg-ship" data-i="' + (regShown.length - 1) + '"><span>' + shipHtml(e.classId, e.ship, e.hull) + "</span>" + regTag(e) + "</button>";
         }).join("") + "</div></div>";
