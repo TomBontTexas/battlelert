@@ -124,6 +124,7 @@
     if (!c.ships || typeof c.ships !== "object") c.ships = {};
     if (!c.hulls || typeof c.hulls !== "object") c.hulls = {};
     if (!c.nextHull || typeof c.nextHull !== "object") c.nextHull = {};
+    repairLost(c);
     // Careers from before tech levels 4 to 7: old levels 1-2 become 5, 3-4 become 6, 5-6 become 7
     // (a gunboat is always 4), TFS ships become INS, and the offers are drawn again.
     if (oldTL && !oldNames) {
@@ -356,6 +357,29 @@
   function hullOf(c, j) { return (c && c.hulls && c.hulls[j.ship]) || BL.hullNumber(j.classId, j.ship); }
   // A ship destroyed or abandoned is gone: its service record is marked lost, and the next ship of
   // that name gets the class's next new hull number (137 up, past the 36 on the name lists).
+  /* Ships lost before lost ships were closed (Oct 28, 2026) still read as in service, and later
+     missions under her name went on her record (TexasBont, Nov 8, 2026: a light cruiser destroyed
+     with him at the helm came back as his flagship). Close her record at the loss; the missions
+     after it go to the new ship of her name under a new hull number, as retireShip does now. */
+  function repairLost(c) {
+    var todo = Object.keys(c.ships);
+    while (todo.length) {
+      var key = todo.shift(), r = c.ships[key];
+      if (!r || r.lost || !r.missions) continue;
+      var i = -1; r.missions.some(function (m, k) { if (m.outcome === "destroyed" || m.outcome === "abandoned") { i = k; return true; } });
+      if (i < 0) continue;
+      var later = r.missions.splice(i + 1);
+      r.lost = r.missions[i].date; r.lastServed = r.missions[i].date;
+      if (r.classId === "gunboat") { r.missions = r.missions.concat(later); continue; }
+      if (c.hulls[r.name] && c.hulls[r.name] !== r.hull) { if (later.length) r.missions = r.missions.concat(later); continue; }
+      var n = c.nextHull[r.classId] || 137; c.nextHull[r.classId] = n + 1;
+      var hull = c.hulls[r.name] = BL.HULL_CODES[r.classId] + "-" + n;
+      if (!later.length) continue;
+      var nk = r.name + " " + hull;
+      c.ships[nk] = { name: r.name, hull: hull, classId: r.classId, n: r.n, tl: r.tl, firstServed: later[0].date, lastServed: later[later.length - 1].date, missions: later };
+      todo.push(nk);
+    }
+  }
   function retireShip(c, entry) {
     var rec = c.ships[recKey(entry)];
     if (rec) rec.lost = entry.date;
