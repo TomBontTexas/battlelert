@@ -2857,7 +2857,9 @@
     return "<tr><td>" + name + "</td>" + BL.CLASSES.map(function (k) {
       var L = k.n, T = BL.career.admiralTitle(L).short;
       if (L < 3) return '<td class="off"></td>';
-      if ((L < 9 && A.closed[L] && A.at > L) || (L === 9 && A.won)) return '<td class="q" title="' + T + ': stepped up">' + T + " ✔</td>";
+      // (the level's ribbon once stepped up from; tap for its campaign reports)
+      if ((L < 9 && A.closed[L] && A.at > L) || (L === 9 && A.won))
+        return BL.ribbonSvg ? '<td class="q rib" data-rep="admiral:' + L + '" title="' + T + ' ribbon: tap for its campaign reports">' + BL.ribbonSvg("admiral", L, 80) + "</td>" : '<td class="q" title="' + T + ': stepped up">' + T + " ✔</td>";
       if (L === o.level && o.open) return '<td class="next" title="' + T + ': your next campaign">' + T + " ▶</td>";
       return '<td class="off" title="' + T + '">' + T + "</td>";
     }).join("") + "</tr>";
