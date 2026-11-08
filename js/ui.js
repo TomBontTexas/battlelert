@@ -2864,13 +2864,35 @@
       return '<td class="off" title="' + T + '">' + T + "</td>";
     }).join("") + "</tr>";
   }
+  // (no ranks here: the career chart shows them, the ribbon rack the best of each: TexasBont, Nov 7, 2026)
   function summaryHtml(c) {
     return BL.career.STATIONS.filter(function (s) { return BL.career.PLAYABLE[s]; }).map(function (s) {
-      return "<span>" + (s === "captain" || s === "squadron" ? "" : BL.career.STATION_NAME[s] + " ") + "<b>" + BL.career.rank(c, s) + "</b> · reputation <b>" + c.stations[s].rep + "</b></span>";
+      return "<span>" + BL.career.STATION_NAME[s] + " reputation <b>" + c.stations[s].rep + "</b></span>";
     }).join("") +
-      "<span><b>" + BL.career.admiralRank(c) + "</b> · reputation <b>" + c.admiral.rep + "</b></span>" +
+      "<span>Admiral reputation <b>" + c.admiral.rep + "</b></span>" +
       "<span>Rapid sign-offs <b>" + BL.career.signoffsHeld(c) + "</b></span>" +
       "<span>Missions <b>" + sumProfiles(c, "missions") + "</b> (" + sumProfiles(c, "wins") + " won)</span>";
+  }
+  /* His ribbon rack (TexasBont, Nov 7, 2026): the ribbon of the best rank on each path, in order of
+     precedence (admiral, squadron, command, pilot, gunner, engineer), worn as real racks are:
+     rows of three, a short row on top and centred, the highest top left; each path's reputation
+     under it. */
+  var RACK = ["admiral", "squadron", "captain", "pilot", "gunner", "engineer"];
+  function rackTop(c, p) {
+    if (p === "admiral") { var A = c.admiral, top = A.won ? 9 : 0; for (var L = 3; L <= 8; L++) if (A.closed[L] && A.at > L) top = Math.max(top, L); return top; }
+    if (p === "squadron") { var k = BL.career.squadronClasses(c); return k.length ? Math.max.apply(null, k) : 0; }
+    return BL.career.qualified(c, p);
+  }
+  function rackHtml(c, w) {
+    if (!BL.ribbonSvg) return "";
+    var list = RACK.filter(function (p) { return rackTop(c, p) > 0; }), rows = [], r = list.slice();
+    if (r.length) { rows.push(r.splice(0, r.length % 3 || 3)); while (r.length) rows.push(r.splice(0, 3)); }
+    var reps = RACK.filter(function (p) { return rackTop(c, p) > 0 || BL.career.CREW.indexOf(p) >= 0; }).map(function (p) {
+      return "<span>" + BL.career.STATION_NAME[p] + " <b>" + (p === "admiral" ? c.admiral.rep : c.stations[p].rep) + "</b></span>";
+    });
+    return '<div class="rack-side">' + (rows.length ? '<div class="rack">' + rows.map(function (row) {
+      return '<div class="rk-row">' + row.map(function (p) { return BL.ribbonSvg(p, rackTop(c, p), w || 120); }).join("") + "</div>";
+    }).join("") + "</div>" : "") + '<div class="rack-reps">' + reps.join("") + "</div></div>";
   }
   function sumProfiles(c, k) {
     return Object.keys(c.profiles).reduce(function (a, s) { return a + (+c.profiles[s][k] || 0); }, 0);
@@ -2879,7 +2901,9 @@
   function refreshTitle() {
     var b = $("btn-continue");
     b.hidden = !career;
-    if (career) b.textContent = "Continue as " + career.name + " (" + BL.career.ranks(career) + ")";
+    if (career) b.textContent = "Continue as " + career.name;
+    $("title-rack").innerHTML = career ? rackHtml(career) : "";
+    $("title-rack").hidden = !career;
   }
   $("btn-continue").onclick = function () { BL.audio.init(); click(); showHub(); };
   $("btn-enlist").onclick = function () {
@@ -3189,7 +3213,10 @@
   function showRecord() {
     var c = career;
     $("rec-title").textContent = "Service record: " + c.name;
-    $("rec-summary").innerHTML = "<span>Enlisted <b>" + c.created + "</b></span>" + summaryHtml(c);
+    $("rec-rack").innerHTML = rackHtml(c);
+    // (the reputations are under the rack)
+    $("rec-summary").innerHTML = "<span>Enlisted <b>" + c.created + "</b></span>" + "<span>Rapid sign-offs <b>" + BL.career.signoffsHeld(c) + "</b></span>" +
+      "<span>Missions <b>" + sumProfiles(c, "missions") + "</b> (" + sumProfiles(c, "wins") + " won)</span>";
     $("rec-profile").innerHTML = BL.career.STATIONS.filter(function (s) { return BL.career.PLAYABLE[s]; }).map(function (s) {
       return "<h2>" + BL.career.STATION_NAME[s] + " reputation profile</h2>" + profileHtml(BL.career.profile(c, s), null, s);
     }).join("");

@@ -878,3 +878,12 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 .adm-bring-label { fill: #f5c542; stroke: none; font-size: 12px; font-weight: bold; }
 #adm-svg.battling .adm-hex { opacity: .6; }
 @media (max-width: 600px) { #adm-modal.docked .adm-battle { width: auto; } }
+
+/* His ribbon rack: the title screen and the service record (ui.js rackHtml) */
+.rack-side { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.rack { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.rk-row { display: flex; gap: 2px; } .rk-row svg { display: block; }
+.rack-reps { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px 16px; font-size: 14px; color: var(--muted, #9fb0c2); max-width: 380px; }
+.rack-reps b { color: var(--charge); }
+.title-rack { margin: 4px 0 6px; }
+.rec-rack { margin: 4px 0 14px; }
