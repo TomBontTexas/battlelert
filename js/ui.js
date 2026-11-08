@@ -3283,14 +3283,31 @@
   function showRecord() {
     var c = career;
     $("rec-title").textContent = "Service record: " + c.name;
-    $("rec-rack").innerHTML = rackHtml(c);
     // (the reputations are under the rack)
     $("rec-summary").innerHTML = "<span>Enlisted <b>" + c.created + "</b></span>" + "<span>Rapid sign-offs <b>" + BL.career.signoffsHeld(c) + "</b></span>" +
-      "<span>Missions <b>" + sumProfiles(c, "missions") + "</b> (" + sumProfiles(c, "wins") + " won)</span>";
+      "<span>Missions <b>" + sumProfiles(c, "missions") + "</b> (" + sumProfiles(c, "wins") + " won)</span>" +
+      RACK.filter(function (p) { return rackTop(c, p) > 0 || BL.career.CREW.indexOf(p) >= 0; }).map(function (p) {
+        return "<span>" + BL.career.STATION_NAME[p] + " reputation <b>" + (p === "admiral" ? c.admiral.rep : c.stations[p].rep) + "</b></span>";
+      }).join("");
     $("rec-profile").innerHTML = BL.career.STATIONS.filter(function (s) { return BL.career.PLAYABLE[s]; }).map(function (s) {
       return "<h2>" + BL.career.STATION_NAME[s] + " reputation profile</h2>" + profileHtml(BL.career.profile(c, s), null, s);
     }).join("");
-    $("rec-grid").innerHTML = gridHtml(c);
+    /* Qualifications instead of ribbons (TexasBont, Nov 8, 2026: the ribbons are on the career hub and
+       the title page): every qualification held, newest first, with the stardate it was first earned. */
+    var Q = [], QL = { engineer: "E", gunner: "G", pilot: "P", captain: "C", squadron: "S" };
+    RACK.forEach(function (p) {
+      var ns = p === "admiral" ? [3, 4, 5, 6, 7, 8, 9].filter(function (L) { return L === 9 ? c.admiral.won : c.admiral.closed[L] && c.admiral.at > L; })
+        : p === "squadron" ? BL.career.squadronClasses(c) : Array.apply(null, Array(BL.career.qualified(c, p))).map(function (x, k) { return k + 1; });
+      ns.forEach(function (n) { Q.push({ p: p, n: n, d: (c.qualDates || {})[p + ":" + n] || null }); });
+    });
+    Q.sort(function (a, b) { var x = a.d ? a.d.date + (a.d.time || "") : "", y = b.d ? b.d.date + (b.d.time || "") : ""; return x < y ? 1 : x > y ? -1 : 0; });
+    $("rec-quals").innerHTML = '<tr><th>Date</th><th>Qualification</th><th>Path</th><th>Class</th><th class="hide-s">Earned by</th></tr>' +
+      (Q.length ? Q.map(function (q) {
+        var adm = q.p === "admiral", code = adm ? (q.n === 9 ? "G-9" : "F-" + q.n) : QL[q.p] + "-" + q.n;
+        return '<tr class="h-q" data-rep="' + q.p + ":" + q.n + '"><td class="d">' + (q.d ? starDate(q.d) : "—") + "</td><td><b>" + code + "</b></td><td>" + BL.career.STATION_NAME[q.p] +
+          "</td><td>" + (adm ? BL.career.admiralTitle(q.n).fleet : BL.classByN(q.n).name) + '</td><td class="hide-s">' +
+          (!q.d ? "—" : q.d.how === "signoff" ? "Rapid sign-off" : esc(q.d.title || (adm ? "Fleet operation" : "Patrol"))) + "</td></tr>";
+      }).join("") : '<tr><td colspan="5" class="muted">No qualifications yet.</td></tr>');
     /* Mission history dressed like the reports (TexasBont, Nov 8, 2026): stardate, mission, his post,
        ship and class, the outcome in its colour; a row opens that path's reports. (The killed in
        action are on the In Memoriam page now.) */
@@ -3307,7 +3324,7 @@
   }
   $("btn-record-back").onclick = function () { click(); showHub(); };
   $("rec-history").onclick = function (ev) { var r = ev.target.closest("tr[data-rep]"); if (r) { click(); showReports(r.dataset.rep, "record"); } };
-  $("rec-grid").onclick = function (ev) { var r = ev.target.closest("td[data-rep]"); if (r) { click(); showReports(r.dataset.rep, "record"); } };
+  $("rec-quals").onclick = $("rec-history").onclick;
 
   /* ------------------------------------------------------ Mission reports
      A ribbon tapped on the career chart (TexasBont, Nov 6, 2026): every mission on record at that

@@ -103,6 +103,21 @@
       c.history.forEach(function (h) { if (h.station === s && h.outcome === "success") st.wins[h.n] = (st.wins[h.n] || 0) + 1; });
     });
     if (!Array.isArray(c.signoffsUsed)) c.signoffsUsed = [];
+    // When each qualification was first earned (TexasBont, Nov 8, 2026); careers from before take
+    // it from their history (first success on that path and class) and their rapid sign-offs.
+    if (!c.qualDates || typeof c.qualDates !== "object") {
+      c.qualDates = {};
+      c.history.slice().reverse().forEach(function (h) {
+        if (h.outcome === "success" && h.station && h.station !== "admiral") markQual(c, h.station, h.n || BL.classById(h.classId).n, h);
+      });
+      c.signoffsUsed.forEach(function (o) { markQual(c, o.station, o.n, { date: o.date, signoff: true }); });
+      var A0 = c.admiral || {};
+      for (var L = 3; L <= 9; L++) {
+        if (L < 9 ? !(A0.closed && A0.closed[L] && A0.at > L) : !A0.won) continue;
+        var h = c.history.filter(function (x) { return x.station === "admiral" && x.n === L && (L < 9 ? x.score > 0 : x.outcome === "success"); })[0];
+        if (h) markQual(c, "admiral", L, h);
+      }
+    }
     var ad = c.admiral = c.admiral && typeof c.admiral === "object" ? c.admiral : blankAdmiral(), ba = blankAdmiral();
     Object.keys(ba).forEach(function (k) { if (ad[k] === undefined || ad[k] === null) ad[k] = ba[k]; });
     c.name = cleanName(c.name) || "Recruit";
@@ -168,6 +183,13 @@
 
   /* ------------------------------------------------------------ Ranks */
   function qualified(c, station) { return c.stations[station].qualified; }
+  // (the first time only: a requalification keeps the original date)
+  function markQual(c, station, n, h) {
+    var k = station + ":" + n;
+    c.qualDates = c.qualDates || {};
+    if (c.qualDates[k]) return;
+    c.qualDates[k] = { date: h.date || today(), time: h.time || null, how: h.signoff ? "signoff" : "mission", title: h.title || null };
+  }
   function rank(c, station) {
     var q = qualified(c, station);
     if (station === "squadron") { var k = squadronClasses(c).length; return k ? "Squadron commander, " + k + (k === 1 ? " class" : " classes") : "Squadron: none yet"; }
@@ -582,6 +604,7 @@
     report.rep = st.rep - repWas;
     var entry = { date: today(), time: now(), station: job.station, classId: job.classId, n: job.n, tl: job.tl, ship: job.ship, hull: job.hull || hullOf(c, job),
       seed: job.seed, outcome: r.outcome, score: r.score, rep: report.rep, serious: job.serious, story: job.story, title: job.title };
+    if (success) markQual(c, job.station, post, entry);
     c.history.unshift(entry);
     if (c.history.length > 1000) c.history.length = 1000;
     logService(c, entry, r);
@@ -696,6 +719,9 @@
     report.banked = A.banked;
     var entry = { date: today(), time: now(), station: "admiral", classId: BL.classByN(L).id, n: L, tl: null, ship: admiralTitle(L).short + " campaign", hull: "",
       seed: r.seed, outcome: r.objective ? "success" : success ? "partial" : r.annihilated ? "destroyed" : "failure", score: r.points, rep: report.rep, serious: !requal };
+    // (an admiral's level is earned when its fleet is closed and he moves up; G9 when the war is won)
+    if (A.closed[L] && report.promoted === L + 1 && !requal) markQual(c, "admiral", L, entry);
+    if (L === 9 && A.won) markQual(c, "admiral", 9, entry);
     c.history.unshift(entry);
     if (c.history.length > 1000) c.history.length = 1000;
     (r.ships || []).forEach(function (s) {
@@ -726,6 +752,7 @@
     if (!ok) return false;
     c.stations[station].qualified = n;
     c.signoffsUsed.push({ station: station, n: n, date: today() });
+    markQual(c, station, n, { date: today(), time: now(), signoff: true });
     generateOffers(c, station);
     refreshCommand(c);
     return true;
