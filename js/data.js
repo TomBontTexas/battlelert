@@ -431,7 +431,7 @@
     },
     // An Azurian frigate with two interceptor escorts: one big hull, torpedoes in pairs.
     frigate: {
-      name: "Frigate group",
+      name: "DesRon",
       enemy: "Azurian frigate",
       what: "A frigate and two escorts; torpedoes come in pairs every 6 to 8 s",
       tests: "Shield timing under steady pairs",
@@ -1014,7 +1014,7 @@
                       siege: { name: "Siege battery", enc: "siege", hp: 600, speed: 0, ships: 4, guns: [[0, 180, 6]], range: 20 },
                       raiders: { name: "Raider pack", enc: "raiders", hp: 450, speed: 1.4, hunt: true, standOff: 0.6, guns: [[0, 45, 6]], range: 13 },
                       interceptors: { name: "Interceptor flight", enc: "interceptors", hp: 240, speed: 1.9, hunt: true, standOff: 0.5, guns: [[0, 45, 4]], range: 10 },
-                      frigate: { name: "Frigate group", enc: "frigate", hp: 900, speed: 0.7, patrol: true, guns: [[0, 30, 2, "lead"], [90, 60, 4], [-90, 60, 4]], range: 18 },
+                      frigate: { name: "DesRon", enc: "frigate", hp: 900, speed: 0.7, patrol: true, guns: [[0, 30, 2, "lead"], [90, 60, 4], [-90, 60, 4]], range: 18 },
                       hunters: { name: "Drive hunters", enc: "hunters", hp: 300, speed: 1.7, hunt: true, standOff: 0.7, guns: [[0, 180, 3]], range: 11 },
                       // (the drop zone's guards: a planet buster mission's last system. `guard`: it puts itself
                       // between the zone and the nearest of our ships it sees, never more than `guard` x its

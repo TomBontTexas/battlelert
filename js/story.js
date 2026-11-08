@@ -886,7 +886,7 @@
    "after": "The raid disrupted enemy movement along the route. Kest noted the importance of selecting threats rather than collecting kills.",
    "lost": "The Azurians halted the raid and maintained their movements.",
    "reports": [
-    "Tactical: Frigate group detected.",
+    "Tactical: DesRon detected.",
     "",
     ""
    ]
@@ -1728,10 +1728,10 @@
     "siege",
     "raiders"
    ],
-   "after": "The fleet received a clear account of the frigate group and the siege line. Vale praised the report for showing where the enemy stood, not merely where the picket had fought.",
+   "after": "The fleet received a clear account of the DesRon and the siege line. Vale praised the report for showing where the enemy stood, not merely where the picket had fought.",
    "lost": "The fleet advanced without a current picture of the enemy positions.",
    "reports": [
-    "Tactical: Frigate group holding position.",
+    "Tactical: DesRon holding position.",
     "Navigation: Checkpoints complete.",
     ""
    ]
@@ -1884,7 +1884,7 @@
    "k": 1,
    "title": "Bow First",
    "chapter": "The Spearpoint",
-   "briefing": "Commodore Rusk: An Azurian frigate group is blocking the approach to the fleet's next position. Bring the light cruiser along the plotted course and give the main gun a clear bow-on opportunity. The weapon can break the formation, but it cannot fire through a turn you have not finished. Keep the warp window in view while you make the opening.",
+   "briefing": "Commodore Rusk: An Azurian DesRon is blocking the approach to the fleet's next position. Bring the light cruiser along the plotted course and give the main gun a clear bow-on opportunity. The weapon can break the formation, but it cannot fire through a turn you have not finished. Keep the warp window in view while you make the opening.",
    "systems": [
     "frigate",
     "cruiserA",
@@ -1893,7 +1893,7 @@
    "after": "The main gun broke the enemy formation and the light cruiser reached the warp zone. Rusk reported the passage open for the ships behind it.",
    "lost": "The enemy formation held the route, and the light cruiser could not open a passage.",
    "reports": [
-    "Tactical: Frigate group in the approach.",
+    "Tactical: DesRon in the approach.",
     "Engineering: Main gun charged.",
     ""
    ]
@@ -1944,7 +1944,7 @@
    "k": 1,
    "title": "Launch on Contact",
    "chapter": "Deep Strike",
-   "briefing": "Commodore Rusk: An Azurian frigate group is exposed beyond the outer screen. Launch the gunboat squadron to strike while the cruiser holds the route, then recover it before the warp window. Keep the boats' return in your plan from the start. A raid that leaves its own squadron behind has not finished its assignment.",
+   "briefing": "Commodore Rusk: An Azurian DesRon is exposed beyond the outer screen. Launch the gunboat squadron to strike while the cruiser holds the route, then recover it before the warp window. Keep the boats' return in your plan from the start. A raid that leaves its own squadron behind has not finished its assignment.",
    "systems": [
     "frigate",
     "minefield",
@@ -1953,7 +1953,7 @@
    "after": "The gunboats returned to the hangar and the cruiser left the route with the raid complete. Rusk praised the recovery as part of the operation, not an afterthought.",
    "lost": "The raid failed, and the cruiser never brought her squadron home.",
    "reports": [
-    "Tactical: Frigate group breaking formation.",
+    "Tactical: DesRon breaking formation.",
     "Engineering: Launchers charged.",
     ""
    ]
