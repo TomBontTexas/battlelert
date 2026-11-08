@@ -3490,14 +3490,22 @@
      each (c.qualDates); she shows the highest on each path, in rack order. */
   var AW_CODE = { engineer: "E", gunner: "G", pilot: "P", captain: "C", squadron: "S", admiral: "F" };
   function awardCode(p, n) { return p === "admiral" && n === 9 ? "G-9" : AW_CODE[p] + "-" + n; }
-  function awardAt(c, m) {
-    var p = m.station || "engineer", t = (m.date || "") + "." + (m.time || ""), best = 0, q = c.qualDates || {};
-    for (var n = 1; n <= 9; n++) { var d = q[p + ":" + n]; if (d && d.date + "." + (d.time || "") <= t) best = n; }
+  // (only a successful mission earns her one; where a record has no time, a qualification from the
+  // same day counts only if this mission earned it, her own class: TexasBont, Nov 8, 2026)
+  function awardAt(c, m, cn) {
+    if (m.outcome !== "success") return 0;
+    var p = m.station || "engineer", best = 0, q = c.qualDates || {};
+    for (var n = 1; n <= 9; n++) {
+      var d = q[p + ":" + n]; if (!d) continue;
+      var ok = d.time && m.time ? d.date + "." + d.time <= m.date + "." + m.time : d.date < m.date || (d.date === m.date && n === cn);
+      if (ok) best = n;
+    }
     return best;
   }
   function shipAwards(c, rec) {
     var top = {};
-    (rec && rec.missions || []).forEach(function (m) { var p = m.station || "engineer", n = awardAt(c, m); if (n > (top[p] || 0)) top[p] = n; });
+    var cn = rec ? rec.n || BL.classById(rec.classId).n : 0;
+    (rec && rec.missions || []).forEach(function (m) { var p = m.station || "engineer", n = awardAt(c, m, cn); if (n > (top[p] || 0)) top[p] = n; });
     return RACK.filter(function (p) { return top[p]; }).map(function (p) { return { p: p, n: top[p] }; });
   }
   function regTag(e) {
@@ -3594,7 +3602,7 @@
     $("card-awards").hidden = !aw.length || !BL.ribbonSvg;
     $("card-awards").innerHTML = '<h2>Awards</h2><div class="ship-aw">' + aw.map(function (a) {
       return '<div class="ship-aw-one">' + (BL.ribbonSvg ? BL.ribbonSvg(a.p, a.n, 90) : "") + "<div><b>" + awardCode(a.p, a.n) + "</b> " + BL.career.STATION_NAME[a.p] + "</div></div>";
-    }).join("") + '</div><p class="muted">The highest award on each path earned aboard her: after each mission she served, the award you held then.</p>';
+    }).join("") + '</div><p class="muted">The highest award on each path earned aboard her: after each successful mission she served, the award you held then.</p>';
     $("card-service").innerHTML = "<tr><th>Date</th><th>Mission</th><th>Your post</th><th>Enemy forces engaged</th><th>Outcome</th><th>Score</th><th>Enemy ships destroyed</th><th>Hull damage</th><th>Award</th></tr>" +
       (ms.length ? ms.map(function (m) {
         var h = c.history.filter(function (x) { return x.seed === m.seed && x.ship === e.ship; })[0];
@@ -3603,7 +3611,7 @@
         var post = m.station === "admiral" ? "Fleet Command" : m.station === "squadron" && h && h.station !== "squadron" ? "Flag bridge" : h ? POST[h.station || "engineer"] : m.station === "squadron" ? "Flag bridge" : POST[m.station || "engineer"];
         return "<tr><td>" + starDate(m) + "</td><td>" + esc(missionName(h, m)) + "</td><td>" + (post || "–") + "</td><td>" + (sys || "–") + "</td><td>" + (OUTCOME_NAME[m.outcome] || m.outcome) +
           "</td><td>" + (m.score != null ? m.score : "–") + "</td><td>" + (m.kills != null ? m.kills : "–") + "</td><td>" + (hullPct(e.classId, e.tl, m.hullLost) || "–") + "</td><td>" +
-          (function (n) { return n ? '<span class="svc-aw">' + (BL.ribbonSvg ? BL.ribbonSvg(m.station || "engineer", n, 40) + " " : "") + awardCode(m.station || "engineer", n) + "</span>" : "–"; })(awardAt(c, m)) + "</td></tr>";
+          (function (n) { return n ? '<span class="svc-aw">' + (BL.ribbonSvg ? BL.ribbonSvg(m.station || "engineer", n, 40) + " " : "") + awardCode(m.station || "engineer", n) + "</span>" : "–"; })(awardAt(c, m, rec.n || cls.n)) + "</td></tr>";
       }).join("") : '<tr><td colspan="9" class="muted">No missions on record.</td></tr>');
     show("scr-shipcard"); window.scrollTo(0, 0);
   }
