@@ -936,3 +936,4 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 .hist-out { font-weight: 700; white-space: nowrap; color: var(--good); }
 .hist-table tr.h-bad .hist-out { color: var(--bad); } .hist-table tr.h-part .hist-out { color: var(--warn); }
 .cgrid .cg-date { display: inline-block; font-family: var(--mono); font-size: 11px; line-height: 1.25; color: var(--text); }
+.cgrid .cg-date .cg-cnt { margin-left: 4px; font-size: 10px; display: inline; }

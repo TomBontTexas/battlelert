@@ -2853,6 +2853,10 @@
         return '<td class="off">' + (ready ? "" : "·") + "</td>";
       }).join("") + "</tr>";
     }).join("") + admiralRow(c, jobs, R);
+    // (dates: the 1/3 count goes on the time's line, inside the square)
+    if (dates) rows = rows.replace(/<span class="cg-date">((?:(?!<\/span>).)*)<\/span><span class="cg-cnt">([^<]*)<\/span>/g, function (m, d, n) {
+      return '<span class="cg-date">' + d + (d.indexOf("<br>") < 0 ? "<br>" : " ") + '<span class="cg-cnt">' + n + "</span></span>";
+    });
     return '<table class="cgrid' + (jobs ? " jobs" : "") + '">' + head + "<tbody>" + rows + "</tbody></table><p class=\"muted small-text\">" + (jobs ? "Tap a row's name for its job offers, a ribbon for its mission reports · " : dates ? "Tap a date for its mission reports · " : "Tap a ribbon for its mission reports · ") + (dates ? "Each square shows when you first qualified (— before records were kept) · " : "✔ qualified (each path shows the rank's ribbon) · ") + "▶ working toward · dot = not built yet · Command: 1/3 beside a ribbon counts command successes; at 3/3 that class's squadron opens · Squadron: 1/3 beside a ribbon counts squadron successes; a class's squadron opens with 3/3 on its command and 3/3 on the squadron class below; ▶ open".replace(/a ribbon/g, dates ? "a date" : "a ribbon") + "</p>";
   }
   // The admiral path's row (TexasBont, Nov 7, 2026): F3 to F8 and G9 under the class at the top of
@@ -2860,7 +2864,7 @@
   // (a qualification's first date and time, 3026.11.01.14.05, for the service record's chart)
   function qualDate(c, st, n) {
     var d = (c.qualDates || {})[st + ":" + n];
-    return '<span class="cg-date">' + (d ? starDate(d).replace(/^(\d+\.\d+\.\d+)\./, "$1<wbr>.") : "—") + "</span>";
+    return '<span class="cg-date">' + (d ? starDate({ date: d.date }) + (d.time ? "<br>" + d.time : "") : "—") + "</span>";
   }
   function admiralRow(c, jobs, R) {
     var o = BL.career.admiralOffer(c), A = c.admiral;
