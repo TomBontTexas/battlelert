@@ -2817,7 +2817,10 @@
     }).join("") + (before ? '<p class="muted small-text">Grey mark: before this mission.</p>' : "");
   }
   // jobs: each row's name is a button to that path's job offers (the career hub; TexasBont, Nov 6, 2026).
-  function gridHtml(c, jobs) {
+  function gridHtml(c, jobs, dates) {
+    /* (the service record's chart: the date and time each qualification was first earned in place
+       of its ribbon; TexasBont, Nov 8, 2026) */
+    var R = dates ? function (st, n) { return qualDate(c, st, n); } : BL.ribbonSvg;
     // (every class column the same width; the numbers in one row, the names centred in the row under them)
     var head = "<colgroup><col class=\"cg-first\">" + BL.CLASSES.map(function () { return "<col>"; }).join("") + "</colgroup>" +
       '<thead><tr class="cg-nums"><th rowspan="2"></th>' + BL.CLASSES.map(function (k) { return '<th><span class="cg-n">' + k.n + "</span></th>"; }).join("") + "</tr>" +
@@ -2829,10 +2832,10 @@
       return "<tr><td>" + name + "</td>" + BL.CLASSES.map(function (k) {
         if (!BL.career.PLAYABLE[st]) return k.n === 1 ? '<td class="later" colspan="9">' + later[st] + "</td>" : "";
         // (squadron command: class by class, open after 3 successful command missions on it)
-        var sqRib = st === "squadron" && BL.career.squadronWins(c, k.n) && BL.ribbonSvg ? BL.ribbonSvg(st, k.n, 80) : "";
+        var sqRib = st === "squadron" && BL.career.squadronWins(c, k.n) && BL.ribbonSvg ? R(st, k.n, 80) : "";
         // (squadron: the count of squadron successes beside the ribbon until 3/3, as on the Command row)
         var sw = st === "squadron" ? BL.career.squadronWins(c, k.n) : 0, need = BL.CAPTAINS.opens;
-        if (sqRib && sw < need) return '<td class="qpart rib" data-rep="' + st + ":" + k.n + '" title="Squadron commanded; ' + sw + " of " + need + ' successes (the next class\u2019s squadron opens at ' + need + ')">' + BL.ribbonSvg(st, k.n, 58) + '<span class="cg-cnt">' + sw + "/" + need + "</span></td>";
+        if (sqRib && sw < need) return '<td class="qpart rib" data-rep="' + st + ":" + k.n + '" title="Squadron commanded; ' + sw + " of " + need + ' successes (the next class\u2019s squadron opens at ' + need + ')">' + R(st, k.n, 58) + '<span class="cg-cnt">' + sw + "/" + need + "</span></td>";
         if (sqRib) return '<td class="q rib" data-rep="' + st + ":" + k.n + '" title="Squadron commanded: S' + k.n + ' ribbon: tap for its mission reports">' + sqRib + "</td>";
         if (st === "squadron") return sw ? '<td class="q" title="Squadron commanded">✔</td>' : BL.career.squadronOpen(c, k.n) ? '<td class="next" title="Open to you: 0 of ' + need + ' successes">▶ 0/' + need + "</td>" :
           '<td class="off">' + (BL.career.built(st, k.n) ? "" : "·") + "</td>";
@@ -2841,20 +2844,25 @@
         // class's squadron opens: TexasBont, Nov 4, 2026)
         if (k.n <= q && st === "captain" && BL.career.built("squadron", k.n) && !BL.career.commandDone(c, k.n))
           return '<td class="qpart' + (BL.ribbonSvg ? " rib" : "") + '" data-rep="' + st + ":" + k.n + '" title="Qualified; ' + BL.career.commandWins(c, k.n) + " of " + BL.CAPTAINS.opens + ' command successes toward this class’s squadron">' +
-            (BL.ribbonSvg ? BL.ribbonSvg(st, k.n, 58) + '<span class="cg-cnt">' : "✔ ") + BL.career.commandWins(c, k.n) + "/" + BL.CAPTAINS.opens + (BL.ribbonSvg ? "</span>" : "") + "</td>";     // (the ribbon, and the count beside it)
+            (BL.ribbonSvg ? R(st, k.n, 58) + '<span class="cg-cnt">' : "✔ ") + BL.career.commandWins(c, k.n) + "/" + BL.CAPTAINS.opens + (BL.ribbonSvg ? "</span>" : "") + "</td>";     // (the ribbon, and the count beside it)
         // (a path with ribbons shows each rank's ribbon in place of the tick: BL.ribbonSvg)
-        var rib = k.n <= q && BL.ribbonSvg ? BL.ribbonSvg(st, k.n, 80) : "";
+        var rib = k.n <= q && BL.ribbonSvg ? R(st, k.n, 80) : "";
         if (rib) return '<td class="q rib" data-rep="' + st + ":" + k.n + '" title="' + BL.career.STATION_NAME[st] + "-" + k.n + ' ribbon: tap for its mission reports">' + rib + "</td>";
         if (k.n <= q) return '<td class="q" title="Qualified">✔</td>';
         if (k.n === target && ready && (st !== "captain" || BL.career.canCommand(c, k.n))) return '<td class="next" title="Working toward">▶</td>';
         return '<td class="off">' + (ready ? "" : "·") + "</td>";
       }).join("") + "</tr>";
-    }).join("") + admiralRow(c, jobs);
-    return '<table class="cgrid' + (jobs ? " jobs" : "") + '">' + head + "<tbody>" + rows + "</tbody></table><p class=\"muted small-text\">" + (jobs ? "Tap a row's name for its job offers, a ribbon for its mission reports · " : "Tap a ribbon for its mission reports · ") + "✔ qualified (each path shows the rank's ribbon) · ▶ working toward · dot = not built yet · Command: 1/3 beside a ribbon counts command successes; at 3/3 that class's squadron opens · Squadron: 1/3 beside a ribbon counts squadron successes; a class's squadron opens with 3/3 on its command and 3/3 on the squadron class below; ▶ open</p>";
+    }).join("") + admiralRow(c, jobs, R);
+    return '<table class="cgrid' + (jobs ? " jobs" : "") + '">' + head + "<tbody>" + rows + "</tbody></table><p class=\"muted small-text\">" + (jobs ? "Tap a row's name for its job offers, a ribbon for its mission reports · " : dates ? "Tap a date for its mission reports · " : "Tap a ribbon for its mission reports · ") + (dates ? "Each square shows when you first qualified (— before records were kept) · " : "✔ qualified (each path shows the rank's ribbon) · ") + "▶ working toward · dot = not built yet · Command: 1/3 beside a ribbon counts command successes; at 3/3 that class's squadron opens · Squadron: 1/3 beside a ribbon counts squadron successes; a class's squadron opens with 3/3 on its command and 3/3 on the squadron class below; ▶ open".replace(/a ribbon/g, dates ? "a date" : "a ribbon") + "</p>";
   }
   // The admiral path's row (TexasBont, Nov 7, 2026): F3 to F8 and G9 under the class at the top of
   // each level's fleet (destroyer escort 3 ... dreadnought 9): ✔ stepped up from, ▶ the level he's at.
-  function admiralRow(c, jobs) {
+  // (a qualification's first date and time, 3026.11.01.14.05, for the service record's chart)
+  function qualDate(c, st, n) {
+    var d = (c.qualDates || {})[st + ":" + n];
+    return '<span class="cg-date">' + (d ? starDate(d).replace(/^(\d+\.\d+\.\d+)\./, "$1<wbr>.") : "—") + "</span>";
+  }
+  function admiralRow(c, jobs, R) {
     var o = BL.career.admiralOffer(c), A = c.admiral;
     var name = jobs ? '<button class="cg-jobs" data-jobs="admiral" title="Admiral: your next fleet campaign">Admiral ›</button>' : "Admiral";
     return "<tr><td>" + name + "</td>" + BL.CLASSES.map(function (k) {
@@ -2862,7 +2870,7 @@
       if (L < 3) return '<td class="off"></td>';
       // (the level's ribbon once stepped up from; tap for its campaign reports)
       if ((L < 9 && A.closed[L] && A.at > L) || (L === 9 && A.won))
-        return BL.ribbonSvg ? '<td class="q rib" data-rep="admiral:' + L + '" title="' + T + ' ribbon: tap for its campaign reports">' + BL.ribbonSvg("admiral", L, 80) + "</td>" : '<td class="q" title="' + T + ': stepped up">' + T + " ✔</td>";
+        return BL.ribbonSvg ? '<td class="q rib" data-rep="admiral:' + L + '" title="' + T + ' ribbon: tap for its campaign reports">' + R("admiral", L, 80) + "</td>" : '<td class="q" title="' + T + ': stepped up">' + T + " ✔</td>";
       if (L === o.level && o.open) return '<td class="next" title="' + T + ': your next campaign">' + T + " ▶</td>";
       return '<td class="off" title="' + T + '">' + T + "</td>";
     }).join("") + "</tr>";
@@ -3292,22 +3300,7 @@
     $("rec-profile").innerHTML = BL.career.STATIONS.filter(function (s) { return BL.career.PLAYABLE[s]; }).map(function (s) {
       return "<h2>" + BL.career.STATION_NAME[s] + " reputation profile</h2>" + profileHtml(BL.career.profile(c, s), null, s);
     }).join("");
-    /* Qualifications instead of ribbons (TexasBont, Nov 8, 2026: the ribbons are on the career hub and
-       the title page): every qualification held, newest first, with the stardate it was first earned. */
-    var Q = [], QL = { engineer: "E", gunner: "G", pilot: "P", captain: "C", squadron: "S" };
-    RACK.forEach(function (p) {
-      var ns = p === "admiral" ? [3, 4, 5, 6, 7, 8, 9].filter(function (L) { return L === 9 ? c.admiral.won : c.admiral.closed[L] && c.admiral.at > L; })
-        : p === "squadron" ? BL.career.squadronClasses(c) : Array.apply(null, Array(BL.career.qualified(c, p))).map(function (x, k) { return k + 1; });
-      ns.forEach(function (n) { Q.push({ p: p, n: n, d: (c.qualDates || {})[p + ":" + n] || null }); });
-    });
-    Q.sort(function (a, b) { var x = a.d ? a.d.date + (a.d.time || "") : "", y = b.d ? b.d.date + (b.d.time || "") : ""; return x < y ? 1 : x > y ? -1 : 0; });
-    $("rec-quals").innerHTML = '<tr><th>Date</th><th>Qualification</th><th>Path</th><th>Class</th><th class="hide-s">Earned by</th></tr>' +
-      (Q.length ? Q.map(function (q) {
-        var adm = q.p === "admiral", code = adm ? (q.n === 9 ? "G-9" : "F-" + q.n) : QL[q.p] + "-" + q.n;
-        return '<tr class="h-q" data-rep="' + q.p + ":" + q.n + '"><td class="d">' + (q.d ? starDate(q.d) : "—") + "</td><td><b>" + code + "</b></td><td>" + BL.career.STATION_NAME[q.p] +
-          "</td><td>" + (adm ? BL.career.admiralTitle(q.n).fleet : BL.classByN(q.n).name) + '</td><td class="hide-s">' +
-          (!q.d ? "—" : q.d.how === "signoff" ? "Rapid sign-off" : esc(q.d.title || (adm ? "Fleet operation" : "Patrol"))) + "</td></tr>";
-      }).join("") : '<tr><td colspan="5" class="muted">No qualifications yet.</td></tr>');
+    $("rec-grid").innerHTML = gridHtml(c, false, true);
     /* Mission history dressed like the reports (TexasBont, Nov 8, 2026): stardate, mission, his post,
        ship and class, the outcome in its colour; a row opens that path's reports. (The killed in
        action are on the In Memoriam page now.) */
@@ -3323,8 +3316,7 @@
     show("scr-record");
   }
   $("btn-record-back").onclick = function () { click(); showHub(); };
-  $("rec-history").onclick = function (ev) { var r = ev.target.closest("tr[data-rep]"); if (r) { click(); showReports(r.dataset.rep, "record"); } };
-  $("rec-quals").onclick = $("rec-history").onclick;
+  $("rec-grid").onclick = $("rec-history").onclick = function (ev) { var r = ev.target.closest("[data-rep]"); if (r) { click(); showReports(r.dataset.rep, "record"); } };
 
   /* ------------------------------------------------------ Mission reports
      A ribbon tapped on the career chart (TexasBont, Nov 6, 2026): every mission on record at that
