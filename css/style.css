@@ -868,3 +868,13 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
   .adm-map { flex: none; aspect-ratio: 1.3; }
   .adm-side { width: auto; overflow: visible; }
 }
+/* The flag's fight: the panel docks at the right edge, its system ringed in gold on the map */
+#adm-modal.docked { background: rgba(4,8,12,.2); justify-content: flex-end; align-items: flex-start; padding-top: 64px; }
+#adm-modal.docked .adm-battle { max-width: 430px; width: 430px; box-shadow: 0 0 0 2px var(--gold, #f5c542); }
+#adm-modal.docked .adm-bsides { grid-template-columns: 1fr; }
+.adm-bsw { color: var(--gold, #f5c542); }
+.adm-bwhere { color: var(--gold, #f5c542); font-size: 14px; margin: -4px 0 8px; }
+.adm-bring { fill: rgba(245,197,66,.18); stroke: #f5c542; stroke-width: 3; pointer-events: none; }
+.adm-bring-label { fill: #f5c542; stroke: none; font-size: 12px; font-weight: bold; }
+#adm-svg.battling .adm-hex { opacity: .6; }
+@media (max-width: 600px) { #adm-modal.docked .adm-battle { width: auto; } }

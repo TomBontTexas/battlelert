@@ -95,7 +95,7 @@
   function drawMap() {
     var svg = $("adm-svg"), w = PAD * 2 + S * (1.5 * c.cols + 0.5), h = PAD * 2 + RT3 * S * (c.rows + 0.5);
     svg.setAttribute("viewBox", "0 0 " + w.toFixed(0) + " " + h.toFixed(0));
-    svg.innerHTML = DEFS;
+    svg.innerHTML = DEFS; svg.classList.remove("battling");
     var gh = el("g", {}, svg), gp = el("g", {}, svg), gt = el("g", { id: "adm-trails" }, svg), gf = el("g", {}, svg);
     var vis = c.visibleSet();                         // (fog of war: the systems none of his ships can see are dimmed)
     c.hexes.forEach(function (x) {
@@ -266,7 +266,18 @@
     renderBattle();
     if (r === "go") ticking = setTimeout(tick, ROUND_MS);
   }
-  function battleOver() { if (ticking) { clearTimeout(ticking); ticking = null; } $("adm-modal").hidden = true; after(); }
+  function battleOver() { if (ticking) { clearTimeout(ticking); ticking = null; } $("adm-modal").hidden = true; $("adm-modal").classList.remove("docked"); after(); }
+  // The flag's fight on the map (TexasBont, Nov 7, 2026: which one is it?): a gold ring on its
+  // system and BATTLE beside it (below, or above on the bottom row), the rest dimmed; the panel
+  // docks at the right edge so the map stays in view.
+  function ringBattle(i) {
+    var svg = $("adm-svg"), h = c.hexes[i], p = centre(h);
+    Array.prototype.forEach.call(svg.querySelectorAll(".adm-bring"), function (n) { n.parentNode.removeChild(n); });
+    svg.classList.add("battling");
+    el("polygon", { points: corners(p), "class": "adm-bring" }, svg);
+    var below = h.row < c.rows - 1, y = below ? p.y + RT3 * S / 2 + 15 : p.y - RT3 * S / 2 - 6;
+    el("text", { x: p.x.toFixed(1), y: y.toFixed(1), "text-anchor": "middle", "class": "adm-bring adm-bring-label" }, svg).textContent = "⚔ BATTLE";
+  }
   function renderBattle(over) {
     var m = $("adm-modal"), t = over || c.tally(), pcx = function (x) { return Math.round(100 * x) + "%"; };
     function force(r, side) {
@@ -286,7 +297,9 @@
       ? asks.map(function (a) { return "<button data-ask='" + a + "'>Fight on to " + pcx(a) + " damage</button>"; }).join("") +
         "<button data-ask='1'>Fight to the last ship</button><button id='adm-pull' class='primary'>Withdraw</button>"
       : "<button id='adm-pull'>Withdraw now</button>";
-    m.innerHTML = "<div class='ov-card wide adm-battle'><h1>Battle at " + esc(t.at) + " · round " + t.round + "</h1>" +
+    var away = c.dist(t.atI, c.home);
+    m.innerHTML = "<div class='ov-card wide adm-battle'><h1><span class='adm-bsw'>⚔</span> Battle at " + esc(t.at) + " · round " + t.round + "</h1>" +
+      "<p class='adm-bwhere'>★ Your flag's fight · " + esc(t.at) + ", " + (away ? away + " warp" + (away === 1 ? "" : "s") + " from " + esc(c.hexes[c.home].name) : "our base") + " · the gold ring on the map</p>" +
       "<div class='adm-bsides'><div class='adm-btot us'><b>Ours</b> lost " + t.usLost + " ship" + (t.usLost === 1 ? "" : "s") + " · " + pcx(t.usDmg) + " damage</div>" +
       "<div class='adm-btot az'><b>Azurian</b> lost " + t.azLost + " ship" + (t.azLost === 1 ? "" : "s") + " · " + pcx(t.azDmg) + " damage</div></div>" +
       "<div class='adm-bsides'><div>" + t.us.map(function (r) { return force(r, "us"); }).join("") + "</div><div>" + t.az.map(function (r) { return force(r, "az"); }).join("") + "</div></div>" +
@@ -294,7 +307,7 @@
       (t.paused ? "<p class='adm-bstop'>Your side has taken " + pcx(t.usDmg) + " damage. Your call: withdraw, or fight on.</p>" : "") +
       "<div class='adm-blog'>" + t.events.slice(-6).reverse().map(function (e) { return "<div>" + esc(e) + "</div>"; }).join("") + "</div>" +
       "<div class='menu'>" + buttons + "</div></div>";
-    m.hidden = false;
+    m.classList.add("docked"); m.hidden = false; ringBattle(t.atI);
     Array.prototype.forEach.call(m.querySelectorAll("button[data-ask]"), function (b) {
       b.onclick = function () { click(); c.battleChoice(+b.getAttribute("data-ask")); battleView(); };
     });
@@ -304,6 +317,7 @@
   // (after the turn ends: drop the selected forces that are gone)
   function after() { sel = sel.filter(function (id) { var f = c.force(id); return f && !f.lost && !f.merged; }); draw(); }
   function flagModal() {
+    $("adm-modal").classList.remove("docked");
     var m = $("adm-modal"), us = c.ours().filter(function (f) { return f.role !== "convoy"; });
     m.innerHTML = "<div class='ov-card'><h1>The flagship is lost</h1><p>Shift your flag to another force and fight on (take the world and it's still a win), or withdraw: the campaign ends, scoring what your forces hold.</p>" +
       "<div class='menu'>" + us.map(function (f) { return "<button data-id='" + f.id + "'>Shift the flag to the " + esc(c.desc(f)) + "</button>"; }).join("") +
@@ -357,6 +371,7 @@
   }
   // Withdraw (any time): what the fleet holds still scores.
   function withdrawModal() {
+    $("adm-modal").classList.remove("docked");
     if (!c || c.state !== "play" || sliding) return;
     var m = $("adm-modal"), p = c.points();
     m.innerHTML = "<div class='ov-card'><h1>Withdraw?</h1><p>The campaign ends now. You keep " + p.total + " point" + (p.total === 1 ? "" : "s") +
@@ -369,6 +384,7 @@
   }
   // The write-up: the world taken (carry on with the turns left, or stop), the campaign over, or lost.
   function endModal() {
+    $("adm-modal").classList.remove("docked");
     var m = $("adm-modal"), u = c.summary(), st = c.state, pcx = function (x) { return Math.round(100 * x) + "%"; };
     var left = c.turns - c.turn + 1;
     var p = c.points(), done = st === "over" || st === "lost", tally = done ? score(p.total) : null;

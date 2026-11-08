@@ -639,7 +639,7 @@
       return { f: f, name: f.side === "us" ? cap(self.alive(f).length ? self.desc(f) : b.names[f.id]) + " (" + f.cmd.name + ")" : cap(b.names[f.id]), alive: self.alive(f).length, total: f.ships.length,
         cond: self.condition(f), gone: !!b.gone[f.id], ships: f.ships.map(function (s) { return Math.max(0, s.hp) / s.hpMax; }), flag: f.ships.indexOf(self.flagShip) >= 0 };
     }
-    return { at: this.hexes[b.at].name, round: b.round, paused: b.paused, ambush: b.ambush, ask: b.ask, us: b.us.map(row), az: b.az.map(row), usDmg: this.damage(b, "us"), azDmg: this.damage(b, "az"),
+    return { at: this.hexes[b.at].name, atI: b.at, round: b.round, paused: b.paused, ambush: b.ambush, ask: b.ask, us: b.us.map(row), az: b.az.map(row), usDmg: this.damage(b, "us"), azDmg: this.damage(b, "az"),
       usLost: this.lostIn(b, b.us), azLost: this.lostIn(b, b.az), asks: this.A.fight.asks, events: b.events };
   };
   Campaign.prototype.finishTurn = function () {
