@@ -897,3 +897,4 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 @media (max-width: 640px) { .title-main { flex-direction: column; } .title-poster { width: 180px; } }
 /* The fleet command orders (ui.js showAdmiralOffer) */
 .orders-head { font-weight: 700; letter-spacing: .2em; color: var(--charge); margin-bottom: 4px; }
+.rp-unit { font-size: 13px; color: var(--charge); margin-top: 2px; }

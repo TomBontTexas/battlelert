@@ -3281,7 +3281,7 @@
     $("rec-grid").innerHTML = gridHtml(c);
     $("rec-history").innerHTML = "<tr><th>Date</th><th>Station</th><th>Ship</th><th>Class</th><th>Tech</th><th>Outcome</th><th>Score</th><th>Reputation</th></tr>" +
       (c.history.length ? c.history.map(function (h) {
-        return "<tr><td>" + h.date + "</td><td>" + BL.career.STATION_NAME[h.station || "engineer"] + "</td><td>" + esc(h.ship) + (h.title ? "<br><i>" + esc(h.title) + "</i>" : "") + "</td><td>" + BL.classById(h.classId).name + "</td><td>" + (h.tl == null ? "—" : h.tl) + "</td><td>" + h.outcome +
+        return "<tr><td>" + starDate(h) + "</td><td>" + BL.career.STATION_NAME[h.station || "engineer"] + "</td><td>" + esc(h.ship) + (h.title ? "<br><i>" + esc(h.title) + "</i>" : "") + "</td><td>" + BL.classById(h.classId).name + "</td><td>" + (h.tl == null ? "—" : h.tl) + "</td><td>" + h.outcome +
           "</td><td>" + h.score + "</td><td>" + signed(h.rep || 0) + "</td></tr>";
       }).join("") : '<tr><td colspan="8" class="muted">No missions yet.</td></tr>');
     // Command: the crewmen killed in action (js/roster.js).
@@ -3301,6 +3301,18 @@
      station on that class, newest first, each with its ship, systems, outcome and score, and a story
      mission's after-action line. (The career keeps the last 1000 missions.) */
   var rpFrom = "hub";
+  /* Report dates a thousand years on, to the minute: 3026.11.08.21.56 (TexasBont, Nov 8, 2026;
+     older records have no time). */
+  function starDate(x) {
+    var d = String(x.date || "").split("-");
+    return d.length === 3 ? (+d[0] + 1000) + "." + d[1] + "." + d[2] + (x.time ? "." + x.time : "") : x.date || "";
+  }
+  /* His squadron's designation, the same every time for a class: Destroyer Squadron 12. */
+  function squadronName(c, classId) {
+    var k = 0, t = c.name + "|" + classId;
+    for (var i = 0; i < t.length; i++) k = (k * 31 + t.charCodeAt(i)) >>> 0;
+    return BL.classById(classId).name + " Squadron " + (10 + k % 89);
+  }
   /* The reports in the game's own words (TexasBont, Nov 8, 2026): the mission's name (a story
      mission's title, else a patrol; the admiral's a fleet operation), his post aboard, enemy ships
      destroyed and hull damage as a share of the ship's hull; scores as before (TexasBont: fine on every path). */
@@ -3321,7 +3333,7 @@
     var won = list.filter(function (h) { return h.outcome === "success"; }).length;
     $("rp-ribbon").innerHTML = BL.ribbonSvg ? BL.ribbonSvg(st, n, 165) : "";
     var ops = st === "admiral", wd = ops ? "operation" : "mission";      // (the admiral path: his fleet's operations)
-    $("rp-title").textContent = ops ? BL.career.admiralTitle(n).full + ": operation reports" : who + " · " + cls.name + ": mission reports";
+    $("rp-title").textContent = ops ? BL.career.admiralTitle(n).full + ": operation reports" : st === "squadron" ? cls.name + " Squadron Mission Reports" : who + " · " + cls.name + ": mission reports";
     $("rp-sum").textContent = list.length ? list.length + " " + wd + (list.length === 1 ? "" : "s") + " on record, " + won + " won." : "No " + wd + "s on record here.";
     $("rp-list").innerHTML = list.map(function (h) {
       // (the ship's service record holds the systems flown, ships destroyed and hull lost)
@@ -3333,11 +3345,20 @@
       // (a fleet campaign has no one ship or tech level: its fleet instead, and no score shown)
       var fleetOp = h.station === "admiral" && h.tl == null;
       var facts = [fleetOp ? BL.career.admiralTitle(h.n).fleet : shipHtml(h.classId, h.ship, h.hull) + (h.tl != null ? " (TL" + h.tl + ")" : "")];
+      // (a squadron: the other ships under his flag that mission, each marked if lost)
+      if (h.station === "squadron") Object.keys(c.ships).forEach(function (k) {
+        var r = c.ships[k]; if (r.name === h.ship && (r.hull || "") === (h.hull || "")) return;
+        r.missions.forEach(function (x) {
+          if (x.seed === h.seed && x.date === h.date && x.station === "squadron")
+            facts.push(shipHtml(r.classId, r.name, r.hull) + (r.tl != null ? " (TL" + r.tl + ")" : "") + (x.outcome === "destroyed" ? " · lost" : x.outcome === "leftBehind" ? " · left behind" : ""));
+        });
+      });
       // (one fact a line; no post: the page is the path's)
       if (sys) facts.push("Enemy Forces Engaged: " + esc(sys));
       if (m && m.kills != null) facts.push(m.kills + " enemy ship" + (m.kills === 1 ? "" : "s") + " destroyed");
       var hp = m ? hullPct(h.classId, h.tl, m.hullLost) : null; if (hp) facts.push("Hull Damage " + hp);
-      return '<div class="rp-card ' + (ok ? "ok" : "bad") + '"><div class="rp-top"><b>' + esc(missionName(h)) + "</b><span>" + h.date + "</span></div>" +
+      return '<div class="rp-card ' + (ok ? "ok" : "bad") + '"><div class="rp-top"><b>' + esc(missionName(h)) + "</b><span>" + starDate(h) + "</span></div>" +
+        (h.station === "squadron" ? '<div class="rp-unit">' + esc(squadronName(c, h.classId)) + "</div>" : "") +
         '<div class="rp-out"><b>' + (OUTCOME_NAME[h.outcome] || h.outcome) + "</b> · score " + (h.score != null ? (fleetOp ? "+" : "") + h.score : "–") + " · reputation " + signed(h.rep || 0) + "</div>" +
         '<div class="rp-facts">' + facts.map(function (f) { return "<div>" + f + "</div>"; }).join("") + "</div>" + (line ? '<p class="rp-story">' + esc(line) + "</p>" : "") + "</div>";
     }).join("");
@@ -3470,7 +3491,7 @@
         var sys = engaged(m.encounters);
         // (his post: where he served; a squadron's other ships and a fleet's: under his flag)
         var post = m.station === "admiral" ? "Fleet Command" : m.station === "squadron" && h && h.station !== "squadron" ? "Flag bridge" : h ? POST[h.station || "engineer"] : m.station === "squadron" ? "Flag bridge" : POST[m.station || "engineer"];
-        return "<tr><td>" + m.date + "</td><td>" + esc(missionName(h, m)) + "</td><td>" + (post || "–") + "</td><td>" + (sys || "–") + "</td><td>" + (OUTCOME_NAME[m.outcome] || m.outcome) +
+        return "<tr><td>" + starDate(m) + "</td><td>" + esc(missionName(h, m)) + "</td><td>" + (post || "–") + "</td><td>" + (sys || "–") + "</td><td>" + (OUTCOME_NAME[m.outcome] || m.outcome) +
           "</td><td>" + (m.score != null ? m.score : "–") + "</td><td>" + (m.kills != null ? m.kills : "–") + "</td><td>" + (hullPct(e.classId, e.tl, m.hullLost) || "–") + "</td></tr>";
       }).join("") : '<tr><td colspan="8" class="muted">No missions on record.</td></tr>');
     show("scr-shipcard"); window.scrollTo(0, 0);

@@ -36,6 +36,8 @@
 
   function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
   function today() { var d = new Date(); return d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2) + "-" + ("0" + d.getDate()).slice(-2); }
+  // (the hour and minute too, for the reports' stardates: TexasBont, Nov 8, 2026)
+  function now() { var d = new Date(); return ("0" + d.getHours()).slice(-2) + "." + ("0" + d.getMinutes()).slice(-2); }
 
   function cleanName(name) { return String(name || "").replace(/\s+/g, " ").trim().slice(0, 24); }
 
@@ -578,7 +580,7 @@
     var repWas = st.rep;
     st.rep = Math.max(0, st.rep + report.repParts.reduce(function (a, p) { return a + p[1]; }, 0));
     report.rep = st.rep - repWas;
-    var entry = { date: today(), station: job.station, classId: job.classId, n: job.n, tl: job.tl, ship: job.ship, hull: job.hull || hullOf(c, job),
+    var entry = { date: today(), time: now(), station: job.station, classId: job.classId, n: job.n, tl: job.tl, ship: job.ship, hull: job.hull || hullOf(c, job),
       seed: job.seed, outcome: r.outcome, score: r.score, rep: report.rep, serious: job.serious, story: job.story, title: job.title };
     c.history.unshift(entry);
     if (c.history.length > 1000) c.history.length = 1000;
@@ -587,7 +589,7 @@
     // (a squadron's other ships: each gets her own service record; one lost or left behind is retired)
     if (squad && cp && cp.squad) cp.squad.ships.forEach(function (s, i) {
       var nm = s.fullName || (job.wingShips || [])[i]; if (!nm) return;
-      var e = { date: entry.date, station: "squadron", classId: job.classId, n: job.n, tl: job.tl, ship: nm, hull: hullOf(c, { ship: nm, classId: job.classId }),
+      var e = { date: entry.date, time: entry.time, station: "squadron", classId: job.classId, n: job.n, tl: job.tl, ship: nm, hull: hullOf(c, { ship: nm, classId: job.classId }),
         seed: job.seed, outcome: s.left ? "leftBehind" : s.hull <= 0 ? "destroyed" : r.outcome, score: null, rep: 0, serious: job.serious };
       logService(c, e, { detail: { kills: s.kills, hullLost: s.hullLost } });
       if (s.left || s.hull <= 0) retireShip(c, e);
@@ -692,12 +694,12 @@
       }
     }
     report.banked = A.banked;
-    var entry = { date: today(), station: "admiral", classId: BL.classByN(L).id, n: L, tl: null, ship: admiralTitle(L).short + " campaign", hull: "",
+    var entry = { date: today(), time: now(), station: "admiral", classId: BL.classByN(L).id, n: L, tl: null, ship: admiralTitle(L).short + " campaign", hull: "",
       seed: r.seed, outcome: r.objective ? "success" : success ? "partial" : r.annihilated ? "destroyed" : "failure", score: r.points, rep: report.rep, serious: !requal };
     c.history.unshift(entry);
     if (c.history.length > 1000) c.history.length = 1000;
     (r.ships || []).forEach(function (s) {
-      var e = { date: entry.date, station: "admiral", classId: s.classId, n: BL.classById(s.classId).n, tl: s.tl, ship: s.name, hull: s.hull, seed: r.seed,
+      var e = { date: entry.date, time: entry.time, station: "admiral", classId: s.classId, n: BL.classById(s.classId).n, tl: s.tl, ship: s.name, hull: s.hull, seed: r.seed,
         outcome: s.lost ? "destroyed" : entry.outcome, score: null, rep: 0, serious: !requal };
       logService(c, e, {});
       if (s.lost) retireShip(c, e);
@@ -737,7 +739,7 @@
     var key = recKey(h), rec = c.ships[key];
     if (!rec) rec = c.ships[key] = { name: h.ship, hull: h.hull || "", classId: h.classId, n: h.n, tl: h.tl, firstServed: h.date, missions: [] };
     var d = r.detail || {};
-    rec.missions.push({ date: h.date, hero: c.name, station: h.station, seed: h.seed, outcome: h.outcome, score: h.score,
+    rec.missions.push({ date: h.date, time: h.time, hero: c.name, station: h.station, seed: h.seed, outcome: h.outcome, score: h.score,
       rep: h.rep, serious: h.serious, kills: d.kills, hullLost: d.hullLost, jumpsOnTime: d.jumpsOnTime,
       encounters: (r.jumps || []).map(function (j) { return j.encounter; }), damageReports: (r.damage || []).length });
     rec.lastServed = h.date;
