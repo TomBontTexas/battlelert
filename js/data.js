@@ -1329,8 +1329,11 @@
      x our top ships pyramids a class below our top ships (as garrisons) arrive at the far edge,
      nearest the world.
      points (TexasBont, Nov 7, 2026): each facility (base, shipyard, depot) he holds when the
-     mission ends is `facility`; the target world held to the last turn is a flat `world` (F3: the
-     convoy through, `convoy`); `rank` points at a level earn the next level. */
+     mission ends is `facility`; the level's objective (F3 the convoy through, F4 to F8 the world
+     held to the last turn, G9 the planet buster dropped) is worth the level's number, and each
+     map holds that many facilities too. Points at a level up to its number earn the next level;
+     every point banked on the way up takes `homeK` off the homeworld's garrison and defences at G9
+     (and so does each facility he holds there). */
   BL.ADMIRALS = {
     levels: ["F3", "F4", "F5", "F6", "F7", "F8", "G9"],
     titles: { F3: "Fleet Commodore", F4: "Fleet Admiral", F5: "Fleet Admiral", F6: "Fleet Admiral", F7: "Fleet Admiral", F8: "Fleet Admiral", G9: "Grand Admiral" },
@@ -1341,10 +1344,11 @@
     abbr: { cargo: "AK", gunboat: "PT", picket: "DL", destroyerEscort: "DE", destroyer: "DD", lightCruiser: "CL", cruiser: "C", heavyCruiser: "CA", battleship: "BB", dreadnought: "DN", defences: "DEF" },     // (the hull codes, BL.HULL_CODES)
     plural: { gunboat: "gunboats", picket: "pickets", destroyerEscort: "destroyer escorts", destroyer: "destroyers", lightCruiser: "light cruisers", cruiser: "cruisers", heavyCruiser: "heavy cruisers", battleship: "battleships", dreadnought: "dreadnoughts" },
     turns: { base: 16, perLevel: 1 },
-    points: { facility: 1, world: 10, convoy: 10, buster: 10, rank: 10 },
+    points: { facility: 1, homeK: 0.01 },
     // G9's campaign (TexasBont, Nov 7, 2026): the planet buster strike on the Azurian homeworld.
-    // The buster rides in the flagship of the first turn and drops once the homeworld's garrison
-    // and defences are beaten with her there; then it's over (nothing to hold).
+    // He loads it into a dreadnought on the first turn (the Azurians don't know which); it drops
+    // the moment she warps into the homeworld's system, if she lives through one volley of its
+    // defences, shared by every force of ours arriving that turn (we don't fire back).
     buster: { levels: ["G9"] },
     // F3's campaign (TexasBont, Nov 7, 2026: DLs and DEs aren't ships of the line): escort a convoy
     // of `cargo` unarmed cargo ships (each `hp` x a destroyer escort's) from our base to the other
@@ -1355,6 +1359,7 @@
     // Fog of war: sight in warps around each force (a detached picket squadron: scout) and each
     // system he holds (held); Fleet HQ reports a force out of sight with the chance `report` a
     // turn, `lag` turns late, and `off` of the time a system off.
+    // (the Azurians play by the same rules: TexasBont, Nov 7, 2026)
     fog: { sight: 1, scout: 2, held: 1, report: 0.35, lag: [1, 2], off: 0.3 },
     // An ambush: a force that warps into a system none of his ships could see, onto an enemy,
     // fires at `k` for the first `rounds` rounds.
@@ -1365,6 +1370,10 @@
     temper: { cautious: [0.92, 0.9], steady: [1, 1], aggressive: [1.1, 1.1] },
     skill: [0.4, 0.95], skillK: 0.5,
     enemy: { skill: [0.4, 0.85], bases: [2, 3], kinds: ["base", "shipyard", "depot"], combo: [0.2, 0.08], below: 1, worldGarrison: 0.5, defences: { hp: 0.95, fire: 0.52, level: { F3: 0.8 } },
-             patrols: [1, 2], raiders: [1, 1], roam: 2, main: 0.5, chase: 3, counter: { every: 2, size: 0.5 } }
+             patrols: [1, 2], raiders: [1, 1], roam: 2, main: 0.5, chase: 3, counter: { every: 2, size: 0.5 },
+             // G9's ring (the main fleet and the homeworld's garrison around it): main and garrison
+             // in place of `main` and `worldGarrison`; it closes on any force it knows of within
+             // `reach` warps of the homeworld.
+             strike: { main: 1, garrison: 1, reach: 2 } }
   };
 })(typeof window !== "undefined" ? window : globalThis);

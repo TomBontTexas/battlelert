@@ -12,7 +12,9 @@
    world is taken (state "won") he must hold it to the end of the last turn (then "over", won)
    against the Azurians' counterattack. He may withdraw any time; every campaign scores points
    (the world 10, each facility held 1), and 10 at a level earn the next. G9 is the planet buster
-   strike: it drops on the homeworld once its garrison and defences are beaten, and that ends it. A force that spends a whole turn, unfought, in a system
+   strike: it drops the moment its dreadnought warps into the homeworld's system, if she lives
+   through one volley of its defences, and that ends it. The Azurians have fog of war too: they
+   act only on what their forces and systems see, and their own late reports. A force that spends a whole turn, unfought, in a system
    with a shipyard we hold (the worlds are bases, shipyards and depots) is fully repaired. Tuning:
    BL.ADMIRALS (data.js).
    Stage 2 (TexasBont, Nov 7, 2026): fog of war (he sees what his ships see, a detached picket
@@ -43,9 +45,15 @@
     this.size = A.top[this.level];
     this.rng = BL.rng(this.seed);
     this.irng = BL.rng((this.seed * 7919 + 17) >>> 0);  // (Fleet HQ's reports: their own dice, so the fog never changes the fighting)
+    this.arng = BL.rng((this.seed * 104729 + 29) >>> 0); // (the Azurians' reports on us)
+    this.azIntel = {};                                // what they know of each force of ours: { at, turn }
+    this.levelNum = +this.level.slice(1);             // (F5: 5; the objective's points, and the facilities' on the map)
+    this.banked = opts.banked || 0;                   // (G9: the points banked from F3 to F8)
+    this.hwK = 1;
     this.convoyMode = A.convoy.levels.indexOf(this.level) >= 0;   // F3: escort a convoy between two Imperial worlds
     this.busterMode = A.buster.levels.indexOf(this.level) >= 0;   // G9: drop the planet buster on the Azurian homeworld
-    this.buster = null;                               // (G9: the ship carrying it, the first turn's flagship)
+    this.buster = null;                               // (G9: the dreadnought carrying it: loadBuster)
+    this.dropped = false;
     this.intel = {};                                  // what he knows of each Azurian force: { at, turn, seen, label, name, trail: [{ at, seen }] }
     this.turn = 1;
     this.turns = A.turns.base + A.turns.perLevel * A.levels.indexOf(this.level);
@@ -61,6 +69,7 @@
     this.makeFleet();
     this.makeEnemy();
     this.flagShip = this.ours()[0].top.ships[0];      // (the flag flies in the first top ship to start)
+    if (this.busterMode) { this.buster = this.flagShip; this.homeStrength(); }
     this.flagSet = false;                             // (he may move it until the first turn ends)
     this.syncFlag();
     this.briefing();
@@ -89,11 +98,13 @@
     // The Azurian bases, shipyards and depots: between the two, never next to each other. Some
     // systems hold two or all three (the big money systems: TexasBont, Nov 7, 2026), each with
     // its own garrison. h.kind is the first of h.kinds.
-    var E = this.A.enemy, nb = r.int(E.bases), kinds = E.kinds;
-    for (var k = 0, tries = 0; k < nb && tries < 200; tries++) {
+    // (their facilities add up to the level's number: TexasBont, Nov 7, 2026)
+    var E = this.A.enemy, need = this.levelNum, kinds = E.kinds;
+    for (var k = 0, tries = 0; need > 0 && tries < 400; tries++) {
       var h = this.hexes[this.at(r.int([3, M.cols - 2]), r.int([0, M.rows - 1]))];
       if (h.kind !== "empty" || this.neighbors(h.i).some(function (j) { return self.hexes[j].kind !== "empty"; })) continue;
-      var x = r.next(), n = x < E.combo[1] ? 3 : x < E.combo[0] + E.combo[1] ? 2 : 1, first = kinds[k % kinds.length];
+      var x = r.next(), n = Math.min(need, x < E.combo[1] ? 3 : x < E.combo[0] + E.combo[1] ? 2 : 1), first = kinds[k % kinds.length];
+      need -= n;
       h.kinds = [first];
       while (h.kinds.length < n) { var more = r.pick(kinds); if (h.kinds.indexOf(more) < 0) h.kinds.push(more); }
       h.kinds.sort(function (a, b) { return kinds.indexOf(a) - kinds.indexOf(b); });
@@ -192,15 +203,19 @@
       for (var m2 = 0; m2 < Math.round(this.size * E.main); m2++) az(mid, "hunt", this.top);
       return;
     }
-    for (var g = Math.round(this.size * E.worldGarrison); g > 0; g--) az(this.world, "garrison", below);
+    // (G9: the buster drops on arrival, so the homeworld's garrison holds the systems around it,
+    // with the main fleet: the ring)
+    var nb = this.neighbors(this.world), S = E.strike, ng = Math.round(this.size * (this.busterMode ? S.garrison : E.worldGarrison)), nm = Math.round(this.size * (this.busterMode ? S.main : E.main));
+    for (var g = 0; g < ng; g++) {
+      if (this.busterMode) { var rg = az(nb[(nm + g) % nb.length], "main", below); rg.home = true; } else az(this.world, "garrison", below);
+    }
     // The world's defences: one fixed force, as strong as a share of our whole fleet.
     var hp = 0, fire = 0; this.ourShips().forEach(function (s) { if (s.cls !== "cargo") { hp += s.hpMax; fire += s.fire; } });
     var dk = E.defences.level[this.level] || 1, dhp = Math.round(hp * E.defences.hp * dk);
     var d = { cls: "defences", hp: dhp, hpMax: dhp, fire: Math.round(fire * E.defences.fire * dk) };
     this.group("az", { cls: "defences", ships: [d], kids: [], cmd: { name: "World defences", last: "defences", skill: 0.7, temper: "steady" } }, this.world, "defences");
     for (var p = r.int(E.patrols); p > 0 && bases.length; p--) az(r.pick(bases).i, "patrol", below);
-    var nb = this.neighbors(this.world);
-    for (var m = 0; m < Math.round(this.size * E.main); m++) az(nb[m % nb.length], "main", this.top);
+    for (var m = 0; m < nm; m++) az(nb[m % nb.length], "main", this.top);
   };
   // Every ship of ours (the losses count them all).
   Campaign.prototype.ourShips = function () {
@@ -285,6 +300,28 @@
     this.refresh(lead); this.syncFlag();
     return lead;
   };
+  // G9, the first turn: the planet buster goes aboard a dreadnought of the force picked (her top
+  // dreadnought); the Azurians don't know which.
+  Campaign.prototype.loadBuster = function (id) {
+    var f = this.force(id); if (!this.busterMode || this.flagSet || this.turn > 1 || !f || f.side !== "us" || f.lost || f.merged) return false;
+    var dn = f.ships.filter(function (s) { return s.cls === "dreadnought" && s.hp > 0; })[0];
+    if (!dn) return false;
+    this.buster = dn; return true;
+  };
+  // G9: the homeworld's garrison and defences, 1% off for each point banked and each facility he
+  // holds now (rescaled whenever that changes).
+  Campaign.prototype.homeStrength = function () {
+    if (!this.busterMode) return;
+    var self = this, held = 0;
+    this.hexes.forEach(function (h) { if (h.owner === "us" && h.kind !== "home" && h.kind !== "world") held += h.kinds.length; });
+    var k = Math.max(0.05, 1 - this.A.points.homeK * (this.banked + held)), q = k / this.hwK;
+    if (Math.abs(q - 1) < 1e-9) return;
+    this.theirs().forEach(function (f) {
+      if (!f.home && !(f.role === "defences" && f.at === self.world)) return;
+      f.ships.forEach(function (s) { s.hp *= q; s.hpMax *= q; s.fire *= q; });
+    });
+    this.hwK = k;
+  };
   // G9: the force the planet buster is in.
   Campaign.prototype.busterForce = function () {
     var s = this.buster || this.flagShip; if (!this.busterMode) return null;
@@ -310,14 +347,14 @@
     this.note("The fleet withdraws. The campaign is over.");
   };
   // Campaign points (TexasBont, Nov 7, 2026): each facility he holds is one (a system with a
-  // shipyard and a base is two); the target world held to the last turn a flat 10 (F3: the
-  // convoy through), its own facilities nothing more. The whole fleet lost: nothing. Before the
-  // end: what he'd score if it ended now (the world not yet).
+  // shipyard and a base is two); the objective (the world held to the last turn, F3 the convoy
+  // through, G9 the buster dropped) the level's number, the world's own facilities nothing more.
+  // The whole fleet lost: nothing. Before the end: what he'd score if it ended now.
   Campaign.prototype.points = function () {
     var P = this.A.points, items = [];
     if (this.state === "lost" && this.why === "losses") return { total: 0, items: items };
     if (this.state === "over") items.push({ name: this.hexes[this.world].name, what: this.convoyMode ? "the convoy through" : this.busterMode ? "the planet buster dropped" : "the target world",
-      pts: this.convoyMode ? P.convoy : this.busterMode ? P.buster : P.world });
+      pts: this.levelNum });
     this.hexes.forEach(function (h) {
       if (h.owner !== "us" || h.kind === "home" || h.kind === "world") return;
       items.push({ name: h.name, what: list(h.kinds), pts: P.facility * h.kinds.length });
@@ -334,9 +371,32 @@
   };
 
   /* ------------------------------------------------------------ The enemy */
-  // Each Azurian force picks its move from where our squadrons are at the start of the turn.
+  // What the Azurians know of us (the same fog as his: TexasBont, Nov 7, 2026): what their
+  // forces and systems see, a report they find empty struck, the rest now and then reported, late
+  // and sometimes a system off. Returns what they know: [{ f, at }].
+  Campaign.prototype.azKnown = function () {
+    var self = this, F = this.A.fog, r = this.arng, vis = {}, turn = this.turn;
+    function around(at, d) { self.hexes.forEach(function (h) { if (self.dist(at, h.i) <= d) vis[h.i] = true; }); }
+    this.theirs().forEach(function (f) { around(f.at, self.sight(f)); });
+    this.hexes.forEach(function (h) { if (h.owner === "az") around(h.i, F.held); });
+    Object.keys(this.azIntel).forEach(function (id) {
+      var k = self.azIntel[id], f = self.force(+id);
+      if (!f || f.lost || f.merged || (vis[k.at] && f.at !== k.at)) delete self.azIntel[id];
+    });
+    this.ours().forEach(function (f) {
+      if (vis[f.at]) { self.azIntel[f.id] = { at: f.at, turn: turn }; return; }
+      if (!r.chance(F.report)) return;
+      var lag = r.int(F.lag), at = f.trail[Math.max(0, f.trail.length - 1 - lag)];
+      if (r.chance(F.off)) at = r.pick(self.neighbors(at));
+      var was = self.azIntel[f.id];
+      if (vis[at] || (was && was.turn >= turn - lag)) return;
+      self.azIntel[f.id] = { at: at, turn: turn - lag };
+    });
+    return Object.keys(this.azIntel).map(function (id) { return { f: self.force(+id), at: self.azIntel[id].at }; });
+  };
+  // Each Azurian force picks its move from what they know of our forces at the start of the turn.
   Campaign.prototype.enemyMoves = function () {
-    var E = this.A.enemy, r = this.rng, self = this, ours = this.ours();
+    var E = this.A.enemy, r = this.rng, self = this, ours = this.azKnown();
     // Once the world is taken: the counterattack. Their main fleet regroups where
     // they are (a turn's grace for him to repair), then go for it with the fresh forces that come
     // in at the far edge every `counter.every` turns (reinforce).
@@ -346,7 +406,7 @@
       if (f.role === "patrol") {
         // A lone squadron of ours next to it, no stronger than the patrol: jump it.
         var prey = ours.filter(function (o) {
-          return self.dist(o.at, f.at) === 1 && self.ours().filter(function (x) { return x.at === o.at; }).length === 1 && self.power([o]) <= self.power([f]);
+          return self.dist(o.at, f.at) === 1 && ours.filter(function (x) { return x.at === o.at; }).length === 1 && self.power([o.f]) <= self.power([f]);
         })[0];
         if (prey) next = prey.at;
         else {
@@ -355,7 +415,7 @@
         }
       } else if (f.role === "hunt") {
         // (F3's main fleet: the convoy if it's within reach, else it waits near the destination)
-        var v = self.convoy();
+        var v = ours.filter(function (o) { return o.f.role === "convoy"; })[0];
         if (v && self.dist(v.at, f.at) <= E.chase) next = self.stepToward(f.at, v.at);
         else next = self.dist(f.at, self.world) > 2 ? self.stepToward(f.at, self.world) : f.at;
       } else if (f.role === "raid") {
@@ -364,13 +424,24 @@
         var marks = [];
         // (never a world: the counterattack and F3's raids see to those)
         self.hexes.forEach(function (h) { if (h.owner === "us" && h.kind !== "home" && h.kind !== "world" && !ours.some(function (o) { return o.at === h.i; })) marks.push(h.i); });
-        ours.forEach(function (o) { if (o.role === "convoy" || self.power([o]) <= self.power([f])) marks.push(o.at); });
+        ours.forEach(function (o) { if (o.f.role === "convoy" || self.power([o.f]) <= self.power([f])) marks.push(o.at); });
         marks.sort(function (a, b) { return self.dist(f.at, a) - self.dist(f.at, b); });
         next = marks.length ? self.stepToward(f.at, marks[0]) : r.pick(self.neighbors(f.at).concat([f.at]));
       } else if (f.role === "regroup") {
         next = f.at;
       } else if (f.role === "retake") {
         next = f.at === self.world ? f.at : self.stepToward(f.at, self.world);
+      } else if (f.role === "main" && self.busterMode) {
+        // (G9: they hold the systems around the homeworld, and close on any force of ours they
+        // know of that comes within reach of it, the nearest the world first; they don't know
+        // which has the buster)
+        var th = ours.filter(function (o) { return self.dist(o.at, self.world) <= E.strike.reach; })
+          .sort(function (a, b) { return self.dist(a.at, self.world) - self.dist(b.at, self.world) || self.dist(a.at, f.at) - self.dist(b.at, f.at); })[0];
+        // (into the system it would warp through next, if they can get there this turn; else back to their post)
+        var cut = th ? self.stepToward(th.at, self.world) : -1;
+        if (cut === self.world && th) cut = th.at;
+        next = th && self.dist(f.at, cut) <= 1 ? cut : f.at === f.base ? f.at : self.stepToward(f.at, f.base);
+        if (next === self.world) next = f.at;
       } else if (f.role === "main") {
         var near = ours.map(function (o) { return { o: o, d: self.dist(o.at, f.at) }; }).filter(function (x) { return x.d <= E.chase; })
           .sort(function (a, b) { return a.d - b.d; })[0];
@@ -478,7 +549,6 @@
   Campaign.prototype.endTurn = function () {
     if (this.state !== "play") return null;
     var self = this, lines = [], flagFight = null;
-    if (this.busterMode && !this.buster) this.buster = this.flagShip;
     this.flagSet = true;
     this.turnLines = lines;
     this.visBefore = this.visibleSet();               // (warping into a system he couldn't see: an ambush, if they're there)
@@ -491,6 +561,7 @@
       if (f.at !== f.prev) f.trail.push(f.at);
     });
     this.reinforce();
+    if (this.busterMode && this.strike(lines)) return this.finishTurn();
     // Fights: every system with both sides in it.
     var hexes = {}, flag = this.force(this.flag);
     this.fought = {};
@@ -508,6 +579,32 @@
     this.battle = this.battleStart(flagFight[0], flagFight[1], flagFight[2], true);
     this.state = "battle";
     return null;
+  };
+  // G9: the buster's dreadnought warps into the homeworld's system. Its defences fire one volley,
+  // shared by every force of ours arriving this turn (we don't fire back); if she lives, the
+  // buster drops. True when it has.
+  Campaign.prototype.strike = function (lines) {
+    var self = this, F = this.A.fight, A = this.A, r = this.rng, bf = this.busterForce();
+    if (!bf || bf.at !== this.world || bf.prev === this.world) return false;
+    var name = this.hexes[this.world].name, arriving = this.ours().filter(function (f) { return f.at === self.world && f.prev !== self.world; });
+    var def = this.theirs().filter(function (f) { return f.at === self.world && f.role === "defences"; })[0];
+    if (def && this.alive(def).length) {
+      var dmg = 0, before = {}, targets = [];
+      this.alive(def).forEach(function (s) { dmg += s.fire * self.fireK(def) * F.k * r.range(F.spread); });
+      arriving.forEach(function (f) { self.alive(f).forEach(function (s) { targets.push({ s: s, f: f }); before[s.cls] = (before[s.cls] || 0) + 1; }); });
+      var tot = targets.reduce(function (a, t) { return a + t.s.hpMax; }, 0), gone = {};
+      targets.forEach(function (t) {
+        t.s.hp -= dmg * (t.s.hpMax / tot) * (A.temper[t.f.cmd.temper] || [1, 1])[1] * r.range([0.6, 1.4]);
+        if (t.s.hp <= 0) { t.s.hp = 0; gone[t.s.cls] = (gone[t.s.cls] || 0) + 1; }
+      });
+      arriving.forEach(function (f) { if (!self.alive(f).length) f.lost = true; });
+      var ls = A.classes.slice().reverse().filter(function (c) { return gone[c]; }).map(function (c) { return gone[c] === 1 ? "a " + BL.classById(c).name.toLowerCase() : gone[c] + " " + A.plural[c]; });
+      lines.push(cap(name) + "'s defences fire on our ships as they warp in: " + (ls.length ? "we lose " + list(ls) + "." : "no ships lost."));
+    }
+    if ((this.buster || this.flagShip).hp <= 0) { lines.push("The dreadnought carrying the planet buster is destroyed."); return false; }
+    this.dropped = true;
+    lines.push("The planet buster drops on " + name + ".");
+    return true;
   };
   // One round of the flag's fight: "go" (more to come), "paused" (at his mark: battleChoice),
   // or "done" (the fight is over and the turn ended).
@@ -576,6 +673,7 @@
       self.taken.push({ turn: self.turn, name: h.name, what: what });
       lines.push(h.kind === "world" ? "The target world " + h.name + " is taken." : h.name + "'s " + what + (h.kinds.length > 1 ? " are" : " is") + " taken.");
     });
+    this.homeStrength();
     if (!lines.length) lines.push("No contact.");
     var last = this.log[this.log.length - 1];        // (notes already made this turn come first)
     if (last && last.turn === this.turn) { last.lines = last.lines.concat(lines); } else this.log.push({ turn: this.turn, lines: lines });
@@ -601,14 +699,10 @@
       if (this.flagShip.hp <= 0 && this.ours().some(function (f) { return f.role !== "convoy"; })) { this.state = "flag"; return; }
       return;
     }
-    // G9: the buster drops once the world is taken (its garrison and defences beaten) with her
-    // there; lost with her.
+    // G9: won when the buster drops (endTurn); lost with her.
     if (this.busterMode) {
-      var bs = this.buster || this.flagShip, bf = this.busterForce();
-      if (held && bs.hp > 0 && bf && bf.at === this.world) {
-        this.won = true; this.wonTurn = this.turn - 1; this.state = "over"; this.why = "buster";
-        this.note("The planet buster drops on " + this.hexes[this.world].name + "."); return;
-      }
+      var bs = this.buster || this.flagShip;
+      if (this.dropped) { this.won = true; this.wonTurn = this.turn - 1; this.state = "over"; this.why = "buster"; return; }
       if (bs.hp <= 0) { this.state = "lost"; this.why = "buster"; return; }
       if (this.turn > this.turns) { this.state = "lost"; this.why = "time"; return; }
       if (!this.ours().length) { this.state = "lost"; this.why = "losses"; return; }
@@ -723,8 +817,8 @@
 
   /* --------------------------------------------- Headless runs (dev-tools)
      A simple test admiral: every force together, the shortest way to the target world. */
-  BL.runAdmiralsHeadless = function (seed, level) {
-    var c = new Campaign({ seed: seed, level: level }), guard = 0;
+  BL.runAdmiralsHeadless = function (seed, level, banked) {
+    var c = new Campaign({ seed: seed, level: level, banked: banked === undefined ? 33 : banked }), guard = 0;
     while (c.state !== "over" && c.state !== "lost" && guard++ < 5000) {
       if (c.state === "won") { c.carryOn(); continue; }
       if (c.state === "flag") { var o = c.ours().filter(function (f) { return f.role !== "convoy"; }); if (o.length) c.setFlag(o[o.length - 1].id); else c.withdraw(); continue; }

@@ -51,10 +51,10 @@
     '<marker id="adm-arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="4" markerHeight="4" orient="auto"><path d="M0,0 L10,5 L0,10 Z" class="adm-arrowhead"/></marker></defs>';
 
   function start(o) {
-    opts = o; c = new BL.Campaign({ seed: o.seed, level: o.level }); sel = []; focus = c.home; trail = null; cheered = false;
+    opts = o; c = new BL.Campaign({ seed: o.seed, level: o.level, banked: ledger().banked }); sel = []; focus = c.home; trail = null; cheered = false;
     if (ticking) { clearTimeout(ticking); ticking = null; }
     $("adm-modal").hidden = true;
-    hintDefault = $("adm-hint").textContent = "1–9 select · A all · S split · J join · H hold · F fly the flag" + (c.busterMode ? " and the buster" : "") + " (first turn) · W withdraw · Enter end turn · Esc clear";
+    hintDefault = $("adm-hint").textContent = "1–9 select · A all · S split · J join · H hold · F fly the flag" + (c.busterMode ? " · B load the buster" : "") + " (first turn) · W withdraw · Enter end turn · Esc clear";
     draw();
   }
 
@@ -62,7 +62,10 @@
   function draw() {
     $("adm-title").textContent = "Admirals · " + c.level + " " + BL.ADMIRALS.titles[c.level] + (c.convoyMode ? " · convoy escort" : c.busterMode ? " · planet buster strike" : "");
     var pts = c.points().total;
-    $("adm-turn").textContent = "Turn " + Math.min(c.turn, c.turns) + " of " + c.turns + " · " + pts + " point" + (pts === 1 ? "" : "s") + " held";
+    $("adm-turn").textContent = "Turn " + Math.min(c.turn, c.turns) + " of " + c.turns + " · " + pts + " point" + (pts === 1 ? "" : "s") + " held" +
+      (c.busterMode ? " · homeworld at " + Math.round(100 * c.hwK) + "%" : "");
+    $("btn-adm-buster").hidden = !c.busterMode;
+    $("btn-adm-buster").disabled = c.state !== "play" || c.turn > 1;
     $("adm-seed").textContent = "seed " + c.seed;
     $("btn-adm-end").disabled = c.state !== "play";
     $("btn-adm-withdraw").disabled = c.state !== "play";
@@ -319,18 +322,38 @@
       : c.why === "retaken" ? "The Azurians hold " + u.world + " at the end of turn " + u.turns + "."
       : c.why === "losses" ? "The whole fleet is lost." : c.why === "pulled" ? "You withdrew the fleet on turn " + u.turn + "." : "The fleet withdrew after losing its flagship.";
   }
-  // Points carry over from campaign to campaign, by level (this browser; the career keeps them in
-  // stage 4); `rank` at a level earns the next one. Counted once a campaign.
-  var PTS_KEY = "BATTLELERT_admiralsPoints";
+  // The war ledger (TexasBont, Nov 7, 2026; this browser until the career keeps it, stage 4):
+  // points by level; a level's number of points there earns the next level and closes it (a
+  // requal there after: reputation only, never the G9 total); every point banked on the way up
+  // weakens the homeworld at G9. Counted once a campaign.
+  var LEDGER = "BATTLELERT_admiralsLedger";
+  function ledger() {
+    var d = null; try { d = JSON.parse(localStorage.getItem(LEDGER)); } catch (e) { d = null; }
+    d = d || {}; d.pts = d.pts || {}; d.closed = d.closed || {}; d.banked = d.banked || 0; return d;
+  }
   function score(n) {
-    var P = BL.ADMIRALS.points, L = BL.ADMIRALS.levels, all = {};
-    try { all = JSON.parse(localStorage.getItem(PTS_KEY)) || {}; } catch (e) { all = {}; }
-    if (!c.scored) { c.scored = { was: all[c.level] || 0 }; all[c.level] = c.scored.was + n; }
-    var have = c.scored.was + n, nx = L[L.indexOf(c.level) + 1];
-    if (have >= P.rank && nx && !c.scored.up) { c.scored.up = true; all[c.level] = have - P.rank; }
-    try { localStorage.setItem(PTS_KEY, JSON.stringify(all)); } catch (e) { /* (private window: this campaign only) */ }
-    if (c.scored.up) return { next: nx, line: "That makes " + have + " at " + c.level + ": promoted to " + nx + " " + BL.ADMIRALS.titles[nx] + "!" };
-    return { line: c.level + " total: " + have + (nx ? " of the " + P.rank + " for " + nx : "") + "." };
+    var L = BL.ADMIRALS.levels, nx = L[L.indexOf(c.level) + 1], d = ledger(), need = c.levelNum;
+    if (!c.scored) {
+      c.scored = {};
+      if (c.busterMode) c.scored.g9 = true;
+      else if (d.closed[c.level]) c.scored.requal = true;
+      else {
+        d.pts[c.level] = (d.pts[c.level] || 0) + n; d.banked += n;
+        if (d.pts[c.level] >= need && nx) { d.closed[c.level] = true; c.scored.up = nx; }
+        try { localStorage.setItem(LEDGER, JSON.stringify(d)); } catch (e) { /* (private window: this campaign only) */ }
+      }
+      c.scored.have = d.pts[c.level] || 0; c.scored.banked = d.banked;
+    }
+    var s = c.scored;
+    if (s.g9) return { line: "Banked going in: " + c.banked + " (the homeworld at " + Math.round(100 * (1 - BL.ADMIRALS.points.homeK * c.banked)) + "%)." };
+    if (s.requal) return { line: "A requal: it counts for your reputation, not toward G9." };
+    if (s.up) return { next: s.up, line: "That makes " + s.have + " at " + c.level + " (" + need + " needed): promoted to " + s.up + " " + BL.ADMIRALS.titles[s.up] + "! Banked toward G9: " + s.banked + "." };
+    return { line: c.level + ": " + s.have + " of the " + need + " needed. Banked toward G9: " + s.banked + "." };
+  }
+  function loadBuster() {
+    if (!c.busterMode) return;
+    if (sel.length !== 1) { $("adm-hint").textContent = "Select one force with a dreadnought to load the planet buster."; return; }
+    if (c.loadBuster(sel[0])) { click(); draw(); } else $("adm-hint").textContent = "The buster goes in a dreadnought, on the first turn only.";
   }
   // Withdraw (any time): what the fleet holds still scores.
   function withdrawModal() {
@@ -352,7 +375,7 @@
     var head = st === "won" ? (u.convoy ? "The convoy is in" : "The world is taken") : st === "over" ? "Campaign won" : p.total ? "Partial success" : "Campaign lost";
     var why = u.convoy ? convoyWhy(u, st, left) : st === "won" ? "The target world " + u.world + " is taken on turn " + u.wonTurn + " of " + u.turns + ". Now hold it to the end of turn " + u.turns +
         " (" + left + " turn" + (left === 1 ? "" : "s") + "): the Azurians will throw everything they have left at it, and more is coming. Your ships repair at its shipyard: a whole turn there without a fight and they're good as new."
-      : st === "over" && c.why === "buster" ? "The homeworld's garrison and defences are beaten: the planet buster dropped on " + u.world + " on turn " + u.wonTurn + ". The war is won."
+      : st === "over" && c.why === "buster" ? "The planet buster dropped on " + u.world + " on turn " + u.wonTurn + ". The war is won."
       : c.why === "buster" ? "The " + BL.ADMIRALS.plural[(c.buster || c.flagShip).cls].replace(/s$/, "") + " carrying the planet buster is lost: the strike has failed."
       : st === "over" ? "The target world " + u.world + " was taken on turn " + u.wonTurn + " and held to the end of turn " + u.turns + "."
       : c.why === "time" ? "Fleet HQ's " + c.turns + " turns ran out before the world fell."
@@ -390,6 +413,7 @@
   function wire() {
     $("btn-adm-end").onclick = endTurn;
     $("btn-adm-withdraw").onclick = function () { click(); withdrawModal(); };
+    $("btn-adm-buster").onclick = loadBuster;
     $("btn-adm-all").onclick = all;
     $("btn-adm-hold").onclick = hold;
     $("btn-adm-flag").onclick = flagHere;
@@ -411,6 +435,7 @@
       else if (k === "s" || k === "S") split();
       else if (k === "j" || k === "J") join();
       else if (k === "w" || k === "W") withdrawModal();
+      else if (k === "b" || k === "B") loadBuster();
       else if (k === "Enter") { ev.preventDefault(); endTurn(); }
       else if (k === "Escape") { sel = []; draw(); }
     });
