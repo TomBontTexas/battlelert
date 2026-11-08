@@ -3073,7 +3073,7 @@
   };
   $("btn-train-again").onclick = function () { click(); overlay("ov-train-done", false); startTraining(trainClass); };
   $("btn-train-done").onclick = function () { click(); overlay("ov-train-done", false); BL.audio.humSet(0, false); sim = null; if (career) showHub(); else show("scr-title"); };
-  $("btn-offers-lower").onclick = function () { click(); showOffers(offersMode === "lower" ? "offers" : "lower", offersStation); };
+  $("btn-offers-lower").onclick = $("btn-offers-lower-top").onclick = function () { click(); showOffers(offersMode === "lower" ? "offers" : "lower", offersStation); };
   $("btn-hub-record").onclick = function () { click(); showRecord(); };
   $("btn-hub-options").onclick = function () { click(); openOptions(); };
   $("btn-hub-title").onclick = function () { click(); refreshTitle(); show("scr-title"); };
@@ -3119,53 +3119,65 @@
     // the gunner and pilot, gunner jobs the pilot, and pilot jobs the engineer and gunner.
     if (j.station === "squadron" && career) return offerCard(j, i, !BL.career.squadronWins(career, j.n), BL.career.squadronWins(career, j.n) ? "" : '<span class="tag up">FIRST SQUADRON</span>', rankName, cls, rosterCrew(j), squadLines(j));
     if (j.station === "captain" && BL.roster && career) return offerCard(j, i, up, tag, rankName, cls, rosterCrew(j));
-    var crew = BL.career.STATIONS.filter(function (st) { return st !== j.station && j[st]; }).map(function (st) {
+    var POSTN = { engineer: "Engineering", pilot: "Helm", gunner: "Gunnery", captain: "Bridge" };
+    var crew = { rows: BL.career.STATIONS.filter(function (st) { return st !== j.station && j[st]; }).map(function (st) {
       var p = j[st];
-      return BL.career.STATION_NAME[st] + "-" + j.n + " " + esc(p.who || p.name.split(" ").slice(-2).join(" ")) + ", " + p.label + " (skill " + Math.round(p.skill * 100) + ")";
-    });
+      return [POSTN[st] || BL.career.STATION_NAME[st], esc(p.name), p.label + " " + Math.round(p.skill * 100)];
+    }) };
     // A gunner or pilot job also names the gun crew (the same people the mission will roll; at
     // the helm, every gun is crewed).
     var pilot = j.station === "pilot" || j.station === "captain";
     if ((j.station === "gunner" || pilot) && BL.pickGunCrew) BL.pickGunCrew(j.seed, j.classId, pilot).forEach(function (c, k) {
-      if (c) crew.push("Gun " + (k + 1) + " " + esc(c.name) + ", " + c.label + " (skill " + Math.round(c.skill * 100) + ")");
+      if (c) crew.rows.push(["Gun " + (k + 1), esc(c.name), c.label + " " + Math.round(c.skill * 100)]);
     });
     return offerCard(j, i, up, tag, rankName, cls, crew);
   }
   // A Command job's crew: the roster's suggestion (BL.roster.crewOf), each man by post.
   function rosterCrew(j) {
     var ids = BL.roster.crewOf(career, j), R = BL.roster;
-    function line(post, id) { var m = R.man(career, id); if (!m) return null; var v = R.view(m); return post + " " + esc(v.name) + ", " + v.label + " (skill " + Math.round(v.skill * 100) + "), " + v.temper + " temper, morale " + v.morale; }
-    return [line("Engineer", ids.engineer), line("Pilot", ids.pilot)].concat(ids.guns.map(function (id, k) { return line("Gun " + (k + 1), id); })).filter(Boolean)
-      .concat(['<span class="muted">Suggested from your crew pool; you can change any post before the briefing.</span>']);
+    function line(post, id) { var m = R.man(career, id); if (!m) return null; var v = R.view(m); return [post, esc(v.name), v.label + " " + Math.round(v.skill * 100), v.temper, v.morale]; }
+    return { rows: [line("Engineering", ids.engineer), line("Helm", ids.pilot)].concat(ids.guns.map(function (id, k) { return line("Gun " + (k + 1), id); })).filter(Boolean),
+      note: "Suggested from your crew pool; you can change any post before the briefing." };
   }
   // A squadron job's ships and the captains it suggests (BL.captains.captainsOf), flagship first.
   function squadLines(j) {
     var ids = BL.captains.captainsOf(career, j), C = BL.captains;
-    function line(ship, id, flag) { var m = C.captain(career, id); if (!m) return null; var v = C.view(m); return esc(String(ship).replace(BL.SHIP_PREFIX, "")) + (flag ? cap(j.classId, " (flagship): flag captain ") + esc(noCox(j.classId, v.name)) : ": " + esc(v.name)) + ", " + v.label + " (skill " + Math.round(v.skill * 100) + "), " + v.temper + ", morale " + v.morale; }
-    return [line(j.ship, ids.flag, true)].concat((j.wingShips || []).map(function (s, k) { return line(s, ids.wing[k]); })).filter(Boolean)
-      .concat(['<span class="muted">' + cap(j.classId, "Suggested from your captains pool; you can change any of them before the briefing.") + "</span>"]);
+    function line(ship, id, flag) { var m = C.captain(career, id); if (!m) return null; var v = C.view(m); return [esc(String(ship).replace(BL.SHIP_PREFIX, "")) + (flag ? " ★" : ""), esc(flag ? noCox(j.classId, v.name) : v.name), v.label + " " + Math.round(v.skill * 100), v.temper, v.morale]; }
+    return { rows: [line(j.ship, ids.flag, true)].concat((j.wingShips || []).map(function (s, k) { return line(s, ids.wing[k]); })).filter(Boolean),
+      note: cap(j.classId, "★ flagship, flag captain. Suggested from your captains pool; you can change any of them before the briefing.") };
   }
   function offerCard(j, i, up, tag, rankName, cls, crew, squad) {
     var pilot = j.station === "pilot" || j.station === "captain" || j.station === "squadron";
-    var arms = j.station === "gunner" || pilot ? (j.weapons || BL.GUNNERY.loadout[j.classId] || ["pulse"]).map(function (id, k) { return "Gun " + (k + 1) + " " + BL.WEAPONS[id].name.toLowerCase() + " Mk" + j.n; })
-      .concat(BL.classById(j.classId).mainGun ? ["Main gun"] : [], j.classId === "gunboat" ? ["Two torpedoes"] : []) : [];
-    function sec(title, rows) { return rows.length ? '<div class="offer-sec"><div class="offer-sec-h">' + title + "</div>" + rows.map(function (x) { return "<div>" + x + "</div>"; }).join("") + "</div>" : ""; }
-    return '<div class="offer' + (up ? " stepup" : "") + '"><h3>' + shipHtml(j.classId, j.ship, j.hull) + " (TL" + j.tl + ")" + tag + "</h3>" +
-      '<button class="primary" data-i="' + i + '">Accept</button>' +
+    var arms = j.station === "gunner" || pilot ? (j.weapons || BL.GUNNERY.loadout[j.classId] || ["pulse"]).map(function (id, k) { return ["Gun " + (k + 1), BL.WEAPONS[id].name + " Mk" + j.n]; })
+      .concat(BL.classById(j.classId).mainGun ? [["Main gun", "Main gun, points forward"]] : [], j.classId === "gunboat" ? [["Torpedoes", "Two torpedoes"]] : []) : [];
+    /* One column, the people and guns in tables (TexasBont, Nov 8, 2026): a section's rows are
+       [first, name, skill, temper, morale]; temper and morale only where the pool knows them. */
+    function sec(title, heads, t) {
+      if (!t || !t.rows || !t.rows.length) return "";
+      var w = t.rows[0].length, lowM = function (v) { return typeof v === "number" && v < 40; };
+      var th = heads.slice(0, w).map(function (h, k) { return "<th" + (h === "Temper" ? ' class="hide-s"' : h === "Morale" ? ' class="n"' : "") + ">" + h + "</th>"; }).join("");
+      return '<div class="offer-sec"><div class="offer-sec-h">' + title + '</div><table class="offer-t"><tr>' + th + "</tr>" + t.rows.map(function (r) {
+        return "<tr>" + r.map(function (x, k) { var h = heads[k]; return "<td" + (h === "Temper" ? ' class="hide-s"' : h === "Morale" ? ' class="n' + (lowM(x) ? " low" : "") + '"' : "") + ">" + x + "</td>"; }).join("") + "</tr>";
+      }).join("") + "</table>" + (t.note ? '<div class="offer-note">' + t.note + "</div>" : "") + "</div>";
+    }
+    return '<div class="offer' + (up ? " stepup" : "") + '"><div class="offer-head"><h3>' + shipHtml(j.classId, j.ship, j.hull) + " (TL" + j.tl + ")" + tag + "</h3>" +
+      '<button class="primary" data-i="' + i + '">Accept</button></div>' +
       (j.escort ? '<div class="offer-story">Escort mission: your ' + cls.name.toLowerCase() + " is one of a squadron screening " + (j.classId === "gunboat" ? "the carrier" : j.escortKind === "convoy" ? "a convoy" : j.escortKind === "capital" ? "a capital ship" : "a convoy or a capital ship") + ".</div>" : "") +
       (j.story ? '<div class="offer-story"><b>' + esc(j.title) + "</b> · " + cls.name + " chapter: " + esc(j.chapter) + "</div>" : "") +
       (j.flag ? '<div class="offer-story">Squadron of ' + (1 + (j.wingShips || []).length) + " " + cls.name.toLowerCase() + cap(j.classId, "s: you command it from the flagship; your flag captain runs her.") + "</div>" : "") +
       (j.by ? '<div class="offer-story">Offered by ' + esc(j.by.name) + ", who values " + j.by.says + ".</div>" : "") +
       '<div class="meta">Reputation +' + BL.career.repFor(j) + " on success" +
       (j.flag ? (up ? " · your first squadron of " + cls.name.toLowerCase() + "s" : "") : up ? " · success qualifies you as " + rankName + "-" + j.n : "") + "</div>" +
-      sec("Squadron", squad || []) + sec(j.flag ? "Flagship crew" : "Crew", crew) + sec("Armament", arms) + "</div>";
+      sec("Squadron", ["Ship", "Captain", "Skill", "Temper", "Morale"], squad) + sec(j.flag ? "Flagship crew" : "Crew", ["Post", "Name", "Skill", "Temper", "Morale"], crew) +
+      sec("Armament", ["Mount", "Weapon"], { rows: arms }) + "</div>";
   }
   var shownJobs = [], offersStation = "engineer";
   function showOffers(mode, station) {
     offersMode = mode; offersStation = station = station || offersStation;
     var q = BL.career.qualified(career, station), who = BL.career.STATION_NAME[station];
-    $("btn-offers-lower").textContent = mode === "lower" ? who + " job offers" : "Requalifying jobs";
-    $("btn-offers-lower").hidden = false;
+    // (the buttons at the top as well as the bottom: TexasBont, Nov 8, 2026)
+    $("btn-offers-lower").textContent = $("btn-offers-lower-top").textContent = mode === "lower" ? who + " job offers" : "Requalifying jobs";
+    $("btn-offers-lower").hidden = $("btn-offers-lower-top").hidden = false;
     if (mode === "offers") {
       shownJobs = BL.career.offers(career, station);
       $("offers-title").textContent = who + " jobs";
@@ -3198,7 +3210,7 @@
     var j = shownJobs[+b.dataset.i];
     if (j.captain && BL.roster) showCrew(j); else startBriefing(j);
   });
-  $("btn-offers-back").onclick = function () { click(); showHub(); };
+  $("btn-offers-back").onclick = $("btn-offers-back-top").onclick = function () { click(); showHub(); };
 
   /* ------------------------------------------------------- Crew (Command jobs)
      The job's crew from the roster (js/roster.js), one line per post; tap a post to see every man
