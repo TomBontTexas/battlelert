@@ -324,6 +324,7 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 .rp-list { display: grid; gap: 10px; margin-top: 8px; }
 .rp-card { background: var(--panel-2); border: 1px solid var(--line); border-left: 4px solid var(--good); border-radius: 8px; padding: 10px 14px; }
 .rp-card.bad { border-left-color: var(--bad); }
+.rp-card.part { border-left-color: var(--warn); } .rp-card.part .rp-out b { color: var(--warn); }
 .rp-top { display: flex; justify-content: space-between; gap: 12px; }
 .rp-top span { color: var(--muted); font-size: 13px; white-space: nowrap; }
 .rp-out { margin-top: 3px; } .rp-card.ok .rp-out b { color: var(--good); } .rp-card.bad .rp-out b { color: var(--bad); }

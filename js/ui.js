@@ -3369,7 +3369,7 @@
       if (sys) facts.push("Enemy Forces Engaged: " + esc(sys));
       if (m && m.kills != null) facts.push(m.kills + " enemy ship" + (m.kills === 1 ? "" : "s") + " destroyed");
       var hp = m ? hullPct(h.classId, h.tl, m.hullLost) : null; if (hp) facts.push("Hull Damage " + hp);
-      return '<div class="rp-card ' + (ok ? "ok" : "bad") + '"><div class="rp-top"><b>' + esc(missionName(h)) + "</b><span>" + starDate(h) + "</span></div>" +
+      return '<div class="rp-card ' + (ok ? "ok" : h.outcome === "partial" ? "part" : "bad") + '"><div class="rp-top"><b>' + esc(missionName(h)) + "</b><span>" + starDate(h) + "</span></div>" +
         (h.station === "squadron" ? '<div class="rp-unit">' + esc(squadronName(c, h.classId, crew)) + "</div>" : "") +
         '<div class="rp-out"><b>' + (OUTCOME_NAME[h.outcome] || h.outcome) + "</b> · score " + (h.score != null ? (fleetOp ? "+" : "") + h.score : "–") + " · reputation " + signed(h.rep || 0) + "</div>" +
         '<div class="rp-facts">' + facts.map(function (f) { return "<div>" + f + "</div>"; }).join("") + "</div>" + (line ? '<p class="rp-story">' + esc(line) + "</p>" : "") + "</div>";
