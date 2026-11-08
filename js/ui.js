@@ -2866,10 +2866,11 @@
   }
   // (no ranks here: the career chart shows them, the ribbon rack the best of each: TexasBont, Nov 7, 2026)
   function summaryHtml(c) {
-    return BL.career.STATIONS.filter(function (s) { return BL.career.PLAYABLE[s]; }).map(function (s) {
-      return "<span>" + BL.career.STATION_NAME[s] + " reputation <b>" + c.stations[s].rep + "</b></span>";
+    // (one Reputation line, path by path: TexasBont, Nov 7, 2026)
+    return '<div class="hub-rep"><h3>Reputation</h3>' + BL.career.STATIONS.filter(function (s) { return BL.career.PLAYABLE[s]; }).map(function (s) {
+      return "<span>" + BL.career.STATION_NAME[s] + " <b>" + c.stations[s].rep + "</b></span>";
     }).join("") +
-      "<span>Admiral reputation <b>" + c.admiral.rep + "</b></span>" +
+      "<span>Admiral <b>" + c.admiral.rep + "</b></span></div>" +
       "<span>Rapid sign-offs <b>" + BL.career.signoffsHeld(c) + "</b></span>" +
       "<span>Missions <b>" + sumProfiles(c, "missions") + "</b> (" + sumProfiles(c, "wins") + " won)</span>";
   }

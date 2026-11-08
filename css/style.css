@@ -887,3 +887,5 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 .rack-reps b { color: var(--charge); }
 .title-rack { margin: 4px 0 6px; }
 .rec-rack { margin: 4px 0 14px; }
+.hub-rep { flex-basis: 100%; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 18px; }
+.hub-rep h3 { margin: 0 4px 0 0; font-size: 15px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
