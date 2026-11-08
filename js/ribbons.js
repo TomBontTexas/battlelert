@@ -7,7 +7,7 @@
    Command: royal purple with a gold stripe near each end, with anchors (crossed, rings up).
    Squadron: the command ribbon with twin gold stripes near each end (Nov 6, 2026). Admiral (Nov 7,
    2026, "deep-space black"): black with a blue centre band and twin silver stripes near each end,
-   one notched arrow, point up: F3 bronze, F4 silver, F5 gold; F6 to F8 a bronze, silver or gold
+   one notched arrow, point up, an orbit swept round it: F3 bronze, F4 silver, F5 gold; F6 to F8 a bronze, silver or gold
    star on it; G9 a gold star there and one on either side.
    BL.ribbonSvg(station, rank, width) -> an SVG string, or "" for a path without ribbons yet. */
 (function (root) {
@@ -81,9 +81,12 @@
     return '<g transform="' + tf + '" filter="url(#' + id + 'sh)"><path fill="url(#' + fill + ')" d="M0,-11 L7.6,9 L0,4.2 L-7.6,9 Z"/>' +
       '<path d="M0,-11 L0,4.2" stroke="#000" stroke-opacity=".28" stroke-width=".5"/></g>';
   }
-  // Admiral F3 (rank 3) to G9: one arrow, bronze, silver, gold; then a star on it; G9 stars either side.
+  // Admiral F3 (rank 3) to G9: one arrow in its orbit, bronze, silver, gold; then a star on it; G9 stars either side.
   function admiralDevices(id, rank) {
-    var cx = 55, cy = 15, m = rank <= 3 ? "bronze" : rank === 4 ? "silver" : "gold", dev = arrow(id, id + m, "translate(" + cx + "," + cy + ")");
+    var cx = 55, cy = 15, m = rank <= 3 ? "bronze" : rank === 4 ? "silver" : "gold";
+    // (an orbit swept round it, in the arrow's metal: TexasBont, Nov 7, 2026)
+    var dev = '<ellipse cx="' + cx + '" cy="' + (cy + 1) + '" rx="15" ry="4.2" transform="rotate(-18 ' + cx + " " + (cy + 1) + ')" fill="none" stroke="url(#' + id + m + ')" stroke-width="1.2" filter="url(#' + id + 'sh)"/>' +
+      arrow(id, id + m, "translate(" + cx + "," + cy + ")");
     var sm = { 6: "bronze", 7: "silver", 8: "gold", 9: "gold" }[rank];
     if (sm) dev += '<polygon points="' + star(cx, cy + 1.5, 5.4) + '" fill="url(#' + id + sm + ')" stroke="#2a1e06" stroke-width=".45" filter="url(#' + id + 'sh)"/>';
     if (rank === 9) [cx - 25, cx + 25].forEach(function (x) { dev += '<polygon points="' + star(x, cy, 6.4) + '" fill="url(#' + id + 'gold)" stroke="#2a1e06" stroke-width=".4" filter="url(#' + id + 'sh)"/>'; });
