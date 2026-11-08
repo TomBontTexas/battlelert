@@ -3307,11 +3307,15 @@
     var d = String(x.date || "").split("-");
     return d.length === 3 ? (+d[0] + 1000) + "." + d[1] + "." + d[2] + (x.time ? "." + x.time : "") : x.date || "";
   }
-  /* His squadron's designation, the same every time for a class: Destroyer Squadron 12. */
-  function squadronName(c, classId) {
+  /* His squadron's designation (TexasBont, Nov 8, 2026): one number for each set of ships, so the
+     same ships are the same squadron and different ships a different one (Destroyer Squadron 12,
+     then 13 ...). Kept in the career (c.sqNums), numbered from a start set by his name and class. */
+  function squadronName(c, classId, ships) {
     var k = 0, t = c.name + "|" + classId;
     for (var i = 0; i < t.length; i++) k = (k * 31 + t.charCodeAt(i)) >>> 0;
-    return BL.classById(classId).name + " Squadron " + (10 + k % 89);
+    var all = c.sqNums = c.sqNums || {}, mine = all[classId] = all[classId] || {}, key = ships.slice().sort().join("|");
+    if (!mine[key]) { mine[key] = 10 + k % 60 + Object.keys(mine).length; saveCareer(); }
+    return BL.classById(classId).name + " Squadron " + mine[key];
   }
   /* The reports in the game's own words (TexasBont, Nov 8, 2026): the mission's name (a story
      mission's title, else a patrol; the admiral's a fleet operation), his post aboard, enemy ships
@@ -3346,9 +3350,11 @@
       var fleetOp = h.station === "admiral" && h.tl == null;
       var facts = [fleetOp ? BL.career.admiralTitle(h.n).fleet : shipHtml(h.classId, h.ship, h.hull) + (h.tl != null ? " (TL" + h.tl + ")" : "")];
       // (a squadron: the other ships under his flag that mission, each marked if lost)
+      var crew = [h.ship + " " + (h.hull || "")];
       if (h.station === "squadron") Object.keys(c.ships).forEach(function (k) {
         var r = c.ships[k]; if (r.name === h.ship && (r.hull || "") === (h.hull || "")) return;
         r.missions.forEach(function (x) {
+          if (x.seed === h.seed && x.date === h.date && x.station === "squadron") crew.push(r.name + " " + (r.hull || ""));
           if (x.seed === h.seed && x.date === h.date && x.station === "squadron")
             facts.push(shipHtml(r.classId, r.name, r.hull) + (r.tl != null ? " (TL" + r.tl + ")" : "") + (x.outcome === "destroyed" ? " · lost" : x.outcome === "leftBehind" ? " · left behind" : ""));
         });
@@ -3358,7 +3364,7 @@
       if (m && m.kills != null) facts.push(m.kills + " enemy ship" + (m.kills === 1 ? "" : "s") + " destroyed");
       var hp = m ? hullPct(h.classId, h.tl, m.hullLost) : null; if (hp) facts.push("Hull Damage " + hp);
       return '<div class="rp-card ' + (ok ? "ok" : "bad") + '"><div class="rp-top"><b>' + esc(missionName(h)) + "</b><span>" + starDate(h) + "</span></div>" +
-        (h.station === "squadron" ? '<div class="rp-unit">' + esc(squadronName(c, h.classId)) + "</div>" : "") +
+        (h.station === "squadron" ? '<div class="rp-unit">' + esc(squadronName(c, h.classId, crew)) + "</div>" : "") +
         '<div class="rp-out"><b>' + (OUTCOME_NAME[h.outcome] || h.outcome) + "</b> · score " + (h.score != null ? (fleetOp ? "+" : "") + h.score : "–") + " · reputation " + signed(h.rep || 0) + "</div>" +
         '<div class="rp-facts">' + facts.map(function (f) { return "<div>" + f + "</div>"; }).join("") + "</div>" + (line ? '<p class="rp-story">' + esc(line) + "</p>" : "") + "</div>";
     }).join("");
