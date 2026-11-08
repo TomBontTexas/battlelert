@@ -809,7 +809,8 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 .adm-side { width: 300px; flex: none; overflow-y: auto; font-size: 13px; }
 .adm-side h3 { margin: 10px 0 6px; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
 .adm-side h3:first-child { margin-top: 0; }
-.adm-btns { display: flex; gap: 6px; margin-bottom: 6px; }
+.adm-btns { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 6px; }   /* (two rows of three: G9 adds Load buster) */
+.adm-btns button { white-space: nowrap; }
 .adm-sq { display: flex; flex-direction: column; padding: 5px 8px; margin-bottom: 4px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); cursor: pointer; }
 .adm-sq span { color: var(--muted); }
 .adm-sq.sel { border-color: var(--sel); background: var(--panel-2); }
