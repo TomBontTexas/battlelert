@@ -337,6 +337,22 @@
     });
     return list;
   }
+  /* His own ships (TexasBont, Nov 8, 2026): any ship he has served on, still in service, can be his
+     ship or flagship again on any path, on a job of her class; she brings her Tech Level. */
+  function pastShips(c, classId) {
+    return Object.keys(c.ships).map(function (k) { return c.ships[k]; }).filter(function (s) { return s.classId === classId && !s.lost && s.missions && s.missions.length; })
+      .map(function (s) { return { ship: s.name, hull: s.hull || BL.hullNumber(classId, s.name), tl: s.tl }; })
+      .sort(function (a, b) { return a.tl - b.tl || (a.ship < b.ship ? -1 : 1); });
+  }
+  // (k: an index into pastShips, or -1 for the ship the job offered; a squadron's ship already in
+  // the line trades places with the old flagship)
+  function setJobShip(c, j, k) {
+    if (!j.offered) j.offered = { ship: j.ship, hull: j.hull, tl: j.tl };
+    var p = k < 0 ? j.offered : pastShips(c, j.classId)[k]; if (!p) return false;
+    if (j.wingShips) { var w = j.wingShips.indexOf(p.ship); if (w >= 0) j.wingShips[w] = j.ship; }
+    j.ship = p.ship; j.hull = p.hull; j.tl = p.tl;
+    return true;
+  }
   function hullOf(c, j) { return (c && c.hulls && c.hulls[j.ship]) || BL.hullNumber(j.classId, j.ship); }
   // A ship destroyed or abandoned is gone: its service record is marked lost, and the next ship of
   // that name gets the class's next new hull number (137 up, past the 36 on the name lists).
@@ -664,7 +680,8 @@
      odds his squadron reputation sets (ADM_TL); new ships take the class's names while the name
      lists last, then numbered hulls. Returns pick(classId) -> { name, hull, tl, vet }. */
   var ADM_TL = [{ upTo: 39, odds: [0.6, 0.3, 0.1] }, { upTo: 70, odds: [0.3, 0.45, 0.25] }, { upTo: Infinity, odds: [0.1, 0.4, 0.5] }];
-  function admiralPicker(c, seed) {
+  // (flag: one of his own ships of the fleet's top class, chosen on the orders, to fly his flag)
+  function admiralPicker(c, seed, flag) {
     var rng = BL.rng(seed || 1), vets = {}, used = {}, numbered = {}, rep = c.stations.squadron.rep;
     Object.keys(c.ships).forEach(function (k) {
       var s = c.ships[k]; if (s.lost || s.classId === "gunboat") return;
@@ -674,7 +691,9 @@
     Object.keys(vets).forEach(function (k) { vets[k].sort(function () { return rng.next() - 0.5; }); });
     Object.keys(c.ships).forEach(function (k) { if (c.ships[k].lost) used[c.ships[k].name] = used[c.ships[k].name] || false; });
     var odds = ADM_TL.filter(function (b) { return rep <= b.upTo; })[0].odds;
+    if (flag && vets[flag.classId]) vets[flag.classId] = vets[flag.classId].filter(function (s) { return s.name !== flag.ship; });
     return function (classId) {
+      if (flag && classId === flag.classId) { var f = flag; flag = null; return { name: f.ship, hull: f.hull, tl: f.tl, vet: true }; }
       var v = (vets[classId] || []).shift();
       if (v) return { name: v.name, hull: v.hull || BL.hullNumber(classId, v.name), tl: v.tl, vet: true };
       var x = rng.next(), tl = x < odds[0] ? 5 : x < odds[0] + odds[1] ? 6 : 7;
@@ -797,6 +816,6 @@
     applyResult: applyResult, profile: profile, serviceRecord: serviceRecord,
     squadronOpen: squadronOpen, squadronWins: squadronWins, squadronClasses: squadronClasses, commandWins: commandWins, commandDone: commandDone, brass: brass, brassName: brassName,
     storyComplete: storyComplete, storyLeft: storyLeft,
-    admiralOffer: admiralOffer, admiralRank: admiralRank, admiralNeeds: admiralNeeds, admiralTitle: admiralTitle, admiralPicker: admiralPicker, applyAdmiral: applyAdmiral, ADM_TL: ADM_TL
+    admiralOffer: admiralOffer, admiralRank: admiralRank, admiralNeeds: admiralNeeds, admiralTitle: admiralTitle, admiralPicker: admiralPicker, pastShips: pastShips, setJobShip: setJobShip, applyAdmiral: applyAdmiral, ADM_TL: ADM_TL
   };
 })(typeof window !== "undefined" ? window : globalThis);

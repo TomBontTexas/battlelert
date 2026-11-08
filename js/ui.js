@@ -3032,7 +3032,7 @@
   /* The orders (TexasBont, Nov 8, 2026): official, no level codes or points; the target world named
      (the campaign's seed is picked here, so Go builds the same map); banked points read as the
      Azurian homeworld's readiness; HQ says whether there's more to do before the next fleet. */
-  var offerSeed = 0;
+  var offerSeed = 0, admFlagOpts = [];
   function showAdmiralOffer() {
     var o = BL.career.admiralOffer(career), T = o.title, A = career.admiral, body;
     offerSeed = BL.randomSeed();
@@ -3052,6 +3052,11 @@
           : o.have ? "HQ notes your progress, Admiral, but there is more work to do before they will give you the " + next + "."
           : "There is more work to do before HQ will give you the " + next + ".")) +
         row("Fleet", "Your fleet is made up of ships you have served on or commanded before. Their crews know you. New ships fill out any places they can't.");
+      // (his flag in one of his own ships of the fleet's top class, if he likes; TexasBont, Nov 8, 2026)
+      var topCls = cmp.flagShip.cls, mine = BL.career.pastShips(career, topCls);
+      admFlagOpts = mine.map(function (s) { s.classId = topCls; return s; });
+      if (mine.length) body += "<p><b>Flagship:</b> <select id='adm-flag'><option value='-1'>HQ's choice</option>" + mine.map(function (s, k) {
+        return "<option value='" + k + "'>" + esc(s.ship) + (s.hull && s.ship.indexOf(s.hull) < 0 ? " " + s.hull : "") + " (TL" + s.tl + ")</option>"; }).join("") + "</select></p>";
     }
     $("adm-offer-body").innerHTML = body;
     $("btn-adm-offer-go").hidden = !o.open;
@@ -3063,7 +3068,7 @@
     var seed = offerSeed || BL.randomSeed();
     show("scr-admirals");
     BL.admiralsView.start({ seed: seed, level: (o.level === 9 ? "G" : "F") + o.level, onExit: function () { showHub(); },
-      career: { c: career, name: career.name, banked: career.admiral.banked, pick: BL.career.admiralPicker(career, seed), done: function (r) { var rp = BL.career.applyAdmiral(career, r); saveCareer(); return rp; } } });
+      career: { c: career, name: career.name, banked: career.admiral.banked, pick: BL.career.admiralPicker(career, seed, $("adm-flag") ? admFlagOpts[+$("adm-flag").value] || null : null), done: function (r) { var rp = BL.career.applyAdmiral(career, r); saveCareer(); return rp; } } });
   };
   $("btn-adm-offer-close").onclick = function () { click(); overlay("ov-adm-offer", false); };
   /* Pilot training (training.js): any class the pilot is qualified on (a new pilot: the gunboat). */
@@ -3189,8 +3194,15 @@
         return "<tr>" + r.map(function (x, k) { var h = heads[k]; return "<td" + (h === "Temper" ? ' class="hide-s"' : h === "Morale" ? ' class="n' + (lowM(x) ? " low" : "") + '"' : "") + ">" + x + "</td>"; }).join("") + "</tr>";
       }).join("") + "</table>" + (t.note ? '<div class="offer-note">' + t.note + "</div>" : "") + "</div>";
     }
+    // (his own ships of this class: pick one instead of the offered ship; TexasBont, Nov 8, 2026)
+    var mine = career ? BL.career.pastShips(career, j.classId) : [], off = j.offered || { ship: j.ship, hull: j.hull, tl: j.tl };
+    var lbl = function (s) { return esc(s.ship) + (s.hull && s.ship.indexOf(s.hull) < 0 ? " " + s.hull : "") + " (TL" + s.tl + ")"; };
+    var pick = mine.filter(function (s) { return s.ship !== off.ship || s.hull !== off.hull; }).length ? '<div class="offer-ship"><label>' + (j.flag ? "Flagship" : "Ship") + ' <select data-ship="' + i + '">' +
+      '<option value="-1"' + (j.ship === off.ship && j.hull === off.hull ? " selected" : "") + ">" + lbl(off) + " · offered</option>" +
+      mine.map(function (s, k) { return s.ship === off.ship && s.hull === off.hull ? "" : '<option value="' + k + '"' + (j.ship === s.ship && j.hull === s.hull ? " selected" : "") + ">" + lbl(s) + " · served aboard</option>"; }).join("") +
+      "</select></label></div>" : "";
     return '<div class="offer' + (up ? " stepup" : "") + '"><div class="offer-head"><h3>' + shipHtml(j.classId, j.ship, j.hull) + " (TL" + j.tl + ")" + tag + "</h3>" +
-      '<button class="primary" data-i="' + i + '">Accept</button></div>' +
+      '<button class="primary" data-i="' + i + '">Accept</button></div>' + pick +
       (j.escort ? '<div class="offer-story">Escort mission: your ' + cls.name.toLowerCase() + " is one of a squadron screening " + (j.classId === "gunboat" ? "the carrier" : j.escortKind === "convoy" ? "a convoy" : j.escortKind === "capital" ? "a capital ship" : "a convoy or a capital ship") + ".</div>" : "") +
       (j.story ? '<div class="offer-story"><b>' + esc(j.title) + "</b> · " + cls.name + " chapter: " + esc(j.chapter) + "</div>" : "") +
       (j.flag ? '<div class="offer-story">Squadron of ' + (1 + (j.wingShips || []).length) + " " + cls.name.toLowerCase() + cap(j.classId, "s: you command it from the flagship; your flag captain runs her.") + "</div>" : "") +
@@ -3200,7 +3212,7 @@
       sec("Squadron", ["Ship", "Captain", "Skill", "Temper", "Morale"], squad) + sec(j.flag ? "Flagship crew" : "Crew", ["Post", "Name", "Skill", "Temper", "Morale"], crew) +
       sec("Armament", ["Mount", "Weapon"], { rows: arms }) + "</div>";
   }
-  var shownJobs = [], offersStation = "engineer";
+  var shownJobs = [], offersStation = "engineer", lowerPick = {};
   function showOffers(mode, station) {
     offersMode = mode; offersStation = station = station || offersStation;
     var q = BL.career.qualified(career, station), who = BL.career.STATION_NAME[station];
@@ -3226,6 +3238,8 @@
           : q && BL.career.built(station, q + 1) ? " There's always a lowest-tech posting for your class and for the class above it." : " There's always a lowest-tech posting.");
     } else {
       shownJobs = BL.career.lowerJobs(career, station);
+      // (these are drawn afresh each time: his ship choices are kept here)
+      shownJobs.forEach(function (j) { if (lowerPick[j.id] != null) BL.career.setJobShip(career, j, lowerPick[j.id]); });
       $("offers-title").textContent = tc(who + ": requalifying");
       $("offers-lede").textContent = shownJobs.length ? "Story missions you skipped on classes you've already qualified on. You're welcome aboard, but they earn half that class's reputation, and failures here don't count against you." :
         "Nothing below your current class: no skipped story missions there.";
@@ -3238,6 +3252,13 @@
     click();
     var j = shownJobs[+b.dataset.i];
     if (j.captain && BL.roster) showCrew(j); else startBriefing(j);
+  });
+  $("offers-list").addEventListener("change", function (ev) {
+    var s = ev.target.closest("select[data-ship]"); if (!s) return;
+    click();
+    var y = window.scrollY;
+    var j = shownJobs[+s.dataset.ship]; if (offersMode === "lower") lowerPick[j.id] = +s.value;
+    if (BL.career.setJobShip(career, j, +s.value)) { saveCareer(); showOffers(offersMode); window.scrollTo(0, y); }
   });
   $("btn-offers-back").onclick = $("btn-offers-back-top").onclick = function () { click(); showHub(); };
 
