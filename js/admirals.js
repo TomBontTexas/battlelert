@@ -48,7 +48,10 @@
     this.arng = BL.rng((this.seed * 104729 + 29) >>> 0); // (the Azurians' reports on us)
     this.azIntel = {};                                // what they know of each force of ours: { at, turn }
     this.levelNum = +this.level.slice(1);             // (F5: 5; the objective's points, and the facilities' on the map)
-    this.banked = opts.banked || 0;                   // (G9: the points banked from F3 to F8)
+    // (G9: the points banked from F3 to F8; at least the least it takes to get there, 3 + 4 + ... + 8
+    // = 33, so the homeworld is at 67% at most: TexasBont, Nov 7, 2026)
+    var least = A.levels.slice(0, A.levels.indexOf(this.level)).reduce(function (t, lv) { return t + +lv.slice(1); }, 0);
+    this.banked = Math.max(opts.banked || 0, least);
     this.hwK = 1;
     this.convoyMode = A.convoy.levels.indexOf(this.level) >= 0;   // F3: escort a convoy between two Imperial worlds
     this.busterMode = A.buster.levels.indexOf(this.level) >= 0;   // G9: drop the planet buster on the Azurian homeworld
