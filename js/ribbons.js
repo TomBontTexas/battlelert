@@ -5,7 +5,7 @@
    star there and one on either side. Gunner: green, the same with sabers for wrenches (blades up).
    Pilot: sky blue with aviator's wings: P2 one wing, P3 to P5 a spread pair, stars as before.
    Command: royal purple with a gold stripe near each end, with anchors (crossed, rings up).
-   Squadron: the command ribbon with twin gold stripes near each end (Nov 6, 2026). Admiral (Nov 7,
+   Squadron: the command ribbon with twin wide gold stripes near each end (Nov 6, 2026; wider Nov 7). Admiral (Nov 7,
    2026, "deep-space black"): black sprinkled with stardust, a blue centre band and twin silver stripes near each end,
    one notched arrow, point up, an orbit swept round it: F3 bronze, F4 silver, F5 gold; F6 to F8 a bronze, silver or gold
    star on it; G9 a gold star there and one on either side.
@@ -137,7 +137,9 @@
       '<filter id="' + id + 'sh" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx=".35" dy=".55" stdDeviation=".35" flood-color="#000" flood-opacity=".65"/></filter>' +
       grad(id + "bronze", "bronze") + grad(id + "silver", "silver") + grad(id + "gold", "gold") + "</defs>";
     var body = '<rect width="110" height="30" fill="' + base + '"/>' + (BAND[station] ? '<rect x="50" width="10" height="30" fill="' + BAND[station] + '"/>' : "") + (FIELD[station] || "") + '<rect width="110" height="30" fill="url(#' + id + 'tx)"/>' +
-      (EDGE[station] ? (TWIN[station] ? [3.2, 7, 101.2, 105] : [4, 103.4]).map(function (x) { return '<rect x="' + x + '" width="' + (TWIN[station] ? 1.8 : 2.6) + '" height="30" fill="' + EDGE[station] + '"/>'; }).join("") : "") +
+      // (the squadron's twin stripes wider, to tell it from Command at a glance: TexasBont, Nov 7, 2026)
+      (EDGE[station] ? (station === "squadron" ? [2.4, 6.6, 100.6, 104.8] : TWIN[station] ? [3.2, 7, 101.2, 105] : [4, 103.4]).map(function (x) {
+        return '<rect x="' + x + '" width="' + (station === "squadron" ? 2.8 : TWIN[station] ? 1.8 : 2.6) + '" height="30" fill="' + EDGE[station] + '"/>'; }).join("") : "") +
       '<rect width="110" height="30" fill="url(#' + id + 'sheen)"/><rect x=".4" y=".4" width="109.2" height="29.2" fill="none" stroke="#000" stroke-opacity=".45" stroke-width=".8"/>';
     return '<svg class="ribbon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 110 30" width="' + w + '" height="' + (w * 3 / 11).toFixed(1) + '" role="img" aria-label="' + station + " " + rank + ' ribbon">' +
       defs + body + (station === "admiral" ? admiralDevices(id, rank) : devices(id, rank, station === "gunner" ? saber : station === "pilot" ? wing : station === "captain" || station === "squadron" ? anchor : wrench)) + "</svg>";
