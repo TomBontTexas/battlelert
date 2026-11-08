@@ -2887,7 +2887,8 @@
     if (p === "squadron") { var k = BL.career.squadronClasses(c); return k.length ? Math.max.apply(null, k) : 0; }
     return BL.career.qualified(c, p);
   }
-  function rackHtml(c, w) {
+  // (noReps: the title screen shows the ribbons only; TexasBont, Nov 7, 2026)
+  function rackHtml(c, w, noReps) {
     if (!BL.ribbonSvg) return "";
     var list = RACK.filter(function (p) { return rackTop(c, p) > 0; }), rows = [], r = list.slice();
     if (r.length) { rows.push(r.splice(0, r.length % 3 || 3)); while (r.length) rows.push(r.splice(0, 3)); }
@@ -2896,7 +2897,7 @@
     });
     return '<div class="rack-side">' + (rows.length ? '<div class="rack">' + rows.map(function (row) {
       return '<div class="rk-row">' + row.map(function (p) { return BL.ribbonSvg(p, rackTop(c, p), w || 120); }).join("") + "</div>";
-    }).join("") + "</div>" : "") + '<div class="rack-reps">' + reps.join("") + "</div></div>";
+    }).join("") + "</div>" : "") + (noReps ? "" : '<div class="rack-reps">' + reps.join("") + "</div>") + "</div>";
   }
   function sumProfiles(c, k) {
     return Object.keys(c.profiles).reduce(function (a, s) { return a + (+c.profiles[s][k] || 0); }, 0);
@@ -2906,7 +2907,7 @@
     var b = $("btn-continue");
     b.hidden = !career;
     if (career) b.textContent = "Continue as " + career.name;
-    $("title-rack").innerHTML = career ? rackHtml(career) : "";
+    $("title-rack").innerHTML = career ? rackHtml(career, 120, true) : "";
     $("title-rack").hidden = !career;
   }
   $("btn-continue").onclick = function () { BL.audio.init(); click(); showHub(); };
