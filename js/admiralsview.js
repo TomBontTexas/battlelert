@@ -379,12 +379,21 @@
   function careerScore() {
     if (!c.scored) c.scored = opts.career.done(c.result()) || {};
     var r = c.scored, T = BL.career.admiralTitle, lv = "the " + T(r.level).fleet;
-    if (r.level === 9) return { line: "Banked going in: " + c.banked + " (the homeworld at " + Math.round(100 * (1 - BL.ADMIRALS.points.homeK * c.banked)) + "%)." };
-    var rp = " Admiral reputation " + (r.rep >= 0 ? "+" : "") + r.rep + ".";
-    if (r.promoted) return { line: (r.requal ? "Requalified with " + lv : "That makes " + r.have + " with " + lv + " (" + r.level + " needed)") + ": on to " + T(r.promoted).full + "!" + (r.requal ? "" : " Banked toward G9: " + r.banked + ".") + rp };
-    if (r.demoted) return { line: "A second campaign with " + lv + " and no points: back to the " + T(r.demoted).fleet + "." + rp };
-    if (r.requal) return { line: "A requal with " + lv + ": " + r.have + " of the " + r.level + " needed to step up again; it counts for your reputation, not toward G9." + rp };
-    return { line: "The" + lv.slice(3) + ": " + r.have + " of the " + r.level + " needed. Banked toward G9: " + r.banked + "." + (r.failures && r.level > 4 ? " A campaign with no points (" + r.failures + " of 2 here before you're sent back two levels)." : "") + rp };
+    var rp = " Admiral reputation " + (r.rep >= 0 ? "+" : "") + r.rep + ".", cc = opts.career.c, nx = r.promoted ? T(r.promoted) : T(r.level + 1);
+    // (HQ's word: the next fleet, and what else it still waits on, e.g. his squadron missions)
+    var needs = r.promoted && cc ? BL.career.admiralNeeds(cc, r.promoted) : [];
+    var rk = T(r.level).who;
+    var cmd = r.level === 9 ? "" : r.promoted ? (needs.length ? "HQ is satisfied, " + rk + ". The " + nx.fleet + " is yours once you have " + needs.join(" and ") + "." : "HQ is satisfied, " + rk + ". You are given command of the " + nx.fleet + ".")
+      : r.demoted ? "HQ has lost confidence in your command. You are reassigned to the " + T(r.demoted).fleet + "."
+      : r.requal ? (r.have ? "HQ notes your progress, " + rk + ", but wants more before they return you to the " + nx.fleet + "." : "HQ is disappointed. They want more before they return you to the " + nx.fleet + ".")
+      : r.have ? "Good work, " + rk + ", but HQ wants more before they give you the " + nx.fleet + "."
+      : "HQ is disappointed, " + rk + "." + (r.failures && r.level > 3 ? " Another operation like this and you will be reassigned." : "");
+    var x = { banked: r.level === 9 ? c.banked : r.banked, command: cmd, rep: r.rep };
+    if (r.level === 9) return Object.assign(x, { line: "Banked going in: " + c.banked + "." });
+    if (r.promoted) return Object.assign(x, { line: (r.requal ? "Requalified with " + lv : "That makes " + r.have + " with " + lv + " (" + r.level + " needed)") + ": on to " + T(r.promoted).full + "!" + (r.requal ? "" : " Banked toward G9: " + r.banked + ".") + rp });
+    if (r.demoted) return Object.assign(x, { line: "A second campaign with " + lv + " and no points: back to the " + T(r.demoted).fleet + "." + rp });
+    if (r.requal) return Object.assign(x, { line: "A requal with " + lv + ": " + r.have + " of the " + r.level + " needed to step up again; it counts for your reputation, not toward G9." + rp });
+    return Object.assign(x, { line: "The" + lv.slice(3) + ": " + r.have + " of the " + r.level + " needed. Banked toward G9: " + r.banked + "." + (r.failures && r.level > 4 ? " A campaign with no points (" + r.failures + " of 2 here before you're sent back two levels)." : "") + rp });
   }
   function loadBuster() {
     if (!c.busterMode) return;
@@ -423,20 +432,45 @@
       : "The fleet withdrew after losing its flagship.";
     if (BL.audio && !(st !== "lost" && cheered)) BL.audio.play(st === "lost" ? "lose" : "win");
     if (st !== "lost") cheered = true;
+    /* The after-action report, in Fleet Command's words (TexasBont, Nov 8, 2026): no points on it; the
+       objectives, the losses, the engagements, the fleet's state, the homeworld's readiness and HQ's
+       word on the next fleet (and whatever else it waits on). */
+    var none = function (n) { return n ? n + " ship" + (n === 1 ? "" : "s") : "none"; };
+    var list = function (a) { return a.length < 2 ? a.join("") : a.slice(0, -1).join(", ") + " and " + a[a.length - 1]; };
     var bt = u.battles.map(function (b) {
-      return "<div>Turn " + b.turn + " · " + esc(b.at) + (b.flag ? " ★" : "") + " · " + b.result + " · we lost " + b.usLost + " (" + pcx(b.usDmg) + "), they lost " + b.azLost + " (" + pcx(b.azDmg) + ")</div>";
+      return "<div>Turn " + b.turn + " · " + esc(b.at) + (b.flag ? " ★" : "") + " · " + ({ won: "victory", lost: "defeat", drawn: "indecisive" }[b.result] || b.result) +
+        " · our losses " + none(b.usLost) + ", damage " + pcx(b.usDmg) + " · enemy losses " + none(b.azLost) + ", damage " + pcx(b.azDmg) + "</div>";
     }).join("") || "<div class='muted'>None.</div>";
-    var tk = u.taken.map(function (x) { return "<div>Turn " + x.turn + " · " + esc(x.name) + " · " + esc(x.what) + "</div>"; }).join("") || "<div class='muted'>None.</div>";
-    m.innerHTML = "<div class='ov-card wide adm-write'><h1>" + head + "</h1><p>" + esc(why) + "</p>" +
-      "<p>Ships lost: ours " + u.usLost + " of " + u.usTotal + "; Azurian " + u.azLost + " of " + u.azTotal + ".</p>" +
-      "<h3>Points" + (done ? "" : " (if it ended now)") + "</h3>" + (p.items.map(function (x) { return "<div>" + esc(x.name) + " · " + esc(x.what) + " · " + x.pts + "</div>"; }).join("") ||
-        "<div class='muted'>" + (c.why === "losses" ? "None: the whole fleet is lost." : "None.") + "</div>") +
-      "<p><b>" + p.total + " point" + (p.total === 1 ? "" : "s") + "</b> this campaign." + (tally ? " " + esc(tally.line) : "") + "</p>" +
-      "<h3>Systems taken</h3>" + tk + "<h3>Battles (★ your flag's)</h3>" + bt +
-      (u.forces.length ? "<h3>The fleet now</h3>" + u.forces.map(function (x) { return "<div>" + esc(x) + "</div>"; }).join("") : "") +
+    var heldNow = function (nm) { return c.hexes.some(function (h) { return h.name === nm && h.owner === "us"; }); };
+    var fac = u.taken.filter(function (x) { return x.name !== u.world; });
+    var kept = fac.filter(function (x) { return heldNow(x.name); }), gone = fac.filter(function (x) { return !heldNow(x.name); });
+    var sec = c.busterMode ? "" : !fac.length ? "No Azurian facilities were taken." :
+      (kept.length ? "Held: " + list(kept.map(function (x) { return esc(x.name) + "'s " + esc(x.what) + " (seized turn " + x.turn + ")"; })) + ". " : "") +
+      (gone.length ? list(gone.map(function (x) { return esc(x.name) + "'s " + esc(x.what); })) + (gone.length === 1 && !/ and /.test(gone[0].what) ? " was" : " were") + " seized but since lost to the Azurians." : "");
+    var obj = done ? (st === "over" ? "<b>Primary objective: achieved.</b> " : "<b>Primary objective: failed.</b> ") : "";
+    var fit = u.forces.map(function (x) {
+      var g = /^(.*) \((.*)\) · (\d+)\/(\d+) ships · (\d+)%$/.exec(x);
+      // (squadrons by their commodore; the convoy and the world's defences as they are)
+      return "<div>" + esc(!g ? x : /^Commodore /.test(g[2]) ? g[2] + "'s squadron · " + g[1].charAt(0).toLowerCase() + g[1].slice(1).replace(" with ", ", ").replace(" and ", ", ") + " · " + g[3] + " of " + g[4] + " ships · " + g[5] + "% fit for action"
+        : g[1] + (/defences/.test(g[2]) ? "" : " (" + g[2] + ") · " + g[3] + " of " + g[4] + " ships") + " · " + g[5] + "% fit for action") + "</div>";
+    }).join("");
+    var T = BL.career.admiralTitle(c.levelNum), who = opts.career && opts.career.name ? T.who + " " + opts.career.name : T.who;
+    var ready = tally && tally.banked != null ? tally.banked : null;
+    m.innerHTML = "<div class='ov-card wide adm-write'><h1>" + (done ? "After-Action Report" : head) + "</h1>" +
+      "<p class='orders-head'>FLEET COMMAND" + (done ? " · AFTER-ACTION REPORT" : "") + "</p>" +
+      "<p><b>From:</b> " + esc(who) + ", " + T.fleet + " · <b>Operation:</b> " + esc(u.world) + "</p>" +
+      "<p>" + obj + esc(why) + "</p>" +
+      (sec ? "<p><b>Secondary objective:</b> " + sec + "</p>" : "") +
+      "<p><b>Losses:</b> " + (u.usLost ? "We lost " + u.usLost + " of " + u.usTotal + " ships." : "None. All " + u.usTotal + " ships came through.") + " The Azurians lost " + u.azLost + " of " + u.azTotal + ".</p>" +
+      "<h3>Engagements (★ under your flag)</h3>" + bt +
+      (fit ? "<h3>Fleet status</h3>" + fit : "") +
+      (ready != null ? "<p><b>Intelligence:</b> " + (c.busterMode ? "Azurian homeworld readiness was down " + ready + "% when the Grand Fleet went in." : ready ? "Your operations to date have cut Azurian homeworld readiness by <b>" + ready + "%</b>." : "The Azurian homeworld stands at full readiness.") + "</p>" : "") +
+      (tally && tally.command ? "<p><b>Command:</b> " + esc(tally.command) + "</p>" : "") +
+      (tally && tally.rep != null ? "<p class='muted'>Admiral reputation " + (tally.rep >= 0 ? "+" : "") + tally.rep + "</p>" : "") +
+      (tally && !opts.career ? "<p class='muted'>" + esc(tally.line) + "</p>" : "") +
       "<div class='menu'>" + (st === "won" && left > 0 && c.fleet().length ? "<button id='adm-carry' class='primary'>" + (u.convoy ? "Hold " + esc(u.world) : "Hold the world") + " (" + left + " turn" + (left === 1 ? "" : "s") + " left)</button>" : "") +
       (tally && tally.next && !opts.career ? "<button id='adm-next' class='primary'>New campaign as " + tally.next + " " + esc(BL.ADMIRALS.titles[tally.next]) + "</button>" : "") +
-      (opts.career ? (done ? "<button id='adm-quit' class='primary'>Back to the career hub</button>" : "") :
+      (opts.career ? (done ? "<button id='adm-quit' class='primary'>Dismissed</button>" : "") :
       "<button id='adm-again'" + (st === "won" && left > 0 || tally && tally.next ? "" : " class='primary'") + ">New campaign</button><button id='adm-same'>Same seed again</button><button id='adm-quit'>Back to the title screen</button>") + "</div></div>";
     m.hidden = false;
     if ($("adm-carry")) $("adm-carry").onclick = function () { click(); c.carryOn(); m.hidden = true; draw(); };

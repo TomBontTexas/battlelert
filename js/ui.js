@@ -3034,7 +3034,7 @@
     var seed = offerSeed || BL.randomSeed();
     show("scr-admirals");
     BL.admiralsView.start({ seed: seed, level: (o.level === 9 ? "G" : "F") + o.level, onExit: function () { showHub(); },
-      career: { banked: career.admiral.banked, pick: BL.career.admiralPicker(career, seed), done: function (r) { var rp = BL.career.applyAdmiral(career, r); saveCareer(); return rp; } } });
+      career: { c: career, name: career.name, banked: career.admiral.banked, pick: BL.career.admiralPicker(career, seed), done: function (r) { var rp = BL.career.applyAdmiral(career, r); saveCareer(); return rp; } } });
   };
   $("btn-adm-offer-close").onclick = function () { click(); overlay("ov-adm-offer", false); };
   /* Pilot training (training.js): any class the pilot is qualified on (a new pilot: the gunboat). */
