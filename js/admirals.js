@@ -52,6 +52,7 @@
     // = 33, so the homeworld is at 67% at most: TexasBont, Nov 7, 2026)
     var least = A.levels.slice(0, A.levels.indexOf(this.level)).reduce(function (t, lv) { return t + +lv.slice(1); }, 0);
     this.banked = Math.max(opts.banked || 0, least);
+    this.pick = opts.pick || null;                    // (the career's fleet: BL.career.admiralPicker)
     this.hwK = 1;
     this.convoyMode = A.convoy.levels.indexOf(this.level) >= 0;   // F3: escort a convoy between two Imperial worlds
     this.busterMode = A.buster.levels.indexOf(this.level) >= 0;   // G9: drop the planet buster on the Azurian homeworld
@@ -147,20 +148,31 @@
      or a picket squadron (no kids). A force is one pyramid on the map: f.top is its node, and
      f.ships (every ship in it), f.cls and f.cmd come from it (refresh). */
   var STATS = {};
-  // A ship: hp (hull + shields x shieldK) and fire (her guns' MW).
-  Campaign.prototype.ship = function (cls) {
-    if (!STATS[cls]) {
-      var d = BL.shipFor(cls, BL.TECH.base(cls)), sh = d.systems.filter(function (s) { return s.id === "shield"; })[0];
-      STATS[cls] = { hp: Math.round(d.hull + (sh ? sh.maxMJ : 0) * this.A.ship.shieldK), fire: d.systems.filter(function (s) { return s.kind === "gun" || s.id === "main"; }).reduce(function (a, s) { return a + s.maxMW; }, 0) };
+  // A ship: hp (hull + shields x shieldK) and fire (her guns' MW, x her tech level's factor), at
+  // her tech level (the class's usual one if none: the Azurians, tests).
+  Campaign.prototype.ship = function (cls, tl) {
+    tl = tl || BL.TECH.base(cls);
+    var key = cls + tl;
+    if (!STATS[key]) {
+      var d = BL.shipFor(cls, tl), sh = d.systems.filter(function (s) { return s.id === "shield"; })[0];
+      STATS[key] = { hp: Math.round(d.hull + (sh ? sh.maxMJ : 0) * this.A.ship.shieldK),
+        fire: Math.round(BL.TECH.factor(tl, cls) * d.systems.filter(function (s) { return s.kind === "gun" || s.id === "main"; }).reduce(function (a, s) { return a + s.maxMW; }, 0)) };
     }
-    return { cls: cls, hp: STATS[cls].hp, hpMax: STATS[cls].hp, fire: STATS[cls].fire };
+    return { cls: cls, tl: tl, hp: STATS[key].hp, hpMax: STATS[key].hp, fire: STATS[key].fire };
   };
-  Campaign.prototype.pyramid = function (cls) {
-    var P = this.A.pyramid, k, n = { cls: cls, ships: [], kids: [], cmd: null };
-    if (cls === "picket") { for (k = 0; k < P.pickets; k++) n.ships.push(this.ship(cls)); return n; }
-    n.ships.push(this.ship(cls));
-    if (cls === "destroyerEscort") n.kids.push(this.pyramid("picket"));
-    else for (k = 0; k < P.escorts; k++) n.kids.push(this.pyramid(this.A.classes[this.A.classes.indexOf(cls) - 1]));
+  // (pick: the career's fleet, BL.career.admiralPicker; each ship of ours its tech level, name and
+  // hull number: veterans first, then new ships)
+  Campaign.prototype.pyramid = function (cls, pick) {
+    var P = this.A.pyramid, k, n = { cls: cls, ships: [], kids: [], cmd: null }, self = this;
+    function one() {
+      var who = pick ? pick(cls) : null, s = self.ship(cls, who && who.tl);
+      if (who) { s.name = who.name; s.hull = who.hull; s.vet = !!who.vet; }
+      return s;
+    }
+    if (cls === "picket") { for (k = 0; k < P.pickets; k++) n.ships.push(one()); return n; }
+    n.ships.push(one());
+    if (cls === "destroyerEscort") n.kids.push(this.pyramid("picket", pick));
+    else for (k = 0; k < P.escorts; k++) n.kids.push(this.pyramid(this.A.classes[this.A.classes.indexOf(cls) - 1], pick));
     return n;
   };
   function flatten(n) { return n.kids.reduce(function (a, k) { return a.concat(flatten(k)); }, n.ships.slice()); }
@@ -177,7 +189,7 @@
     return { name: rank + " " + first + " " + last, last: last, skill: Math.round(r.range(skill) * 100) / 100, temper: r.pick(["cautious", "steady", "aggressive"]) };
   };
   Campaign.prototype.makeFleet = function () {
-    for (var k = 0; k < this.size; k++) this.group("us", this.pyramid(this.top), this.home);
+    for (var k = 0; k < this.size; k++) this.group("us", this.pyramid(this.top, this.pick), this.home);
     // F3: the convoy, its cargo ships unarmed, a cautious convoy master in charge.
     if (this.convoyMode) {
       var C = this.A.convoy, hp = Math.round(this.ship("destroyerEscort").hp * C.hp), cargo = [];
@@ -213,7 +225,8 @@
       if (this.busterMode) { var rg = az(nb[(nm + g) % nb.length], "main", below); rg.home = true; } else az(this.world, "garrison", below);
     }
     // The world's defences: one fixed force, as strong as a share of our whole fleet.
-    var hp = 0, fire = 0; this.ourShips().forEach(function (s) { if (s.cls !== "cargo") { hp += s.hpMax; fire += s.fire; } });
+    // (from the usual ships of our classes, so the Azurians don't change with our tech levels)
+    var hp = 0, fire = 0; this.ourShips().forEach(function (s) { if (s.cls !== "cargo") { var u = self.ship(s.cls); hp += u.hpMax; fire += u.fire; } });
     var dk = E.defences.level[this.level] || 1, dhp = Math.round(hp * E.defences.hp * dk);
     var d = { cls: "defences", hp: dhp, hpMax: dhp, fire: Math.round(fire * E.defences.fire * dk) };
     this.group("az", { cls: "defences", ships: [d], kids: [], cmd: { name: "World defences", last: "defences", skill: 0.7, temper: "steady" } }, this.world, "defences");
@@ -807,6 +820,13 @@
     var held = us.some(function (f) { return !f.lost && f.at === b.at; }), theirs = az.some(function (f) { return !f.lost && f.at === b.at; });
     this.battles.push({ turn: this.turn, at: h.name, flag: b.flag, usLost: wl, azLost: el, usDmg: this.damage(b, "us"), azDmg: this.damage(b, "az"),
       result: held && !theirs ? "won" : !held && theirs ? "lost" : "drawn" });
+  };
+  // For the career (BL.career.applyAdmiral): how it ended, the points, and every named ship of ours
+  // with whether she was lost.
+  Campaign.prototype.result = function () {
+    var ships = this.ourShips().filter(function (s) { return s.name; }).map(function (s) { return { name: s.name, hull: s.hull, classId: s.cls, tl: s.tl, lost: s.hp <= 0 }; });
+    return { level: this.levelNum, state: this.state, why: this.why, points: this.points().total, objective: this.state === "over", annihilated: this.state === "lost" && this.why === "losses",
+      seed: this.seed, top: this.top, ships: ships, shipsLost: this.shipsLost(), shipsTotal: this.shipsTotal };
   };
   // The campaign so far, for the write-up.
   Campaign.prototype.summary = function () {

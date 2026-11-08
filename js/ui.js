@@ -2846,13 +2846,27 @@
         if (k.n === target && ready && (st !== "captain" || BL.career.canCommand(c, k.n))) return '<td class="next" title="Working toward">▶</td>';
         return '<td class="off">' + (ready ? "" : "·") + "</td>";
       }).join("") + "</tr>";
-    }).join("");
+    }).join("") + admiralRow(c, jobs);
     return '<table class="cgrid' + (jobs ? " jobs" : "") + '">' + head + "<tbody>" + rows + "</tbody></table><p class=\"muted small-text\">" + (jobs ? "Tap a row's name for its job offers, a ribbon for its mission reports · " : "Tap a ribbon for its mission reports · ") + "✔ qualified (each path shows the rank's ribbon) · ▶ working toward · dot = not built yet · Command: 1/3 beside a ribbon counts command successes; at 3/3 that class's squadron opens · Squadron: ribbon commanded, ▶ open</p>";
+  }
+  // The admiral path's row (TexasBont, Nov 7, 2026): F3 to F8 and G9 under the class at the top of
+  // each level's fleet (destroyer escort 3 ... dreadnought 9): ✔ stepped up from, ▶ the level he's at.
+  function admiralRow(c, jobs) {
+    var o = BL.career.admiralOffer(c), A = c.admiral;
+    var name = jobs ? '<button class="cg-jobs" data-jobs="admiral" title="Admiral: your next fleet campaign">Admiral ›</button>' : "Admiral";
+    return "<tr><td>" + name + "</td>" + BL.CLASSES.map(function (k) {
+      var L = k.n, T = BL.career.admiralTitle(L).short;
+      if (L < 3) return '<td class="off"></td>';
+      if ((L < 9 && A.closed[L] && A.at > L) || (L === 9 && A.won)) return '<td class="q" title="' + T + ': stepped up">' + T + " ✔</td>";
+      if (L === o.level && o.open) return '<td class="next" title="' + T + ': your next campaign">' + T + " ▶</td>";
+      return '<td class="off" title="' + T + '">' + T + "</td>";
+    }).join("") + "</tr>";
   }
   function summaryHtml(c) {
     return BL.career.STATIONS.filter(function (s) { return BL.career.PLAYABLE[s]; }).map(function (s) {
       return "<span>" + (s === "captain" || s === "squadron" ? "" : BL.career.STATION_NAME[s] + " ") + "<b>" + BL.career.rank(c, s) + "</b> · reputation <b>" + c.stations[s].rep + "</b></span>";
     }).join("") +
+      "<span><b>" + BL.career.admiralRank(c) + "</b> · reputation <b>" + c.admiral.rep + "</b></span>" +
       "<span>Rapid sign-offs <b>" + BL.career.signoffsHeld(c) + "</b></span>" +
       "<span>Missions <b>" + sumProfiles(c, "missions") + "</b> (" + sumProfiles(c, "wins") + " won)</span>";
   }
@@ -2903,14 +2917,44 @@
     $("hub-summary").innerHTML = summaryHtml(career);
     $("hub-grid").innerHTML = gridHtml(career, true);
     var last = career.history[0];
-    $("hub-last").textContent = last ? "Last mission: " + BL.career.STATION_NAME[last.station || "engineer"].toLowerCase() + " aboard " + BL.shipLabel(last.classId, last.ship, last.hull) + " (TL" + last.tl + "), " +
+    if (last && last.station === "admiral") $("hub-last").textContent = "Last campaign: " + last.ship + ", " + (last.score || 0) + " point" + (last.score === 1 ? "" : "s") + ", " + signed(last.rep || 0) + " admiral reputation.";
+    else $("hub-last").textContent = last ? "Last mission: " + BL.career.STATION_NAME[last.station || "engineer"].toLowerCase() + " aboard " + BL.shipLabel(last.classId, last.ship, last.hull) + " (TL" + last.tl + "), " +
       last.outcome + ", " + signed(last.rep || 0) + " reputation." : "No missions yet. Your first job offers are waiting.";
     show("scr-hub");
   }
   $("hub-grid").onclick = function (ev) {
-    var b = ev.target.closest("button[data-jobs]"); if (b) { click(); showOffers("offers", b.dataset.jobs); return; }
+    var b = ev.target.closest("button[data-jobs]");
+    if (b && b.dataset.jobs === "admiral") { click(); showAdmiralOffer(); return; }
+    if (b) { click(); showOffers("offers", b.dataset.jobs); return; }
     var r = ev.target.closest("td[data-rep]"); if (r) { click(); showReports(r.dataset.rep, "hub"); }
   };
+  /* The admiral path: the next fleet campaign (BL.career.admiralOffer), its fleet drawn from the
+     career (veterans first, BL.career.admiralPicker), the result back to the career. */
+  function showAdmiralOffer() {
+    var o = BL.career.admiralOffer(career), T = o.title, A = career.admiral, body;
+    if (o.done) body = "<p>" + (o.won ? "The planet buster fell on the Azurian homeworld under your command. The war is won." : "There are no more fleet campaigns for you.") + "</p>";
+    else if (!o.open) body = "<p><b>" + T.short + " " + T.name + "</b> opens with " + o.needs.join(" and ") + ".</p><p class='muted'>Each level's fleet has the class of the same number at the top: F3 destroyer escorts, F4 destroyers ... F8 battleships, G9 dreadnoughts. The offer stays open: you can fly as many squadron missions as you like first.</p>";
+    else {
+      var sq = career.stations.squadron.rep, band = BL.career.ADM_TL.filter(function (b) { return sq <= b.upTo; })[0].odds;
+      body = "<p><b>" + T.short + " " + T.name + "</b>: " + (o.level === 9 ? "the planet buster strike on the Azurian homeworld." : o.level === 3 ? "escort a convoy to the other Imperial world." : "take the Azurian world, and hold it to the last turn.") + "</p>" +
+        (o.level === 9 ? "<p>Banked going in: <b>" + Math.max(33, o.banked) + "</b>. The homeworld's garrison and defences are 1% weaker for every point.</p>"
+          : o.requal ? "<p>A requal: you've been sent back below a level you held. " + o.have + " of the " + o.need + " points needed to step up again; it counts for your reputation, not toward G9.</p>"
+          : "<p>Points at " + T.short + ": <b>" + o.have + "</b> of the " + o.need + " needed to step up. Banked toward G9: <b>" + o.banked + "</b>.</p>") +
+        "<p class='muted'>Your fleet: every ship still in service from your earlier missions comes first, then new ships, their tech levels by your squadron reputation (" + sq + "): TL5 " + Math.round(band[0] * 100) + "%, TL6 " + Math.round(band[1] * 100) + "%, TL7 " + Math.round(band[2] * 100) + "%. A ship lost is gone for good.</p>";
+    }
+    $("adm-offer-body").innerHTML = body;
+    $("btn-adm-offer-go").hidden = !o.open;
+    overlay("ov-adm-offer", true);
+  }
+  $("btn-adm-offer-go").onclick = function () {
+    click(); overlay("ov-adm-offer", false);
+    var o = BL.career.admiralOffer(career); if (!o.open) return;
+    var seed = BL.randomSeed();
+    show("scr-admirals");
+    BL.admiralsView.start({ seed: seed, level: (o.level === 9 ? "G" : "F") + o.level, onExit: function () { showHub(); },
+      career: { banked: career.admiral.banked, pick: BL.career.admiralPicker(career, seed), done: function (r) { var rp = BL.career.applyAdmiral(career, r); saveCareer(); return rp; } } });
+  };
+  $("btn-adm-offer-close").onclick = function () { click(); overlay("ov-adm-offer", false); };
   /* Pilot training (training.js): any class the pilot is qualified on (a new pilot: the gunboat). */
   var trainClass = null;
   $("btn-hub-train").onclick = function () {
@@ -3150,7 +3194,7 @@
     $("rec-grid").innerHTML = gridHtml(c);
     $("rec-history").innerHTML = "<tr><th>Date</th><th>Station</th><th>Ship</th><th>Class</th><th>Tech</th><th>Outcome</th><th>Score</th><th>Reputation</th></tr>" +
       (c.history.length ? c.history.map(function (h) {
-        return "<tr><td>" + h.date + "</td><td>" + BL.career.STATION_NAME[h.station || "engineer"] + "</td><td>" + esc(h.ship) + (h.title ? "<br><i>" + esc(h.title) + "</i>" : "") + "</td><td>" + BL.classById(h.classId).name + "</td><td>" + h.tl + "</td><td>" + h.outcome +
+        return "<tr><td>" + h.date + "</td><td>" + BL.career.STATION_NAME[h.station || "engineer"] + "</td><td>" + esc(h.ship) + (h.title ? "<br><i>" + esc(h.title) + "</i>" : "") + "</td><td>" + BL.classById(h.classId).name + "</td><td>" + (h.tl == null ? "—" : h.tl) + "</td><td>" + h.outcome +
           "</td><td>" + h.score + "</td><td>" + signed(h.rep || 0) + "</td></tr>";
       }).join("") : '<tr><td colspan="8" class="muted">No missions yet.</td></tr>');
     // Command: the crewmen killed in action (js/roster.js).
@@ -3261,7 +3305,7 @@
   $("btn-registry-back").onclick = function () { click(); showHub(); };
   $("btn-card-back").onclick = function () { click(); showRegistry(); };
 
-  var OUTCOME_NAME = { success: "Success", destroyed: "Destroyed", abandoned: "Abandoned ship", timeout: "Out of time", wardLost: "Escorted ship lost", leftBehind: "Left behind", dropMissed: "Drop window missed", objectiveMissed: "Objective missed" };
+  var OUTCOME_NAME = { success: "Success", destroyed: "Destroyed", abandoned: "Abandoned ship", timeout: "Out of time", wardLost: "Escorted ship lost", leftBehind: "Left behind", dropMissed: "Drop window missed", objectiveMissed: "Objective missed", partial: "Partial success", failure: "Failed" };
   // Column notes on the ship card's guns table: a small i by the heading; tap it to show the note
   // under the table (tap again to hide).
   var GUN_INFO = {
@@ -3320,7 +3364,7 @@
       (ms.length ? ms.map(function (m) {
         var h = c.history.filter(function (x) { return x.seed === m.seed && x.ship === e.ship; })[0];
         var sys = (m.encounters || []).map(function (id) { return (BL.ENCOUNTERS[id] || { name: id }).name; }).join(", ");
-        return "<tr><td>" + m.date + "</td><td>" + (h && h.title ? esc(h.title) : m.serious === false ? "Requalifying" : "Patrol") + "</td><td>" + (sys || "–") + "</td><td>" + (OUTCOME_NAME[m.outcome] || m.outcome) +
+        return "<tr><td>" + m.date + "</td><td>" + (m.station === "admiral" ? "Fleet campaign" : h && h.title ? esc(h.title) : m.serious === false ? "Requalifying" : "Patrol") + "</td><td>" + (sys || "–") + "</td><td>" + (OUTCOME_NAME[m.outcome] || m.outcome) +
           "</td><td>" + (m.score != null ? m.score : "–") + "</td><td>" + (m.kills != null ? m.kills : "–") + "</td><td>" + (m.hullLost != null ? Math.round(m.hullLost) : "–") + "</td></tr>";
       }).join("") : '<tr><td colspan="7" class="muted">No missions on record.</td></tr>');
     show("scr-shipcard"); window.scrollTo(0, 0);

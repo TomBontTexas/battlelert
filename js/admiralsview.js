@@ -51,7 +51,8 @@
     '<marker id="adm-arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="4" markerHeight="4" orient="auto"><path d="M0,0 L10,5 L0,10 Z" class="adm-arrowhead"/></marker></defs>';
 
   function start(o) {
-    opts = o; c = new BL.Campaign({ seed: o.seed, level: o.level, banked: ledger().banked }); sel = []; focus = c.home; trail = null; cheered = false;
+    // (o.career: a career campaign, { banked, pick, done(result) -> report }: BL.career's fleet and ledger)
+    opts = o; c = new BL.Campaign({ seed: o.seed, level: o.level, banked: o.career ? o.career.banked : ledger().banked, pick: o.career ? o.career.pick : null }); sel = []; focus = c.home; trail = null; cheered = false;
     if (ticking) { clearTimeout(ticking); ticking = null; }
     $("adm-modal").hidden = true;
     hintDefault = $("adm-hint").textContent = "1–9 select · A all · S split · J join · H hold · F fly the flag" + (c.busterMode ? " · B load the buster" : "") + " (first turn) · W withdraw · Enter end turn · Esc clear";
@@ -172,10 +173,15 @@
     var alive = c.alive(f).length, ord = f.dest === f.at ? "Holding at " + c.hexes[f.at].name : "To " + c.hexes[f.dest].name + " · " + c.path(f.at, f.dest).length + " warps";
     return "<div class='adm-sq" + (sel.indexOf(f.id) >= 0 ? " sel" : "") + (f.lost ? " lost" : "") + "' data-id='" + f.id + "'>" +
       "<b>" + (fleetList().indexOf(f) + 1) + " · " + esc(c.desc(f).replace(/^./, function (s) { return s.toUpperCase(); })) + (f.id === c.flag ? " ★ flag" : "") + (f === c.busterForce() ? " ✦ buster" : "") + "</b>" +
-      "<span>" + esc(f.cmd.name) + " · " + f.cmd.temper + " · skill " + Math.round(f.cmd.skill * 100) + "</span>" +
+      "<span>" + esc(f.cmd.name) + " · " + f.cmd.temper + " · skill " + Math.round(f.cmd.skill * 100) + "</span>" + flagship(f) +
       (f.lost ? "<span class='bad'>Destroyed</span>" : "<span>" + alive + "/" + f.ships.length + " ships · " + pct(c.condition(f)) + "</span><span>" + esc(ord) + "</span>") + "</div>";
   }
   function fleetList() { return c.ours(); }
+  // (a career fleet: the force's top ship by name, or hull number, and tech level)
+  function flagship(f) {
+    var s = f.top.ships[0]; if (!s || !s.hull) return "";
+    return "<span>" + esc(s.name ? BL.shipLabel(s.cls, s.name, s.hull) : s.hull) + " · TL" + s.tl + (s.vet ? " · veteran" : "") + "</span>";
+  }
   function drawFleet() {
     $("adm-fleet").innerHTML = fleetList().map(line).join("");
     Array.prototype.forEach.call($("adm-fleet").querySelectorAll(".adm-sq"), function (d) {
@@ -346,6 +352,7 @@
     d = d || {}; d.pts = d.pts || {}; d.closed = d.closed || {}; d.banked = d.banked || 0; return d;
   }
   function score(n) {
+    if (opts.career) return careerScore();
     var L = BL.ADMIRALS.levels, nx = L[L.indexOf(c.level) + 1], d = ledger(), need = c.levelNum;
     if (!c.scored) {
       c.scored = {};
@@ -364,6 +371,17 @@
     if (s.up) return { next: s.up, line: "That makes " + s.have + " at " + c.level + " (" + need + " needed): promoted to " + s.up + " " + BL.ADMIRALS.titles[s.up] + "! Banked toward G9: " + s.banked + "." };
     return { line: c.level + ": " + s.have + " of the " + need + " needed. Banked toward G9: " + s.banked + "." };
   }
+  // A career campaign: the result goes to the career once (BL.career.applyAdmiral).
+  function careerScore() {
+    if (!c.scored) c.scored = opts.career.done(c.result()) || {};
+    var r = c.scored, T = BL.career.admiralTitle, lv = T(r.level).short;
+    if (r.level === 9) return { line: "Banked going in: " + c.banked + " (the homeworld at " + Math.round(100 * (1 - BL.ADMIRALS.points.homeK * c.banked)) + "%)." };
+    var rp = " Admiral reputation " + (r.rep >= 0 ? "+" : "") + r.rep + ".";
+    if (r.promoted) return { line: (r.requal ? "Requalified at " + lv : "That makes " + r.have + " at " + lv + " (" + r.level + " needed)") + ": on to " + T(r.promoted).short + " " + T(r.promoted).name + "!" + (r.requal ? "" : " Banked toward G9: " + r.banked + ".") + rp };
+    if (r.demoted) return { line: "A second campaign at " + lv + " with no points: back to " + T(r.demoted).short + "." + rp };
+    if (r.requal) return { line: "A requal at " + lv + ": " + r.have + " of the " + r.level + " needed to step up again; it counts for your reputation, not toward G9." + rp };
+    return { line: lv + ": " + r.have + " of the " + r.level + " needed. Banked toward G9: " + r.banked + "." + (r.failures && r.level > 4 ? " A campaign with no points (" + r.failures + " of 2 here before you're sent back two levels)." : "") + rp };
+  }
   function loadBuster() {
     if (!c.busterMode) return;
     if (sel.length !== 1) { $("adm-hint").textContent = "Select one force with a dreadnought to load the planet buster."; return; }
@@ -372,7 +390,7 @@
   // Withdraw (any time): what the fleet holds still scores.
   function withdrawModal() {
     $("adm-modal").classList.remove("docked");
-    if (!c || c.state !== "play" || sliding) return;
+    if (!c || (c.state !== "play" && c.state !== "won") || sliding) return;
     var m = $("adm-modal"), p = c.points();
     m.innerHTML = "<div class='ov-card'><h1>Withdraw?</h1><p>The campaign ends now. You keep " + p.total + " point" + (p.total === 1 ? "" : "s") +
       (p.items.length ? " (" + esc(p.items.map(function (x) { return x.name + " " + x.pts; }).join(", ")) + ")" : "") +
@@ -413,17 +431,18 @@
       "<h3>Systems taken</h3>" + tk + "<h3>Battles (★ your flag's)</h3>" + bt +
       (u.forces.length ? "<h3>The fleet now</h3>" + u.forces.map(function (x) { return "<div>" + esc(x) + "</div>"; }).join("") : "") +
       "<div class='menu'>" + (st === "won" && left > 0 && c.ours().length ? "<button id='adm-carry' class='primary'>" + (u.convoy ? "Hold " + esc(u.world) : "Hold the world") + " (" + left + " turn" + (left === 1 ? "" : "s") + " left)</button>" : "") +
-      (tally && tally.next ? "<button id='adm-next' class='primary'>New campaign as " + tally.next + " " + esc(BL.ADMIRALS.titles[tally.next]) + "</button>" : "") +
-      "<button id='adm-again'" + (st === "won" && left > 0 || tally && tally.next ? "" : " class='primary'") + ">New campaign</button><button id='adm-same'>Same seed again</button><button id='adm-quit'>Back to the title screen</button></div></div>";
+      (tally && tally.next && !opts.career ? "<button id='adm-next' class='primary'>New campaign as " + tally.next + " " + esc(BL.ADMIRALS.titles[tally.next]) + "</button>" : "") +
+      (opts.career ? (done ? "<button id='adm-quit' class='primary'>Back to the career hub</button>" : "") :
+      "<button id='adm-again'" + (st === "won" && left > 0 || tally && tally.next ? "" : " class='primary'") + ">New campaign</button><button id='adm-same'>Same seed again</button><button id='adm-quit'>Back to the title screen</button>") + "</div></div>";
     m.hidden = false;
     if ($("adm-carry")) $("adm-carry").onclick = function () { click(); c.carryOn(); m.hidden = true; draw(); };
-    $("adm-again").onclick = function () { click(); start({ seed: BL.randomSeed(), level: c.level, onExit: opts.onExit }); };
-    $("adm-same").onclick = function () { click(); start({ seed: c.seed, level: c.level, onExit: opts.onExit }); };
+    if ($("adm-again")) $("adm-again").onclick = function () { click(); start({ seed: BL.randomSeed(), level: c.level, onExit: opts.onExit }); };
+    if ($("adm-same")) $("adm-same").onclick = function () { click(); start({ seed: c.seed, level: c.level, onExit: opts.onExit }); };
     if ($("adm-next")) $("adm-next").onclick = function () {
       click(); var pick = $("adm-pick"); if (pick) { pick.value = tally.next; if (pick.onchange) pick.onchange(); }
       start({ seed: BL.randomSeed(), level: tally.next, onExit: opts.onExit });
     };
-    $("adm-quit").onclick = function () { click(); m.hidden = true; opts.onExit(); };
+    if ($("adm-quit")) $("adm-quit").onclick = function () { click(); m.hidden = true; opts.onExit(); };
   }
 
   function wire() {
@@ -436,7 +455,11 @@
     $("btn-adm-split").onclick = split;
     $("btn-adm-join").onclick = join;
     $("btn-adm-how").onclick = function () { click(); $("ov-how").hidden = false; };
-    $("btn-adm-quit").onclick = function () { click(); if (ticking) { clearTimeout(ticking); ticking = null; } opts.onExit(); };
+    $("btn-adm-quit").onclick = function () {
+      click();
+      if (opts.career && c.state !== "over" && c.state !== "lost") { if (c.state === "play" || c.state === "won") withdrawModal(); return; }     // (in the career, leaving is a withdrawal)
+      if (ticking) { clearTimeout(ticking); ticking = null; } opts.onExit();
+    };
     $("scr-admirals").addEventListener("mouseover", function (ev) {
       var t = ev.target.closest && ev.target.closest("[data-hint]");
       $("adm-hint").textContent = t ? t.getAttribute("data-hint") : hintDefault;

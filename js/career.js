@@ -12,7 +12,7 @@
   // BL.CAPTAINS.opens successful command missions on it).
   var STATIONS = ["engineer", "gunner", "pilot", "captain", "squadron"];
   var CREW = ["engineer", "gunner", "pilot"];
-  var STATION_NAME = { engineer: "Engineer", gunner: "Gunner", pilot: "Pilot", captain: "Command", squadron: "Squadron" };
+  var STATION_NAME = { engineer: "Engineer", gunner: "Gunner", pilot: "Pilot", captain: "Command", squadron: "Squadron", admiral: "Admiral" };
   var PLAYABLE = { engineer: true, gunner: true, pilot: true, captain: true, squadron: true }; // stations built so far
   // Command jobs on the gunboat and destroyer escort: this share are escort missions.
   var ESCORT_SHARE = 1 / 3, ESCORT_CLASSES = { gunboat: true, destroyerEscort: true };
@@ -49,13 +49,20 @@
       ships: {}, namesVersion: NAMES_VERSION, tlVersion: TL_VERSION,
       hulls: {}, nextHull: {},          // hull numbers of ships that replace ones lost in action
       storyDone: {}, storyVersion: STORY_VERSION,     // story missions completed: id -> date
-      repVersion: REP_VERSION
+      repVersion: REP_VERSION,
+      admiral: blankAdmiral()
     };
     STATIONS.forEach(function (s) { c.stations[s] = { qualified: 0, rep: REP.start, failures: {}, realUntil: 0 }; c.profiles[s] = blankProfile(); c.stepUps[s] = 0; });
     STATIONS.forEach(function (s) { if (PLAYABLE[s]) generateOffers(c, s); });
     return c;
   }
 
+  /* The admiral path (TexasBont, Nov 7, 2026): fleet campaigns F3 (Fleet Commodore) to F8, then G9.
+     at: the level he's at (0 until F3 opens); pts: points banked at each level on the way up (all
+     count toward G9: banked); closed: levels he has stepped up from (a campaign there after a
+     bust-down is a requal: rq, reputation only); failures: campaigns with no points at each level
+     (two send him back two levels); won / warLost: G9's one strike. */
+  function blankAdmiral() { return { at: 0, rep: REP.start, pts: {}, rq: {}, closed: {}, failures: {}, banked: 0, campaigns: 0, won: false, warLost: false }; }
   function save(c) {
     try { localStorage.setItem(KEY, JSON.stringify(c)); return true; } catch (e) { return false; }
   }
@@ -94,6 +101,8 @@
       c.history.forEach(function (h) { if (h.station === s && h.outcome === "success") st.wins[h.n] = (st.wins[h.n] || 0) + 1; });
     });
     if (!Array.isArray(c.signoffsUsed)) c.signoffsUsed = [];
+    var ad = c.admiral = c.admiral && typeof c.admiral === "object" ? c.admiral : blankAdmiral(), ba = blankAdmiral();
+    Object.keys(ba).forEach(function (k) { if (ad[k] === undefined || ad[k] === null) ad[k] = ba[k]; });
     c.name = cleanName(c.name) || "Recruit";
     if (!c.ships || typeof c.ships !== "object") c.ships = {};
     if (!c.hulls || typeof c.hulls !== "object") c.hulls = {};
@@ -567,6 +576,107 @@
     return report;
   }
 
+  /* ------------------------------------------------------- The admiral path
+     Level L (3 to 9, F3 to F8 and G9) has the class of the same number at the top of its fleet
+     (destroyer escort 3 ... dreadnought 9). It opens with BL.CAPTAINS.opens successful squadron
+     missions on that class and, above F3, the level below stepped up from; the offer stays open
+     however many more squadron missions he flies first. */
+  function admiralNeeds(c, L) {
+    var A = c.admiral, out = [], cls = BL.classByN(L);
+    if (squadronWins(c, L) < BL.CAPTAINS.opens) out.push(BL.CAPTAINS.opens + " successful " + cls.name.toLowerCase() + " squadron missions (" + squadronWins(c, L) + " so far)");
+    if (L > 3 && !A.closed[L - 1]) out.push("promotion from " + admiralTitle(L - 1).short);
+    return out;
+  }
+  function admiralTitle(L) { return { short: (L === 9 ? "G" : "F") + L, name: L === 9 ? "Grand Admiral" : L === 3 ? "Fleet Commodore" : "Fleet Admiral" }; }
+  // The level he's at now (F3 once it opens), or 0.
+  function admiralLevel(c) {
+    var A = c.admiral;
+    if (!A.at && !admiralNeeds(c, 3).length) A.at = 3;
+    return A.at;
+  }
+  // His next campaign: { level, open, needs, requal, have, need, banked } (level 0: none yet; done:
+  // G9 is over).
+  function admiralOffer(c) {
+    var A = c.admiral, L = admiralLevel(c) || 3, needs = admiralNeeds(c, L), requal = !!A.closed[L] && L < 9;
+    return { level: L, title: admiralTitle(L), open: !needs.length && !A.won && !A.warLost, needs: needs, requal: requal,
+      have: requal ? A.rq[L] || 0 : A.pts[L] || 0, need: L, banked: A.banked, done: A.won || A.warLost, won: A.won };
+  }
+  function admiralRank(c) {
+    var A = c.admiral;
+    if (A.won) return "Grand Admiral (the war is won)";
+    return admiralLevel(c) ? admiralTitle(A.at).name + " " + admiralTitle(A.at).short : "Admiral: none yet";
+  }
+  /* His fleet (TexasBont, Nov 7, 2026): for each ship, a veteran first (a ship of that class from
+     his earlier missions, on any path, still in service), else a new ship, her tech level by the
+     odds his squadron reputation sets (ADM_TL); new ships take the class's names while the name
+     lists last, then numbered hulls. Returns pick(classId) -> { name, hull, tl, vet }. */
+  var ADM_TL = [{ upTo: 39, odds: [0.6, 0.3, 0.1] }, { upTo: 70, odds: [0.3, 0.45, 0.25] }, { upTo: Infinity, odds: [0.1, 0.4, 0.5] }];
+  function admiralPicker(c, seed) {
+    var rng = BL.rng(seed || 1), vets = {}, used = {}, numbered = {}, rep = c.stations.squadron.rep;
+    Object.keys(c.ships).forEach(function (k) {
+      var s = c.ships[k]; if (s.lost || s.classId === "gunboat") return;
+      (vets[s.classId] = vets[s.classId] || []).push(s);
+      used[s.name] = true;
+    });
+    Object.keys(vets).forEach(function (k) { vets[k].sort(function () { return rng.next() - 0.5; }); });
+    Object.keys(c.ships).forEach(function (k) { if (c.ships[k].lost) used[c.ships[k].name] = used[c.ships[k].name] || false; });
+    var odds = ADM_TL.filter(function (b) { return rep <= b.upTo; })[0].odds;
+    return function (classId) {
+      var v = (vets[classId] || []).shift();
+      if (v) return { name: v.name, hull: v.hull || BL.hullNumber(classId, v.name), tl: v.tl, vet: true };
+      var x = rng.next(), tl = x < odds[0] ? 5 : x < odds[0] + odds[1] ? 6 : 7;
+      var free = {}; Object.keys(used).forEach(function (n) { if (used[n]) free[n] = true; });
+      var nm = BL.shipName(rng, classId, tl, free);
+      if (!free[nm]) { used[nm] = true; return { name: nm, hull: (c.hulls && c.hulls[nm]) || BL.hullNumber(classId, nm), tl: tl }; }
+      var k = numbered[classId] = (numbered[classId] || 1000) + 1;
+      return { name: null, hull: BL.HULL_CODES[classId] + "-" + k, tl: tl };
+    };
+  }
+  /* A campaign's result (admirals.js Campaign.result): points banked (or a requal's), reputation,
+     stepping up at the level's number of points, two campaigns with no points at a level sending
+     him back two levels; G9 is one strike. Every named ship gets her service record; one lost is
+     retired. */
+  var ADM_REP = { success: 1, objective: 1, failure: -1, annihilated: -2 };
+  function applyAdmiral(c, r) {
+    var A = c.admiral, L = r.level, requal = !!A.closed[L] && L < 9, success = r.points > 0, report = { level: L, points: r.points, requal: requal };
+    var parts = [];
+    if (success) { parts.push(["campaign scored", ADM_REP.success]); if (r.objective) parts.push(["objective taken", ADM_REP.objective]); }
+    else parts.push(r.annihilated ? ["fleet lost", ADM_REP.annihilated] : ["no points", ADM_REP.failure]);
+    var was = A.rep; A.rep = Math.max(0, A.rep + parts.reduce(function (a, p) { return a + p[1]; }, 0));
+    report.rep = A.rep - was; report.repParts = parts;
+    A.campaigns++;
+    if (L === 9) {
+      if (r.objective) A.won = true; else A.warLost = true;      // (never said to him: TexasBont, Nov 7, 2026)
+    } else if (requal) {
+      A.rq[L] = (A.rq[L] || 0) + r.points; report.have = A.rq[L];
+      if (A.rq[L] >= L) { A.rq[L] = 0; A.at = L + 1; report.promoted = L + 1; }
+    } else {
+      A.pts[L] = (A.pts[L] || 0) + r.points; A.banked += r.points; report.have = A.pts[L];
+      if (A.pts[L] >= L) { A.closed[L] = true; A.at = L + 1; report.promoted = L + 1; }
+    }
+    if (success) A.failures[L] = 0;
+    else if (L < 9) {
+      A.failures[L] = (A.failures[L] || 0) + 1; report.failures = A.failures[L];
+      if (A.failures[L] >= 2) {
+        A.failures[L] = 0;
+        var back = Math.max(3, L - 2);
+        if (back < L) { for (var k = back; k <= L; k++) A.rq[k] = 0; A.at = back; report.demoted = back; }
+      }
+    }
+    report.banked = A.banked;
+    var entry = { date: today(), station: "admiral", classId: BL.classByN(L).id, n: L, tl: null, ship: admiralTitle(L).short + " campaign", hull: "",
+      seed: r.seed, outcome: r.objective ? "success" : success ? "partial" : r.annihilated ? "destroyed" : "failure", score: r.points, rep: report.rep, serious: !requal };
+    c.history.unshift(entry);
+    if (c.history.length > 1000) c.history.length = 1000;
+    (r.ships || []).forEach(function (s) {
+      var e = { date: entry.date, station: "admiral", classId: s.classId, n: BL.classById(s.classId).n, tl: s.tl, ship: s.name, hull: s.hull, seed: r.seed,
+        outcome: s.lost ? "destroyed" : entry.outcome, score: null, rep: 0, serious: !requal };
+      logService(c, e, {});
+      if (s.lost) retireShip(c, e);
+    });
+    return report;
+  }
+
   /* ------------------------------------------------------ Rapid sign-offs
      Qualified on class N at any station, you hold N - 2 sign-offs in total. Each qualifies you
      at another station on its next class, as long as that class is no higher than N - 2 and
@@ -629,6 +739,7 @@
     offers: offers, generateOffers: generateOffers, lowerJobs: lowerJobs, repFor: repFor, REP: REP,
     applyResult: applyResult, profile: profile, serviceRecord: serviceRecord,
     squadronOpen: squadronOpen, squadronWins: squadronWins, squadronClasses: squadronClasses, commandWins: commandWins, brass: brass, brassName: brassName,
-    storyComplete: storyComplete, storyLeft: storyLeft
+    storyComplete: storyComplete, storyLeft: storyLeft,
+    admiralOffer: admiralOffer, admiralRank: admiralRank, admiralNeeds: admiralNeeds, admiralTitle: admiralTitle, admiralPicker: admiralPicker, applyAdmiral: applyAdmiral, ADM_TL: ADM_TL
   };
 })(typeof window !== "undefined" ? window : globalThis);
