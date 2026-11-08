@@ -3284,7 +3284,7 @@
     var c = career;
     $("rec-title").textContent = "Service record: " + c.name;
     // (the reputations are under the rack)
-    $("rec-summary").innerHTML = "<span>Enlisted <b>" + c.created + "</b></span>" + "<span>Rapid sign-offs <b>" + BL.career.signoffsHeld(c) + "</b></span>" +
+    $("rec-summary").innerHTML = "<span>Enlisted <b>" + starDate({ date: c.created }) + "</b></span>" + "<span>Rapid sign-offs <b>" + BL.career.signoffsHeld(c) + "</b></span>" +
       "<span>Missions <b>" + sumProfiles(c, "missions") + "</b> (" + sumProfiles(c, "wins") + " won)</span>" +
       RACK.filter(function (p) { return rackTop(c, p) > 0 || BL.career.CREW.indexOf(p) >= 0; }).map(function (p) {
         return "<span>" + BL.career.STATION_NAME[p] + " reputation <b>" + (p === "admiral" ? c.admiral.rep : c.stations[p].rep) + "</b></span>";
