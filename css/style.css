@@ -621,7 +621,7 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 .reg-class > summary .muted { font-weight: 400; font-size: 14px; }
 .reg-tl { padding: 0 14px 10px; }
 .reg-tl h3 { margin: 6px 0; font-size: 14px; color: var(--muted); font-weight: 600; }
-.reg-ships { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 6px; }
+.reg-ships { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 6px; }
 .reg-ship { text-align: left; padding: 8px 10px; display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
 .reg-ship .tag { font-size: 12px; color: var(--muted); white-space: nowrap; }
 .reg-ship .tag.served { color: var(--good); }
@@ -944,3 +944,13 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 .rec-reps tr th:first-child { text-align: left; padding-left: 0; font-weight: 600; }
 .rec-reps td { font-family: var(--mono); color: var(--charge); font-weight: 700; }
 @media (max-width: 560px) { .rec-reps th, .rec-reps td { padding: 5px 6px; font-size: 13px; } }
+/* Ship awards (TexasBont, Nov 8, 2026) */
+.reg-ship { align-items: center; }
+.reg-ship > span:first-child { flex: 1; text-align: left; }
+.reg-aw { display: flex; gap: 2px; }
+.reg-aw svg { display: block; height: 10px; width: auto; box-shadow: 0 1px 2px rgba(0,0,0,.5); }
+.ship-aw { display: flex; flex-wrap: wrap; gap: 14px 22px; margin: 6px 0 4px; }
+.ship-aw-one { text-align: center; font-size: 13px; }
+.ship-aw-one svg { display: block; margin: 0 auto 4px; box-shadow: 0 2px 4px rgba(0,0,0,.5); }
+.svc-aw { white-space: nowrap; font-family: var(--mono); font-size: 12px; }
+.svc-aw svg { height: 11px; width: auto; vertical-align: middle; margin-right: 4px; }

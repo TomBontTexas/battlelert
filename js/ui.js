@@ -3485,6 +3485,21 @@
     });
     return out;
   }
+  /* Ship awards (TexasBont, Nov 8, 2026): after every mission a ship serves (his own, his squadron's,
+     his fleet's) she takes the award he holds on that path then, from the dates he first earned
+     each (c.qualDates); she shows the highest on each path, in rack order. */
+  var AW_CODE = { engineer: "E", gunner: "G", pilot: "P", captain: "C", squadron: "S", admiral: "F" };
+  function awardCode(p, n) { return p === "admiral" && n === 9 ? "G-9" : AW_CODE[p] + "-" + n; }
+  function awardAt(c, m) {
+    var p = m.station || "engineer", t = (m.date || "") + "." + (m.time || ""), best = 0, q = c.qualDates || {};
+    for (var n = 1; n <= 9; n++) { var d = q[p + ":" + n]; if (d && d.date + "." + (d.time || "") <= t) best = n; }
+    return best;
+  }
+  function shipAwards(c, rec) {
+    var top = {};
+    (rec && rec.missions || []).forEach(function (m) { var p = m.station || "engineer", n = awardAt(c, m); if (n > (top[p] || 0)) top[p] = n; });
+    return RACK.filter(function (p) { return top[p]; }).map(function (p) { return { p: p, n: top[p] }; });
+  }
   function regTag(e) {
     if (e.rec && e.rec.lost) return '<span class="tag lost">Lost ' + e.rec.lost + "</span>";
     if (e.rec) return '<span class="tag served">' + e.rec.missions.length + " mission" + (e.rec.missions.length === 1 ? "" : "s") + "</span>";
@@ -3502,7 +3517,9 @@
         if (!here.length) return;
         body += '<div class="reg-tl"><h3>Tech Level ' + tl + '</h3><div class="reg-ships">' + here.map(function (e) {
           regShown.push(e);
-          return '<button class="reg-ship" data-i="' + (regShown.length - 1) + '"><span>' + shipHtml(e.classId, e.ship, e.hull) + "</span>" + regTag(e) + "</button>";
+          var aw = shipAwards(c, e.rec);
+          return '<button class="reg-ship" data-i="' + (regShown.length - 1) + '"><span>' + shipHtml(e.classId, e.ship, e.hull) + "</span>" +
+            (aw.length && BL.ribbonSvg ? '<span class="reg-aw">' + aw.map(function (a) { return BL.ribbonSvg(a.p, a.n, 34); }).join("") + "</span>" : "") + regTag(e) + "</button>";
         }).join("") + "</div></div>";
       });
       if (!ships.length) body += '<p class="muted reg-tl">' + (cls.id === "gunboat" ? "No gunboats yet." : "None yet.") + "</p>";
@@ -3573,15 +3590,21 @@
     var nw = function (t) { return '<span class="nw">' + t + "</span>"; };
     $("card-gun-cap").innerHTML = same && guns.length ? "<div>" + nw((guns.length > 1 ? "Each gun: " : "Gun: ") + cap(guns[0])) + (mg ? " · " + nw("Main gun: " + cap(mg)) : "") + "</div>" : "";
     var ms = rec ? rec.missions.slice().reverse() : [];
-    $("card-service").innerHTML = "<tr><th>Date</th><th>Mission</th><th>Your post</th><th>Enemy forces engaged</th><th>Outcome</th><th>Score</th><th>Enemy ships destroyed</th><th>Hull damage</th></tr>" +
+    var aw = shipAwards(c, rec);
+    $("card-awards").hidden = !aw.length || !BL.ribbonSvg;
+    $("card-awards").innerHTML = '<h2>Awards</h2><div class="ship-aw">' + aw.map(function (a) {
+      return '<div class="ship-aw-one">' + (BL.ribbonSvg ? BL.ribbonSvg(a.p, a.n, 90) : "") + "<div><b>" + awardCode(a.p, a.n) + "</b> " + BL.career.STATION_NAME[a.p] + "</div></div>";
+    }).join("") + '</div><p class="muted">The highest award on each path earned aboard her: after each mission she served, the award you held then.</p>';
+    $("card-service").innerHTML = "<tr><th>Date</th><th>Mission</th><th>Your post</th><th>Enemy forces engaged</th><th>Outcome</th><th>Score</th><th>Enemy ships destroyed</th><th>Hull damage</th><th>Award</th></tr>" +
       (ms.length ? ms.map(function (m) {
         var h = c.history.filter(function (x) { return x.seed === m.seed && x.ship === e.ship; })[0];
         var sys = engaged(m.encounters);
         // (his post: where he served; a squadron's other ships and a fleet's: under his flag)
         var post = m.station === "admiral" ? "Fleet Command" : m.station === "squadron" && h && h.station !== "squadron" ? "Flag bridge" : h ? POST[h.station || "engineer"] : m.station === "squadron" ? "Flag bridge" : POST[m.station || "engineer"];
         return "<tr><td>" + starDate(m) + "</td><td>" + esc(missionName(h, m)) + "</td><td>" + (post || "–") + "</td><td>" + (sys || "–") + "</td><td>" + (OUTCOME_NAME[m.outcome] || m.outcome) +
-          "</td><td>" + (m.score != null ? m.score : "–") + "</td><td>" + (m.kills != null ? m.kills : "–") + "</td><td>" + (hullPct(e.classId, e.tl, m.hullLost) || "–") + "</td></tr>";
-      }).join("") : '<tr><td colspan="8" class="muted">No missions on record.</td></tr>');
+          "</td><td>" + (m.score != null ? m.score : "–") + "</td><td>" + (m.kills != null ? m.kills : "–") + "</td><td>" + (hullPct(e.classId, e.tl, m.hullLost) || "–") + "</td><td>" +
+          (function (n) { return n ? '<span class="svc-aw">' + (BL.ribbonSvg ? BL.ribbonSvg(m.station || "engineer", n, 40) + " " : "") + awardCode(m.station || "engineer", n) + "</span>" : "–"; })(awardAt(c, m)) + "</td></tr>";
+      }).join("") : '<tr><td colspan="9" class="muted">No missions on record.</td></tr>');
     show("scr-shipcard"); window.scrollTo(0, 0);
   }
 
