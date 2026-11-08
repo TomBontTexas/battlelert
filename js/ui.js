@@ -3306,6 +3306,9 @@
      destroyed and hull damage as a share of the ship's hull; scores as before (TexasBont: fine on every path). */
   var POST = { engineer: "Main Engineering", gunner: "Gunnery", pilot: "Helm", captain: "Bridge", squadron: "Flag bridge", admiral: "Fleet Command" };
   function missionName(h, m) { return (m || h || {}).station === "admiral" ? "Fleet operation" : h && h.title ? h.title : "Patrol"; }
+  // (enemy groups as the navy writes them: TexasBont, Nov 8, 2026)
+  var RON = { frigate: "DesRon", cruiserA: "CruRon", battleshipA: "BatRon", dreadnought: "DreadRon" };
+  function engaged(ids) { return (ids || []).map(function (id) { return RON[id] || (BL.ENCOUNTERS[id] || { name: id }).name; }).join(", "); }
   function hullPct(classId, tl, lost) {
     if (lost == null) return null;
     var d = tl != null ? BL.shipFor(classId, tl) : null;
@@ -3326,17 +3329,17 @@
       Object.keys(c.ships).some(function (k) { return c.ships[k].missions.some(function (x) { if (x.seed === h.seed && x.date === h.date && x.station === h.station) { m = x; return true; } }); });
       var sm = h.story && BL.storyMission ? BL.storyMission(h.story) : null, ok = h.outcome === "success";
       var line = sm ? String(ok ? sm.after : sm.lost).replace(/\{hero\}/g, c.name).replace(/\{ship\}/g, BL.shipLabel(h.classId, h.ship, h.hull)) : "";
-      var sys = m && m.encounters && m.encounters.length ? m.encounters.map(function (id) { return (BL.ENCOUNTERS[id] || { name: id }).name; }).join(" → ") : "";
+      var sys = m ? engaged(m.encounters) : "";
       // (a fleet campaign has no one ship or tech level: its fleet instead, and no score shown)
       var fleetOp = h.station === "admiral" && h.tl == null;
       var facts = [fleetOp ? BL.career.admiralTitle(h.n).fleet : shipHtml(h.classId, h.ship, h.hull) + (h.tl != null ? " (TL" + h.tl + ")" : "")];
-      if (!fleetOp && POST[h.station || "engineer"]) facts.push(POST[h.station || "engineer"]);
-      if (sys) facts.push(esc(sys));
-      if (m && m.kills != null) facts.push("enemy ships destroyed " + m.kills);
-      var hp = m ? hullPct(h.classId, h.tl, m.hullLost) : null; if (hp) facts.push("hull damage " + hp);
+      // (one fact a line; no post: the page is the path's)
+      if (sys) facts.push("Enemy Forces Engaged: " + esc(sys));
+      if (m && m.kills != null) facts.push(m.kills + " enemy ship" + (m.kills === 1 ? "" : "s") + " destroyed");
+      var hp = m ? hullPct(h.classId, h.tl, m.hullLost) : null; if (hp) facts.push("Hull Damage " + hp);
       return '<div class="rp-card ' + (ok ? "ok" : "bad") + '"><div class="rp-top"><b>' + esc(missionName(h)) + "</b><span>" + h.date + "</span></div>" +
         '<div class="rp-out"><b>' + (OUTCOME_NAME[h.outcome] || h.outcome) + "</b> · score " + (h.score != null ? (fleetOp ? "+" : "") + h.score : "–") + " · reputation " + signed(h.rep || 0) + "</div>" +
-        '<div class="rp-facts">' + facts.join(" · ") + "</div>" + (line ? '<p class="rp-story">' + esc(line) + "</p>" : "") + "</div>";
+        '<div class="rp-facts">' + facts.map(function (f) { return "<div>" + f + "</div>"; }).join("") + "</div>" + (line ? '<p class="rp-story">' + esc(line) + "</p>" : "") + "</div>";
     }).join("");
     $("btn-rp-back").textContent = rpFrom === "record" ? "Service record" : "Career hub";
     show("scr-reports"); window.scrollTo(0, 0);
@@ -3461,10 +3464,10 @@
     var nw = function (t) { return '<span class="nw">' + t + "</span>"; };
     $("card-gun-cap").innerHTML = same && guns.length ? "<div>" + nw((guns.length > 1 ? "Each gun: " : "Gun: ") + cap(guns[0])) + (mg ? " · " + nw("Main gun: " + cap(mg)) : "") + "</div>" : "";
     var ms = rec ? rec.missions.slice().reverse() : [];
-    $("card-service").innerHTML = "<tr><th>Date</th><th>Mission</th><th>Your post</th><th>Systems</th><th>Outcome</th><th>Score</th><th>Enemy ships destroyed</th><th>Hull damage</th></tr>" +
+    $("card-service").innerHTML = "<tr><th>Date</th><th>Mission</th><th>Your post</th><th>Enemy forces engaged</th><th>Outcome</th><th>Score</th><th>Enemy ships destroyed</th><th>Hull damage</th></tr>" +
       (ms.length ? ms.map(function (m) {
         var h = c.history.filter(function (x) { return x.seed === m.seed && x.ship === e.ship; })[0];
-        var sys = (m.encounters || []).map(function (id) { return (BL.ENCOUNTERS[id] || { name: id }).name; }).join(", ");
+        var sys = engaged(m.encounters);
         // (his post: where he served; a squadron's other ships and a fleet's: under his flag)
         var post = m.station === "admiral" ? "Fleet Command" : m.station === "squadron" && h && h.station !== "squadron" ? "Flag bridge" : h ? POST[h.station || "engineer"] : m.station === "squadron" ? "Flag bridge" : POST[m.station || "engineer"];
         return "<tr><td>" + m.date + "</td><td>" + esc(missionName(h, m)) + "</td><td>" + (post || "–") + "</td><td>" + (sys || "–") + "</td><td>" + (OUTCOME_NAME[m.outcome] || m.outcome) +
