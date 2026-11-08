@@ -3309,11 +3309,12 @@
   }
   /* His squadron's designation (TexasBont, Nov 8, 2026): one number for each set of ships, so the
      same ships are the same squadron and different ships a different one (Destroyer Squadron 12,
-     then 13 ...). Kept in the career (c.sqNums), numbered from a start set by his name and class. */
+     then 13 ...). Kept in the career (c.sqIds; each ship by her name, a numbered hull by her number), numbered from a start set by his name and class. */
   function squadronName(c, classId, ships) {
     var k = 0, t = c.name + "|" + classId;
     for (var i = 0; i < t.length; i++) k = (k * 31 + t.charCodeAt(i)) >>> 0;
-    var all = c.sqNums = c.sqNums || {}, mine = all[classId] = all[classId] || {}, key = ships.slice().sort().join("|");
+    delete c.sqNums;      // (v0.246.00's, keyed loosely: numbered afresh)
+    var all = c.sqIds = c.sqIds || {}, mine = all[classId] = all[classId] || {}, key = ships.slice().sort().join("|");
     if (!mine[key]) { mine[key] = 10 + k % 60 + Object.keys(mine).length; saveCareer(); }
     return BL.classById(classId).name + " Squadron " + mine[key];
   }
@@ -3348,13 +3349,14 @@
       var sys = m ? engaged(m.encounters) : "";
       // (a fleet campaign has no one ship or tech level: its fleet instead, and no score shown)
       var fleetOp = h.station === "admiral" && h.tl == null;
-      var facts = [fleetOp ? BL.career.admiralTitle(h.n).fleet : shipHtml(h.classId, h.ship, h.hull) + (h.tl != null ? " (TL" + h.tl + ")" : "")];
+      var facts = [fleetOp ? BL.career.admiralTitle(h.n).fleet : shipHtml(h.classId, h.ship, h.hull) + (h.tl != null ? " (TL" + h.tl + ")" : "") + (h.station === "squadron" ? " ★" : "")];
       // (a squadron: the other ships under his flag that mission, each marked if lost)
-      var crew = [h.ship + " " + (h.hull || "")];
+      var crew = [h.ship || h.hull];
       if (h.station === "squadron") Object.keys(c.ships).forEach(function (k) {
-        var r = c.ships[k]; if (r.name === h.ship && (r.hull || "") === (h.hull || "")) return;
+        // (the flagship is listed first, starred: skip her here; a named ship by her name, a numbered hull by her number)
+        var r = c.ships[k]; if (r.name === h.ship && (r.name || (r.hull || "") === (h.hull || ""))) return;
         r.missions.forEach(function (x) {
-          if (x.seed === h.seed && x.date === h.date && x.station === "squadron") crew.push(r.name + " " + (r.hull || ""));
+          if (x.seed === h.seed && x.date === h.date && x.station === "squadron") crew.push(r.name || r.hull);
           if (x.seed === h.seed && x.date === h.date && x.station === "squadron")
             facts.push(shipHtml(r.classId, r.name, r.hull) + (r.tl != null ? " (TL" + r.tl + ")" : "") + (x.outcome === "destroyed" ? " · lost" : x.outcome === "leftBehind" ? " · left behind" : ""));
         });
