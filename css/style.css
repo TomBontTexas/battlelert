@@ -899,3 +899,4 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 /* The fleet command orders (ui.js showAdmiralOffer) */
 .orders-head { font-weight: 700; letter-spacing: .2em; color: var(--charge); margin-bottom: 4px; }
 .rp-unit { font-size: 13px; color: var(--charge); margin-top: 2px; }
+.rp-top-back { margin-left: auto; flex: 0 0 auto; }

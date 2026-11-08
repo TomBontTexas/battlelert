@@ -3376,10 +3376,11 @@
         '<div class="rp-out"><b>' + (OUTCOME_NAME[h.outcome] || h.outcome) + "</b> · score " + (h.score != null ? (fleetOp ? "+" : "") + h.score : "–") + " · reputation " + signed(h.rep || 0) + "</div>" +
         '<div class="rp-facts">' + facts.map(function (f) { return "<div>" + f + "</div>"; }).join("") + "</div>" + (line ? '<p class="rp-story">' + esc(line) + "</p>" : "") + "</div>";
     }).join("");
-    $("btn-rp-back").textContent = rpFrom === "record" ? "Service record" : "Career hub";
+    // (the way back at the top as well as the bottom: TexasBont, Nov 8, 2026)
+    $("btn-rp-back").textContent = $("btn-rp-top").textContent = rpFrom === "record" ? "Service record" : "Career hub";
     show("scr-reports"); window.scrollTo(0, 0);
   }
-  $("btn-rp-back").onclick = function () { click(); if (rpFrom === "record") showRecord(); else showHub(); };
+  $("btn-rp-back").onclick = $("btn-rp-top").onclick = function () { click(); if (rpFrom === "record") showRecord(); else showHub(); };
 
   /* ------------------------------------------------------ Naval registry
      Every named ship by class and tech level (each name's past ships, lost in action, then the one
