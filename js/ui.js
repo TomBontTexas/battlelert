@@ -3498,7 +3498,7 @@
   $("reg-served").onchange = function () { showRegistry(); };
   $("reg-list").addEventListener("toggle", function (ev) { var d = ev.target; if (d.dataset && d.dataset.cls) regOpen[d.dataset.cls] = d.open; }, true);
   $("reg-list").addEventListener("click", function (ev) { var b = ev.target.closest("button[data-i]"); if (b) { click(); showShipCard(regShown[+b.dataset.i]); } });
-  $("btn-registry-back").onclick = function () { click(); showHub(); };
+  $("btn-registry-back").onclick = $("btn-registry-top").onclick = function () { click(); showHub(); };
   $("btn-card-back").onclick = function () { click(); showRegistry(); };
 
   var OUTCOME_NAME = { success: "Success", destroyed: "Destroyed", abandoned: "Abandoned ship", timeout: "Out of time", wardLost: "Escorted ship lost", leftBehind: "Left behind", dropMissed: "Drop window missed", objectiveMissed: "Objective missed", partial: "Partial success", failure: "Failed" };
