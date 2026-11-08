@@ -3342,7 +3342,9 @@
     var won = list.filter(function (h) { return h.outcome === "success"; }).length;
     $("rp-ribbon").innerHTML = BL.ribbonSvg ? BL.ribbonSvg(st, n, 165) : "";
     var ops = st === "admiral", wd = ops ? "operation" : "mission";      // (the admiral path: his fleet's operations)
-    $("rp-title").textContent = ops ? BL.career.admiralTitle(n).full + ": operation reports" : st === "squadron" ? ronName(cls.id) + " Mission Reports" : who + " · " + cls.name + ": mission reports";
+    // (titles as "Gunboat Engineer Mission Reports": class, path, in capitals; squadrons by their
+    // type, the admiral's by his fleet: TexasBont, Nov 8, 2026)
+    $("rp-title").textContent = ops ? BL.career.admiralTitle(n).fleet + " Operation Reports" : (st === "squadron" ? ronName(cls.id) : cls.name + " " + who) + " Mission Reports";
     $("rp-sum").textContent = list.length ? list.length + " " + wd + (list.length === 1 ? "" : "s") + " on record, " + won + " won." : "No " + wd + "s on record here.";
     $("rp-list").innerHTML = list.map(function (h) {
       // (the ship's service record holds the systems flown, ships destroyed and hull lost)
