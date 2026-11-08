@@ -61,9 +61,13 @@
 
   /* --------------------------------------------------------------- Drawing */
   function draw() {
-    $("adm-title").textContent = "Admirals · " + c.level + " " + BL.ADMIRALS.titles[c.level] + (c.convoyMode ? " · convoy escort" : c.busterMode ? " · planet buster strike" : "");
-    var pts = c.points().total;
-    $("adm-turn").textContent = "Turn " + Math.min(c.turn, c.turns) + " of " + c.turns + " · " + pts + " point" + (pts === 1 ? "" : "s") + " held" +
+    // (no level codes or points on screen: the fleet's name, the facilities held, and the turns left
+    // as reinforcements due: TexasBont, Nov 8, 2026)
+    $("adm-title").textContent = "Admirals · " + BL.career.admiralTitle(c.levelNum).full + (c.convoyMode ? " · convoy escort" : c.busterMode ? " · planet buster strike" : "");
+    var fac = c.hexes.reduce(function (n, h) { return n + (h.owner === "us" && h.kind !== "home" && h.kind !== "world" ? h.kinds.length : 0); }, 0);
+    var left = c.turns - Math.min(c.turn, c.turns) + 1, due = c.state === "lost" ? "" : c.state === "over" ? (c.convoyMode || c.busterMode ? "" : "Reinforcements have arrived")
+      : c.convoyMode || c.busterMode ? left + " turn" + (left === 1 ? "" : "s") + " left" : "Reinforcements arrive in " + left + " turn" + (left === 1 ? "" : "s");
+    $("adm-turn").textContent = (due ? due + " · " : "") + fac + " facilit" + (fac === 1 ? "y" : "ies") + " held" +
       (c.busterMode ? " · homeworld at " + Math.round(100 * c.hwK) + "%" : "");
     $("btn-adm-buster").hidden = !c.busterMode;
     $("btn-adm-buster").disabled = c.state !== "play" || c.turn > 1;
