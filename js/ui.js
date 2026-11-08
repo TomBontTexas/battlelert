@@ -3291,21 +3291,22 @@
       return "<h2>" + BL.career.STATION_NAME[s] + " reputation profile</h2>" + profileHtml(BL.career.profile(c, s), null, s);
     }).join("");
     $("rec-grid").innerHTML = gridHtml(c);
-    $("rec-history").innerHTML = "<tr><th>Date</th><th>Station</th><th>Ship</th><th>Class</th><th>Tech</th><th>Outcome</th><th>Score</th><th>Reputation</th></tr>" +
+    /* Mission history dressed like the reports (TexasBont, Nov 8, 2026): stardate, mission, his post,
+       ship and class, the outcome in its colour; a row opens that path's reports. (The killed in
+       action are on the In Memoriam page now.) */
+    $("rec-history").innerHTML = '<tr><th>Date</th><th>Mission</th><th class="hide-s">Your post</th><th>Ship</th><th>Outcome</th><th class="n">Score</th><th class="n">Reputation</th></tr>' +
       (c.history.length ? c.history.map(function (h) {
-        return "<tr><td>" + starDate(h) + "</td><td>" + BL.career.STATION_NAME[h.station || "engineer"] + "</td><td>" + esc(h.ship) + (h.title ? "<br><i>" + esc(h.title) + "</i>" : "") + "</td><td>" + BL.classById(h.classId).name + "</td><td>" + (h.tl == null ? "—" : h.tl) + "</td><td>" + h.outcome +
-          "</td><td>" + h.score + "</td><td>" + signed(h.rep || 0) + "</td></tr>";
-      }).join("") : '<tr><td colspan="8" class="muted">No missions yet.</td></tr>');
-    // Command: the crewmen killed in action (js/roster.js).
-    var kia = c.crew && c.crew.kia || [];
-    $("rec-kia").hidden = !kia.length;
-    var ckia = c.captains && c.captains.kia || [];
-    $("rec-kia").hidden = !kia.length && !ckia.length;
-    $("rec-kia").innerHTML = "<h2>Killed in action</h2>" + kia.map(function (k) { return "<div>" + esc(k.name) + " (" + k.at + "), " + esc(k.ship) + ", " + k.date + "</div>"; }).join("") +
-      ckia.map(function (k) { return "<div>" + esc(k.name) + " (captain), " + esc(k.ship) + ", " + k.date + "</div>"; }).join("");
+        var st = h.station || "engineer", n = h.n || BL.classById(h.classId).n, fleetOp = st === "admiral" && h.tl == null;
+        var tone = h.outcome === "success" ? "h-ok" : h.outcome === "partial" ? "h-part" : "h-bad", rep = h.rep || 0;
+        return '<tr class="' + tone + '" data-rep="' + st + ":" + n + '"><td class="d">' + starDate(h) + "</td><td><b>" + esc(missionName(h)) + "</b></td><td class=\"hide-s\">" + POST[st] + "</td><td>" +
+          (fleetOp ? BL.career.admiralTitle(n).fleet : shipHtml(h.classId, h.ship, h.hull) + '<span class="hist-sub">' + BL.classById(h.classId).name + (h.tl != null ? " · TL" + h.tl : "") + "</span>") +
+          '</td><td><span class="hist-out">' + (OUTCOME_NAME[h.outcome] || h.outcome) + '</span></td><td class="n">' + (h.score != null ? (fleetOp ? "+" : "") + h.score : "–") +
+          '</td><td class="n ' + (rep > 0 ? "up" : rep < 0 ? "down" : "") + '">' + signed(rep) + "</td></tr>";
+      }).join("") : '<tr><td colspan="7" class="muted">No missions yet.</td></tr>');
     show("scr-record");
   }
   $("btn-record-back").onclick = function () { click(); showHub(); };
+  $("rec-history").onclick = function (ev) { var r = ev.target.closest("tr[data-rep]"); if (r) { click(); showReports(r.dataset.rep, "record"); } };
   $("rec-grid").onclick = function (ev) { var r = ev.target.closest("td[data-rep]"); if (r) { click(); showReports(r.dataset.rep, "record"); } };
 
   /* ------------------------------------------------------ Mission reports
