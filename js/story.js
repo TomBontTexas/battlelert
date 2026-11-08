@@ -265,7 +265,7 @@
    "lost": "The light cruiser failed to break the Azurian defensive formations.",
    "reports": [
     "",
-    "Tactical: Enemy cruiser group ahead.",
+    "Tactical: Enemy CruRon ahead.",
     ""
    ]
   },
@@ -345,7 +345,7 @@
    "lost": "Azurian forces defeated the raid, allowing their reinforcements to continue toward the frontier.",
    "reports": [
     "",
-    "Tactical: Enemy cruiser group detected.",
+    "Tactical: Enemy CruRon detected.",
     ""
    ]
   },
@@ -486,7 +486,7 @@
    "reports": [
     "",
     "",
-    "Tactical: Battleship group ahead."
+    "Tactical: BatRon ahead."
    ]
   },
   {
@@ -837,7 +837,7 @@
    "k": 3,
    "title": "The Gun Line",
    "chapter": "The Spearpoint",
-   "briefing": "The fleet has reached an Azurian defensive belt protecting valuable military installations. {ship} will join an assault against cruiser groups and sustained siege fire. Your main gun will be needed against hardened opposition, but the supporting weapons cannot be ignored. Keep your attention on the assigned contact and prepare for repeated engagements. Starforce needs a breach, not a display of reckless shooting.",
+   "briefing": "The fleet has reached an Azurian defensive belt protecting valuable military installations. {ship} will join an assault against CruRons and sustained siege fire. Your main gun will be needed against hardened opposition, but the supporting weapons cannot be ignored. Keep your attention on the assigned contact and prepare for repeated engagements. Starforce needs a breach, not a display of reckless shooting.",
    "systems": [
     "siege",
     "cruiserA",
@@ -1429,7 +1429,7 @@
    "lost": "The enemy defeated the cruiser’s raid inside Azurian territory.",
    "reports": [
     "",
-    "Tactical: Cruiser group detected.",
+    "Tactical: CruRon detected.",
     ""
    ]
   },
@@ -1439,7 +1439,7 @@
    "k": 3,
    "title": "A Carrier’s Burden",
    "chapter": "Deep Strike",
-   "briefing": "Azurian interceptors are hunting cruiser groups that carry Imperial gunboats. {ship} will cross three enemy-held systems while conducting a raid against the formations threatening our smaller craft. A heavy-handed maneuver can spoil the captain’s plan, while too little movement invites enemy torpedoes. Keep the cruiser where ordered and be ready for a rapid course correction when the enemy closes.",
+   "briefing": "Azurian interceptors are hunting CruRons that carry Imperial gunboats. {ship} will cross three enemy-held systems while conducting a raid against the formations threatening our smaller craft. A heavy-handed maneuver can spoil the captain’s plan, while too little movement invites enemy torpedoes. Keep the cruiser where ordered and be ready for a rapid course correction when the enemy closes.",
    "systems": [
     "interceptors",
     "hunters",
@@ -1529,7 +1529,7 @@
    "lost": "The Azurian battle line stopped the offensive.",
    "reports": [
     "",
-    "Tactical: Battleship group on approach.",
+    "Tactical: BatRon on approach.",
     ""
    ]
   },
@@ -1752,7 +1752,7 @@
    "lost": "The patrol remained unlocated, and the fleet had to proceed without the scouting report.",
    "reports": [
     "Engineering: Drive charging.",
-    "Tactical: Cruiser group ahead.",
+    "Tactical: CruRon ahead.",
     ""
    ]
   },
@@ -1814,7 +1814,7 @@
    "lost": "The enemy held the passage, and the formation could not use the planned route.",
    "reports": [
     "Engineering: Both batteries charged.",
-    "Tactical: Cruiser group blocking the route.",
+    "Tactical: CruRon blocking the route.",
     ""
    ]
   },
@@ -1875,7 +1875,7 @@
    "reports": [
     "Navigation: Minefield marked on the plotted route.",
     "",
-    "Tactical: Cruiser group turning toward us."
+    "Tactical: CruRon turning toward us."
    ]
   },
   {
@@ -1935,7 +1935,7 @@
    "reports": [
     "Engineering: Main gun charged.",
     "",
-    "Tactical: Battleship group in range."
+    "Tactical: BatRon in range."
    ]
   },
   {
@@ -1984,16 +1984,16 @@
    "k": 3,
    "title": "The Last Boat In",
    "chapter": "Deep Strike",
-   "briefing": "Commodore Rusk: An Azurian cruiser group is covering the route out of this system. Use the gunboats to draw its fire and disrupt the screen, but recover them before the cruiser commits to the warp. The squadron gives you reach; the cruiser remains responsible for bringing its crews home. Keep the withdrawal route plotted while the boats are engaged.",
+   "briefing": "Commodore Rusk: An Azurian CruRon is covering the route out of this system. Use the gunboats to draw its fire and disrupt the screen, but recover them before the cruiser commits to the warp. The squadron gives you reach; the cruiser remains responsible for bringing its crews home. Keep the withdrawal route plotted while the boats are engaged.",
    "systems": [
     "cruiserA",
     "raiders",
     "frigate"
    ],
    "after": "The last gunboat cleared the hangar before the cruiser reached the warp zone. Rusk noted that the squadron's attack and recovery formed one successful operation.",
-   "lost": "The cruiser group held the route, and the raid ended with the cruiser lost.",
+   "lost": "The CruRon held the route, and the raid ended with the cruiser lost.",
    "reports": [
-    "Tactical: Cruiser group turning toward the gunboats.",
+    "Tactical: CruRon turning toward the gunboats.",
     "Engineering: Arresters charged.",
     ""
    ]
@@ -2044,7 +2044,7 @@
    "k": 3,
    "title": "Varkesh's Feint",
    "chapter": "The Price of Victory",
-   "briefing": "Commodore Rusk: Admiral Varkesh has sent a fast attack toward our warp drive while a cruiser group threatens the route. The feint is meant to draw the heavy cruiser out of position. Keep point defense on the hunters and decide whether the cruiser group can be allowed to pass. The fleet is watching what you protect first.",
+   "briefing": "Commodore Rusk: Admiral Varkesh has sent a fast attack toward our warp drive while a CruRon threatens the route. The feint is meant to draw the heavy cruiser out of position. Keep point defense on the hunters and decide whether the CruRon can be allowed to pass. The fleet is watching what you protect first.",
    "systems": [
     "interceptors",
     "hunters",
@@ -2055,7 +2055,7 @@
    "reports": [
     "Navigation: Zone bearing confirmed.",
     "",
-    "Tactical: Cruiser group closing."
+    "Tactical: CruRon closing."
    ]
   },
   {
@@ -2073,7 +2073,7 @@
    "after": "The enemy line broke and the Imperial formation held together. Rusk credited the battleship's place in the line as much as its guns.",
    "lost": "The Imperial line broke before the battleship could clear the route.",
    "reports": [
-    "Tactical: Battleship group forming ahead.",
+    "Tactical: BatRon forming ahead.",
     "Engineering: Both reactors stable.",
     ""
    ]
@@ -2134,7 +2134,7 @@
    "lost": "The defenders stopped the dreadnought before it could deliver the planet buster.",
    "reports": [
     "Engineering: Three reactors stable.",
-    "Tactical: Battleship group closing.",
+    "Tactical: BatRon closing.",
     ""
    ]
   },
@@ -2164,7 +2164,7 @@
    "k": 3,
    "title": "The Cost of Judgment",
    "chapter": "Judgment",
-   "briefing": "Commodore Rusk: The reclamation world is defended by a battleship group and a siege line across its approach. Bring the dreadnought to the drop zone before the window closes. The destruction will deny the Nest a place to restore its fleet; the order remains yours to carry out.",
+   "briefing": "Commodore Rusk: The reclamation world is defended by a BatRon and a siege line across its approach. Bring the dreadnought to the drop zone before the window closes. The destruction will deny the Nest a place to restore its fleet; the order remains yours to carry out.",
    "systems": [
     "minefield",
     "battleshipA",

@@ -451,7 +451,7 @@
     // An Azurian cruiser (heavy cruiser, gunner station) with three interceptor escorts: a bigger hull
     // than the frigate's, heavier torpedoes in pairs, and stragglers joining the fight.
     cruiserA: {
-      name: "Cruiser group",
+      name: "CruRon",
       enemy: "Azurian cruiser",
       what: "A cruiser and three escorts; heavy torpedoes come in pairs every 5 to 7 s",
       tests: "Shield timing under heavy pairs",
@@ -470,7 +470,7 @@
     // raiders: the biggest hull yet, torpedoes in volleys of three (a broadside), and stragglers,
     // drive hunters among them. volley = torpedoes per salvo call, 0.6 s apart.
     battleshipA: {
-      name: "Battleship group",
+      name: "BatRon",
       enemy: "Azurian battleship",
       what: "A battleship and three raiders; its torpedoes come in threes every 6 to 8 s",
       tests: "Shield timing under broadsides",
