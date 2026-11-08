@@ -3316,7 +3316,7 @@
     delete c.sqNums;      // (v0.246.00's, keyed loosely: numbered afresh)
     var all = c.sqIds = c.sqIds || {}, mine = all[classId] = all[classId] || {}, key = ships.slice().sort().join("|");
     if (!mine[key]) { mine[key] = 10 + k % 60 + Object.keys(mine).length; saveCareer(); }
-    return BL.classById(classId).name + " Squadron " + mine[key];
+    return ronName(classId) + " " + mine[key];
   }
   /* The reports in the game's own words (TexasBont, Nov 8, 2026): the mission's name (a story
      mission's title, else a patrol; the admiral's a fleet operation), his post aboard, enemy ships
@@ -3324,7 +3324,11 @@
   var POST = { engineer: "Main Engineering", gunner: "Gunnery", pilot: "Helm", captain: "Bridge", squadron: "Flag bridge", admiral: "Fleet Command" };
   function missionName(h, m) { return (m || h || {}).station === "admiral" ? "Fleet operation" : h && h.title ? h.title : "Patrol"; }
   // (enemy groups as the navy writes them: TexasBont, Nov 8, 2026)
-  var RON = { frigate: "DesRon", cruiserA: "CruRon", battleshipA: "BatRon", dreadnought: "DreadRon" };
+  var RON = { frigate: "DesRon", cruiserA: "CruRon", battleshipA: "BatRon", dreadnought: "Heavy BatRon" };
+  // (and ours, by class: Picket DesRon 21 ... Heavy BatRon 40; TexasBont, Nov 8, 2026)
+  var OUR_RON = { picket: "Picket DesRon", destroyerEscort: "Escort DesRon", destroyer: "Strike DesRon", lightCruiser: "Light CruRon", cruiser: "Strike CruRon",
+    heavyCruiser: "Heavy CruRon", battleship: "BatRon", dreadnought: "Heavy BatRon" };
+  function ronName(classId) { return OUR_RON[classId] || BL.classById(classId).name + " Squadron"; }
   function engaged(ids) { return (ids || []).map(function (id) { return RON[id] || (BL.ENCOUNTERS[id] || { name: id }).name; }).join(", "); }
   function hullPct(classId, tl, lost) {
     if (lost == null) return null;
@@ -3338,7 +3342,7 @@
     var won = list.filter(function (h) { return h.outcome === "success"; }).length;
     $("rp-ribbon").innerHTML = BL.ribbonSvg ? BL.ribbonSvg(st, n, 165) : "";
     var ops = st === "admiral", wd = ops ? "operation" : "mission";      // (the admiral path: his fleet's operations)
-    $("rp-title").textContent = ops ? BL.career.admiralTitle(n).full + ": operation reports" : st === "squadron" ? cls.name + " Squadron Mission Reports" : who + " · " + cls.name + ": mission reports";
+    $("rp-title").textContent = ops ? BL.career.admiralTitle(n).full + ": operation reports" : st === "squadron" ? ronName(cls.id) + " Mission Reports" : who + " · " + cls.name + ": mission reports";
     $("rp-sum").textContent = list.length ? list.length + " " + wd + (list.length === 1 ? "" : "s") + " on record, " + won + " won." : "No " + wd + "s on record here.";
     $("rp-list").innerHTML = list.map(function (h) {
       // (the ship's service record holds the systems flown, ships destroyed and hull lost)
