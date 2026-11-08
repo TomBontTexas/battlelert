@@ -319,6 +319,7 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 .cgrid td.rib:hover { background: rgba(110,220,255,.07); }
 /* Mission reports: the ribbon by the title, then one card per mission. */
 .rp-head { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.rp-topbar { display: flex; justify-content: flex-end; margin-bottom: 8px; }
 .rp-head h1 { margin: 0; }
 .rp-head svg.ribbon { display: block; box-shadow: 0 2px 4px rgba(0,0,0,.5); }
 .rp-list { display: grid; gap: 10px; margin-top: 8px; }
@@ -899,4 +900,3 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 /* The fleet command orders (ui.js showAdmiralOffer) */
 .orders-head { font-weight: 700; letter-spacing: .2em; color: var(--charge); margin-bottom: 4px; }
 .rp-unit { font-size: 13px; color: var(--charge); margin-top: 2px; }
-.rp-top-back { margin-left: auto; flex: 0 0 auto; }
