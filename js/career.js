@@ -605,10 +605,17 @@
   function admiralNeeds(c, L) {
     var A = c.admiral, out = [], cls = BL.classByN(L);
     if (squadronWins(c, L) < BL.CAPTAINS.opens) out.push(BL.CAPTAINS.opens + " successful " + cls.name.toLowerCase() + " squadron missions (" + squadronWins(c, L) + " so far)");
-    if (L > 3 && !A.closed[L - 1]) out.push("promotion from " + admiralTitle(L - 1).short);
+    if (L > 3 && !A.closed[L - 1]) out.push("a successful command of the " + admiralTitle(L - 1).fleet);
     return out;
   }
-  function admiralTitle(L) { return { short: (L === 9 ? "G" : "F") + L, name: L === 9 ? "Grand Admiral" : L === 3 ? "Fleet Commodore" : "Fleet Admiral" }; }
+  // (fleet: what the player sees, no level codes: Commodore, Third Fleet; Admiral, Fourth Fleet to
+  // Eighth Fleet; Grand Admiral, Grand Fleet: TexasBont, Nov 8, 2026)
+  var FLEET_NO = { 3: "Third", 4: "Fourth", 5: "Fifth", 6: "Sixth", 7: "Seventh", 8: "Eighth" };
+  function fleetName(L) { return L >= 9 ? "Grand Fleet" : FLEET_NO[L] + " Fleet"; }
+  function admiralTitle(L) {
+    var who = L === 9 ? "Grand Admiral" : L === 3 ? "Commodore" : "Admiral";
+    return { short: (L === 9 ? "G" : "F") + L, name: L === 9 ? "Grand Admiral" : L === 3 ? "Fleet Commodore" : "Fleet Admiral", who: who, fleet: fleetName(L), full: who + ", " + fleetName(L) };
+  }
   // The level he's at now (F3 once it opens), or 0.
   function admiralLevel(c) {
     var A = c.admiral;
@@ -625,7 +632,7 @@
   function admiralRank(c) {
     var A = c.admiral;
     if (A.won) return "Grand Admiral (the war is won)";
-    return admiralLevel(c) ? admiralTitle(A.at).name + " " + admiralTitle(A.at).short : "Admiral: none yet";
+    return admiralLevel(c) ? admiralTitle(A.at).full : "Admiral: none yet";
   }
   /* His fleet (TexasBont, Nov 7, 2026): for each ship, a veteran first (a ship of that class from
      his earlier missions, on any path, still in service), else a new ship, her tech level by the

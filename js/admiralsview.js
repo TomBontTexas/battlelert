@@ -374,13 +374,13 @@
   // A career campaign: the result goes to the career once (BL.career.applyAdmiral).
   function careerScore() {
     if (!c.scored) c.scored = opts.career.done(c.result()) || {};
-    var r = c.scored, T = BL.career.admiralTitle, lv = T(r.level).short;
+    var r = c.scored, T = BL.career.admiralTitle, lv = "the " + T(r.level).fleet;
     if (r.level === 9) return { line: "Banked going in: " + c.banked + " (the homeworld at " + Math.round(100 * (1 - BL.ADMIRALS.points.homeK * c.banked)) + "%)." };
     var rp = " Admiral reputation " + (r.rep >= 0 ? "+" : "") + r.rep + ".";
-    if (r.promoted) return { line: (r.requal ? "Requalified at " + lv : "That makes " + r.have + " at " + lv + " (" + r.level + " needed)") + ": on to " + T(r.promoted).short + " " + T(r.promoted).name + "!" + (r.requal ? "" : " Banked toward G9: " + r.banked + ".") + rp };
-    if (r.demoted) return { line: "A second campaign at " + lv + " with no points: back to " + T(r.demoted).short + "." + rp };
-    if (r.requal) return { line: "A requal at " + lv + ": " + r.have + " of the " + r.level + " needed to step up again; it counts for your reputation, not toward G9." + rp };
-    return { line: lv + ": " + r.have + " of the " + r.level + " needed. Banked toward G9: " + r.banked + "." + (r.failures && r.level > 4 ? " A campaign with no points (" + r.failures + " of 2 here before you're sent back two levels)." : "") + rp };
+    if (r.promoted) return { line: (r.requal ? "Requalified with " + lv : "That makes " + r.have + " with " + lv + " (" + r.level + " needed)") + ": on to " + T(r.promoted).full + "!" + (r.requal ? "" : " Banked toward G9: " + r.banked + ".") + rp };
+    if (r.demoted) return { line: "A second campaign with " + lv + " and no points: back to the " + T(r.demoted).fleet + "." + rp };
+    if (r.requal) return { line: "A requal with " + lv + ": " + r.have + " of the " + r.level + " needed to step up again; it counts for your reputation, not toward G9." + rp };
+    return { line: "The" + lv.slice(3) + ": " + r.have + " of the " + r.level + " needed. Banked toward G9: " + r.banked + "." + (r.failures && r.level > 4 ? " A campaign with no points (" + r.failures + " of 2 here before you're sent back two levels)." : "") + rp };
   }
   function loadBuster() {
     if (!c.busterMode) return;

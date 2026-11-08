@@ -3000,17 +3000,29 @@
   };
   /* The admiral path: the next fleet campaign (BL.career.admiralOffer), its fleet drawn from the
      career (veterans first, BL.career.admiralPicker), the result back to the career. */
+  /* The orders (TexasBont, Nov 8, 2026): official, no level codes or points; the target world named
+     (the campaign's seed is picked here, so Go builds the same map); banked points read as the
+     Azurian homeworld's readiness; HQ says whether there's more to do before the next fleet. */
+  var offerSeed = 0;
   function showAdmiralOffer() {
     var o = BL.career.admiralOffer(career), T = o.title, A = career.admiral, body;
+    offerSeed = BL.randomSeed();
     if (o.done) body = "<p>" + (o.won ? "The planet buster fell on the Azurian homeworld under your command. The war is won." : "There are no more fleet campaigns for you.") + "</p>";
-    else if (!o.open) body = "<p><b>" + T.short + " " + T.name + "</b> opens with " + o.needs.join(" and ") + ".</p><p class='muted'>Each level's fleet has the class of the same number at the top: F3 destroyer escorts, F4 destroyers ... F8 battleships, G9 dreadnoughts. The offer stays open: you can fly as many squadron missions as you like first.</p>";
+    else if (!o.open) body = "<p><b>" + T.full + "</b> opens with " + o.needs.join(" and ") + ".</p><p class='muted'>Each fleet is built around its class: the Third Fleet destroyer escorts, the Fourth destroyers ... the Eighth battleships, the Grand Fleet dreadnoughts. The offer stays open: you can fly as many squadron missions as you like first.</p>";
     else {
-      var sq = career.stations.squadron.rep, band = BL.career.ADM_TL.filter(function (b) { return sq <= b.upTo; })[0].odds;
-      body = "<p><b>" + T.short + " " + T.name + "</b>: " + (o.level === 9 ? "the planet buster strike on the Azurian homeworld." : o.level === 3 ? "escort a convoy to the other Imperial world." : "take the Azurian world, and hold it to the last turn.") + "</p>" +
-        (o.level === 9 ? "<p>Banked going in: <b>" + Math.max(33, o.banked) + "</b>. The homeworld's garrison and defences are 1% weaker for every point.</p>"
-          : o.requal ? "<p>A requal: you've been sent back below a level you held. " + o.have + " of the " + o.need + " points needed to step up again; it counts for your reputation, not toward G9.</p>"
-          : "<p>Points at " + T.short + ": <b>" + o.have + "</b> of the " + o.need + " needed to step up. Banked toward G9: <b>" + o.banked + "</b>.</p>") +
-        "<p class='muted'>Your fleet: every ship still in service from your earlier missions comes first, then new ships, their tech levels by your squadron reputation (" + sq + "): TL5 " + Math.round(band[0] * 100) + "%, TL6 " + Math.round(band[1] * 100) + "%, TL7 " + Math.round(band[2] * 100) + "%. A ship lost is gone for good.</p>";
+      var cmp = new BL.Campaign({ seed: offerSeed, level: (o.level === 9 ? "G" : "F") + o.level, banked: A.banked }), world = esc(cmp.hexes[cmp.world].name);
+      var ready = o.level === 9 ? Math.max(33, o.banked) : o.banked, next = BL.career.admiralTitle(o.level + 1).fleet;
+      var row = function (k, v) { return "<p><b>" + k + ":</b> " + v + "</p>"; };
+      body = "<p class='orders-head'>ORDERS</p>" + row("To", T.who + " " + esc(career.name) + ", " + T.fleet) +
+        row("Primary objective", o.level === 9 ? "Lead the Grand Fleet to the Azurian homeworld, <b>" + world + "</b>, and deliver the planet buster."
+          : o.level === 3 ? "Escort the convoy through Azurian space to <b>" + world + "</b>."
+          : "Lead your fleet into Azurian space and capture <b>" + world + "</b>. Hold the world until reinforcements arrive.") +
+        (o.level === 9 ? "" : row("Secondary objective", "Seize as many Azurian facilities as you can.")) +
+        row("Intelligence", ready ? "Your earlier operations have cut Azurian homeworld readiness by <b>" + ready + "%</b>." : "The Azurian homeworld stands at full readiness.") +
+        (o.level === 9 ? "" : row("Command", o.requal ? "HQ wants to see you hold this command again before they return you to the " + next + "."
+          : o.have ? "HQ notes your progress, Admiral, but there is more work to do before they will give you the " + next + "."
+          : "There is more work to do before HQ will give you the " + next + ".")) +
+        row("Fleet", "Your fleet is made up of ships you have served on or commanded before. Their crews know you. New ships fill out any places they can't.");
     }
     $("adm-offer-body").innerHTML = body;
     $("btn-adm-offer-go").hidden = !o.open;
@@ -3019,7 +3031,7 @@
   $("btn-adm-offer-go").onclick = function () {
     click(); overlay("ov-adm-offer", false);
     var o = BL.career.admiralOffer(career); if (!o.open) return;
-    var seed = BL.randomSeed();
+    var seed = offerSeed || BL.randomSeed();
     show("scr-admirals");
     BL.admiralsView.start({ seed: seed, level: (o.level === 9 ? "G" : "F") + o.level, onExit: function () { showHub(); },
       career: { banked: career.admiral.banked, pick: BL.career.admiralPicker(career, seed), done: function (r) { var rp = BL.career.applyAdmiral(career, r); saveCareer(); return rp; } } });

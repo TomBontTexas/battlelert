@@ -895,3 +895,5 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 .title-poster svg { display: block; width: 100%; height: 100%; }
 .title-main .menu { flex: 0 1 380px; margin: 0; }
 @media (max-width: 640px) { .title-main { flex-direction: column; } .title-poster { width: 180px; } }
+/* The fleet command orders (ui.js showAdmiralOffer) */
+.orders-head { font-weight: 700; letter-spacing: .2em; color: var(--charge); margin-bottom: 4px; }
