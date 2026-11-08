@@ -197,6 +197,11 @@
       var cm = this.commander("Convoy master", this.A.skill); cm.temper = "cautious";
       this.group("us", { cls: "cargo", ships: cargo, kids: [], cmd: cm }, this.home, "convoy");
       this.cargoTotal = C.cargo;
+      // (the destination world's own defences: they never move, and fight whatever comes)
+      var self = this, hp = 0, fire = 0;
+      this.ourShips().forEach(function (s) { if (s.cls !== "cargo") { var u = self.ship(s.cls); hp += u.hpMax; fire += u.fire; } });
+      var d = { cls: "defences", hp: Math.round(hp * C.defences.hp), hpMax: Math.round(hp * C.defences.hp), fire: Math.round(fire * C.defences.fire) };
+      this.group("us", { cls: "defences", ships: [d], kids: [], cmd: { name: "World defences", last: "defences", skill: 0.7, temper: "steady" } }, this.world, "defences");
     }
     this.shipsTotal = this.ourShips().length;
   };
@@ -235,8 +240,10 @@
   };
   // Every ship of ours (the losses count them all).
   Campaign.prototype.ourShips = function () {
-    return this.forces.filter(function (f) { return f.side === "us" && !f.merged; }).reduce(function (a, f) { return a.concat(f.ships); }, []);
+    return this.forces.filter(function (f) { return f.side === "us" && !f.merged && f.role !== "defences"; }).reduce(function (a, f) { return a.concat(f.ships); }, []);
   };
+  // Our forces that move (not F3's world defences): the fleet lost when there are none.
+  Campaign.prototype.fleet = function () { return this.ours().filter(function (f) { return f.role !== "defences"; }); };
   Campaign.prototype.shipsLost = function () { return this.shipsTotal - this.ourShips().filter(function (s) { return s.hp > 0; }).length; };
   Campaign.prototype.ours = function () { return this.forces.filter(function (f) { return f.side === "us" && !f.lost && !f.merged; }); };
   Campaign.prototype.theirs = function () { return this.forces.filter(function (f) { return f.side === "az" && !f.lost; }); };
@@ -286,14 +293,14 @@
   /* ------------------------------------------------------------- Orders */
   // Send our force to a system (it warps one system a turn, the shortest way); to where it is: hold.
   Campaign.prototype.order = function (id, dest) {
-    var f = this.force(id); if (!f || f.side !== "us" || f.lost || this.state !== "play") return;
+    var f = this.force(id); if (!f || f.side !== "us" || f.lost || this.state !== "play" || f.role === "defences") return;
     f.dest = dest;
   };
   // Split a force: its top ship stays, and each escort's pyramid becomes a force of its own in
   // the same system, holding there. Returns the new forces.
   Campaign.prototype.split = function (id) {
     var f = this.force(id), self = this, out = [];
-    if (!f || f.side !== "us" || f.lost || f.merged || this.state !== "play" || !f.top.kids.length || f.role === "convoy") return out;
+    if (!f || f.side !== "us" || f.lost || f.merged || this.state !== "play" || !f.top.kids.length || f.role === "convoy" || f.role === "defences") return out;
     f.top.kids.forEach(function (k) {
       if (!flatten(k).some(function (s) { return s.hp > 0; })) return;
       out.push(self.group("us", k, f.at));
@@ -307,7 +314,7 @@
   // Join forces in one system: the one with the biggest top ship leads, the others become her escorts.
   Campaign.prototype.join = function (ids) {
     var A = this.A, self = this;
-    var fs = ids.map(function (id) { return self.force(id); }).filter(function (f) { return f && f.side === "us" && !f.lost && !f.merged && f.role !== "convoy"; });
+    var fs = ids.map(function (id) { return self.force(id); }).filter(function (f) { return f && f.side === "us" && !f.lost && !f.merged && f.role !== "convoy" && f.role !== "defences"; });
     if (fs.length < 2 || this.state !== "play" || fs.some(function (f) { return f.at !== fs[0].at; })) return null;
     var lead = fs.slice().sort(function (a, b) { return A.classes.indexOf(b.cls) - A.classes.indexOf(a.cls); })[0];
     fs.forEach(function (f) { if (f === lead) return; lead.top.kids.push(f.top); f.merged = true; });
@@ -349,7 +356,7 @@
     this.flag = f ? f.id : null;
   };
   Campaign.prototype.setFlag = function (id) {
-    var f = this.force(id); if (!f || f.side !== "us" || f.lost || f.merged || f.role === "convoy") return false;
+    var f = this.force(id); if (!f || f.side !== "us" || f.lost || f.merged || f.role === "convoy" || f.role === "defences") return false;
     var ship = f.top.ships.filter(function (s) { return s.hp > 0; })[0] || this.alive(f)[0];
     if (this.state === "flag") { this.flagShip = ship; this.syncFlag(); this.state = "play"; this.note("The flag shifts to the " + this.desc(f) + "."); this.check(); return true; }
     if (this.flagSet || this.turn > 1) return false;
@@ -378,7 +385,7 @@
     return { total: items.reduce(function (s, x) { return s + x.pts; }, 0), items: items };
   };
   // After the world is taken: hold it through the turns left.
-  Campaign.prototype.carryOn = function () { if (this.state === "won" && this.turn <= this.turns && this.ours().length) this.state = "play"; };
+  Campaign.prototype.carryOn = function () { if (this.state === "won" && this.turn <= this.turns && this.fleet().length) this.state = "play"; };
   // A line for the report: during a turn, that turn's; between turns, the last one's.
   Campaign.prototype.note = function (line) {
     if (this.turnLines && this.state !== "flag") { this.turnLines.push(line); return; }
@@ -711,8 +718,8 @@
         this.state = "lost"; this.why = !held ? "retaken" : "late"; return;
       }
       if (!this.won && held && inn >= half) { this.won = true; this.wonTurn = this.turn - 1; this.state = "won"; this.why = "arrived"; return; }
-      if (!this.ours().length) { this.state = "lost"; this.why = "losses"; return; }
-      if (this.flagShip.hp <= 0 && this.ours().some(function (f) { return f.role !== "convoy"; })) { this.state = "flag"; return; }
+      if (!this.fleet().length) { this.state = "lost"; this.why = "losses"; return; }
+      if (this.flagShip.hp <= 0 && this.fleet().some(function (f) { return f.role !== "convoy"; })) { this.state = "flag"; return; }
       return;
     }
     // G9: won when the buster drops (endTurn); lost with her.
@@ -721,7 +728,7 @@
       if (this.dropped) { this.won = true; this.wonTurn = this.turn - 1; this.state = "over"; this.why = "buster"; return; }
       if (bs.hp <= 0) { this.state = "lost"; this.why = "buster"; return; }
       if (this.turn > this.turns) { this.state = "lost"; this.why = "time"; return; }
-      if (!this.ours().length) { this.state = "lost"; this.why = "losses"; return; }
+      if (!this.fleet().length) { this.state = "lost"; this.why = "losses"; return; }
       if (this.flagShip.hp <= 0) { this.state = "flag"; return; }
       return;
     }
@@ -733,7 +740,7 @@
     // The world taken (the first time): now hold it.
     if (!this.won && held) { this.won = true; this.wonTurn = this.turn - 1; this.state = "won"; this.why = "world"; return; }
     // (no losses rule: he decides when to pull out of his flag's fights; TexasBont, Nov 7, 2026)
-    if (!this.ours().length) { this.state = "lost"; this.why = "losses"; return; }
+    if (!this.fleet().length) { this.state = "lost"; this.why = "losses"; return; }
     if (this.flagShip.hp <= 0 && this.ours().length) { this.state = "flag"; return; }
   };
 
@@ -844,7 +851,7 @@
     var c = new Campaign({ seed: seed, level: level, banked: banked === undefined ? 33 : banked }), guard = 0;
     while (c.state !== "over" && c.state !== "lost" && guard++ < 5000) {
       if (c.state === "won") { c.carryOn(); continue; }
-      if (c.state === "flag") { var o = c.ours().filter(function (f) { return f.role !== "convoy"; }); if (o.length) c.setFlag(o[o.length - 1].id); else c.withdraw(); continue; }
+      if (c.state === "flag") { var o = c.fleet().filter(function (f) { return f.role !== "convoy"; }); if (o.length) c.setFlag(o[o.length - 1].id); else c.withdraw(); continue; }
       if (c.state === "battle") { if (c.battleStep() === "paused") c.battleChoice(1); continue; }
       var lead = c.ours()[0].at;      // (and once it's taken: everyone to the world, and hold it)
       c.ours().forEach(function (f) { c.order(f.id, f.at === lead ? c.world : lead); });

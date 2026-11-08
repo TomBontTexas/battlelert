@@ -1355,7 +1355,9 @@
     // Imperial world; at least half must be there, and the world held, at the end of the last
     // turn. raid: from turn `start`, every `every` turns, `size` x our top ships pyramids a class
     // below them come in at the map's edge near the world and go for it.
-    convoy: { levels: ["F3"], cargo: 6, hp: 0.8, raid: { start: 10, every: 2, size: 0.5 } },
+    // defences: the destination world's own, on our side (TexasBont, Nov 7, 2026: the convoy sat
+    // there and was worn down), as shares of our fleet's hull and fire, as the Azurians' are.
+    convoy: { levels: ["F3"], cargo: 6, hp: 0.8, raid: { start: 10, every: 2, size: 0.5 }, defences: { hp: 0.1, fire: 0.055 } },
     // Fog of war: sight in warps around each force (a detached picket squadron: scout) and each
     // system he holds (held); Fleet HQ reports a force out of sight with the chance `report` a
     // turn, `lag` turns late, and `off` of the time a system off.

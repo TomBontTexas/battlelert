@@ -324,7 +324,7 @@
   function after() { sel = sel.filter(function (id) { var f = c.force(id); return f && !f.lost && !f.merged; }); draw(); }
   function flagModal() {
     $("adm-modal").classList.remove("docked");
-    var m = $("adm-modal"), us = c.ours().filter(function (f) { return f.role !== "convoy"; });
+    var m = $("adm-modal"), us = c.ours().filter(function (f) { return f.role !== "convoy" && f.role !== "defences"; });
     m.innerHTML = "<div class='ov-card'><h1>The flagship is lost</h1><p>Shift your flag to another force and fight on (take the world and it's still a win), or withdraw: the campaign ends, scoring what your forces hold.</p>" +
       "<div class='menu'>" + us.map(function (f) { return "<button data-id='" + f.id + "'>Shift the flag to the " + esc(c.desc(f)) + "</button>"; }).join("") +
       "<button id='adm-withdraw'>Withdraw</button></div></div>";
@@ -430,7 +430,7 @@
       "<p><b>" + p.total + " point" + (p.total === 1 ? "" : "s") + "</b> this campaign." + (tally ? " " + esc(tally.line) : "") + "</p>" +
       "<h3>Systems taken</h3>" + tk + "<h3>Battles (★ your flag's)</h3>" + bt +
       (u.forces.length ? "<h3>The fleet now</h3>" + u.forces.map(function (x) { return "<div>" + esc(x) + "</div>"; }).join("") : "") +
-      "<div class='menu'>" + (st === "won" && left > 0 && c.ours().length ? "<button id='adm-carry' class='primary'>" + (u.convoy ? "Hold " + esc(u.world) : "Hold the world") + " (" + left + " turn" + (left === 1 ? "" : "s") + " left)</button>" : "") +
+      "<div class='menu'>" + (st === "won" && left > 0 && c.fleet().length ? "<button id='adm-carry' class='primary'>" + (u.convoy ? "Hold " + esc(u.world) : "Hold the world") + " (" + left + " turn" + (left === 1 ? "" : "s") + " left)</button>" : "") +
       (tally && tally.next && !opts.career ? "<button id='adm-next' class='primary'>New campaign as " + tally.next + " " + esc(BL.ADMIRALS.titles[tally.next]) + "</button>" : "") +
       (opts.career ? (done ? "<button id='adm-quit' class='primary'>Back to the career hub</button>" : "") :
       "<button id='adm-again'" + (st === "won" && left > 0 || tally && tally.next ? "" : " class='primary'") + ">New campaign</button><button id='adm-same'>Same seed again</button><button id='adm-quit'>Back to the title screen</button>") + "</div></div>";
