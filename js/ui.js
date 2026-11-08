@@ -57,11 +57,23 @@
   function click() { BL.audio.play("click"); }
 
   /* --------------------------------------------------------------- Title */
-  function newSeedInput() { $("seed-input").value = BL.randomSeed(); }
+  /* The route number: a mission's seed shown as XXX.XX.XX, padded to seven digits (seed 1234567 is
+     Route 123.45.67; seed 259029 is Route 025.90.29). Typed back in, the dots are optional. */
+  function routeNo(seed) { var s = ("0000000" + seed).slice(-7); return s.slice(0, 3) + "." + s.slice(3, 5) + "." + s.slice(5); }
+  BL.routeNo = routeNo;
+  function readRoute() { return parseInt(String($("seed-input").value).replace(/\D/g, ""), 10); }
+  // Each system on a route gets a name from the seed, made like the admirals' map names (two syllables).
+  function systemNames(seed, n) {
+    var r = BL.rng((seed ^ 0x2545f491) >>> 0), syl = BL.SYSTEM_SYL || ["ka", "vor", "esh", "tal", "mir", "zan"], used = {}, out = [];
+    for (var t = 0; out.length < n && t < 200; t++) { var x = r.pick(syl) + r.pick(syl); x = x.charAt(0).toUpperCase() + x.slice(1); if (x.length > 3 && !used[x]) { used[x] = true; out.push(x); } }
+    while (out.length < n) out.push("System " + (out.length + 1));
+    return out;
+  }
+  function newSeedInput() { $("seed-input").value = routeNo(BL.randomSeed()); }
   $("btn-seed-new").onclick = function () { BL.audio.init(); click(); newSeedInput(); };
   $("btn-start").onclick = function () {
     BL.audio.init(); click();
-    var seed = parseInt($("seed-input").value, 10);
+    var seed = readRoute();
     startBriefing(testJob(seed > 0 ? seed : BL.randomSeed()));
   };
   function testJob(seed) { return { test: true, station: "engineer", classId: "destroyer", n: 4, tl: BL.TECH.base("destroyer"), ship: "Destroyer", seed: seed }; }
@@ -70,7 +82,7 @@
   function ringJob(seed) { return { test: true, station: "gunner", classId: "destroyer", n: 4, tl: BL.TECH.base("destroyer"), ship: "Destroyer", seed: seed, ring: true }; }
   $("btn-ring").onclick = function () {
     BL.audio.init(); click();
-    var seed = parseInt($("seed-input").value, 10);
+    var seed = readRoute();
     startBriefing(ringJob(seed > 0 ? seed : BL.randomSeed()));
   };
   // The pilot helm test: the ship picked on the title screen (gunboat to dreadnought), you at the
@@ -87,7 +99,7 @@
   }
   $("btn-helm").onclick = function () {
     BL.audio.init(); click();
-    var seed = parseInt($("seed-input").value, 10);
+    var seed = readRoute();
     startBriefing(helmJob(seed > 0 ? seed : BL.randomSeed()));
   };
   // The captain bridge test: the ship picked on the title screen (gunboat, picket, destroyer escort
@@ -109,7 +121,7 @@
   }
   $("btn-captain").onclick = function () {
     BL.audio.init(); click();
-    var seed = parseInt($("seed-input").value, 10);
+    var seed = readRoute();
     startBriefing(captainJob(seed > 0 ? seed : BL.randomSeed()));
   };
   // The Squadron test (approved Nov 2, 2026; stage 1): a squadron of any class (BL.COMMAND.squad.test,
@@ -126,7 +138,7 @@
   }
   $("btn-squadron").onclick = function () {
     BL.audio.init(); click();
-    var seed = parseInt($("seed-input").value, 10);
+    var seed = readRoute();
     startBriefing(squadronJob(seed > 0 ? seed : BL.randomSeed()));
   };
   // The Admirals test (approved Nov 6, 2026; stage 1): a Fleet Admiral's campaign on the hex map
@@ -143,9 +155,9 @@
   $("adm-pick").onchange = function () { settings.admPick = this.value; saveSettings(); admCount(); };
   $("btn-admirals").onclick = function () {
     BL.audio.init(); click();
-    var seed = parseInt($("seed-input").value, 10);
+    var seed = readRoute();
     if (!(seed > 0)) seed = BL.randomSeed();
-    $("seed-input").value = seed;
+    $("seed-input").value = routeNo(seed);
     overlay("ov-tests", false); show("scr-admirals");
     BL.admiralsView.start({ seed: seed, level: $("adm-pick").value, onExit: function () { home(); } });
   };
@@ -156,12 +168,17 @@
   $("gun-pick").onchange = function () { settings.gunPick = this.value; saveSettings(); };
   $("btn-gunner").onclick = function () {
     BL.audio.init(); click();
-    var seed = parseInt($("seed-input").value, 10);
+    var seed = readRoute();
     startBriefing(gunnerJob(seed > 0 ? seed : BL.randomSeed()));
   };
   // The Tests pop-up (title screen): every station's test, the ship or gun to use, and the seed.
   $("btn-tests").onclick = function () { BL.audio.init(); click(); overlay("ov-tests", true); };
   $("btn-tests-close").onclick = function () { click(); overlay("ov-tests", false); };
+  // How to play: each enemy the briefing's Intel can name, and what it's like.
+  $("how-enemies").innerHTML = ["raiders", "interceptors", "siege", "hunters", "frigate", "cruiserA", "battleshipA", "fortress"].filter(function (id) { return BL.ENCOUNTERS[id]; }).map(function (id) {
+    var e = BL.ENCOUNTERS[id], look = BL.GUNNERY.looks[id];
+    return "<li><b>" + e.name + "</b>: " + (look && look.what ? look.what : e.what.charAt(0).toLowerCase() + e.what.slice(1)) + ".</li>";
+  }).join("");
   $("btn-how").onclick = function () { BL.audio.init(); click(); overlay("ov-how", true); };
   $("btn-how-close").onclick = function () { click(); overlay("ov-how", false); };
 
@@ -207,9 +224,9 @@
     sim = new BL.Mission({ seed: j.seed, crew: rcrew, squad: rsquad, classId: j.classId, tl: j.tl, shipName: j.test ? null : j.ship, gunner: guns, helm: !!j.helm, captain: !!j.captain, flag: !!j.flag, escort: !!j.escort, escortKind: j.escortKind || null, test: !!j.test, sweep: j.test && j.classId === "gunboat" && !!guns && !j.escort,
       route: story ? story.systems : null, reports: story ? story.reports.map(storyText) : null,
       world: story ? ((story.briefing || "").match(/(industrial|military|transportation|reclamation) world/) || [])[1] : null });
-    if (j.test) $("seed-input").value = j.seed;
+    if (j.test) $("seed-input").value = routeNo(j.seed);
     var d = sim.data, cls = BL.classById(j.classId);
-    $("brief-seed").textContent = "· seed " + j.seed;
+    $("brief-route-title").textContent = "Route " + routeNo(j.seed);
     $("btn-brief-new").hidden = !(j.test && j.captain);     // (the captain test: roll another mission till you find the one to try)
     $("brief-story").hidden = !story;
     if (story) $("brief-story").innerHTML = "<b>" + esc(story.title) + "</b> · " + BL.classByN(j.n).name + " chapter: " + esc(story.chapter) + " · story mission " + story.k + " of 3";
@@ -217,83 +234,79 @@
       ? "Escort the planet buster's route through " + sim.cfg.jumps + " Azurian-held systems. In each one the warp drive starts empty: keep the ship alive, charge the drive, and the captain warps once the warp window opens."
       : "Gunboats have no warp drive. In each of the carrier's " + sim.cfg.jumps + " systems it launches you into the fight and recovers you when the sortie timer runs out, then carries you through warp space to the next one. Keep the gunboat alive through every sortie.";
     var reps = sim.route.map(function (x, i) { return sim.reported(i); });     // (the bridge: the pickets' reports, Mission.reported)
-    $("brief-route").innerHTML = reps.map(function (id, i) {
-      var e = BL.ENCOUNTERS[id];
-      // At the gun: each enemy described the first time it comes up, then just which gun has the edge.
-      if (sim.turret) { var first = reps.indexOf(id) === i;
-        return "<li>" + (sim.hasDrive ? "System " : "Sortie ") + (i + 1) + ": <b>" + e.name + "</b>. " + gunnerTip(id, !first) +
-          (sim.hasDrive ? " Warp window " + sim.windowFor(i) + " s." : " Recovered after " + sim.windowFor(i) + " s.") + "</li>"; }
-      return "<li>" + (sim.hasDrive ? "System " : "Sortie ") + (i + 1) + ": <b>" + e.name + "</b>. " + e.what + ". Tests: " + e.tests.toLowerCase() +
-        (sim.sys("buster") && i === sim.cfg.jumps - 1 ? ". The drop: no warp out. The planet buster must be launched from the drop zone within " + sim.cfg.dropLate + " s of the window opening " + sim.windowFor(i) + " s after arrival, or the mission fails."
-          : sim.hasDrive ? ". Warp window opens " + sim.windowFor(i) + " s after arrival." : ". The carrier recovers you " + sim.windowFor(i) + " s after launch.") + "</li>";
-    }).join("") + (sim.sys("buster") ? "<li>The target: an Azurian " + sim.world + " world. Drop the planet buster on it.</li>" : "");
+    /* The route as a table (TexasBont, Nov 8, 2026): each system's name, its warp window, the pickets'
+       intel and, at the guns, which of yours does extra damage (the engine room: what it tests).
+       What each enemy is like is in How to play. */
+    var names = systemNames(j.seed, reps.length), guns0 = sim.turret ? sim.turret.bats : null;
+    function edge(id) {
+      if (id === "minefield" || id === "sweep") return "Any gun (one hit)";
+      var good = guns0.filter(function (b) { return b.w.best.indexOf(id) >= 0; }).map(function (b) { return b.w.name; }).filter(function (n, i, a) { return a.indexOf(n) === i; });
+      return good.length ? good.join(", ") : "None";
+    }
+    $("brief-route").innerHTML = "<tr><th>#</th><th>System</th><th>" + (sim.hasDrive ? "Warp window" : "Recovered after") + "</th><th>Intel</th><th>" + (guns0 ? "Extra damage" : "Tests") + "</th></tr>" +
+      reps.map(function (id, i) {
+        var e = BL.ENCOUNTERS[id], drop = sim.sys("buster") && i === sim.cfg.jumps - 1;
+        return "<tr><td>" + (i + 1) + "</td><td>" + names[i] + "</td><td>" + (drop ? "Drop at " : "") + sim.windowFor(i) + " s</td><td><b>" + e.name + "</b></td><td>" + (guns0 ? edge(id) : e.tests) + "</td></tr>";
+      }).join("");
+    $("brief-route-note").hidden = !sim.sys("buster");
+    if (sim.sys("buster")) $("brief-route-note").textContent = "The drop: no warp out of " + names[sim.cfg.jumps - 1] + ". Launch the planet buster from the drop zone within " + sim.cfg.dropLate +
+      " s of the window opening, or the mission fails. The target: an Azurian " + sim.world + " world.";
     $("brief-ship-title").textContent = (j.flag ? "Your Flagship: " : "Your Ship: ") + (j.test ? cls.name : BL.shipLabel(j.classId, j.ship, j.hull)) + " (TL" + j.tl + ")";
-    var html = [
-      d.reactors.length > 1 ? "<div><span>Reactors</span> " + d.reactors.map(function (x) { return x.name + " " + x.mw + " MW"; }).join(", ") + "</div>"
-        : "<div><span>Reactor safe output</span> " + d.reactorMW + " MW</div>",
-      "<div><span>Hull</span> " + d.hull + "</div>",
-      "<div><span>" + (d.reactors.length > 1 ? "Aux banks" : "Aux bank") + "</span> " + (d.aux.capacity ? d.aux.capacity + " MJ, " + d.aux.rateMW + " MW" + (d.reactors.length > 1 ? " each, one per reactor" : "") : "none (destroyers and up)") + "</div>",
-      "<div><span>Engines</span> " + d.engineMWperG + " MW per G, cruise " + d.cruiseG + " G, top " + d.maxG + " G</div>"
-    ];
-    d.systems.forEach(function (s) {
-      html.push("<div><span>" + s.name + "</span> " + s.maxMJ + " MJ, up to " + s.maxMW + " MW</div>");
-    });
-    if (!j.test) html.push("<div><span>Reputation for a success</span> +" + BL.career.repFor(j) + "</div>");
-    $("brief-ship").innerHTML = html.join("");
+    // The ship as on her ship card: her stats, then her guns (TexasBont, Nov 8, 2026).
+    $("brief-ship").innerHTML = shipStatRows(d, j.classId).map(function (r) { return "<tr><td>" + r[0] + "</td><td>" + r[1] + "</td></tr>"; }).join("");
+    $("brief-guns").innerHTML = gunRows(d, j.classId, sim.turret ? sim.turret.bats : null);
     // The approved art: the gunboat carries its hull number, bigger classes their hull letters.
     $("brief-art").innerHTML = BL.ART ? (j.classId === "gunboat" ? BL.ART.gunboat(/^PT-/.test(j.ship) ? j.ship : "PT") : BL.ART.warship(j.classId, j.test ? "" : j.hull || BL.hullNumber(j.classId, j.ship))) : "";
     if (BL.preloadArt) BL.preloadArt();
     $("brief-main").hidden = !sim.sys("main");
     $("brief-hangar").hidden = !sim.sys("hangar");
     $("brief-mines").hidden = sim.route.indexOf("minefield") < 0;
-    $("brief-pd").hidden = !sim.sys("pd");
     $("brief-rx").hidden = d.reactors.length < 2;
     $("brief-buster").hidden = !sim.sys("buster");
     var gunner = !!sim.turret;
     $("brief-eng").hidden = gunner; $("brief-gun").hidden = !gunner;
-    $("brief-station").textContent = sim.flag ? cap(j.classId, "Your post: squadron commander (you plot the squadron's course and give its orders; your flag captain runs the flagship)") : sim.captain ? "Your post: the bridge (you plot the course and give the orders; your crew carry them out)" : sim.helm ? "Your station: the helm (the " + sim.helm.who.toLowerCase() + " gives the orders; the engineer runs the power)" :
-      gunner ? "Your station: Gun 1 (the engineer runs the power)" : "Your station: Main Engineering";
-    // (the title part title-cased, its explanation in brackets left as a sentence)
-    $("brief-station").textContent = $("brief-station").textContent.replace(/^[^(]*/, function (t) { return tc(t); });
-    $("brief-helm").hidden = !sim.helm || !!sim.captain;
-    $("brief-captain").hidden = !sim.captain || sim.flag;
-    // A squadron: its ships, the flag captain and the captains (each order takes a few seconds to reach them).
+    var post = sim.flag ? ["Your Post: Squadron Commander", cap(j.classId, "You plot the squadron's course and give its orders; your flag captain runs the flagship.")]
+      : sim.captain ? ["Your Post: The Bridge", "You plot the course and give the orders; your crew carry them out."]
+      : sim.helm ? ["Your Station: The Helm", "The " + sim.helm.who.toLowerCase() + " gives the orders; the engineer runs the power."]
+      : gunner ? ["Your Station: Gun 1", "The engineer runs the power" + (sim.turret.bats.length > 1 ? "; your gun crew works the other guns." : ".")]
+      : ["Your Station: Main Engineering", "You run the power."];
+    $("brief-station").textContent = post[0];
+    $("brief-post").textContent = post[1] + (j.test ? "" : " Reputation for a success: +" + BL.career.repFor(j) + ".");
+    // A squadron: its ships and captains in a table; how orders reach them is in How to play.
     var sqv = sim.flag && sim.captain.squadView();
     $("brief-squad").hidden = !sqv;
-    if (sqv) $("brief-squad").innerHTML = "<b>The squadron:</b> " + (sqv.ships.length + 1) + " " + cls.name.toLowerCase() + "s in " + BL.COMMAND.squad.formations[sqv.form].name.toLowerCase() + ". " +
-      "1 " + esc(sqv.flagName) + ", the flagship: " + cap(j.classId, "flag captain ") + esc(noCox(j.classId, sqv.flag.name)) + ", " + sqv.flag.label + " (skill " + Math.round(sqv.flag.skill * 100) + "), " + sqv.flag.temper + " temper. " +
-      sqv.ships.map(function (x) { return x.no + " " + esc(x.name) + ": " + esc(x.cap.name) + ", " + x.cap.label + " (" + Math.round(x.cap.skill * 100) + "), " + x.cap.temper; }).join(" · ") +
-      (sim.sys("buster") ? ". Get through to the drop zone at the end of system " + sim.cfg.jumps + " and drop the planet buster; fight only what gets in the way. Fortress ships guard the drop zone." :
-      ". Each system's map shows the enemy's targets: destroy its objective, the supply depot, before the squadron warps on, or the mission fails.") + cap(j.classId, " Send ships to targets or spots on the map; an order takes each captain a few seconds to carry out, longer the lower his skill.");
+    if (sqv) $("brief-squad").innerHTML = '<p>' + (sqv.ships.length + 1) + " " + cls.name.toLowerCase() + "s in " + BL.COMMAND.squad.formations[sqv.form].name.toLowerCase() + ". " +
+      (sim.sys("buster") ? "Get through to the drop zone at the end of system " + sim.cfg.jumps + " and drop the planet buster; fight only what gets in the way. Fortress ships guard the drop zone." :
+      "Each system's map shows the enemy's targets: destroy its objective, the supply depot, before the squadron warps on, or the mission fails.") + "</p><h3>Squadron</h3>" +
+      peopleTable(["Ship", "Captain", "Skill", "Temper"], [[1 + " " + esc(sqv.flagName) + " ★", esc(noCox(j.classId, sqv.flag.name)), sqv.flag.label + " " + Math.round(sqv.flag.skill * 100), sqv.flag.temper]]
+        .concat(sqv.ships.map(function (x) { return [x.no + " " + esc(x.name), esc(x.cap.name), x.cap.label + " " + Math.round(x.cap.skill * 100), x.cap.temper]; }))) +
+      '<p class="muted">' + cap(j.classId, "★ the flagship; her flag captain runs her.") + "</p>";
+    // The crew in a table: the post, the man, his skill and, from a crew pool, his temper and morale.
+    var crew = [];
+    if (gunner) {
+      var en = sim.turret.engineer, pc = sim.captain && sim.captain.pilotCrew;
+      var man = function (postName, p) { return [postName, esc(p.name), p.label + " " + Math.round(p.skill * 100), p.temper || "", p.temper ? p.morale : ""]; };
+      crew.push(man("Engineering", en));
+      if (pc) crew.push(man("Helm", pc));
+      sim.turret.bats.forEach(function (b) { if (b.crew) crew.push(man("Gun " + b.gunNo, b.crew)); });
+    }
+    var tm = crew.some(function (r) { return r[3]; });
+    $("brief-crew").hidden = !crew.length;
+    $("brief-crew").innerHTML = crew.length ? "<h3>" + (sim.flag ? "Flagship Crew" : "Crew") + "</h3>" + peopleTable(tm ? ["Post", "Name", "Skill", "Temper", "Morale"] : ["Post", "Name", "Skill"], crew.map(function (r) { return tm ? r : r.slice(0, 3); })) +
+      (sim.captain ? "" : '<p class="muted">Your engineer: ' + ENGINEER_NOTE[en.label] + "</p>") : "";
+    // The mission's own notes (the torpedoes, main gun, gunboats, mines); the rules are in How to play.
     $("brief-sweep").hidden = sim.route.indexOf("sweep") < 0;
     if (gunner) {
-      var en = sim.turret.engineer;
       $("brief-pt").hidden = !sim.data.torpedoes || !!sim.helm;
       $("brief-gmain").hidden = !sim.turret.firesMain || !!sim.helm;
       $("brief-gmines").hidden = sim.route.indexOf("minefield") < 0 || !!sim.helm;
       $("brief-hmines").hidden = sim.route.indexOf("minefield") < 0 || !sim.helm;
       $("brief-gwing").hidden = !sim.sys("hangar");
-      $("brief-gciws").hidden = !sim.sys("pd");
-      var bats = sim.turret.bats;
-      // The guns and their arcs; how they work is in How to play.
-      $("brief-guns").innerHTML = "<b>" + (bats.length > 1 ? "Guns" : "Gun") + ":</b> " + bats.map(function (b) {
-        return "Gun " + b.gunNo + " " + b.w.name.toLowerCase() + " Mk" + (b.w.mk || 1) + (b.arcName ? " " + b.arcName : "") + (b.arcH === undefined ? "" : " (" + (b.arcH >= 180 ? "all round" : (b.arcH * 2) + "°") + ")");
-      }).join(" · ") + (sim.helm ? ". Your gun crew works " + (bats.length > 1 ? "them." : "it.") : bats.length > 1 ? ". You aim one; your gun crew works the rest." : ".");
-      $("brief-crew").hidden = bats.length < 2 && !sim.helm;
-      $("brief-crew").innerHTML = "<b>Gun crew:</b> " + bats.filter(function (b) { return b.crew; }).map(function (b) {
-        return "Gun " + b.gunNo + " " + esc(b.crew.name) + ", " + b.crew.label + " (" + Math.round(b.crew.skill * 100) + ")" + tmLine(b.crew);
-      }).join(" · ") + (sim.helm ? "." : ". Take a gun and you trade places with its gunner.");
-      $("brief-orders").hidden = bats.length < 2 || !!sim.helm;
-      $("brief-orders").innerHTML = "<b>Orders:</b> the letter on each gun card is its gunner's order (P point defense, L stop launches, H hunt, F free fire; green = this fight's suggestion). Take a gun and press O to change it.";
-      $("brief-engineer").innerHTML = "Your engineer: <b>" + esc(en.name) + "</b>, " + en.label + " (skill " + Math.round(en.skill * 100) + ")" + tmLine(en) + "." + (sim.captain ? "" : " " + ENGINEER_NOTE[en.label]);
-      var pc = sim.captain && sim.captain.pilotCrew;
-      $("brief-pilot").hidden = !pc;
-      if (pc) $("brief-pilot").innerHTML = "<b>Pilot:</b> " + esc(pc.name) + ", " + pc.label + " (skill " + Math.round(pc.skill * 100) + ")" + tmLine(pc) + ".";
     }
+    $("brief-gun").hidden = !gunner || $("brief-gun").querySelectorAll("li:not([hidden])").length === 0;
+    $("brief-eng").hidden = gunner || $("brief-eng").querySelectorAll("li:not([hidden])").length === 0;
     show("scr-briefing");
   }
-  // A roster man's temperament and morale (Command jobs; the skill shown is his skill in battle, morale included).
-  function tmLine(p) { return p && p.temper ? ", " + p.temper + " temper, morale " + p.morale : ""; }
   $("btn-brief-back").onclick = function () { click(); if (job.test) home(); else if (job.captain && BL.roster) showCrew(job); else showOffers(offersMode); };
   $("btn-brief-go").onclick = function () { click(); startMission(); };
   // The captain test: another mission on the same ship, at random (the briefing, or the first plot).
@@ -2618,7 +2631,7 @@
       r.outcome === "destroyed" ? "Ship destroyed" : r.outcome === "dropMissed" ? "Drop window missed: the planet buster never launched" : r.outcome === "wardLost" ? (r.captain && r.captain.escort ? r.captain.escort.name.replace(/^./, function (x) { return x.toUpperCase(); }) : "Carrier") + " lost" : r.outcome === "leftBehind" ? "Left behind: the carrier's hangar bay was destroyed" : r.outcome === "objectiveMissed" ? "Objective missed: the squadron warped on with it still standing" : "Abandoned ship";
     $("db-title").textContent = tc($("db-title").textContent);
     if (r.testWin) $("db-title").textContent += " (test win)";
-    $("db-lede").textContent = (job.test ? "" : BL.shipLabel(job.classId, job.ship, job.hull) + " (TL" + r.tl + ") · ") + "Seed " + r.seed + " · " +
+    $("db-lede").textContent = (job.test ? "" : BL.shipLabel(job.classId, job.ship, job.hull) + " (TL" + r.tl + ") · ") + "Route " + routeNo(r.seed) + " · " +
       r.jumpsDone + " of " + sim.cfg.jumps + (r.hasDrive ? " warps · " : " sorties · ") + d.minutes + " minutes · hull " + r.hull + " / " + r.hullMax +
       (r.looks ? " · looked at the paused console " + r.looks + (r.looks === 1 ? " time" : " times") + " (−" + (100 - Math.round(100 * r.score / Math.max(1, r.raw))) + "%)" : "");
     $("db-score").textContent = r.score;
@@ -2782,7 +2795,7 @@
     var blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     var a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = BL.APP_TAG + "_debrief_seed" + r.seed + "_" + today + ".json";
+    a.download = BL.APP_TAG + "_debrief_route" + routeNo(r.seed).replace(/\./g, "-") + "_" + today + ".json";
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
   }
@@ -3578,6 +3591,44 @@
     var k = b.dataset.info, open = !n.hidden && n.dataset.k === k;
     n.hidden = open; n.dataset.k = k; n.innerHTML = GUN_INFO[k];
   });
+  /* A ship's stats, as on her ship card and in the briefing: each capacitor with what it holds and
+     the fastest it charges. */
+  function shipStatRows(d, classId) {
+    var sysOf = function (kind) { return d.systems.filter(function (s) { return s.kind === kind; }); }, one = function (k) { return sysOf(k)[0]; };
+    var cap = function (s) { return s.maxMJ + " MJ, charge " + s.maxMW + " MJ/s"; };
+    var rows = [], rx = d.reactors, helm = BL.HELM.classes[classId];
+    rows.push(["Hull", d.hull]);
+    rows.push(["Reactor", rx.length > 1 ? rx.length + " reactors (" + rx.map(function (r) { return r.name; }).join(", ") + "), " + rx[0].mw + " MJ/s each, " + d.reactorMW + " MJ/s in all" : d.reactorMW + " MJ/s"]);
+    if (rx[0].aux.capacity) rows.push(["Aux bank", rx.length > 1 ? rx.length + " banks of " + rx[0].aux.capacity + " MJ, feed " + rx[0].aux.rateMW + " MJ/s each" : rx[0].aux.capacity + " MJ, feed " + rx[0].aux.rateMW + " MJ/s"]);
+    var sh = one("shield"); if (sh) rows.push(["Shields", cap(sh)]);
+    rows.push(["Engines", "cruise " + d.cruiseG + " G, full " + d.maxG + " G"]);
+    if (helm) rows.push(["Turn", "up to " + helm.top + "°/s, safe to " + helm.safe + "°/s"]);
+    var ls = one("life"); if (ls) rows.push(["Life support", cap(ls)]);
+    var pd = one("pd"); if (pd) rows.push(["CIWS", cap(pd) + " · " + ((BL.ART.OURS[classId] || {}).pd || []).length + " mounts in the stern"]);
+    var hg = one("hangar"); if (hg) rows.push(["Hangar", cap(hg) + " · a gunboat squadron"]);
+    if (d.torpedoes) rows.push(["Torpedoes", d.torpedoes + ", reloaded by the carrier every sortie"]);
+    var dr = one("drive"); rows.push(["Warp drive", dr ? cap(dr) : "none (launched from a carrier)"]);
+    var bu = one("buster"); if (bu) rows.push(["Planet buster", cap(bu)]);
+    return rows;
+  }
+  // The briefing's guns: each mount, its arc and its capacitor (the mission's own guns when it has them).
+  function gunRows(d, classId, bats) {
+    var cap = function (s) { return s.maxMJ + " MJ, charge " + s.maxMW + " MJ/s"; }, guns = d.systems.filter(function (s) { return s.kind === "gun"; });
+    var ring = BL.GUNNERY.ring.classes[classId] || { arcs: [], arcNames: [] }, load = BL.GUNNERY.loadout[classId] || [];
+    var list = bats ? bats.map(function (b) { return { no: b.gunNo, w: b.w.name + " Mk " + (b.w.mk || d.mk), mount: b.arcName || "", arc: b.arcH === undefined ? "" : b.arcH >= 180 ? "all round" : b.arcH * 2 + "°", s: d.systems.filter(function (s) { return s.id === b.gunId; })[0] || guns[b.gunNo - 1] }; })
+      : guns.map(function (g, i) { var a = ring.arcs[i] || [0, 180, 0], W = BL.WEAPONS[load[i]]; return { no: i + 1, w: W ? W.name + " Mk " + d.mk : g.name, mount: ring.arcNames[i] || "", arc: a[1] >= 180 ? "all round" : 2 * a[1] + "°", s: g }; });
+    var mg = d.systems.filter(function (s) { return s.kind === "main"; })[0];
+    if (!list.length && !mg) return "";
+    return "<tr><th>#</th><th>Gun</th><th>Mount</th><th>Arc</th><th>Capacitor</th></tr>" +
+      (mg ? "<tr><td>M</td><td>Main gun</td><td>centerline</td><td>points forward</td><td>" + cap(mg) + "</td></tr>" : "") +
+      list.map(function (g) { return "<tr><td>" + g.no + "</td><td>" + g.w + "</td><td>" + g.mount + "</td><td>" + g.arc + "</td><td>" + (g.s ? cap(g.s) : "") + "</td></tr>"; }).join("");
+  }
+  // A table of people (crew or captains); a morale under 40 shows red.
+  function peopleTable(heads, rows) {
+    var cls = function (h, v) { return h === "Temper" ? ' class="hide-s"' : h === "Morale" ? ' class="n' + (typeof v === "number" && v < 40 ? " low" : "") + '"' : ""; };
+    return '<table class="db-table brief-t"><tr>' + heads.map(function (h) { return "<th" + cls(h) + ">" + h + "</th>"; }).join("") + "</tr>" +
+      rows.map(function (r) { return "<tr>" + r.map(function (x, k) { return "<td" + cls(heads[k], x) + ">" + x + "</td>"; }).join("") + "</tr>"; }).join("") + "</table>";
+  }
   function showShipCard(e) {
     var c = career, d = BL.shipFor(e.classId, e.tl), cls = BL.classById(e.classId), rec = e.rec;
     var sysOf = function (kind) { return d.systems.filter(function (s) { return s.kind === kind; }); }, one = function (k) { return sysOf(k)[0]; };
@@ -3585,21 +3636,8 @@
     $("card-lede").innerHTML = cls.name + " · " +
       (rec && rec.lost ? '<span class="lost-note">Lost in action ' + rec.lost + "</span>" : rec ? "In service" : "In service; you haven't served aboard her");
     $("card-art").innerHTML = e.classId === "gunboat" ? BL.ART.gunboat(e.ship) : BL.ART.warship(e.classId, e.hull);
-    var rows = [], rx = d.reactors, helm = BL.HELM.classes[e.classId];
-    // A capacitor at a glance: what it holds and the fastest it charges.
+    var rows = shipStatRows(d, e.classId), mg = d.systems.filter(function (s) { return s.kind === "main"; })[0];
     var cap = function (s) { return s.maxMJ + " MJ, charge " + s.maxMW + " MJ/s"; };
-    rows.push(["Hull", d.hull]);
-    rows.push(["Reactor", rx.length > 1 ? rx.length + " reactors (" + rx.map(function (r) { return r.name; }).join(", ") + "), " + rx[0].mw + " MJ/s each, " + d.reactorMW + " MJ/s in all" : d.reactorMW + " MJ/s"]);
-    if (rx[0].aux.capacity) rows.push(["Aux bank", rx.length > 1 ? rx.length + " banks of " + rx[0].aux.capacity + " MJ, feed " + rx[0].aux.rateMW + " MJ/s each" : rx[0].aux.capacity + " MJ, feed " + rx[0].aux.rateMW + " MJ/s"]);
-    var sh = one("shield"); if (sh) rows.push(["Shields", cap(sh)]);
-    rows.push(["Engines", "cruise " + d.cruiseG + " G, full " + d.maxG + " G"]);
-    if (helm) rows.push(["Turn", "up to " + helm.top + "°/s, safe to " + helm.safe + "°/s"]);
-    var mg = one("main");   // listed with the guns below
-    var pd = one("pd"); if (pd) rows.push(["CIWS", cap(pd) + " · " + ((BL.ART.OURS[e.classId] || {}).pd || []).length + " mounts"]);
-    var hg = one("hangar"); if (hg) rows.push(["Hangar", cap(hg) + " · a gunboat squadron"]);
-    if (d.torpedoes) rows.push(["Torpedoes", d.torpedoes + ", reloaded by the carrier every sortie"]);
-    var dr = one("drive"); rows.push(["Warp drive", dr ? cap(dr) : "none (launched from a carrier)"]);
-    var bu = one("buster"); if (bu) rows.push(["Planet buster", cap(bu)]);
     $("card-stats").innerHTML = rows.map(function (r) { return "<tr><td>" + r[0] + "</td><td>" + r[1] + "</td></tr>"; }).join("");
     var ring = BL.GUNNERY.ring.classes[e.classId], load = BL.GUNNERY.loadout[e.classId] || [];
     // Each gun with its ratings at this mark: what a shot costs, how fast it fires, how many shots a

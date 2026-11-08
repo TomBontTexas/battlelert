@@ -71,7 +71,7 @@
       (c.busterMode ? " · homeworld at " + Math.round(100 * c.hwK) + "%" : "");
     $("btn-adm-buster").hidden = !c.busterMode;
     $("btn-adm-buster").disabled = c.state !== "play" || c.turn > 1;
-    $("adm-seed").textContent = "seed " + c.seed;
+    $("adm-seed").textContent = "Route " + BL.routeNo(c.seed);
     $("btn-adm-end").disabled = c.state !== "play";
     $("btn-adm-withdraw").disabled = c.state !== "play";
     drawMap(); drawFleet(); drawSystem(); drawReport();

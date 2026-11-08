@@ -31,7 +31,7 @@
   var NB = [[[1, 0], [1, -1], [0, -1], [-1, -1], [-1, 0], [0, 1]], [[1, 1], [1, 0], [0, -1], [-1, 0], [-1, 1], [0, 1]]];
   function cube(col, row) { var z = row - (col - (col & 1)) / 2; return [col, -col - z, z]; }
 
-  var SYL = ["ka", "vor", "esh", "tal", "mir", "zan", "oth", "rel", "quin", "sar", "dul", "nex", "ivo", "bra", "cyr", "lun", "teg", "or", "pha", "ul", "ken", "dra", "vel", "im"];
+  var SYL = BL.SYSTEM_SYL = ["ka", "vor", "esh", "tal", "mir", "zan", "oth", "rel", "quin", "sar", "dul", "nex", "ivo", "bra", "cyr", "lun", "teg", "or", "pha", "ul", "ken", "dra", "vel", "im"];
   function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
   // "a, b and c"
   function list(xs) { return xs.length < 2 ? xs.join("") : xs.slice(0, -1).join(", ") + " and " + xs[xs.length - 1]; }
