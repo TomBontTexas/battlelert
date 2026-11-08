@@ -2888,7 +2888,7 @@
     return BL.career.qualified(c, p);
   }
   /* The title screen's poster (TexasBont, Nov 7, 2026; a stand-in until there's art): a Starforce
-     recruiting poster, 2:3, an officer in his cap against the stars, a ship passing, his name on the
+     recruiting poster (no subtitle: TexasBont, Nov 8, 2026), 2:3, an officer in his cap against the stars, a ship passing, his name on the
      banner ("Your name here" before he enlists). */
   function posterSvg(name) {
     var stars = "", x = 11;
@@ -2909,7 +2909,6 @@
       // (a ship passing, its drive glowing)
       '<g transform="translate(140,58) rotate(-24)"><path d="M-30,0 L14,-4 L26,0 L14,4 Z" fill="#9fb3c8"/><path d="M-30,-2.5 L-38,0 L-30,2.5 Z" fill="#4cc3ee"/><circle cx="-39" cy="0" r="3" fill="#4cc3ee" opacity=".5"/></g>' +
       '<text x="100" y="30" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="22" letter-spacing="3" fill="#4cc3ee">STARFORCE</text>' +
-      '<text x="100" y="44" text-anchor="middle" font-family="Arial, sans-serif" font-size="7.5" letter-spacing="2.5" fill="#cfe6f5">THE LAST CAMPAIGN</text>' +
       // (the officer: shoulders, collar, head, peaked cap)
       '<path d="M38,300 C40,236 62,220 100,214 C138,220 160,236 162,300 Z" fill="url(#pg-coat)" stroke="#4cc3ee" stroke-opacity=".35"/>' +
       '<path d="M48,236 L76,226 L74,232 L50,242 Z M152,236 L124,226 L126,232 L150,242 Z" fill="url(#pg-gold)"/>' +
