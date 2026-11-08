@@ -2887,6 +2887,45 @@
     if (p === "squadron") { var k = BL.career.squadronClasses(c); return k.length ? Math.max.apply(null, k) : 0; }
     return BL.career.qualified(c, p);
   }
+  /* The title screen's poster (TexasBont, Nov 7, 2026; a stand-in until there's art): a Starforce
+     recruiting poster, 2:3, an officer in his cap against the stars, a ship passing, his name on the
+     banner ("Your name here" before he enlists). */
+  function posterSvg(name) {
+    var stars = "", x = 11;
+    for (var i = 0; i < 70; i++) {
+      x = (x * 9301 + 49297) % 233280; var sx = (x / 233280) * 200;
+      x = (x * 9301 + 49297) % 233280; var sy = (x / 233280) * 190;
+      x = (x * 9301 + 49297) % 233280; var r = x / 233280 > 0.85 ? 0.9 : 0.45;
+      stars += '<circle cx="' + sx.toFixed(1) + '" cy="' + sy.toFixed(1) + '" r="' + r + '" fill="#fff" opacity="' + (r > 0.5 ? 0.9 : 0.5) + '"/>';
+    }
+    var nm = esc((name || "Your name here").toUpperCase());
+    return '<svg viewBox="0 0 200 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Starforce poster">' +
+      '<defs><linearGradient id="pg-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#050913"/><stop offset=".6" stop-color="#0c1d3a"/><stop offset="1" stop-color="#16345c"/></linearGradient>' +
+      '<radialGradient id="pg-planet" cx=".35" cy=".25" r=".8"><stop offset="0" stop-color="#3f86c4"/><stop offset=".7" stop-color="#173f6b"/><stop offset="1" stop-color="#081a30"/></radialGradient>' +
+      '<linearGradient id="pg-coat" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1d2740"/><stop offset="1" stop-color="#0b1020"/></linearGradient>' +
+      '<linearGradient id="pg-gold" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff0a0"/><stop offset=".5" stop-color="#e0b030"/><stop offset="1" stop-color="#8a6410"/></linearGradient></defs>' +
+      '<rect width="200" height="300" fill="url(#pg-sky)"/>' + stars +
+      '<circle cx="168" cy="250" r="95" fill="url(#pg-planet)" opacity=".9"/>' +
+      // (a ship passing, its drive glowing)
+      '<g transform="translate(140,58) rotate(-24)"><path d="M-30,0 L14,-4 L26,0 L14,4 Z" fill="#9fb3c8"/><path d="M-30,-2.5 L-38,0 L-30,2.5 Z" fill="#4cc3ee"/><circle cx="-39" cy="0" r="3" fill="#4cc3ee" opacity=".5"/></g>' +
+      '<text x="100" y="30" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="22" letter-spacing="3" fill="#4cc3ee">STARFORCE</text>' +
+      '<text x="100" y="44" text-anchor="middle" font-family="Arial, sans-serif" font-size="7.5" letter-spacing="2.5" fill="#cfe6f5">THE LAST CAMPAIGN</text>' +
+      // (the officer: shoulders, collar, head, peaked cap)
+      '<path d="M38,300 C40,236 62,220 100,214 C138,220 160,236 162,300 Z" fill="url(#pg-coat)" stroke="#4cc3ee" stroke-opacity=".35"/>' +
+      '<path d="M48,236 L76,226 L74,232 L50,242 Z M152,236 L124,226 L126,232 L150,242 Z" fill="url(#pg-gold)"/>' +
+      '<path d="M88,214 L100,236 L112,214 Z" fill="#e8eef4"/><path d="M96,218 L100,238 L104,218 Z" fill="#8a1d2e"/>' +
+      '<rect x="91" y="196" width="18" height="20" rx="6" fill="#c9a07a"/>' +
+      '<ellipse cx="100" cy="176" rx="21" ry="26" fill="#d9b08a"/>' +
+      '<path d="M84,170 Q100,178 116,170" fill="none" stroke="#7a5236" stroke-width="1.2" opacity=".6"/>' +
+      '<ellipse cx="100" cy="153" rx="31" ry="10" fill="#e9edf2"/><path d="M73,155 Q100,124 127,155 Z" fill="#f2f5f8"/>' +
+      '<path d="M76,156 Q100,166 124,156 L122,160 Q100,170 78,160 Z" fill="#0b1020"/>' +
+      '<path d="M84,156 Q100,152 116,156" fill="none" stroke="url(#pg-gold)" stroke-width="2"/>' +
+      '<path d="M100,138 L104,147 L100,145 L96,147 Z" fill="url(#pg-gold)"/>' +
+      '<g transform="translate(66,262)"><rect x="-4" y="-4" width="22" height="8" fill="#55287f"/><rect x="-4" y="5" width="22" height="8" fill="#2f72b8"/></g>' +
+      // (his name on the banner)
+      '<rect x="0" y="270" width="200" height="30" fill="#0b1020" opacity=".88"/><rect x="0" y="270" width="200" height="1.5" fill="url(#pg-gold)"/>' +
+      '<text x="100" y="290" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="' + (nm.length > 16 ? 11 : 14) + '" letter-spacing="1.5" fill="#fff">' + nm + "</text></svg>";
+  }
   // (noReps: the title screen shows the ribbons only; TexasBont, Nov 7, 2026)
   function rackHtml(c, w, noReps) {
     if (!BL.ribbonSvg) return "";
@@ -2909,6 +2948,7 @@
     if (career) b.textContent = "Continue as " + career.name;
     $("title-rack").innerHTML = career ? rackHtml(career, 120, true) : "";
     $("title-rack").hidden = !career;
+    $("title-poster").innerHTML = posterSvg(career ? career.name : "");
   }
   $("btn-continue").onclick = function () { BL.audio.init(); click(); showHub(); };
   $("btn-enlist").onclick = function () {
