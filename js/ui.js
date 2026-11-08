@@ -3294,13 +3294,13 @@
 
   function showRecord() {
     var c = career;
-    $("rec-title").textContent = "Service record: " + c.name;
-    // (the reputations are under the rack)
+    // (his name, "Service Record" under it; then one line of facts and a reputation table: TexasBont, Nov 8, 2026)
+    $("rec-title").innerHTML = "<span>" + esc(c.name) + "</span><span class='rp-t2'>Service Record</span>";
+    var REPCOL = [["engineer", "Eng"], ["gunner", "Gun"], ["pilot", "Helm"], ["captain", "Cmd"], ["squadron", "Squad"], ["admiral", "Fleet"]];
+    $("rec-reps").innerHTML = "<tr><th></th>" + REPCOL.map(function (x) { return "<th>" + x[1] + "</th>"; }).join("") + "</tr><tr><th>Reputation</th>" +
+      REPCOL.map(function (x) { return "<td>" + (x[0] === "admiral" ? c.admiral.rep : c.stations[x[0]].rep) + "</td>"; }).join("") + "</tr>";
     $("rec-summary").innerHTML = "<span>Enlisted <b>" + starDate({ date: c.created }) + "</b></span>" + "<span>Rapid sign-offs <b>" + BL.career.signoffsHeld(c) + "</b></span>" +
-      "<span>Missions <b>" + sumProfiles(c, "missions") + "</b> (" + sumProfiles(c, "wins") + " won)</span>" +
-      RACK.filter(function (p) { return rackTop(c, p) > 0 || BL.career.CREW.indexOf(p) >= 0; }).map(function (p) {
-        return "<span>" + BL.career.STATION_NAME[p] + " reputation <b>" + (p === "admiral" ? c.admiral.rep : c.stations[p].rep) + "</b></span>";
-      }).join("");
+      "<span>Missions <b>" + sumProfiles(c, "missions") + "</b> (" + sumProfiles(c, "wins") + " won)</span>";
     $("rec-profile").innerHTML = BL.career.STATIONS.filter(function (s) { return BL.career.PLAYABLE[s]; }).map(function (s) {
       return "<h2>" + BL.career.STATION_NAME[s] + " reputation profile</h2>" + profileHtml(BL.career.profile(c, s), null, s);
     }).join("");

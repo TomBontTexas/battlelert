@@ -937,3 +937,10 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 .hist-table tr.h-bad .hist-out { color: var(--bad); } .hist-table tr.h-part .hist-out { color: var(--warn); }
 .cgrid .cg-date { display: inline-block; font-family: var(--mono); font-size: 11px; line-height: 1.25; color: var(--text); }
 .cgrid .cg-date .cg-cnt { margin-left: 4px; font-size: 10px; display: inline; }
+#scr-record .rp-head h1 span { display: block; }
+.rec-reps { border-collapse: collapse; margin: 14px 0 4px; font-size: 15px; }
+.rec-reps th, .rec-reps td { padding: 5px 14px; text-align: center; border-bottom: 1px solid var(--line); }
+.rec-reps tr:first-child th { font: 800 11px var(--font); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.rec-reps tr th:first-child { text-align: left; padding-left: 0; font-weight: 600; }
+.rec-reps td { font-family: var(--mono); color: var(--charge); font-weight: 700; }
+@media (max-width: 560px) { .rec-reps th, .rec-reps td { padding: 5px 6px; font-size: 13px; } }
