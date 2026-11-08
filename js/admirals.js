@@ -680,6 +680,9 @@
     // Systems retaken: the Azurians alone in a system of theirs we took (never our base).
     this.hexes.forEach(function (h) {
       if (h.owner !== "us" || h.kind === "home") return;
+      // (F3: the destination world can't fall before the convoy is in: they're raiders, not
+      // world conquerors; TexasBont, Nov 7, 2026)
+      if (self.convoyMode && h.kind === "world" && !self.won) return;
       var ours = self.ours().filter(function (f) { return f.at === h.i; }), theirs = self.theirs().filter(function (f) { return f.at === h.i; });
       if (ours.length || !theirs.length) return;
       h.owner = "az";
