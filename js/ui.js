@@ -2987,7 +2987,7 @@
     $("hub-summary").innerHTML = summaryHtml(career);
     $("hub-grid").innerHTML = gridHtml(career, true);
     var last = career.history[0];
-    if (last && last.station === "admiral") $("hub-last").textContent = "Last campaign: " + last.ship + ", " + (last.score || 0) + " point" + (last.score === 1 ? "" : "s") + ", " + signed(last.rep || 0) + " admiral reputation.";
+    if (last && last.station === "admiral") $("hub-last").textContent = "Last operation: " + BL.career.admiralTitle(last.n).fleet + ", " + (OUTCOME_NAME[last.outcome] || last.outcome).toLowerCase() + ", " + signed(last.rep || 0) + " admiral reputation.";
     else $("hub-last").textContent = last ? "Last mission: " + BL.career.STATION_NAME[last.station || "engineer"].toLowerCase() + " aboard " + BL.shipLabel(last.classId, last.ship, last.hull) + " (TL" + last.tl + "), " +
       last.outcome + ", " + signed(last.rep || 0) + " reputation." : "No missions yet. Your first job offers are waiting.";
     show("scr-hub");
@@ -3307,8 +3307,9 @@
     var list = c.history.filter(function (h) { return (h.station || "engineer") === st && (h.n || BL.classById(h.classId).n) === n; });
     var won = list.filter(function (h) { return h.outcome === "success"; }).length;
     $("rp-ribbon").innerHTML = BL.ribbonSvg ? BL.ribbonSvg(st, n, 165) : "";
-    $("rp-title").textContent = who + " · " + cls.name + ": mission reports";
-    $("rp-sum").textContent = list.length ? list.length + " mission" + (list.length === 1 ? "" : "s") + " on record, " + won + " won." : "No missions on record here.";
+    var ops = st === "admiral", wd = ops ? "operation" : "mission";      // (the admiral path: his fleet's operations)
+    $("rp-title").textContent = ops ? BL.career.admiralTitle(n).full + ": operation reports" : who + " · " + cls.name + ": mission reports";
+    $("rp-sum").textContent = list.length ? list.length + " " + wd + (list.length === 1 ? "" : "s") + " on record, " + won + " won." : "No " + wd + "s on record here.";
     $("rp-list").innerHTML = list.map(function (h) {
       // (the ship's service record holds the systems flown, ships destroyed and hull lost)
       var m = null;
@@ -3316,12 +3317,14 @@
       var sm = h.story && BL.storyMission ? BL.storyMission(h.story) : null, ok = h.outcome === "success";
       var line = sm ? String(ok ? sm.after : sm.lost).replace(/\{hero\}/g, c.name).replace(/\{ship\}/g, BL.shipLabel(h.classId, h.ship, h.hull)) : "";
       var sys = m && m.encounters && m.encounters.length ? m.encounters.map(function (id) { return (BL.ENCOUNTERS[id] || { name: id }).name; }).join(" → ") : "";
-      var facts = [shipHtml(h.classId, h.ship, h.hull) + " (TL" + h.tl + ")"];
+      // (a fleet campaign has no one ship or tech level: its fleet instead, and no score shown)
+      var fleetOp = h.station === "admiral" && h.tl == null;
+      var facts = [fleetOp ? BL.career.admiralTitle(h.n).fleet : shipHtml(h.classId, h.ship, h.hull) + (h.tl != null ? " (TL" + h.tl + ")" : "")];
       if (sys) facts.push(esc(sys));
       if (m && m.kills != null) facts.push("ships destroyed " + m.kills);
       if (m && m.hullLost != null) facts.push("hull lost " + Math.round(m.hullLost));
-      return '<div class="rp-card ' + (ok ? "ok" : "bad") + '"><div class="rp-top"><b>' + esc(h.title || (h.serious === false ? "Requalifying" : "Patrol")) + "</b><span>" + h.date + "</span></div>" +
-        '<div class="rp-out"><b>' + (OUTCOME_NAME[h.outcome] || h.outcome) + "</b> · score " + (h.score != null ? h.score : "–") + " · reputation " + signed(h.rep || 0) + "</div>" +
+      return '<div class="rp-card ' + (ok ? "ok" : "bad") + '"><div class="rp-top"><b>' + esc(h.title || (fleetOp ? "Fleet operation" : h.serious === false ? "Requalifying" : "Patrol")) + "</b><span>" + h.date + "</span></div>" +
+        '<div class="rp-out"><b>' + (OUTCOME_NAME[h.outcome] || h.outcome) + "</b>" + (fleetOp ? "" : " · score " + (h.score != null ? h.score : "–")) + " · reputation " + signed(h.rep || 0) + "</div>" +
         '<div class="rp-facts">' + facts.join(" · ") + "</div>" + (line ? '<p class="rp-story">' + esc(line) + "</p>" : "") + "</div>";
     }).join("");
     $("btn-rp-back").textContent = rpFrom === "record" ? "Service record" : "Career hub";
