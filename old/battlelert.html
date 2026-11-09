@@ -1,0 +1,837 @@
+<!doctype html>
+<!-- Battlelert © 2011–2026 Tom Bont. All rights reserved. See LICENSE. -->
+<html lang="en">
+<head>
+<script>
+/* OLD COPY (v0.171.00, Nov 2, 2026) for comparing sound on the iPad. Its saves are kept apart
+   from the real game's: every storage key gets the prefix "OLD_". */
+(function () {
+  var P = Storage.prototype, g = P.getItem, s = P.setItem, r = P.removeItem;
+  P.getItem = function (k) { return g.call(this, "OLD_" + k); };
+  P.setItem = function (k, v) { return s.call(this, "OLD_" + k, v); };
+  P.removeItem = function (k) { return r.call(this, "OLD_" + k); };
+})();
+</script>
+<meta charset="utf-8">
+<meta name="copyright" content="© 2011–2026 Tom Bont. All rights reserved.">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OLD v0.171 - Battlelert</title>
+<link rel="stylesheet" href="css/style.css?b=00d420de">
+</head>
+<body>
+
+<!-- ============================================================ Title -->
+<section id="scr-title" class="screen page">
+  <div class="title-card">
+    <div class="logo">BATTLELERT</div>
+    <div class="subtitle">Main Engineering</div>
+    <p class="phase-note">The engineer, gunner, pilot and command paths are open on every class, gunboat to dreadnought. Squadron command is open for testing (Tests, Squadron).</p>
+    <div class="menu">
+      <button id="btn-continue" class="big primary" hidden>Continue career</button>
+      <button id="btn-enlist" class="big">Enlist (new career)</button>
+      <button id="btn-import">Import career</button>
+      <button id="btn-how">How to play</button>
+      <button id="btn-options-title">Options</button>
+      <button id="btn-tests">Tests</button>
+      <input id="import-file" type="file" accept=".json,application/json" hidden>
+    </div>
+    <div class="version-line">v<span class="app-version"></span></div>
+    <div class="copyright">Battlelert © 2011–2026 Tom Bont. All rights reserved. Free to play; the code, art and sounds may not be copied without permission.</div>
+  </div>
+</section>
+
+<!-- =========================================================== Enlist -->
+<section id="scr-enlist" class="screen page" hidden>
+  <div class="sheet narrow">
+    <h1>Enlist</h1>
+    <p class="lede">Every career starts aboard a gunboat, in the engine room or at the gun. Choose the name your crews will know you by.</p>
+    <label class="field-label" for="hero-name">Hero name</label>
+    <input id="hero-name" class="text-input" type="text" maxlength="24" autocomplete="off" placeholder="e.g. Plasma Pete">
+    <p class="muted small-text">Shown on your career hub and service record, and used for your save file (BATTLELERT_<i>name</i>.json).</p>
+    <p id="enlist-warn" class="warn-note" hidden></p>
+    <div class="actions">
+      <button id="btn-enlist-back">Back</button>
+      <button id="btn-enlist-go" class="big primary">Enlist</button>
+    </div>
+  </div>
+</section>
+
+<!-- ======================================================== Career hub -->
+<section id="scr-hub" class="screen page" hidden>
+  <div class="sheet">
+    <h1 id="hub-name"></h1>
+    <div id="hub-summary" class="hub-summary"></div>
+    <h2>Career</h2>
+    <div id="hub-grid" class="grid-wrap"></div>
+    <p id="hub-last" class="muted"></p>
+    <div class="hub-actions">
+      <button id="btn-hub-eng" class="big primary">Engineer jobs</button>
+      <button id="btn-hub-gun" class="big primary">Gunner jobs</button>
+      <button id="btn-hub-pilot" class="big primary">Pilot jobs</button>
+      <button id="btn-hub-cmd" class="big primary">Command jobs</button>
+      <button id="btn-hub-train" class="big">Pilot training</button>
+      <button id="btn-hub-signoffs">Rapid sign-offs</button>
+      <button id="btn-hub-record">Service record</button>
+      <button id="btn-hub-registry">Naval registry</button>
+      <button id="btn-hub-export">Export career</button>
+      <button id="btn-hub-options">Options</button>
+      <button id="btn-hub-title">Title screen</button>
+    </div>
+  </div>
+</section>
+
+<!-- ======================================================== Job offers -->
+<section id="scr-offers" class="screen page" hidden>
+  <div class="sheet">
+    <h1 id="offers-title">Job offers</h1>
+    <p id="offers-lede" class="lede"></p>
+    <div id="offers-list" class="offers"></div>
+    <div class="actions"><button id="btn-offers-lower">Requalifying jobs</button><button id="btn-offers-back">Career hub</button></div>
+  </div>
+</section>
+
+<!-- ===================================================== Crew (Command jobs: js/roster.js) -->
+<section id="scr-crew" class="screen page" hidden>
+  <div class="sheet">
+    <h1>Your crew</h1>
+    <p id="crew-lede" class="lede"></p>
+    <div id="crew-posts" class="crew-posts"></div>
+    <div class="actions"><button id="btn-crew-back">Job offers</button><button id="btn-crew-done" class="primary">Done</button></div>
+  </div>
+</section>
+
+<!-- ===================================================== Service record -->
+<section id="scr-record" class="screen page" hidden>
+  <div class="sheet">
+    <h1 id="rec-title">Service record</h1>
+    <div id="rec-summary" class="hub-summary"></div>
+    <div id="rec-profile" class="profile"></div>
+    <h2>Career</h2>
+    <div id="rec-grid" class="grid-wrap"></div>
+    <h2>Mission history</h2>
+    <div class="table-wrap"><table id="rec-history" class="db-table"></table></div>
+    <div id="rec-kia" hidden></div>
+    <div class="actions"><button id="btn-record-back">Career hub</button></div>
+  </div>
+</section>
+
+<!-- ===================================================== Naval registry -->
+<section id="scr-registry" class="screen page" hidden>
+  <div class="sheet">
+    <h1>Naval registry</h1>
+    <p class="lede">Every ship in the navy, by class and tech level. Tap a ship for its card: its statistics and its service career.</p>
+    <label class="reg-filter"><input type="checkbox" id="reg-served"> Only ships I've served on</label>
+    <div id="reg-list"></div>
+    <div class="actions"><button id="btn-registry-back">Career hub</button></div>
+  </div>
+</section>
+
+<!-- ========================================================= Ship card -->
+<section id="scr-shipcard" class="screen page" hidden>
+  <div class="sheet">
+    <h1 id="card-title"></h1>
+    <p id="card-lede" class="lede"></p>
+    <div class="card-top"><div id="card-art" class="card-art"></div><table id="card-stats" class="db-table card-stats"></table></div>
+    <h2>Guns</h2>
+    <div class="table-wrap"><table id="card-guns" class="db-table"></table></div>
+    <p id="card-gun-note" class="info-note" hidden></p>
+    <p id="card-gun-cap" class="muted"></p>
+    <h2>Service career</h2>
+    <div class="table-wrap"><table id="card-service" class="db-table"></table></div>
+    <div class="actions"><button id="btn-card-back">Naval registry</button></div>
+  </div>
+</section>
+
+<!-- ========================================================= Briefing -->
+<section id="scr-briefing" class="screen page" hidden>
+  <div class="sheet">
+    <h1>Mission briefing</h1>
+    <p class="brief-story" id="brief-story" hidden></p>
+    <p class="lede" id="brief-lede"></p>
+    <h2>Route <span class="muted" id="brief-seed"></span></h2>
+    <ol id="brief-route" class="route-list"></ol>
+    <h2 id="brief-ship-title">Your ship</h2>
+    <div class="brief-ship-row"><div id="brief-art" class="brief-art"></div><div id="brief-ship" class="brief-ship"></div></div>
+    <h2 id="brief-station">Your station: Main Engineering</h2>
+    <ul class="tight" id="brief-gun" hidden>
+      <li id="brief-engineer"></li>
+      <li id="brief-guns"></li>
+      <li id="brief-crew" hidden></li>
+      <li id="brief-pilot" hidden></li>
+      <li id="brief-orders" hidden></li>
+      <li id="brief-helm" hidden><b>The helm:</b> each sortie starts in the carrier's launch tube; launch when ready (Space). The coxswain gives course and engine orders ahead of time. Your gunner fires the gun, and both torpedoes once a frigate or siege battery is within 20° of the bow. His course stands between orders, and you may swing up to 30° either side of it to dodge torpedoes (outside that corridor is disobeying and costs you). When the shields can't take what's coming he orders a break ("Break left, now!": swing the bow 15° off your steady turn before they land and they miss). Only the coxswain gives you orders; the crew just report. When you clear the carrier, set all ahead standard: that's an order.</li>
+      <li id="brief-squad" hidden></li>
+      <li id="brief-captain" hidden><b>The bridge:</b> in warp space before each system you plot its course to the warp zone, or take the navigator's plot. Your pilot flies it; the crew carry out your orders. Standing orders: the gunners FREE, the engineer BALANCE, the pilot HOLD. Each man takes a few seconds to carry out a new order, longer the lower his skill.</li>
+      <li id="brief-pt"><b>Two torpedoes</b> (LAUNCH 1 and 2, keys 1 and 2): slow, they home on a frigate or siege battery and hit harder than anything else you carry. Reloaded every sortie.</li>
+      <li id="brief-gmain" hidden><b>Main gun:</b> press M when it's charged; it hits the first ship straight off the bow (the gold line). The pilot swings the bow toward the biggest target, which slides away, so time your shot.</li>
+      <li id="brief-gwing" hidden><b>Gunboat squadron:</b> launched early in each system, it strafes the enemy and shoots down nearby torpedoes, then comes home before the warp.</li>
+      <li id="brief-gciws" hidden><b>CIWS:</b> its mounts in the stern fire on drive hunters' missiles by themselves while the engineer keeps it charged, and stop most of them; now and then one gets through. Your guns can shoot them down too.</li>
+      <li id="brief-gmines" hidden><b>Minefield:</b> the mines sit still and stream past from ahead as the ship moves; shoot the ones on a collision course before they reach the shield.</li>
+      <li id="brief-sweep" hidden><b>Mine lane</b> (sortie 2): clear a lane through a minefield so the fleet behind can get through. Shoot as many mines as you can; one that touches your shield hits. The report shows the share of the lane cleared.</li>
+      <li id="brief-hmines" hidden><b>Minefield:</b> the mines sit still and stream past as you move; steer between them. More thrust brings them faster and more often.</li>
+      <li class="muted">Controls and rules: How to play. Keys: Options.</li>
+    </ul>
+    <ul class="tight" id="brief-eng">
+      <li id="brief-main" hidden><b>Main gun:</b> fires by itself whenever it's full and a target is up. Keep feeding it.</li>
+      <li id="brief-hangar" hidden><b>Launchers and arresters:</b> full launchers at the launch call early in each system, full arresters at the recovery call before the warp. No warp without the gunboats unless the hull is at 20% or less: then the hangar bay is destroyed, there's no launch or recovery, and gunboats still out are left behind.</li>
+      <li id="brief-pd" hidden><b>CIWS</b> (close-in weapon system) stops most drive hunters' strikes on the warp drive while it has charge; the gun crew shoots some down too.</li>
+      <li id="brief-rx" hidden><b>Several reactors:</b> each capacitor is wired to one (the letter on its column). Tap the letter or press R to move it; it draws nothing for 2 s while it switches. The shields draw evenly from all of them (A+B), aux included, and don't move.</li>
+      <li id="brief-buster" hidden><b>Planet buster:</b> the last system is the drop: no warp out. The planet buster must be full and launched from the drop zone within 10 s of the window opening, or the mission fails; the drive isn't needed there. It can't charge in warp space.</li>
+      <li id="brief-mines" hidden><b>Minefield:</b> the engines get only what the capacitors leave. Ease off charging during each weave, or the ship drifts into mines.</li>
+      <li class="muted">Controls and rules: How to play. Keys: Options.</li>
+    </ul>
+    <div class="actions">
+      <button id="btn-brief-back">Back</button>
+      <button id="btn-brief-new" hidden>New mission</button>
+      <button id="btn-brief-how">How to play</button>
+      <button id="btn-brief-go" class="big primary">Stations, Please</button>
+    </div>
+  </div>
+</section>
+
+<!-- ========================================================== Console -->
+<section id="scr-console" class="screen" hidden>
+  <header class="con-head">
+    <span class="brand">BATTLELERT</span>
+    <span class="hd-item" id="hd-station">Main Engineering · Destroyer</span>
+    <span class="hd-item" id="hd-jump"></span>
+    <span class="hd-item hd-phase" id="hd-phase"></span>
+    <span class="hd-spacer"></span>
+    <button id="btn-hints" class="small" data-hint="Hint mode: point at any control to see what it does. Key: H.">Hints</button>
+    <button id="btn-options" class="small" data-hint="Volumes, high-contrast theme, keyboard help.">Options</button>
+    <button id="btn-bridge" class="small cp-back" data-hint="The captain: back to the bridge; your engineer takes the engine room again. Key: B." hidden>Bridge (B)</button>
+    <button id="btn-testwin" class="small" data-hint="Testing: end the mission now as a success at 75%.">Test win</button>
+    <button id="btn-pause" class="small" data-hint="Pause and blank the screen. Key: Space.">Pause</button>
+    <span class="hd-ver">v<span class="app-version"></span></span>
+  </header>
+
+  <div class="con-top">
+    <div class="panel forecast" data-hint="Forecast strip: announced demands for the next 15 seconds. 'Now' is the left edge; things slide toward it. Salvos hit the shields, burns load the engines, gun requests drain a gun.">
+      <div class="fc-head"><span>FORECAST</span><span class="muted">now</span><span class="fc-ticks"><i>5 s</i><i>10 s</i><i>15 s</i></span><span id="fc-jump" class="fc-jump"></span></div>
+      <div class="fc-lanes" id="fc-lanes">
+        <div class="fc-lane" data-lane="salvo"><span class="fc-label">SALVOS</span><div class="fc-track"></div></div>
+        <div class="fc-lane" data-lane="burn"><span class="fc-label">ENGINES</span><div class="fc-track"></div></div>
+        <div class="fc-lane" data-lane="request"><span class="fc-label">CALLS</span><div class="fc-track"></div></div>
+      </div>
+    </div>
+    <div class="panel comms" data-hint="Comms log: the bridge and crew. Warnings come here and on the forecast strip.">
+      <div class="panel-title">COMMS</div>
+      <div id="comms-log" class="comms-log" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <div class="con-main">
+    <aside class="panel left">
+      <div class="panel-title" id="reactor-title">REACTOR</div>
+      <div id="rx-multi" class="rx-multi" hidden></div>
+      <div class="gauge-wrap" data-hint="Reactor load: engines plus every capacitor's charge rate, against the reactor's safe output. Over 100% builds heat.">
+        <svg id="gauge" viewBox="0 0 200 120" class="gauge" aria-label="Reactor load">
+          <path class="g-bg" d="M20 105 A80 80 0 0 1 180 105" />
+          <path id="g-over" class="g-over" d="" />
+          <path id="g-val" class="g-val" d="" />
+          <line id="g-100" class="g-100" x1="0" y1="0" x2="0" y2="0" />
+          <text id="g-pct" x="100" y="92" text-anchor="middle" class="g-pct">0%</text>
+          <text x="100" y="112" text-anchor="middle" class="g-sub">LOAD</text>
+        </svg>
+        <div class="load-detail" id="load-detail"></div>
+      </div>
+      <div class="heat" id="heat-box" data-hint="Reactor heat. Load above 100% builds it, load below 100% sheds it. At full heat the failsafe trips a capacitor off the reactor for 10 s, lowest priority first.">
+        <div class="row-label"><span>HEAT</span><span id="heat-val">0</span></div>
+        <div class="hbar"><div id="heat-fill" class="hbar-fill heat-fill"></div><i class="hbar-mark" style="left:80%"></i></div>
+        <div id="heat-warn" class="warn-text" hidden>⚠ OVERHEATING</div>
+      </div>
+      <div class="engines" data-hint="Engines are wired straight to the reactor. When the pilot burns hard, less is left for charging. In a minefield the engines get only what the capacitors leave; STARVED means the ship is drifting toward the mines.">
+        <div class="row-label"><span>ENGINES</span><span id="eng-val"></span></div>
+        <div class="hbar"><div id="eng-fill" class="hbar-fill eng-fill"></div></div>
+      </div>
+      <div class="auxbank" id="auxbank" data-hint="Aux bank: a reserve you switch onto capacitors with their AUX buttons (key A). It charges them without loading the reactor. Refills only in warp space.">
+        <div class="row-label"><span>AUX BANK</span><span id="aux-val"></span></div>
+        <div class="hbar"><div id="aux-fill" class="hbar-fill aux-fill"></div></div>
+        <div id="aux-out" class="muted small-text"></div>
+      </div>
+      <div class="triporder" data-hint="Trip order: when the reactor overheats, the failsafe trips these first. Drag the P badges on the capacitors, or select one and press [ or ] to change it.">
+        <div class="row-label"><span>TRIPS FIRST</span></div>
+        <ol id="trip-order" class="trip-list"></ol>
+      </div>
+    </aside>
+
+    <div class="caps" id="caps"></div>
+
+    <aside class="panel right">
+      <div class="panel-title">SHIP</div>
+      <div data-hint="Hull. Salvos the shields don't stop damage the hull. At 0 the ship is lost.">
+        <div class="row-label"><span>HULL</span><span id="hull-val"></span></div>
+        <div class="hbar tall"><div id="hull-fill" class="hbar-fill hull-fill"></div></div>
+      </div>
+      <div id="crew-status" class="crew-status" data-hint="Crew. If life support runs dry, the crew is crippled: gunners fire slower and miss more."></div>
+      <div class="jump-box" data-hint="Jump progress. The captain jumps when the window is open and the warp drive is full.">
+        <div class="row-label"><span id="jump-label">WARP</span><span id="jump-drive"></span></div>
+        <div class="hbar tall"><div id="jump-fill" class="hbar-fill drive-fill"></div></div>
+        <div id="jump-status" class="jump-status"></div>
+      </div>
+      <div class="route-box" data-hint="Mission route: three systems, then the Azurian world.">
+        <div class="row-label"><span>ROUTE</span></div>
+        <ol id="route" class="route"></ol>
+      </div>
+      <div class="damage-box" data-hint="Damage report. Damage slows chargers, lowers reactor output and weakens the thrusters. In warp space, damage control repairs half of it.">
+        <div class="row-label"><span>DAMAGE</span></div>
+        <ul id="damage-list" class="damage-list"><li class="muted">None</li></ul>
+      </div>
+    </aside>
+  </div>
+
+  <footer class="con-foot">
+    <span id="hint-bar" class="hint-bar">1–6 select · ↑↓ charge rate (Shift: ×5) · ←→ next system · A aux · [ ] priority · 0 zero · M max · Space pause · H hints</span>
+  </footer>
+
+  <div id="planning-banner" class="planning-banner" hidden>PAUSED: planning view (cost 10% of this mission's score). Space resumes.</div>
+  <div id="jump-flash" class="jump-flash" hidden>WARP</div>
+  <div id="narrow-note" class="narrow-note">The engine room needs a tablet or desktop screen. Turn the device sideways or use a wider window.</div>
+</section>
+
+<!-- ==================================================== Gunner turret -->
+<section id="scr-turret" class="screen" hidden>
+  <header class="con-head">
+    <span class="brand">BATTLELERT</span>
+    <span class="hd-item" id="tu-station">Gun 1 · Gunboat</span>
+    <span class="hd-item" id="tu-jump"></span>
+    <span class="hd-item hd-phase" id="tu-phase"></span>
+    <span class="hd-spacer"></span>
+    <button id="btn-tu-view" class="small">Wide view (W)</button>
+    <button id="btn-tu-options" class="small">Options</button>
+    <button id="btn-tu-bridge" class="small cp-back" title="Back to the bridge; the man you replaced takes his station again (B)" hidden>Bridge (B)</button>
+    <button id="btn-tu-testwin" class="small" title="Testing: end the mission now as a success at 75%.">Test win</button>
+    <button id="btn-tu-exit" class="small" hidden>Exit training</button>
+    <button id="btn-tu-pause" class="small">Pause</button>
+    <span class="hd-ver">v<span class="app-version"></span></span>
+  </header>
+  <div class="tu-main">
+    <aside class="panel tu-side" id="tu-gunside">
+      <div class="panel-title" id="tu-weapon">GUN 1</div>
+      <div class="tu-what muted small-text" id="tu-weapon-what"></div>
+      <div class="tu-bats" id="tu-bats"></div>
+      <div class="tu-toggles"><button id="tg-gunpick" class="tu-tg"></button><button id="tg-clickaim" class="tu-tg"></button></div>
+      <div class="tu-charge-wrap">
+        <div class="tu-vbar"><div class="tu-ticks" id="tu-ticks"></div><div id="tu-charge" class="tu-lvl"></div></div>
+        <div class="tu-readout">
+          <div class="row-label"><span>CHARGE</span></div>
+          <div class="tu-big" id="tu-mj"></div>
+          <div class="muted small-text" id="tu-shots"></div>
+          <div class="row-label tu-gap"><span>HIT RATE</span></div>
+          <div class="tu-acc" id="tu-acc"></div>
+          <div class="row-label tu-gap"><span>FEED</span></div>
+          <div class="tu-med" id="tu-feed"></div>
+          <div id="tu-state" class="tu-state"></div>
+        </div>
+      </div>
+      <div class="row-label"><span>TURRET</span></div>
+      <div id="tu-tdmg" class="tu-tdmg"></div>
+      <div id="tu-aimpad" class="tu-pad">◀ drag to aim ▶</div>
+    </aside>
+    <!-- The bridge (captain): one column, each station's status, meters and orders together -->
+    <aside class="panel tu-side cp-side" id="cp-side" hidden>
+      <div class="cp-sec" id="cp-sec-helm">
+        <div class="cp-hd">HELM</div>
+        <div class="cp-ln" id="cp-helm-ln"></div>
+        <div class="cp-ln" id="cp-hdg-ln"></div>
+        <div class="cp-ln" id="cp-nav-ln"></div>
+        <div class="cp-ln" id="cp-win-ln"></div>
+        <div class="cp-row"><button data-turn="-10" title="Course 10° to port (←; Shift 1°)">◀ 10°</button><button data-turn="10" title="Course 10° to starboard (→; Shift 1°)">10° ▶</button><button id="cp-resume" class="cp-wide" title="Back to the plotted course (R)">RESUME <small>(R)</small></button></div>
+        <div class="cp-row" id="cp-station-grp" hidden><span class="cp-row cp-fill" id="cp-station"></span></div>
+      </div>
+      <!-- A squadron (the Squadron test): the commander's orders and his ships, one line each -->
+      <div class="cp-sec" id="cp-sq" hidden>
+        <div class="cp-hd" id="cp-sq-hd">SQUADRON</div>
+        <div class="cp-ln" id="cp-sq-ln"></div>
+        <div class="cp-ln cp-sq-alert" id="cp-sq-ln2"></div>
+        <div class="cp-row cp-sq-stack" id="cp-sq-form"></div>
+        <div class="cp-sq-ships" id="cp-sq-ships"></div>
+        <div class="cp-ln cp-sq-hint" id="cp-sq-hint"></div>
+        <div class="cp-row cp-sq-sel" id="cp-sq-selrow"><button id="cp-sq-recall" title="Back to formation on the flagship (Z); the flagship back to her plot">RECALL</button><button id="cp-sq-hold" title="Hold fire: hidden till an enemy is close, then they open up (X)">HOLD FIRE</button><button id="cp-sq-clear" title="Clear the selection (C)">CLEAR</button></div>
+        <div class="cp-sq-card" id="cp-sq-card" hidden></div>
+        <div class="cp-hd">SPEED</div>
+        <div class="cp-row" id="cp-sq-speed1"></div><div class="cp-row" id="cp-sq-speed2"></div>
+        <div class="cp-row"><button id="cp-sq-bridge" class="cp-wide" title="Drop down to the flagship's bridge and captain her yourself (D). Once a mission it costs 1 squadron reputation and 1 morale to the flag captain.">FLAG BRIDGE <small>(D)</small></button></div>
+      </div>
+      <!-- The telegraphs: engines (flank at the top down to stop), the gunners' order, the engineer's stance; meters over each -->
+      <div class="cp-teles" id="cp-teles">
+        <span class="cp-lbl">ENGINES</span><span class="cp-lbl">GUNNERS</span><span class="cp-lbl">ENGINEER</span>
+        <div class="cp-meters" id="cp-m-eng"></div><div class="cp-meters" id="cp-m-gun"></div><div class="cp-meters" id="cp-m-engr"></div>
+        <div class="cp-mv" id="cp-v-eng"></div><div class="cp-mv" id="cp-v-gun"></div><div class="cp-mv" id="cp-v-engr"></div>
+        <div class="cp-tbtns" id="cp-tele"></div><div class="cp-tbtns" id="cp-gunord"></div><div class="cp-tbtns" id="cp-stance"></div>
+      </div>
+      <div class="cp-sec cp-torps" id="cp-sec-torp">
+        <div class="cp-hd" id="cp-torp-lbl">TORPEDOES</div>
+        <div class="cp-ln" id="cp-torp-ln"></div>
+        <div class="cp-row" id="cp-pilot-row"></div>
+        <div class="cp-row" id="cp-brk-row"><button data-brk="-1" title="Break to port (Z)">◀ BREAK</button><button data-brk="0" title="Take it on the shields (X)">TAKE IT</button><button data-brk="1" title="Break to starboard (C)">BREAK ▶</button></div>
+        <div class="cp-row"><button id="cp-cover" title="Put your ship in the way of a burst at the ship you escort (Q)" hidden>COVER <small>(Q)</small></button></div>
+      </div>
+      <div class="cp-sec">
+        <div class="cp-row" id="cp-ship-grp" hidden><button id="cp-main" title="Swing the bow onto the biggest ship for the main gun (M)" hidden>MAIN GUN <small>(M)</small></button><button id="cp-hangar" title="Launch or recover the gunboat squadron (L)" hidden>LAUNCH <small>(L)</small></button></div>
+        <div class="cp-row"><button id="cp-warn" title="Warn engineering of a burn (E)">WARN ENG <small>(E)</small></button><button id="cp-jump" class="cp-jump cp-wide" title="Order the warp (J)">WARP <small>(J)</small></button></div>
+        <div class="cp-row"><button id="cp-drop" class="cp-wide" title="Leave the bridge to run a station yourself (D). Once a mission it costs 1 command reputation and 1 morale to each man you replace.">STATIONS <small>(D)</small></button></div>
+        <div class="cp-row cp-drop-pick" id="cp-drop-pick" hidden></div>
+        <div class="cp-row" id="cp-sq-back-row" hidden><button id="cp-sq-back" class="cp-wide" title="Back to commanding the squadron; the flag captain takes his bridge again (Q)">SQUADRON <small>(Q)</small></button></div>
+      </div>
+    </aside>
+    <!-- The helm (pilot station): replaces the gun panel -->
+    <aside class="panel tu-side hm-side" id="tu-helm" hidden>
+      <div class="panel-title">HELM</div>
+      <div class="hm-order" id="hm-order"></div>
+      <div class="hm-alerts" id="hm-alerts"></div>
+      <div class="row-label"><span>ENGINES</span></div>
+      <div class="hm-tele-txt" id="hm-tele-txt"></div>
+      <div class="hm-tele" id="hm-tele"></div>
+      <div class="hm-g"><button id="hm-gdown">− 1 G</button><span id="hm-gval"></span><button id="hm-gup">+ 1 G</button></div>
+      <div class="hm-trim" id="hm-trim"><button data-trim="port" data-dir="-1">P −</button><button data-trim="port" data-dir="1">P +</button><span>TRIM ¼ G</span><button data-trim="stbd" data-dir="-1">S −</button><button data-trim="stbd" data-dir="1">S +</button></div>
+      <div class="hm-engdmg" id="hm-engdmg" hidden></div>
+      <div class="row-label"><span>THRUST</span><span id="hm-thrust"></span></div>
+      <div class="hbar"><div id="hm-thrust-fill" class="hbar-fill eng-fill"></div></div>
+      <div class="row-label"><span id="hm-rx-title">REACTOR</span><span class="hm-rx-key">▲ load · ▼ heat</span></div>
+      <div class="hm-rx" id="hm-rxs"></div>
+      <div class="row-label"><span>TURN</span><span id="hm-turn"></span></div>
+      <div class="hm-turnbar"><i class="safe" id="hm-turn-safe"></i><i class="want" id="hm-turn-want"></i><i class="now" id="hm-turn-now"></i></div>
+      <div class="row-label"><span>HULL STRESS</span><span id="hm-stress-val"></span></div>
+      <div class="hbar"><div id="hm-stress" class="hbar-fill stress-fill"></div></div>
+      <div class="hm-btns"><button id="hm-auto">AUTOPILOT <small>(T)</small></button><button id="hm-warn">WARN ENGINEERING <small>(E)</small></button></div>
+    </aside>
+    <div class="tu-field" id="tu-field"><canvas id="tu-canvas"></canvas>
+      <!-- The helm wheel: drag it left or right; it stays where you leave it -->
+      <div class="hm-wheel" id="hm-wheel" hidden>
+        <svg viewBox="-60 -60 120 120" aria-label="Helm wheel"><g id="hm-wheel-g">
+          <circle r="40" class="w-rim"/><circle r="9" class="w-hub"/>
+          <g class="w-spokes"><line x1="0" y1="-52" x2="0" y2="52"/><line x1="-52" y1="0" x2="52" y2="0"/><line x1="-36.8" y1="-36.8" x2="36.8" y2="36.8"/><line x1="-36.8" y1="36.8" x2="36.8" y2="-36.8"/></g>
+          <circle cx="0" cy="-52" r="5" class="w-top"/>
+        </g></svg>
+        <div class="hm-wheel-txt" id="hm-wheel-txt"></div>
+        <button id="hm-mid" class="small">MIDSHIPS (0)</button>
+      </div>
+      <!-- Wide view: the side panels give way to this overlay -->
+      <div class="tu-hud" id="tu-hud" hidden>
+        <div class="hud-top">
+          <span class="hud-guns" id="hud-guns"></span>
+          <span id="hud-gun"></span>
+          <span>HULL <i class="hud-bar"><i id="hud-hull" class="hull-fill"></i></i> <b id="hud-hull-val"></b></span>
+          <span>SHIELDS <i class="hud-bar"><i id="hud-shield" class="tu-shield-fill"></i></i> <b id="hud-shield-val"></b></span>
+          <span id="hud-rec"></span>
+          <span id="hud-tally"></span>
+        </div>
+        <div class="hud-bottom" id="hud-comms"></div>
+        <div class="hud-btns">
+          <span class="hud-tubes" id="hud-tubes"><button id="hud-pt-1">LAUNCH 1</button><button id="hud-pt-2">LAUNCH 2</button></span>
+          <button id="hud-main" hidden>MAIN GUN</button>
+          <button id="hud-call">CALL FOR POWER</button>
+          <button id="hud-fire" class="hud-fire">FIRE</button>
+        </div>
+      </div>
+    </div>
+    <aside class="panel tu-side">
+      <div class="cp-map" id="cp-mapbox" hidden>
+        <div class="cp-mapwrap" id="cp-mapwrap"><canvas id="cp-map" aria-label="System map: the plotted course; tap a point to steer for it, drag to pan"></canvas>
+          <div class="cp-zoom"><button data-zoom="1" title="Zoom in (+)">+</button><button data-zoom="-1" title="Zoom out (−)">−</button><button data-zoom="0" title="The whole map (F)">FIT</button></div></div>
+        <button class="cp-swap" id="cp-swap" title="Swap the map and the battle view (V)">⇄ SWAP</button>
+      </div>
+      <div class="panel-title">SHIP</div>
+      <div class="row-label"><span>HULL</span><span id="tu-hull-val"></span></div>
+      <div class="hbar tall"><div id="tu-hull" class="hbar-fill hull-fill"></div></div>
+      <div class="row-label"><span>SHIELDS</span><span id="tu-shield-val"></span></div>
+      <div class="hbar"><div id="tu-shield" class="hbar-fill tu-shield-fill"></div></div>
+      <div class="row-label"><span id="tu-rec-label">RECOVERY</span><span id="tu-rec-val"></span></div>
+      <div class="hbar"><div id="tu-rec" class="hbar-fill drive-fill"></div></div>
+      <div id="tu-moabrow" hidden>
+        <div class="row-label"><span>MOAB</span><span id="tu-moab-val"></span></div>
+        <div class="hbar"><div id="tu-moab" class="hbar-fill moab-fill"></div></div>
+      </div>
+      <div id="tu-mainrow" hidden>
+        <div class="row-label"><span>MAIN GUN</span><span id="tu-main-val"></span></div>
+        <div class="hbar"><div id="tu-main-bar" class="hbar-fill main-fill"></div></div>
+      </div>
+      <div id="tu-tally" class="tu-tally"></div>
+      <div class="row-label"><span>DAMAGE</span></div>
+      <ul id="tu-damage" class="damage-list tu-damage"><li class="muted">None</li></ul>
+      <div id="tu-comms" class="comms-log tu-comms" aria-live="polite"></div>
+      <div class="tu-tubes" id="tu-tubes">
+        <button id="btn-pt-1" class="tu-pt">LAUNCH 1 <small>(1)</small></button>
+        <button id="btn-pt-2" class="tu-pt">LAUNCH 2 <small>(2)</small></button>
+      </div>
+      <button id="btn-tu-main" class="tu-main" hidden>MAIN GUN <small>(M)</small><i class="tu-main-bar"><i id="tu-main-fill"></i></i></button>
+      <button id="btn-tu-call" class="tu-call">CALL FOR POWER <small>(C)</small></button>
+      <button id="btn-tu-fire" class="tu-fire">FIRE</button>
+      <button id="hm-launch" class="tu-fire hm-launch" hidden>LAUNCH <small>(Space)</small></button>
+    </aside>
+    <!-- The helm's compass strip: the compass across the top of the view, standing up at the far right -->
+    <div class="hm-strip" id="hm-strip" hidden>
+      <button class="hm-nudge" id="hm-nudge-up" title="Course 1° to starboard ( ] )">▲ +1°</button>
+      <div class="hm-strip-box" id="hm-strip-box"><canvas id="hm-strip-cv" aria-label="Compass strip: tap a heading, or drag up and down to dial a course"></canvas></div>
+      <button class="hm-nudge" id="hm-nudge-dn" title="Course 1° to port ( [ )">▼ −1°</button>
+    </div>
+  </div>
+  <!-- (the captain's orders are all in the BRIDGE column now) -->
+  <div class="cp-orders" id="cp-orders" hidden></div>
+  <footer class="con-foot"><span class="hint-bar" id="tu-keys">← → slide · Space fire (hold) · 1 2 torpedoes · C call for power · P pause · Mouse: move to aim, hold button to fire · Touch: drag to aim, hold FIRE</span></footer>
+  <div class="narrow-note">The turret needs a tablet or desktop screen. Turn the device sideways or use a wider window.</div>
+</section>
+
+<!-- ============================================================ Pause -->
+<section id="ov-pause" class="overlay blank" hidden>
+  <div class="ov-card">
+    <h1>Paused</h1>
+    <p>The screen is blank, so a break costs nothing.</p>
+    <div class="menu">
+      <button id="btn-resume" class="big primary">Resume (Space)</button>
+      <button id="btn-look">Show the console for planning (costs 10% of the mission's score)</button>
+      <button id="btn-options-pause">Options</button>
+      <button id="btn-abandon" class="danger">Abandon ship</button>
+    </div>
+    <p id="pause-voice" class="muted small-text"></p>
+  </div>
+</section>
+
+<!-- ===================================================== Rapid sign-offs -->
+<section id="ov-train" class="overlay" hidden>
+  <div class="ov-card">
+    <h1>Pilot training</h1>
+    <p>An endless buoy course: keep <b style="color:#ff4d4d">red</b> buoys to port (on your left) and <b style="color:#3dff7a">green</b> to starboard. No enemies, no orders. It's scored and rated, but earns no reputation and isn't saved to your record. Fly as long as you like; Exit training ends it.</p>
+    <div id="train-ships" class="menu"></div>
+    <div class="menu"><button id="btn-train-close">Back</button></div>
+  </div>
+</section>
+<section id="ov-train-done" class="overlay" hidden>
+  <div class="ov-card">
+    <h1>Training complete</h1>
+    <div id="train-summary"></div>
+    <p class="muted">Not saved to your record.</p>
+    <div class="menu"><button id="btn-train-again">Fly again</button><button id="btn-train-done" class="primary">Done</button></div>
+  </div>
+</section>
+
+<section id="ov-signoffs" class="overlay" hidden>
+  <div class="ov-card">
+    <h1>Rapid sign-offs</h1>
+    <div id="signoffs-body"></div>
+    <div class="menu"><button id="btn-signoffs-close" class="primary">Done</button></div>
+  </div>
+</section>
+
+<!-- ========================================================= warp space -->
+<section id="ov-grav" class="overlay" hidden>
+  <div class="ov-card wide">
+    <h1 id="grav-title">In warp space</h1>
+    <div id="grav-body"></div>
+    <div class="menu"><button id="btn-grav-go" class="big primary">Drop out of warp space</button></div>
+  </div>
+</section>
+
+<!-- The plotting screen: in warp space before each system (clock stopped) -->
+<section id="ov-plot" class="overlay" hidden>
+  <div class="ov-card plot-card">
+    <h1 id="pl-title">Plot the course</h1>
+    <div class="plot-main">
+      <div class="plot-mapbox" id="pl-mapbox"><canvas id="pl-map" aria-label="System map: tap to lay a waypoint, tap a waypoint to remove it"></canvas></div>
+      <div class="plot-side">
+        <div class="plot-squad" id="pl-squad" hidden></div>
+        <p class="muted small-text" id="pl-hint">Tap the map to lay waypoints (1 to 8 legs, a leg more for each checkpoint) to the warp zone; the last leg must run along the warp heading (the green arrow, ±10°). Tap a waypoint to remove it. Tap a leg's engine order to change it. A leg may cross asteroids or a minefield (amber: rocks or mines to dodge), never an enemy area.</p>
+        <div class="plot-legs" id="pl-legs"></div>
+        <div class="plot-time" id="pl-time"></div>
+        <div class="plot-warn" id="pl-warn"></div>
+        <div class="plot-btns">
+          <button id="pl-nav">Navigator's plot <small>(N)</small></button>
+          <button id="pl-undo">Undo <small>(U)</small></button>
+          <button id="pl-clear">Clear</button>
+          <button id="pl-new" hidden>New mission</button>
+        </div>
+        <button id="pl-go" class="big primary">Accept <small>(Enter)</small></button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========================================================= Debriefing -->
+<section id="scr-debrief" class="screen page" hidden>
+  <div class="sheet">
+    <h1 id="db-title">Debriefing</h1>
+    <p id="db-lede" class="lede"></p>
+    <div class="score-row">
+      <div class="score-big"><span id="db-score">0</span><small>score</small></div>
+      <div id="db-parts" class="score-parts"></div>
+    </div>
+    <div class="two-col">
+      <div><h2>What went well</h2><p id="db-good"></p></div>
+      <div><h2>Worst moment</h2><p id="db-worst"></p></div>
+    </div>
+    <h2 id="db-jumps-title">Warp by warp</h2>
+    <table class="db-table" id="db-jumps"></table>
+    <h2>Details</h2>
+    <div id="db-detail" class="db-detail"></div>
+    <div id="db-career" class="db-career" hidden></div>
+    <div class="actions">
+      <button id="btn-db-hub" class="primary" hidden>Career hub</button>
+      <button id="btn-db-again">Fly again (same seed)</button>
+      <button id="btn-db-new" class="primary">New mission</button>
+      <button id="btn-db-save">Save debriefing</button>
+      <button id="btn-db-title">Title screen</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================= Tests -->
+<section id="ov-tests" class="overlay" hidden>
+  <div class="ov-card">
+    <h1>Tests</h1>
+    <p class="muted small-text">Fly any station without a career. Nothing is saved to your record.</p>
+    <div class="test-grid">
+      <button id="btn-start" class="small">Engine room</button><span class="muted">Destroyer</span><span></span>
+      <button id="btn-gunner" class="small">Gunner turret</button><span class="muted">Gunboat</span>
+      <select id="gun-pick" aria-label="gun">
+        <option value="pulse">Pulse cannon</option>
+        <option value="rail">Rail gun</option>
+        <option value="ion">Ion gun</option>
+      </select>
+      <button id="btn-ring" class="small">Gunner ring</button><span class="muted">Destroyer</span><span></span>
+      <button id="btn-helm" class="small">Pilot helm</button><span class="muted">ship</span><select id="ship-pick" aria-label="ship"></select>
+      <button id="btn-captain" class="small">Captain bridge</button><span class="muted">ship</span><select id="cap-pick" aria-label="ship"></select>
+      <button id="btn-squadron" class="small">Squadron</button><span class="muted">Destroyer</span><span class="muted">4 ships</span>
+    </div>
+    <div class="test-seed">
+      <label for="seed-input">Seed</label>
+      <input id="seed-input" type="number" min="1" max="999999" inputmode="numeric">
+      <button id="btn-seed-new" class="small" title="Roll a new seed">New</button>
+    </div>
+    <p class="muted small-text">Same seed, same mission. Share it to compare runs.</p>
+    <div class="menu"><button id="btn-tests-close">Close</button></div>
+  </div>
+</section>
+
+<!-- =========================================================== Options -->
+<section id="ov-options" class="overlay" hidden>
+  <div class="ov-card">
+    <h1>Options</h1>
+    <div class="opt-grid">
+      <label for="vol-fx">Effects</label><input id="vol-fx" type="range" min="0" max="100" step="5">
+      <label for="vol-alarm">Alarms</label><input id="vol-alarm" type="range" min="0" max="100" step="5">
+      <label for="vol-chat">Radio clicks</label><input id="vol-chat" type="range" min="0" max="100" step="5">
+      <label for="opt-voice">Spoken messages</label><input id="opt-voice" type="checkbox">
+      <label for="vol-voice">Voices</label><input id="vol-voice" type="range" min="0" max="100" step="5">
+      <span></span><div><button id="btn-voice-test" class="small">Test crew voices</button></div>
+    </div>
+    <p id="voice-status" class="muted small-text"></p>
+    <details id="voice-details" class="voice-details">
+      <summary>Which voice each crew member uses</summary>
+      <p id="voice-count" class="muted small-text"></p>
+      <table id="voice-table" class="keys"></table>
+      <p class="muted small-text">For more natural voices on an iPad: Settings &gt; Accessibility &gt; Spoken Content &gt; Voices &gt; English. Download a few voices marked Enhanced or Premium (different accents work well), then reload the game.</p>
+    </details>
+    <div class="opt-grid">
+      <label for="opt-contrast">High-contrast theme</label><input id="opt-contrast" type="checkbox">
+      <label for="opt-hints">Hint mode</label><input id="opt-hints" type="checkbox">
+    </div>
+    <h2>Engine room</h2>
+    <table class="keys">
+      <tr><td>1 – 9</td><td>Select a system</td></tr>
+      <tr><td>↑ ↓</td><td>Raise or lower its charge rate (hold Shift for big steps)</td></tr>
+      <tr><td>← →</td><td>Select the next system left or right</td></tr>
+      <tr><td>0 / M</td><td>Charge rate to zero / to maximum</td></tr>
+      <tr><td>A</td><td>Switch the aux bank onto or off the selected capacitor</td></tr>
+      <tr><td>[ ]</td><td>Raise or lower its priority (what trips first)</td></tr>
+      <tr><td>R</td><td>Move it to the next reactor (battleship and up; the shields draw from all of them and don't move)</td></tr>
+      <tr><td>Space</td><td>Pause and resume</td></tr>
+      <tr><td>Esc</td><td>Back to the fight after looking at the paused console</td></tr>
+      <tr><td>H</td><td>Hint mode</td></tr>
+      <tr><td>Enter</td><td>Continue after the report on each warp (after the last one, on to the debriefing)</td></tr>
+    </table>
+    <h2>At the gun</h2>
+    <table class="keys">
+      <tr><td>← → (or A D)</td><td>Turn the gun clockwise or counterclockwise around the ship</td></tr>
+      <tr><td>Space (or ↑)</td><td>Fire (hold)</td></tr>
+      <tr><td>C</td><td>Call for power</td></tr>
+      <tr><td>1 – 8</td><td>Take that gun (ships with two guns or more); you trade places with its gunner</td></tr>
+      <tr><td>1 / 2</td><td>Launch torpedo 1 or 2 (gunboat)</td></tr>
+      <tr><td>M</td><td>Fire the main gun once it's charged (light cruiser and up)</td></tr>
+      <tr><td>O</td><td>Change the standing order of the gun you hold: P point defense, L stop launches, H hunt, F free fire</td></tr>
+      <tr><td>W</td><td>Wide view on or off (the battle fills the screen, bow to the right)</td></tr>
+      <tr><td>P / Esc</td><td>Pause and resume</td></tr>
+      <tr><td>Enter</td><td>Continue after the report on each warp (after the last one, on to the debriefing)</td></tr>
+      <tr><td>Mouse</td><td>The gun follows the pointer around the ship; click a ship or torpedo to swing to it; hold the button to fire</td></tr>
+      <tr><td>Touch</td><td>Touch the view to point the gun, or drag on the aim pad; tap a ship or torpedo to swing to it; hold FIRE</td></tr>
+    </table>
+    <h2>At the helm</h2>
+    <table class="keys">
+      <tr><td>← →</td><td>Turn the wheel to port or starboard (it stays where you leave it)</td></tr>
+      <tr><td>0</td><td>Wheel amidships</td></tr>
+      <tr><td>↑ ↓</td><td>Both engines one order up or down (full astern … stop … slow, cruise, standard, full, flank)</td></tr>
+      <tr><td>Q / A</td><td>Port engine one order up / down</td></tr>
+      <tr><td>P / L</td><td>Starboard engine one order up / down</td></tr>
+      <tr><td>+ / −</td><td>Both engines one G more or less ("all ahead 3 G")</td></tr>
+      <tr><td>W / S</td><td>Trim the port engine ¼ G up / down (to match a damaged engine)</td></tr>
+      <tr><td>O / K</td><td>Trim the starboard engine ¼ G up / down</td></tr>
+      <tr><td>T</td><td>Autopilot on or off (it holds the heading you're on)</td></tr>
+      <tr><td>[ ]</td><td>Course 1° to port or starboard on autopilot (like the ▼ ▲ nudge buttons on the strip)</td></tr>
+      <tr><td>E</td><td>Warn engineering that a burn is coming</td></tr>
+      <tr><td>Space</td><td>Launch from the carrier's tube</td></tr>
+      <tr><td>Esc</td><td>Pause and resume</td></tr>
+      <tr><td>Enter</td><td>Continue after the carrier report</td></tr>
+      <tr><td>Mouse / touch</td><td>Drag the wheel; tap an order on the telegraph (the middle column orders both engines); tap the compass across the top to steer there on autopilot; slide the strip at the far right up and down: on autopilot it sets the course, by hand it's the wheel; tap the captain's order or the warp heading to fly it on autopilot</td></tr>
+    </table>
+    <h2>On the bridge</h2>
+    <table class="keys">
+      <tr><td>← →</td><td>Course 10° to port or starboard (Shift: 1°), a course of your own</td></tr>
+      <tr><td>R</td><td>Resume the plotted course</td></tr>
+      <tr><td>↑ ↓</td><td>Engines one order up or down (stop … flank)</td></tr>
+      <tr><td>Z / X / C</td><td>On a torpedo burst: break to port / take it on the shields / break to starboard</td></tr>
+      <tr><td>G</td><td>Gunners' order: torpedoes, launchers, hunt, free fire</td></tr>
+      <tr><td>B</td><td>Pilot's break policy (gunboat to destroyer): evade, hold course, steady</td></tr>
+      <tr><td>S</td><td>Engineer's stance: balanced, shields first, guns first, main gun first (light cruiser and up), drive first, MOAB: planet buster first (dreadnought)</td></tr>
+      <tr><td>E</td><td>Warn engineering that a burn is coming</td></tr>
+      <tr><td>J</td><td>Order the warp (once it's ready); on a gunboat, the recovery</td></tr>
+      <tr><td>M</td><td>Light cruiser and up: MAIN GUN, swing the bow onto the biggest ship until the crew fires, then back to the plot</td></tr>
+      <tr><td>L</td><td>Cruiser and up: LAUNCH or RECOVER the gunboat squadron</td></tr>
+      <tr><td>Q</td><td>Escort mission: COVER the ship the burst is coming at (your ship takes it on its shields)</td></tr>
+      <tr><td>1 2 3 4</td><td>Escort mission: keep station ahead of her, off her port beam, off her starboard beam, or astern (a wingman on it swaps with you)</td></tr>
+      <tr><td>V</td><td>Swap the map and the battle view (the map starts in the middle, the battle in the box at the right)</td></tr>
+      <tr><td>+ − / F</td><td>Zoom the map in or out / the whole map again</td></tr>
+      <tr><td>D</td><td>STATIONS: drop down to a station yourself; then E the engine room, H the helm, or a gun's number</td></tr>
+      <tr><td>B</td><td>At a station you dropped down to: back to the bridge</td></tr>
+      <tr><td>Esc</td><td>Pause and resume</td></tr>
+      <tr><td>N / U / Enter</td><td>Plotting screen: navigator's plot / undo the last waypoint / accept</td></tr>
+      <tr><td>Mouse / touch</td><td>Tap the compass across the top, or a point on the map, to steer there; drag the map to pan it, pinch or use the mouse wheel (or + − FIT) to zoom; ⇄ SWAP swaps the map and the battle view; every order is in the column at the left: the helm, the telegraphs (engines, gunners, engineer) with their meters, torpedoes, and the main gun, launch, warn and warp. Plotting: tap the map to lay a waypoint, tap a waypoint to remove it, tap a leg's engine order to change it</td></tr>
+    </table>
+    <h2>Commanding a squadron</h2>
+    <table class="keys">
+      <tr><td>1 to 4</td><td>Select that ship (1 is the flagship); again to drop her. Tapping a ship on the map, or her line, does the same</td></tr>
+      <tr><td>A</td><td>Select every ship</td></tr>
+      <tr><td>Tap the map</td><td>On one of your ships: select or drop her. With ships selected: on a target, send them to it (a ship already sent somewhere changes to it); on open space, send them there. With none: on a target, its card; on open space, steer the flagship</td></tr>
+      <tr><td>Z / X / C</td><td>The ships selected: RECALL to formation / HOLD FIRE (or OPEN FIRE) / clear the selection</td></tr>
+      <tr><td>O</td><td>Formation: line ahead, line abreast</td></tr>
+      <tr><td>← → / R / ↑ ↓</td><td>The flagship's course and the squadron's speed, as on the bridge</td></tr>
+      <tr><td>J</td><td>Order the warp: the squadron goes together once every ship has formed up</td></tr>
+      <tr><td>D / Q</td><td>Drop down to the flagship's bridge and captain her yourself / back to commanding the squadron</td></tr>
+      <tr><td>V, + − / F, Esc</td><td>Swap the map and the battle view, zoom, pause, as on the bridge</td></tr>
+      <tr><td>Plotting screen</td><td>Plot the flagship's course; tap a ship in YOUR SHIPS to send her to the next target in the report</td></tr>
+    </table>
+    <div class="menu"><button id="btn-options-close" class="primary">Done</button></div>
+  </div>
+</section>
+
+<!-- ========================================================= How to play -->
+<section id="ov-how" class="overlay" hidden>
+  <div class="ov-card wide">
+    <h1>How to play</h1>
+    <p>A career aboard the warships carrying humanity's planet buster. Take jobs as engineer, gunner or pilot from the gunboat up to the dreadnought. Once you're qualified at all three stations on a class, and have commanded the class below, you may command it: <b>Command jobs</b>, from coxswain of a gunboat to captain of a dreadnought (rank Command-N; rapid sign-offs don't count toward command, but the station qualifications they give do). Each station has its own storyline of the war: three story missions per ship class, in any order, each offered until you complete it, and the dreadnought's three are versions of the storyline's finale (winning one completes it). Story missions you skip show under Requalifying jobs; a successful mission qualifies you on that class. Command jobs are story missions too: the Captain storyline, from Coxswain on a gunboat to the planet buster on a dreadnought, with your orders from Commodore Rusk and advice from Captain Vale; some on the gunboat and destroyer escort are escort missions. Once you've played every story mission on the class you command and can't yet command the next, plain Command jobs fill in. <b>Reputation</b> is your standing in the fleet, one for each path (a fine engineer can be a poor pilot): it starts at 50 and goes up and down with every mission. A success +1, and +2 more at tech level 5 or +1 at tech level 6 (a success in an old ship gets talked about); a failure −1; ship destroyed −2; abandoned ship −1. On the bridge also: escorted ship lost −1, planet buster drop missed −3, a gunboat squadron left behind −3, and −1 for each crewman killed. It never goes below 0. Your command reputation decides who will sign on with you. Every ship is named after a real warship and keeps a service record in your career file. A ship destroyed or abandoned is lost: its record is closed, and the next ship of that name is a new one with a new hull number (a lost gunboat's PT number never comes back). The career hub's <b>Naval registry</b> lists every ship by class and tech level; tap one for its card: its picture, its statistics and its service career.</p>
+    <h2>The engine room</h2>
+    <p>The reactor can't feed everything at once, so you decide where the power goes, second by second.</p>
+    <ol class="tight">
+      <li><b>Read the forecast strip.</b> Salvos, evasive burns and gun requests are announced seconds before they land.</li>
+      <li><b>Shift charge to meet the next demand.</b> Drag a capacitor's charge-rate slider, or select it with 1–9 and use ↑↓. The controller ramps toward your setting over a second or two, so start early.</li>
+      <li><b>Keep heat under the line.</b> Load over 100% heats the reactor. At full heat the failsafe trips capacitors off the reactor for 10 s, lowest priority first. Set the priority order so the right things trip.</li>
+      <li><b>Spend aux power to bridge a gap.</b> The aux bank charges a capacitor without loading the reactor. It only refills between warps.</li>
+      <li><b>Charge the warp drive.</b> When the warp window opens and the drive is full, the captain warps. On a dreadnought the last system is the drop: no warp out; once the planet buster is full and the window opens, it's launched at the Azurian target world (industrial, military or transportation). Miss the drop window (10 s after it opens) and the mission fails.</li>
+      <li><b>Every capacitor bleeds.</b> The fuller it is the more it loses, so holding everything full keeps costing reactor power. Charge what the forecast says is coming.</li>
+      <li><b>Bigger ships add more.</b> Destroyer escorts and up have a CIWS (close-in weapon system): it stops most drive hunters' strikes on the warp drive while it has charge (each costs a chunk of it), though now and then one gets through. Light cruisers and up have a main gun that fires by itself whenever its capacitor is full and a target is up. Cruisers and up carry gunboats: charge the launchers for the launch near the start of each system, then the arresters to recover them near the end. No warp until they're aboard, unless the hull is at 20% or less: then the hangar bay is destroyed (no launch, no recovery, and no penalty for the calls), and gunboats still out are left behind.</li>
+      <li><b>The biggest ships.</b> Battleships have two reactors and dreadnoughts three: move capacitors between them to balance the load. The shields draw evenly from every reactor (A+B), like the engines, so turning them up spreads across them all; switched to aux, they take an even share from every reactor's aux bank too. Every other capacitor's aux comes from its own reactor's bank. The dreadnought also carries the planet buster, which must be full before the final warp.</li>
+      <li><b>Minefields.</b> No enemy fire, but the engines get only what the capacitors leave of the reactor. Ease off charging during each weave, or the ship drifts into mines.</li>
+    </ol>
+    <p>Shields stop salvos; whatever gets through damages the hull, and damage slows chargers, lowers reactor output and weakens the thrusters. Fed guns kill enemies faster, and a dead enemy fires no more salvos. Keep life support topped up, or the crew falters.</p>
+    <p class="muted">Not every salvo is announced; surprises are rare. Pausing is free; looking at the console while paused costs 10% of the mission's score.</p>
+    <p class="muted">For testing, every station has a <b>Test win</b> button in its top bar: it ends the mission at once as a success scored 75%, earning a success's reputation and qualifying you on the class.</p>
+    <h2>The enemy</h2>
+    <p>Azurian ships fire torpedoes in three sizes: <b>darts</b> (small and fast, hard to shoot down, light hits: interceptors), <b>torpedoes</b> (raiders, frigates, cruisers) and <b>ship killers</b> (slow and easy to hit, but huge: cruisers now and then, battleships and the fortress). They also carry <b>guns</b>: once a wave closes ("Tactical: they're in gun range."), its ships keep up a steady fire that only the shields stop. Drive hunters (destroyer escort and up) fire missiles at the warp drive, and mines are the same size everywhere. An enemy is equally strong whatever ship you're on and whatever station you serve at; bigger ships meet more of them, and bigger ones. When several groups are due at once, they come in a few seconds apart, one after another. A group that has lost ships fires fewer torpedoes, at every station: in the engine room, where you can't see its ships, the more of it the guns have destroyed, the fewer of its salvos come. Our guns carry a Mk number, the ship's class (Mk1 on a gunboat to Mk9 on a dreadnought): each Mk hits harder.</p>
+    <h2>At the gun</h2>
+    <p>Your ship sits in the middle of the view inside its oval shield, and enemies come in from every side, mostly ahead and on the flanks. Your engineer runs the power.</p>
+    <ol class="tight">
+      <li><b>Aim.</b> Your gun rides the shield's rim inside its arc (the lit part of the rim) and fires straight out. It follows the mouse or trackpad around the ship; a finger on the view does the same, or drag on the aim pad; ← → turn it. Click or tap a ship or torpedo and the gun swings to it, holding fire until it's on.</li>
+      <li><b>Fire.</b> Hold Space, the mouse button or FIRE. The dotted line is your line of fire and the dashed curve your range. Rail and ion bolts stop at the range line; pulse bolts fly on past it but hit far weaker.</li>
+      <li><b>Weapons.</b> Each hits harder against its best targets: the pulse cannon (fast, light, short) against interceptors; the rail gun (slow, heavy, long) against raiders, siege lines and capital ships; the ion gun against drive hunters, and a hit drains the target's weapons for 4 s.</li>
+      <li><b>Power.</b> Every shot drains your gun's capacitor. Release FIRE to let it recharge, or call for power (C) and the engineer pours charge into it for a few seconds.</li>
+      <li><b>Torpedoes.</b> Enemy salvos are torpedoes; a ship about to fire glows red at the nose. The shields take them, but you can shoot one down first, and a dead ship fires no more.</li>
+      <li><b>Several guns.</b> You aim one; your gun crew works the others. They're people, not machines: each gunner has a skill (on the gun cards), reacts slower than you, aims rougher and now and then goes after the wrong target, so they need you. A fresh crew comes with every mission. Take a gun with its number key or its card; you trade places with its gunner. The letter on each card is its gunner's standing order: P point defense (torpedoes first), L stop launches (ships charging to fire first), H hunt (the ships its weapon is best against), F free fire. Take a gun and press O, or tap its letter, to change it; a green letter is the suggestion for this fight.</li>
+      <li><b>Damage.</b> Guns sit outside the shields. A torpedo that gets through can damage a gun's charger and turret: it turns slower, fires slower or loses range. Damage control repairs half of it between systems.</li>
+      <li><b>Bigger ships add more.</b> Gunboats carry two homing torpedoes (1 and 2), reloaded every sortie. Light cruisers and up have a main gun off the bow: press M when it's charged and the whole charge goes into the first ship on that line; the pilot swings the bow toward the biggest target, which tries to slide away. Cruisers launch a gunboat squadron that strafes the enemy and shoots down nearby torpedoes. In minefields the mines sit still and stream past from ahead as the ship moves through them (nobody steers round them at the gun): shoot the ones on a collision course before they reach the shield.</li>
+      <li><b>Drive hunters.</b> From the destroyer escort up, drive hunters fire teal missiles that swing around the shield into the stern, at the warp drive. The CIWS mounts there fire on them by themselves while the CIWS has charge and stop most of them; one that gets through drains the drive. Shoot them down on the way in. The ion gun is best against the hunters.</li>
+      <li><b>Azurian capital ships.</b> One big hull with escorts, holding far out: a frigate (gunboats now and then), a cruiser (heavy cruisers and up) whose torpedoes come in pairs, and a battleship (battleships and dreadnoughts) whose torpedoes come in threes. Lighter ships keep joining the fight while it lasts. The pilot swings the main gun onto them, and rail guns do extra damage. On a dreadnought, the final system is the fortress guarding the Azurian world: it sits dead ahead, never moves and keeps firing until the planet buster is away, unless you destroy it first.</li>
+      <li><b>Views and switches.</b> W switches to wide view: the side panels give way to an overlay and the battle fills the screen, bow to the right. Switches on the left panel let you take a gun by clicking it on the view, or turn click-to-aim off.</li>
+    </ol>
+    <h2>At the helm</h2>
+    <p>The pilot flies the ship in the same view the gunner uses: your ship stays in the middle, bow up, and turning swings the battle around it. Your gun crew fires the guns and the engineer runs the power. Pilot jobs (career hub) run from the gunboat to the dreadnought, and each names the engineer and the gun crew; the Pilot helm test (title screen, <b>Tests</b>) tries any ship without touching your career. Your pilot profile tracks aggression (hard turns and flank), following orders, dodging (the breaks you're ordered and make), guns on target (enemy ships your crew destroys) and ship condition.</p>
+    <ol class="tight">
+      <li><b>Launch.</b> A gunboat starts each sortie in the carrier's launch tube. Launch when ready (Space or LAUNCH); the catapult throws you out at flank, and once clear the coxswain orders all ahead standard: set both engines within 5 s (an order like any other; tap the order panel to set it). Waiting costs fight time, and after a while the carrier launches you anyway.</li>
+      <li><b>Steer with the wheel.</b> Drag it, or use ← →. It stays where you leave it, so the ship keeps turning until you center it (0). The ship answers a moment late, and its turn builds and dies away slowly; bigger ships are slower at both. The white tick on the compass and on the ring is where the bow will stop if you center the wheel now.</li>
+      <li><b>Engine orders.</b> Each engine takes its own order on the telegraph: stop, slow, cruise, standard, full, flank, or slow, half or full astern (spoken orders still say "dead slow"). + and − give an exact thrust ("all ahead 3 G"). Thrust draws reactor power, so a hard burn leaves less for the shields and guns; warn engineering (E) before one. Flank is over the engines' rating: hold it too long and a thruster can burn out.</li>
+      <li><b>Engine damage.</b> A thruster hit damages one engine, port or starboard: it gives less thrust at every speed (each hit about 15%), so the stronger engine pushes the bow toward the damaged side and the ship drifts. The panel shows it ("⚠ Engine damage: Port 85%", with what each engine is giving). Steer against it, or trim the engines with the P −/+ and S −/+ buttons (W S, O K): a quarter G at a time, ease the strong engine back or push the weak one up until both give the same thrust and the drift stops. The autopilot steers against the drift for you and still keeps her under the safe rate; by hand, a turn with the drift goes faster than the wheel alone and can overstress the hull. In warp space damage control repairs half of it.</li>
+      <li><b>Split engines.</b> Port ahead and starboard astern turns the ship to starboard faster than the wheel alone (and the other way round). Turning faster than the safe rate (the mark on the TURN bar) fills the hull stress bar; a full bar is a structural hit to the hull. Damage control reports the stress and the captain orders you to ease off, unless he ordered the hard turn himself (a break).</li>
+      <li><b>The captain's orders.</b> Only the captain (the coxswain on a gunboat) gives the helm orders; the crew report to the captain. He orders a heading and an engine order a few seconds ahead. The order panel shows it at a glance (when, heading, engines: "In 5s / Left 255 / All ahead Standard"; tap it to fly the heading on autopilot), and the amber mark on the compass shows the heading. Be on it, at that order, when the time comes, and hold it: you have 2 s of grace after NOW, then must be on both the heading (±10°) and the engine order for 70% of the rest. The panel ticks each part (✔ right, ✗ wrong while the order is under way), and if you miss, the captain says which part. Orders he gives on the spot (a gunner's call, the main gun, the warp heading) come with at least 6 s notice. Between orders you're free to fight the ship: point the bow at a frigate and your gunner fires the torpedoes.</li>
+      <li><b>Minefields</b> (bigger ships). A steering test: the captain gives no course orders there. The mines sit still and the ship moves through them: they stream past from ahead as you go (from astern going astern), faster and more often the harder you burn, and not at all while you're stopped. Turning swings the whole field around you. Steer between them: one that touches the shield hits hard, and holding course through the field will usually cost you the ship. The mines are small, so your gun crew only picks off some.</li>
+      <li><b>Mine lane</b> (gunboat tests, sortie 2). Sweep a lane through a minefield so the fleet behind can get through: no enemy ships, just mines streaming past as you go. Your gunner shoots them; fly so they can (slower gives the gun more time per mine) and don't run into any. The report shows the share of the lane cleared. At the gun, the coxswain holds the boat at standard and you shoot.</li>
+      <li><b>The corridor.</b> The captain's course stands until his next order: the course he gave last (on arrival, the way the ship is heading). You may swing up to 30° either side of it, so dodging inside that corridor is yours to do: a torpedo misses if the bow ends 15° or more off where the enemy aimed when it fired. The corridor is the green band on the compass and the two marks on the ring; it turns red once you're outside it, and the captain says so ("Helm, you're outside the corridor."). Out of the corridor between course orders is disobeying: it counts as an order not met and costs 5% of the mission's score each time. During a course order the order is judged on its own: the bow inside the corridor and the engines at the ordered speed. There's no corridor while you turn onto a new order, during a break, in a minefield, or once the captain has the conn. Lined up for the warp, from 10 s before the window and once the warp drive is 95% charged (no warp until it's full), the captain says "Steady as she goes." and the corridor narrows to 5° either side of the warp heading. The ship warps only with the bow inside that corridor: off it, the warp (even its countdown) waits until you're back. The order panel shows the course that stands: COURSE with its heading and ±30°, STEADY on the warp heading, and for a few seconds after an order ends, how it went ("Order met ✔", "Missed: heading ✗").</li>
+      <li><b>Breaks.</b> When the shields can't take the torpedoes on their way (and now and then when they can), the captain (the coxswain on a gunboat) orders a break ("Break left, now!", in red on the HELM panel); never two within 6 s, and not on ships too big to swing in time. He keeps watching the torpedoes he lets come, and if the shields can no longer take them, he orders a break then. The clock starts when you hear the break order, not at launch: its torpedoes take their full flight time after it. Swing the bow 15° or more off your steady turn before they land (the panel counts the degrees and the seconds) and they miss; a break made counts as an order met. A break order cuts in on the voices, so you hear it at once. To keep orders clear, the helm doesn't hear the crew's running commentary (incoming-fire counts, contacts, kills, misses, "well done"): only the captain's orders, gunners' calls, launch control, warp calls, warnings and damage.</li>
+      <li><b>Gunners call the captain</b> (ships with guns that don't go all round). A gunner with nothing in his arc tells the captain ("Gunner 1: Captain, nothing in my arc. Target to port."), and he orders the helm round: a course order like any other. When the main gun is charged, the captain orders the bow onto the biggest ship. Gunners hold their calls while an order is pending.</li>
+      <li><b>Warp heading</b> (ships with a warp drive). Navigation gives a warp heading on arrival (green on the compass), and as the window nears, the captain orders it as a course order (again if the bow wanders off). The ship warps once the drive is full and the bow is on it (±10°); if the drive is full and you're still off it 20 s after the window opens, the captain takes the conn.</li>
+      <li><b>Autopilot.</b> T turns it on and holds the heading; tap the compass across the top to fly to that heading, or tap the captain's order to fly there. On autopilot the strip at the far right of the screen (clear of the battle) is the course set: drag it up and down (headings rise upward, blue box in the middle; the strip's whole height is 360°, so one sweep of the thumb reaches any heading) or tap a heading on it, and the autopilot speeds up and slows the turn to bring her onto it. For the last degree or two, the thin ▲ +1° and ▼ −1° buttons at the ends of the strip (or ] and [) nudge the course one degree; by hand they put her on autopilot one degree off the heading she's on. The compass across the top always shows the ship's actual heading. By hand (autopilot off) the strip is a wheel that slides up and down instead, with no numbers: the farther you slide it from the middle, the harder she turns (down for starboard, up for port), and it stays where you leave it; bringing her onto the heading is up to you. It flies carefully (never past the safe rate, even with a damaged engine; never with split engines) and scores less than steering by hand.</li>
+    </ol>
+    <h2>On the bridge</h2>
+    <p>The captain plots the course and gives the orders; his crew carry them out. In your career, <b>Command jobs</b> on the career hub put you on the bridge: command of a class needs engineer, gunner and pilot all qualified on it, and command of the class below (the gunboat first). Your rank is Command-N (the title screen's Continue button shortens ranks: E9 · G9 · P9 · C1 is Engineer-9, Gunner-9, Pilot-9, Command-1); on the gunboat and destroyer escort some jobs are escort missions. To try any ship without touching your career: title screen, <b>Tests</b>, <b>Captain bridge</b> (on its briefing and first plotting screen, <b>New mission</b> rolls another mission on the same ship, until you find one you want to try), with the ship picked beside it (gunboat, picket ship, destroyer escort, destroyer, light cruiser, cruiser, heavy cruiser, battleship or dreadnought, and the gunboat and destroyer escort on escort missions). On a gunboat you're the coxswain: the pilot launches from the carrier's tube at once, and each of the three sorties ends at the carrier's recovery zone instead of a warp: be in it, on its heading, once the sortie timer runs out, and order <b>RECOVER</b> (J). A gunboat has no warp drive, so the engineer has no DRIVE stance. On a gunboat the pilot leaves the tube at the course's speed, not flat out.</p>
+    <p><b>Escort missions</b> (pick "Gunboat (escort mission)" or "Destroyer escort (escort mission)" beside the bridge test): your ship is one of a squadron of 2 to 4 screening a ward. A gunboat squadron screens the carrier each sortie, and she recovers your gunboat only from <b>ASTERN</b> of her: take that station (4) before the recovery, and the pilot holds it there till she takes you aboard; a destroyer escort squadron screens either a convoy of 3 to 5 merchants or a capital ship (rolled for each mission) through every system. She sails her own course to the recovery or warp zone (the blue ships on the map and in the battle view, each with a hull bar); there's no plotting screen. The pilot keeps your station on her (the dashed ring on the map: green when you're on it): <b>AHEAD</b>, <b>PORT</b>, <b>STBD</b> or <b>ASTERN</b> (1 to 4); a course or engine order of your own takes you off it until <b>RESUME</b> (R). Your wingmen (small teal ships) hold other stations; a teal station button has a wingman on it, and picking it swaps you: he flies over to your old station, and any enemy group after him follows him there. She sails her course like a ship, curving round each corner, and her convoy or stations swing round with her. A wingman guards his side of her and shoots down about half the torpedoes coming at her from it; now and then one hits him, and a wingman whose hull runs out is lost and his station opens. Each enemy group picks its target as it arrives and forms up round it: half of them go after her, the rest after a ship of the squadron (you or a wingman, alike), and a group fires only at its own target, so you take only your share. A group whose wingman is lost turns on her. Your gun crew shoots down what they can reach at her and the wingmen, so stay close. When a burst is coming at her, the TORPEDOES box says so: <b>COVER</b> (Q) puts your ship in its way and your shields take it instead, but only when you're close to the ship it's aimed at ("Too far to cover" otherwise). Once she reaches the zone the pilot brings you in on its heading; order RECOVER or WARP as usual. A carrier or capital ship whose hull runs out is lost, and so is the mission; a carrier down to 20% has lost her hangar bay and, once you're out of her tube, warps without you, and the mission fails (left behind); a convoy is lost only when every merchant is. Score: the objective is her hull at the end (a convoy: the share of its merchants that get through); navigation is the share of each fight you spent on station.</p>
+    <p><b>Picket ship: scouting.</b> A picket scouts: each system has 2 to 4 checkpoints (numbered cyan rings on the map) to fly through, in order, before the warp zone. The navigator's plot goes through all of them, and you get a leg more for each one. A plot that misses one shows "Misses checkpoint" and may still be accepted. A checkpoint turns green with a ✓ once you've flown through it, and the NAVIGATION box counts them (CP 1/3). Navigation score on a scouting run: half for reaching the zone on time, half for the share of checkpoints flown through.</p>
+    <ol class="tight">
+      <li><b>Plot the course.</b> In warp space before each system, with the clock stopped, the plotting screen shows the system's map: where you come out of warp space, the warp zone (green), asteroid fields (grey) and enemy areas (red), in all shapes, with one always across the straight way to the warp. Each system's warp heading is set for you: the green arrow through the zone, with a dashed approach line leading in. Tap the map to lay waypoints: 1 to 8 legs to the warp zone, the last one along the warp heading (within 10°; Accept stays off until it is). A new plot starts on the approach line, and waypoints you lay go in before it. Tap a waypoint to remove it, and a leg's engine order (cruise, standard, full) to change it. The time line shows when the course reaches the warp zone against the warp window (the navigator aims a little before it). A leg through an enemy area shows red, and Accept stays off until the course goes round them. A leg through an asteroid field shows amber ("Through asteroids"): you may take it, but there are rocks to dodge and shoot. <b>Navigator's plot</b> fills in a safe course to accept or edit. The last leg's heading is the warp heading.</li>
+      <li><b>The pilot flies it.</b> He steers for the plotted legs and gives the engines each leg's order. NAVIGATION on the BRIDGE panel shows the leg, the next course change and the warp window; the map in the middle shows the ship on the plot. In the warp zone he holds her there, slow and then stopped, for the warp.</li>
+      <li><b>The map.</b> Its top line, ZONE ARRIVAL IN, counts down to the warp zone at her speed now, along the rest of the plot: faster and it drops, slower and it climbs. The next, CAN WARP IN, counts down to when the warp can go: the window open and the drive full, at the rate the drive is charging now (whichever is later: WINDOW or DRIVE; or DRIVE NOT CHARGING). On a dreadnought a third line, MOAB FULL IN, counts down to the planet buster full. Against the second line the top line says <b>EARLY</b> (slow down, or she waits in the zone), <b>ON TIME</b> or <b>LATE</b> (more speed). Drag it to pan, pinch or use + − to zoom, FIT for the whole map. The map starts in the middle with the battle view in the box at the upper right; <b>⇄ SWAP</b> (V) trades them, and again to go back.</li>
+      <li><b>A course of your own.</b> ← → (or ◀ 10° and 10° ▶), a tap on the compass, or a tap on the map gives the helm a course of your own, and the engine buttons an engine order. HELM shows "yours" until you tap <b>RESUME</b> (R); then the pilot comes back onto the plotted line, never cutting across a field.</li>
+      <li><b>Torpedoes.</b> The pilot breaks on his own, by your standing policy for him (B): <b>EVADE</b> (he breaks for every burst he can: fewer hits, but she wanders off the plot and arrives later), <b>HOLD</b> (the standing order: he breaks only when the shields can't take it) or <b>STEADY</b> (no breaks: for a minefield, a main-gun swing or the last run into the zone). He breaks at the last moment, away from asteroid fields. For any one burst you can override him: <b>◀ BREAK</b> (to port), <b>TAKE IT</b> or <b>BREAK ▶</b> (to starboard) (Z X C) before they land. A break made in time makes them miss. A light cruiser and anything bigger turns too slowly to dodge a torpedo, so it has no break buttons or pilot policy: its shields take every burst. Break away from asteroid fields: the map shows where they are.</li>
+      <li><b>The crew.</b> Your crew act on your orders; they don't cover for you. The gunners' order (G) goes to every gun: FREE (the standing order: each gunner picks his own, torpedoes about to land, else the nearest ship), TORP (point defense: torpedoes about to land first), LAUNCH (ships charging to fire first), or HUNT (the ships each gun is best against). Nobody picks the order for the fight but you; the GUN meter over them is all the guns' charge together. Over the ENGINEER buttons, RX is the reactors' output, 0 to 150% of their rating (the tick is 100%; orange when one is overloaded), then the shields (SH), the drive (DR) and the other charges; the red bar under them is the reactors' heat. The engineer's stance (S) is his priority order: balanced, shields first, guns first, or <b>drive first</b>. Only on <b>SHIELDS</b> does he charge the shields ahead of the torpedoes he sees coming (and bridge a gap from the aux bank); on any other stance he just keeps them topping up and reacts only when a burst is a couple of seconds out, too late to fill them. But SHIELDS costs the guns: on it they get only a small share of their power, and the ships that launch the torpedoes keep coming. Go to SHIELDS for the torpedoes and back to BALANCE or GUNS to shoot. Normally the drive gets only the power left over after the shields and guns; on DRIVE it comes first after life support, charged fast enough to be full just before the window (flat out once the window is near or open, and over its last percent), and the shields and guns share what's left. Use it when the READY line on the map says DRIVE, and go back when it says WINDOW: the shields run lower on DRIVE. On a ship with a main gun, <b>MAIN GUN</b> puts it first after life support and charges it flat out, fight or no fight, so it's ready sooner for your MAIN GUN order; the shields and other guns share what's left. On a dreadnought, <b>MOAB</b> does the same for the planet buster (PB under ENGINEER), which must be full for the final warp; the MOAB bar under WARP and the map's top-left corner show when it'll be full at the rate it's charging. Warn engineering (E) before a hard burn.</li>
+      <li><b>Scouting reports.</b> The enemy named for each system (the briefing, the plotting screen, Tactical's "expect…" on arrival) is the pickets' survey, and they miss now and then: about 1 mission in 5, one system holds something else entirely. Watch what Tactical calls in and change your orders to match. Minefields are always reported right.</li>
+      <li><b>Your crew.</b> In your career, a captain hires from his own crew pool: 12 engineers, 12 pilots and 24 gun crews, the same men mission after mission. Each Command job suggests a crew (the men who served with you last time first, then the best who fit the class); on the <b>Your crew</b> screen before the briefing, tap a post to see every man who can take it and swap one in. A man you ask may refuse to sign on: you roll d100 plus your command reputation, he rolls d100 plus his skill, less (morale − 50) ÷ 5, and you must roll higher. Better men are choosier; a man with high morale signs on more easily. He's asked once per job (the crew screen marks who signed on, who refused and who hasn't been asked yet; the job asks the best men first and stops at the first who signs on); on your next job you can ask again. The men who served with you last time stay on without asking, unless a man's morale has fallen below 25. If every man for a post refuses, a green new hire joins your pool and signs on, and he grows with service like anyone else. Each man has a skill, a temperament and a morale. Skill grows one point for every successful mission he serves, up to 95. Temperament: a cautious engineer keeps the reactor cool but leaves the guns short, an aggressive one runs it hot; an aggressive pilot breaks on his own sooner, a cautious one lets a burst the shields can easily take come in; an aggressive gun crew fires on a rougher aim, a cautious one waits for a surer shot. Morale (0 to 100, starting at 60) rises 5 with a success and falls 10 with a failure and 10 for each shipmate killed; in battle it moves a man's skill up to a tenth either way (the briefing shows his skill in battle). If the ship is destroyed, each man's chance of surviving is his skill: the debrief names the men lost, green new hires take their places, and your service record lists the killed in action. Tests use a random crew, not your pool.</li>
+      <li><b>Siege line.</b> A siege line doesn't move: it sits at one spot in its system, shown on the map as SIEGE LINE with a red glow out to where its fire ends. Its guns and torpedoes fire in full close in and fade to nothing at the glow's edge, so plot past it wide if the window allows, or run past it fast. The plotting screen says how much of its fire the course passes under. In the battle view its batteries hold its true bearing and slide round as you pass, farther out the farther it is. Most often it sits near the straight way to the warp zone, sometimes right across it, sometimes anywhere. The navigator's plot keeps clear of it when there's time. The map shows the pickets' report: a wrong report can hide a real siege line or show one that isn't there, and the map is put right when the first wave comes in.</li>
+      <li><b>Dropping down.</b> STATIONS (D) takes you off the bridge to run one station yourself: the engine room (E), the helm (H) or a gun (its number). You get that station's own screen and controls, and the man there stands aside; at the guns you can trade to another gun. <b>Bridge</b> (B) brings you back, and he takes his station again. While you're away nobody on the bridge gives new orders: no course changes, break calls, launches or recoveries and no main gun orders; the engineer keeps your stance, the guns your order, and the pilot flies the plot and breaks by your standing policy (unless you're at the helm: then you judge the bursts yourself). Only the captain warps: WARP, a gunboat's RECOVER and the planet buster's DROP go only from the bridge, so be back in time for the window. Warp space finds you on the bridge. It costs, once a mission: 1 command reputation, and 1 morale to each man you replaced; the debrief lists them, and the Delegation line of your command profile counts the missions you stayed on the bridge.</li>
+      <li><b>Enemy areas.</b> The red areas on the map are enemy country. Your plot can't cross one, but a break or a course order can carry you into one: then a swarm comes out of it, several times a normal fight. Fly out again and half of what's left of the swarm goes back; the other half stays on you. Keep breaks and turns clear of them.</li>
+      <li><b>Orders take time.</b> A new stance takes a couple of seconds to reach the engineer, a new gun order to reach each gun crew, and a new break policy (B) to reach the pilot. At skill 100 that's 1 s on a gunboat or a tech level 7 ship, 2 s at tech level 6 and 3 s at tech level 5; the less skilled the crewman, the longer (skill 50 takes twice as long). Until an order is carried out, its button blinks and a bar fills along its bottom; when the bar is full, the crew are doing it. Give the order before you need it.</li>
+      <li><b>Asteroids and minefields.</b> You may fly into an asteroid field. Its rocks sit in the field where the map shows it, so the battle view shows them only when she's in it or close by; they come at her faster the faster she goes (none while she's stopped): slow down to make it safer. A mine scenario (the minefield, the gunboat's mine lane) has one big minefield (amber, MINEFIELD) over most of the way to the warp: a course always crosses it ("Through the minefield"), and its mines work the same way. Slowing down there (cruise or less) makes a big difference. The pilot steers round the ones coming at her and the gunners shoot them; one that touches the shield hits like a mine (90 MJ, shields first). The rocks and mines hit the enemy ships around her too: an enemy ship one touches is damaged, and small ones can be wrecked. A plotted leg that's clear keeps her out of them.</li>
+      <li><b>The warp.</b> Order it (J or WARP) once the drive is full, the window is open, the ship is in the zone and she's on the warp heading (within 5°); the WARP button says what's missing ("Steer 245"). Keeping her on the warp heading is your job: on the plot the pilot flies the last leg along it, and he holds her in the zone; on a course of your own, steer it yourself or RESUME PLOT. An ordered warp waits until she's in the zone (BACK TO THE ZONE) and on the heading (STEER 245), then goes.</li>
+      <li><b>The drop</b> (dreadnought, last system). No warp out: the ship drops the planet buster (MOAB) on the Azurian target world from the <b>DROP ZONE</b>. No heading and no drive are needed: get her into the zone, with the MOAB full (MOAB under ENGINEER puts it first), and order <b>DROP MOAB</b> (J); she may arrive early and wait, but must stay in the zone, and it goes when the window opens. The map's corner says CAN DROP IN, then DROP WINDOW CLOSES IN: if the planet buster isn't away 10 s after the window opens, the mission fails. Watch ZONE ARRIVAL: LATE here is a failure, not just a lower score.</li>
+      <li><b>Main gun and gunboats</b> (cruisers and up). With the main gun charged, <b>MAIN GUN</b> (M) has the pilot swing the bow onto the biggest ship out there (the next biggest if it goes first) and hold it there until the crew fires, then come back to the plot; HELM shows "main gun" meanwhile. The crew never fires the main gun without your order. A swing takes her off the plot (watch EARLY and LATE on the map), and a slow ship bow-on to an enemy has fewer guns on the torpedoes coming from ahead. On a cruiser and up, launching and recovering the gunboat squadron is yours alone: nobody else does it. The engineer keeps the hangar charging, the launchers while the squadron is aboard (LN under ENGINEER) and the arresters while it's out (AR); once the meter is full, <b>LAUNCH</b> / <b>RECOVER</b> (L) goes at once (until then the button shows the charge). The ship won't warp with the squadron out (WARP says "Recover gunboats"), unless her hull is at 20% or less: then the hangar bay is destroyed, LAUNCH / RECOVER won't go, and gunboats still out are left behind at the warp. In a minefield the squadron flies ahead of the bow and shoots the mines coming at her: launch it. GUNS on the BRIDGE panel shows the main gun's charge (or SWINGING) and where the gunboats are.</li>
+      <li><b>Score.</b> Objective and ship condition (the captain answers for his ship: every bit of hull lost costs twice what it does at the other stations), navigation (in the warp zone by the window, no asteroid hits) and command (the shields and guns against the torpedoes, and the breaks made, yours and the pilot's).</li>
+    </ol>
+    <h2>Commanding a squadron</h2>
+    <p>A squadron commander directs his captains as a captain directs his crew. To try it: title screen, <b>Tests</b>, <b>Squadron</b>: a squadron of 4 destroyers through three systems (the career's squadron jobs come later). The squadron fights on the map. Each system's map is bigger than a lone ship's, and on it are the enemy's <b>targets</b>, each with its letter: a <b>supply depot</b> (gold, the objective), siege batteries, raider packs, interceptor flights, frigate groups and drive hunters. <b>Destroy the objective before the squadron warps on, or the mission fails.</b></p>
+    <ol class="tight">
+      <li><b>Plan the attack.</b> In warp space, with the clock stopped, the plotting screen shows the targets where the pickets' report puts them (dashed, a little off, and "?" for contacts they missed). Plot the flagship's course as on the bridge, and tap each ship in YOUR SHIPS to send her to a target from the start (each tap moves her to the next target in the report; past the last, back to formation).</li>
+      <li><b>What you see.</b> The dashed blue ring round the flagship is your sensor range. A target inside any of your ships' sensor range shows solid, where it really is, with its strength, the red ring of its gun range and the wedges its guns bear through; one you can't see shows where it was last seen or reported. A "?" shows what it is once a ship gets close. Moving targets show their heading.</li>
+      <li><b>Sending ships.</b> Tap a ship on the map or her line in the SQUADRON box (or press her number; 1 is the flagship) to select her (tap again to drop her); tap more to select several; A selects all. Then tap a target on the map to send them to it, or open space to send them there. A ship sent to a target closes to its guns' range and turns her broadside to it; ships sent to the same spot line up there facing the nearest enemy: in line ahead broadside on, in line abreast bows on. <b>RECALL</b> (Z) brings the ones selected back to formation (the flagship back to her plot), <b>HOLD FIRE</b> (X) keeps them quiet and hidden until an enemy is close, then they open up (an ambush), <b>CLEAR</b> (C) drops the selection. With nothing selected, tap a target for its card, or tap open space to steer the flagship.</li>
+      <li><b>Fire.</b> Every gun that bears and is in range fires: a destroyer's bow and stern rail guns each cover 200° and her pulse cannon all round, so all three bear abeam and two ahead. The enemy's guns have arcs too: raiders and interceptors fire forward; a frigate group's column fires its broadsides, but ahead of it only its lead ship's bow guns bear. Cross ahead of a column (cross its T) and every one of your guns bears on its lead while few of its guns bear on you. A target's card shows the guns bearing each way. Two ships on one target sink it fast and split its fire; one alone may lose.</li>
+      <li><b>Formation.</b> The ships not sent anywhere keep formation on the flagship: <b>LINE AHEAD</b> puts them in a column astern of her, each following her own track, so they turn every corner where she did; <b>LINE ABREAST</b> puts them to either side. The formation also says how ships sent together to a spot line up.</li>
+      <li><b>The flagship.</b> Your flag captain runs her: her engineer's stance, her gunners and her pilot. She flies your course, or select her (1) and send her like the others. A target that fires on her comes into her battle view (SWAP) as its wave, on its true bearing, and what her crew does to it is done to it. Raiders and other hunters go after the nearest of your ships they see; a ship out on her own gets a warning in the SQUADRON box when one turns on her.</li>
+      <li><b>Captains.</b> The briefing names every captain with his skill and temper. An order reaches a captain a few seconds after you give it (about 2 s at the best, longer the lower his skill; her line has a dashed border till it gets there). A cautious captain keeps a little farther off and fights a little more carefully, an aggressive one closer and harder.</li>
+      <li><b>The warp.</b> Order it as on the bridge; the squadron warps together, so every ship is called back to formation and it waits for them (WARP says SQUADRON FORMING UP). If the flagship's hull is down to 20%, she goes without the ones still out, and they're left behind.</li>
+      <li><b>Flag bridge</b> (D) drops you down to the flagship's bridge: you captain her yourself, with the bridge's own orders and STATIONS, and her flag captain stands aside. <b>SQUADRON</b> (Q) brings you back. Meanwhile the other ships keep the last orders you gave. In the career it will cost, once a mission, 1 squadron reputation and 1 morale to the flag captain.</li>
+      <li><b>Score.</b> The objective is half the share of each system's objective destroyed and half the share of your ships brought home (the flagship one of them; if she's destroyed, the mission is lost); the flagship's condition and navigation as on the bridge; command is half the bridge's and half the share of the systems' targets destroyed.</li>
+    </ol>
+    <h2>Pilot training</h2>
+    <p>From the career screen, <b>Pilot training</b> puts you at the helm of any ship you're qualified on as a pilot (the gunboat if you aren't yet) on an endless buoy course: no enemies, no captain's orders, all the usual controls. Keep <b>red</b> buoys to port (on your left) and <b>green</b> to starboard; the next one is ringed, with a chevron on the side to pass, and marked in its color on the compass and the ring. The helm panel shows its side, bearing and seconds away, and a tally: passed on the right side, wrong side, hit (the hull touched it) and missed (too wide, or you wandered off and the course starts again ahead). The rating is the share passed on the right side: Excellent 90% and up, Good 75%, Fair 50%, else Needs work. Turning too hard still fills the stress bar and counts structural hits, but does the hull no harm. Fly as long as you like; <b>Exit training</b> shows the summary. Training earns no reputation and isn't saved to your record.</p>
+    <p class="muted small-text">Battlelert © 2011–2026 Tom Bont. All rights reserved. Free to play. The code, art and sounds may not be copied, changed or shared without written permission.</p>
+    <div class="menu"><button id="btn-how-close" class="primary">Got it</button></div>
+  </div>
+</section>
+
+<script src="version.js?b=9a1e7335"></script>
+<script src="update-banner.js?b=ec7860dd"></script>
+<script src="js/data.js?b=0086c405"></script>
+<script src="js/sim.js?b=cb3cc342"></script>
+<script src="js/agents.js?b=66980d26"></script>
+<script src="js/gunnery.js?b=8882d97b"></script>
+<script src="js/ring.js?b=b9312179"></script>
+<script src="js/helm.js?b=a862112e"></script>
+<script src="js/command.js?b=6d4c3e40"></script>
+<script src="js/training.js?b=48646f29"></script>
+<script src="js/art.js?b=ac37cac5"></script>
+<script src="js/turretview.js?b=960c39ae"></script>
+<script src="js/ringview.js?b=c677aa94"></script>
+<script src="js/bridgeview.js?b=dabb7fdf"></script>
+<script src="js/names.js?b=08410f0b"></script>
+<script src="js/story.js?b=a18cd4ce"></script>
+<script src="js/roster.js?b=6ef1bed9"></script>
+<script src="js/career.js?b=cf0e2c4a"></script>
+<script src="js/speech.js?b=a8bbd298"></script>
+<script src="js/audio.js?b=7bd9e9f9"></script>
+<script src="js/ui.js?b=ea3290fa"></script>
+</body>
+</html>

@@ -1,0 +1,180 @@
+/* Battlelert © 2011–2026 Tom Bont. All rights reserved. See LICENSE. */
+/* The captain's system map (command.js), drawn on a canvas: north up, the arrival point, the
+   jump zone, asteroid fields (grey) and enemy clusters (red), the plotted legs with their
+   waypoints, and the ship. Used by the plotting screen in warp space and the bridge's map panel. */
+(function (root) {
+  "use strict";
+  var BL = root.BL = root.BL || {};
+  var RAD = Math.PI / 180;
+
+  // The map's frame on a w x h canvas: { s, toPx(p), toMap(x, y) }. view (zoom and pan, the
+  // bridge map): { z: times the whole-map scale, dx, dy: its centre moved, in map units }.
+  BL.navFrame = function (map, plot, w, h, pad, view) {
+    pad = pad === undefined ? 18 : pad;
+    var xs = [map.start.x, map.jump.x - map.jump.r, map.jump.x + map.jump.r], ys = [map.start.y, map.jump.y - map.jump.r, map.jump.y + map.jump.r];
+    map.rocks.concat(map.clusters, BL.siegeSeen(map) ? [map.siege] : []).forEach(function (o) { xs.push(o.x - o.r, o.x + o.r); ys.push(o.y - o.r, o.y + o.r); });
+    (plot ? plot.pts : []).forEach(function (p) { xs.push(p.x); ys.push(p.y); });
+    var x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs), y0 = Math.min.apply(null, ys), y1 = Math.max.apply(null, ys);
+    var span = Math.max(x1 - x0, y1 - y0, 1) * 1.08, s = Math.min(w - 2 * pad, h - 2 * pad) / span;
+    var cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+    if (view) { s *= view.z; cx += view.dx; cy += view.dy; }
+    return {
+      s: s,
+      toPx: function (p) { return { x: w / 2 + (p.x - cx) * s, y: h / 2 - (p.y - cy) * s }; },
+      toMap: function (x, y) { return { x: cx + (x - w / 2) / s, y: cy - (y - h / 2) / s }; }
+    };
+  };
+
+  // opts: { pos, hdg (the ship), leg (the leg she's on), info (BL.plotInfo), small (the bridge
+  // panel), steer (the heading the helm is steering), frame (reuse), labels (a list: each piece of
+  // text drawn adds its box { x0, y0, x1, y1 }, so labels drawn after can keep clear: BL.textBox) }.
+  // The box a piece of text takes, by the context's font, alignment and baseline.
+  BL.textBox = function (ctx, str, x, y) {
+    var wd = ctx.measureText(str).width, ht = parseFloat((/(\d+(?:\.\d+)?)px/.exec(ctx.font) || [0, 12])[1]);
+    var x0 = ctx.textAlign === "center" ? x - wd / 2 : ctx.textAlign === "right" || ctx.textAlign === "end" ? x - wd : x;
+    var y0 = ctx.textBaseline === "top" ? y : ctx.textBaseline === "middle" ? y - ht / 2 : y - ht;
+    return { x0: x0, y0: y0, x1: x0 + wd, y1: y0 + ht };
+  };
+  BL.drawNavMap = function (ctx, w, h, map, plot, opts) {
+    opts = opts || {};
+    // (every piece of text it writes goes in `boxes`, so a leg's label, and labels drawn after, keep clear)
+    var fill0 = ctx.fillText, boxes = opts.labels || []; ctx.fillText = function (str, x, y) { boxes.push(BL.textBox(ctx, str, x, y)); fill0.call(ctx, str, x, y); };
+    var f = opts.frame || BL.navFrame(map, plot, w, h, opts.small ? 10 : 18), P = f.toPx, s = f.s, small = !!opts.small;
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = "#05080c"; ctx.fillRect(0, 0, w, h);
+    // A faint grid, a tenth of the way to the jump point apart.
+    var step = map.D / 10, o0 = f.toMap(0, h), o1 = f.toMap(w, 0);
+    ctx.strokeStyle = "rgba(127,184,255,.07)"; ctx.lineWidth = 1; ctx.beginPath();
+    for (var gx = Math.floor(o0.x / step) * step; gx <= o1.x; gx += step) { var px = P({ x: gx, y: 0 }).x; ctx.moveTo(px, 0); ctx.lineTo(px, h); }
+    for (var gy = Math.floor(o0.y / step) * step; gy <= o1.y; gy += step) { var py = P({ x: 0, y: gy }).y; ctx.moveTo(0, py); ctx.lineTo(w, py); }
+    ctx.stroke();
+    // North.
+    ctx.fillStyle = "rgba(200,215,230,.55)"; ctx.font = (small ? 10 : 12) + "px ui-monospace, Menlo, Consolas, monospace"; ctx.textAlign = "right"; ctx.textBaseline = "top";
+    ctx.fillText("N ↑", w - 6, 5);
+    // Enemy clusters and asteroid fields.
+    // Each area is overlapping lobes: its outline is the lobes a little larger in the edge colour,
+    // then the lobes on top in the (solid) fill colour, so only the outer edge shows.
+    function blob(lobes, edge, fill) {
+      [[1.2, edge], [0, fill]].forEach(function (ring) {
+        ctx.fillStyle = ring[1]; ctx.beginPath();
+        lobes.forEach(function (l) { var c = P(l); ctx.moveTo(c.x + l.r * s + ring[0], c.y); ctx.arc(c.x, c.y, l.r * s + ring[0], 0, Math.PI * 2); });
+        ctx.fill();
+      });
+    }
+    // A mine scenario's minefield: a big amber-edged band with mine dots (the same each time).
+    if (map.mines) {
+      var mf = map.mines;
+      blob(mf.lobes, "#c98a2e", "#211808");
+      ctx.fillStyle = "rgba(220,150,70,.55)";
+      mf.lobes.forEach(function (l, i) {
+        for (var q = 0; q < 9; q++) { var a = (i * 7 + q) * 2.399, rr = l.r * 0.8 * Math.sqrt((q + 0.5) / 9), c2 = P({ x: l.x + Math.cos(a) * rr, y: l.y + Math.sin(a) * rr }); ctx.beginPath(); ctx.arc(c2.x, c2.y, small ? 1 : 1.6, 0, Math.PI * 2); ctx.fill(); }
+      });
+      if (!small) { var mc = P(mf); ctx.fillStyle = "rgba(240,181,74,.95)"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("MINEFIELD", mc.x, mc.y); }
+    }
+    // A fixed siege line: a red glow fading out to where its fire ends, and four batteries in a row.
+    if (BL.siegeSeen(map)) {
+      var SL = BL.COMMAND.siegeLine, sg = P(map.siege), rr0 = SL.full * map.D * s, rr1 = SL.none * map.D * s;
+      var grad = ctx.createRadialGradient(sg.x, sg.y, rr0 * 0.5, sg.x, sg.y, rr1);
+      grad.addColorStop(0, "rgba(255,77,77,.28)"); grad.addColorStop(0.45, "rgba(255,77,77,.12)"); grad.addColorStop(1, "rgba(255,77,77,0)");
+      ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(sg.x, sg.y, rr1, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "rgba(255,90,90,.35)"; ctx.lineWidth = 1; ctx.setLineDash([3, 4]);
+      ctx.beginPath(); ctx.arc(sg.x, sg.y, rr1, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+      var bw = Math.max(small ? 3 : 5, map.siege.r * s * 0.5);
+      ctx.fillStyle = "#ff5a5a";
+      for (var bi = 0; bi < 4; bi++) ctx.fillRect(sg.x + (bi - 1.5) * bw * 1.6 - bw / 2, sg.y - bw / 2, bw, bw);
+      if (!small) { ctx.fillStyle = "rgba(255,120,120,.95)"; ctx.textAlign = "center"; ctx.textBaseline = "top"; ctx.fillText("SIEGE LINE", sg.x, sg.y + bw + 4); }
+    }
+    map.clusters.forEach(function (o) {
+      blob(o.lobes || [o], "#b43839", "#2a1214");
+      if (!small) { var c = P(o); ctx.fillStyle = "rgba(255,120,120,.9)"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("ENEMY", c.x, c.y); }
+    });
+    map.rocks.forEach(function (o, i) {
+      var lobes = o.lobes || [o];
+      blob(lobes, "#747577", "#25272a");
+      // a few rocks inside each lobe, the same each time
+      ctx.fillStyle = "rgba(200,200,200,.55)";
+      lobes.forEach(function (l, j) {
+        var c = P(l), r = l.r * s;
+        for (var k = 0; k < 5; k++) {
+          var a = (i * 2.4 + j * 1.3 + k * 2.1) % (Math.PI * 2), d = r * (0.15 + ((k * 37 + i * 11 + j * 23) % 65) / 100);
+          ctx.beginPath(); ctx.arc(c.x + Math.cos(a) * d, c.y + Math.sin(a) * d, Math.max(1, r * 0.1 + (k % 3) * 0.6), 0, Math.PI * 2); ctx.fill();
+        }
+      });
+    });
+    // The jump zone.
+    var jc = P(map.jump);
+    ctx.strokeStyle = "rgba(61,255,122,.85)"; ctx.fillStyle = "rgba(61,255,122,.12)"; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(jc.x, jc.y, map.jump.r * s, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    if (!small) { ctx.fillStyle = "rgba(61,255,122,.95)"; ctx.textAlign = "center"; ctx.textBaseline = "top"; ctx.fillText(map.recovery ? "RECOVERY ZONE" : map.drop ? "DROP ZONE" : "WARP ZONE", jc.x, jc.y + map.jump.r * s + 3); }
+    // The jump heading: the approach line leading in (dashed) and an arrow through the zone.
+    if (map.approach && !map.drop) {     // (the drop has no heading)
+      var ap = P(map.approach), ja = map.jumpHdg * RAD, ux = Math.sin(ja), uy = -Math.cos(ja), tip = { x: jc.x + ux * map.jump.r * s * 1.6, y: jc.y + uy * map.jump.r * s * 1.6 };
+      ctx.strokeStyle = "rgba(61,255,122,.7)"; ctx.lineWidth = 1.5; ctx.setLineDash([6, 4]);
+      ctx.beginPath(); ctx.moveTo(ap.x, ap.y); ctx.lineTo(jc.x, jc.y); ctx.stroke(); ctx.setLineDash([]);
+      ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(jc.x, jc.y); ctx.lineTo(tip.x, tip.y); ctx.stroke();
+      var hl = small ? 6 : 9, px = -uy, py = ux;
+      ctx.fillStyle = "rgba(61,255,122,.95)"; ctx.beginPath(); ctx.moveTo(tip.x + ux * hl, tip.y + uy * hl);
+      ctx.lineTo(tip.x + px * hl * 0.6, tip.y + py * hl * 0.6); ctx.lineTo(tip.x - px * hl * 0.6, tip.y - py * hl * 0.6); ctx.closePath(); ctx.fill();
+      if (!small) { ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("WARP " + BL.hdgText(map.jumpHdg), tip.x + ux * 28, tip.y + uy * 22); }
+    }
+    // A scouting run's checkpoints: numbered cyan rings (green and ticked once flown through).
+    (map.checkpoints || []).forEach(function (cp, i) {
+      var c = P(cp), hit = opts.cpHit && opts.cpHit[i];
+      ctx.strokeStyle = hit ? "rgba(61,255,122,.9)" : "rgba(110,220,255,.9)"; ctx.fillStyle = hit ? "rgba(61,255,122,.14)" : "rgba(110,220,255,.1)"; ctx.lineWidth = 1.5; ctx.setLineDash(hit ? [] : [4, 3]);
+      ctx.beginPath(); ctx.arc(c.x, c.y, cp.r * s, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = hit ? "rgba(61,255,122,.95)" : "rgba(150,230,255,.95)"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.font = "700 " + (small ? 10 : 13) + "px ui-monospace, Menlo, Consolas, monospace"; ctx.fillText(hit ? "✓" : String(cp.n), c.x, c.y);
+      if (!small) { ctx.font = "12px ui-monospace, Menlo, Consolas, monospace"; ctx.textBaseline = "top"; ctx.fillText("CHECKPOINT " + cp.n, c.x, c.y + cp.r * s + 3); }
+    });
+    ctx.font = (small ? 10 : 12) + "px ui-monospace, Menlo, Consolas, monospace";
+    // The plotted legs: done ones dim, the rest bright; red through a field, amber through a cluster.
+    var pts = plot ? plot.pts : [], info = opts.info;
+    for (var k2 = 0; k2 < pts.length - 1; k2++) {
+      var a2 = P(pts[k2]), b2 = P(pts[k2 + 1]), lg = info && info.legs[k2];
+      ctx.strokeStyle = lg && lg.clusters ? "#ff4d4d" : lg && (lg.rocks || lg.mines) ? "#f0b54a" : opts.leg !== undefined && k2 < opts.leg ? "rgba(127,184,255,.35)" : "#7fb8ff";
+      ctx.lineWidth = small ? 1.5 : 2; ctx.beginPath(); ctx.moveTo(a2.x, a2.y); ctx.lineTo(b2.x, b2.y); ctx.stroke();
+      if (!small && lg) {     // the leg's heading beside its middle
+        var mx = (a2.x + b2.x) / 2, my = (a2.y + b2.y) / 2, nx = -(b2.y - a2.y), ny = b2.x - a2.x, nl = Math.hypot(nx, ny) || 1;
+        ctx.fillStyle = "rgba(200,225,255,.95)"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        // (beside its middle on whichever side, near or a little farther, is clear of what's written already)
+        var lt = (k2 + 1) + ": " + BL.hdgText(lg.hdg), lx = mx + nx / nl * 16, ly = my + ny / nl * 16;
+        [16, -16, 30, -30, 46, -46].some(function (d) {
+          var bx = BL.textBox(ctx, lt, mx + nx / nl * d, my + ny / nl * d);
+          if (boxes.some(function (o) { return Math.min(bx.x1, o.x1) - Math.max(bx.x0, o.x0) > 0 && Math.min(bx.y1, o.y1) - Math.max(bx.y0, o.y0) > 0; })) return false;
+          lx = mx + nx / nl * d; ly = my + ny / nl * d; return true;
+        });
+        ctx.fillText(lt, lx, ly);
+      }
+    }
+    pts.forEach(function (p, i) {
+      if (!i || i === pts.length - 1) return;
+      var c = P(p);
+      ctx.fillStyle = opts.leg !== undefined && i <= opts.leg ? "rgba(127,184,255,.4)" : "#cfe3ff";
+      ctx.beginPath(); ctx.arc(c.x, c.y, small ? 2.5 : 5, 0, Math.PI * 2); ctx.fill();
+    });
+    // Where she comes out of warp space, and her heading then.
+    var sc = P(map.start);
+    ctx.strokeStyle = "#cfe3ff"; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.arc(sc.x, sc.y, small ? 3 : 6, 0, Math.PI * 2); ctx.stroke();
+    if (!opts.pos) drawShip(ctx, sc, map.start.hdg, small ? 6 : 10, "rgba(207,227,255,.6)");
+    // The ship and the heading the helm is steering.
+    if (opts.pos) {
+      var sp = P(opts.pos);
+      if (opts.steer !== undefined && opts.steer !== null) {
+        ctx.strokeStyle = "rgba(255,214,102,.7)"; ctx.setLineDash([3, 3]); ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(sp.x, sp.y); ctx.lineTo(sp.x + Math.sin(opts.steer * RAD) * 26, sp.y - Math.cos(opts.steer * RAD) * 26); ctx.stroke(); ctx.setLineDash([]);
+      }
+      drawShip(ctx, sp, opts.hdg || 0, small ? 7 : 11, "#ffd666");
+    }
+    delete ctx.fillText;
+  };
+  BL.drawMapShip = function (ctx, c, hdg, len, color) { drawShip(ctx, c, hdg, len, color); };
+  function drawShip(ctx, c, hdg, len, color) {
+    var a = hdg * RAD, sx = Math.sin(a), cy = -Math.cos(a), px = -cy, py = sx;
+    ctx.fillStyle = color; ctx.beginPath();
+    ctx.moveTo(c.x + sx * len, c.y + cy * len);
+    ctx.lineTo(c.x - sx * len * 0.6 + px * len * 0.5, c.y - cy * len * 0.6 + py * len * 0.5);
+    ctx.lineTo(c.x - sx * len * 0.3, c.y - cy * len * 0.3);
+    ctx.lineTo(c.x - sx * len * 0.6 - px * len * 0.5, c.y - cy * len * 0.6 - py * len * 0.5);
+    ctx.closePath(); ctx.fill();
+  }
+})(typeof window !== "undefined" ? window : globalThis);

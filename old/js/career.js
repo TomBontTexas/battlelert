@@ -1,0 +1,505 @@
+/* Battlelert © 2011–2026 Tom Bont. All rights reserved. See LICENSE. */
+/* Battlelert career record: qualifications, reputation, failures, rapid sign-offs,
+   reputation profile, mission history, the current job offers and every ship's service record.
+   Pure JavaScript (no screen code). Saved in browser storage; exported as
+   BATTLELERT_<hero name>.json. */
+(function (root) {
+  "use strict";
+  var BL = root.BL = root.BL || {};
+  var KEY = BL.APP_TAG + "_career";
+  // The three crew stations, then command (the bridge: coxswain of a gunboat, captain above).
+  var STATIONS = ["engineer", "gunner", "pilot", "captain"];
+  var CREW = ["engineer", "gunner", "pilot"];
+  var STATION_NAME = { engineer: "Engineer", gunner: "Gunner", pilot: "Pilot", captain: "Command" };
+  var PLAYABLE = { engineer: true, gunner: true, pilot: true, captain: true }; // stations built so far
+  // Command jobs on the gunboat and destroyer escort: this share are escort missions.
+  var ESCORT_SHARE = 1 / 3, ESCORT_CLASSES = { gunboat: true, destroyerEscort: true };
+  var GUNNER_CLASSES = 9;                          // the gunner station is built up to this class
+  // Is this class built for this station? (The engine room runs on every built class; the helm
+  // flies every class in BL.HELM.classes.)
+  function built(station, n) {
+    var cls = BL.classByN(n);
+    if (!cls || !PLAYABLE[station]) return false;
+    if (station === "pilot" || station === "captain") return !!(BL.HELM && BL.HELM.classes[cls.id]);
+    return station === "gunner" ? n <= GUNNER_CLASSES : !!cls.built;
+  }
+  // guns: the pilot's "guns on target" slot (unused at the other stations).
+  function blankProfile() { return { missions: 0, wins: 0, losses: 0, aggression: 0, efficiency: 0, demands: 0, condition: 0, guns: 0 }; }
+
+  var NAMES_VERSION = 2;                           // 2 = the historical ship roster (names.js)
+  var TL_VERSION = 2;                              // 2 = tech levels 4 to 7 and INS ship names
+  var STORY_VERSION = 2;                           // 1 = story missions as job offers (story.js); 2 = the Captain storyline
+  var REP_VERSION = 3;                             // 2 = reputation that goes up and down, from 50 (REP); 3 = a success +1
+
+  function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
+  function today() { var d = new Date(); return d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2) + "-" + ("0" + d.getDate()).slice(-2); }
+
+  function cleanName(name) { return String(name || "").replace(/\s+/g, " ").trim().slice(0, 24); }
+
+  function create(name) {
+    var c = {
+      app: BL.APP_TAG, kind: "career", format: 1,
+      name: cleanName(name) || "Recruit", created: today(),
+      stations: {}, signoffsUsed: [],
+      profiles: {},                     // one reputation profile per station
+      history: [], offersBy: {}, stepUps: {}, offerSeed: BL.randomSeed(),
+      ships: {}, namesVersion: NAMES_VERSION, tlVersion: TL_VERSION,
+      hulls: {}, nextHull: {},          // hull numbers of ships that replace ones lost in action
+      storyDone: {}, storyVersion: STORY_VERSION,     // story missions completed: id -> date
+      repVersion: REP_VERSION
+    };
+    STATIONS.forEach(function (s) { c.stations[s] = { qualified: 0, rep: REP.start, failures: {}, realUntil: 0 }; c.profiles[s] = blankProfile(); c.stepUps[s] = 0; });
+    STATIONS.forEach(function (s) { if (PLAYABLE[s]) generateOffers(c, s); });
+    return c;
+  }
+
+  function save(c) {
+    try { localStorage.setItem(KEY, JSON.stringify(c)); return true; } catch (e) { return false; }
+  }
+  function load() {
+    try { var raw = localStorage.getItem(KEY); return raw ? normalize(JSON.parse(raw)) : null; } catch (e) { return null; }
+  }
+
+  // Fill in anything an older or hand-edited file is missing, so it never breaks the game.
+  function normalize(c) {
+    if (!c || c.kind !== "career") throw new Error("This file isn't a Battlelert career.");
+    var oldNames = c.namesVersion !== NAMES_VERSION;   // checked before the defaults below fill it in
+    var oldTL = c.tlVersion !== TL_VERSION, oldStory = c.storyVersion !== STORY_VERSION, oldRep = c.repVersion !== REP_VERSION;
+    // Careers from before the gunner station: one engineer offer list and one profile.
+    if (!c.offersBy) c.offersBy = { engineer: Array.isArray(c.offers) ? c.offers : [] };
+    if (!c.profiles) c.profiles = { engineer: c.profile || blankProfile() };
+    if (!c.stepUps) c.stepUps = { engineer: +c.offersSinceStepUp || 0 };
+    delete c.offers; delete c.profile; delete c.offersSinceStepUp;
+    var fresh = create(c.name);
+    Object.keys(fresh).forEach(function (k) { if (c[k] === undefined) c[k] = fresh[k]; });
+    STATIONS.forEach(function (s) {
+      var st = c.stations[s] = c.stations[s] || {};
+      st.qualified = clamp(+st.qualified || 0, 0, 9);
+      st.rep = isFinite(+st.rep) ? Math.max(0, +st.rep) : 0;
+      st.failures = st.failures || {};
+      st.realUntil = +st.realUntil || 0;
+      var p = c.profiles[s] = c.profiles[s] || blankProfile();
+      Object.keys(blankProfile()).forEach(function (k) { if (!isFinite(+p[k])) p[k] = 0; });
+      if (!isFinite(+c.stepUps[s])) c.stepUps[s] = 0;
+    });
+    if (!Array.isArray(c.signoffsUsed)) c.signoffsUsed = [];
+    c.name = cleanName(c.name) || "Recruit";
+    if (!c.ships || typeof c.ships !== "object") c.ships = {};
+    if (!c.hulls || typeof c.hulls !== "object") c.hulls = {};
+    if (!c.nextHull || typeof c.nextHull !== "object") c.nextHull = {};
+    // Careers from before tech levels 4 to 7: old levels 1-2 become 5, 3-4 become 6, 5-6 become 7
+    // (a gunboat is always 4), TFS ships become INS, and the offers are drawn again.
+    if (oldTL && !oldNames) {
+      var newTL = function (classId, tl) { return classId === "gunboat" ? 4 : Math.min(7, 5 + Math.floor((Math.max(1, +tl || 1) - 1) / 2)); };
+      var ins = function (name) { return String(name || "").replace(/^TFS /, BL.SHIP_PREFIX); };
+      c.history.forEach(function (h) { h.tl = newTL(h.classId, h.tl); h.ship = ins(h.ship); });
+      var ships = {};
+      Object.keys(c.ships).forEach(function (k) { var r = c.ships[k]; r.tl = newTL(r.classId, r.tl); r.name = ins(r.name); ships[ins(k)] = r; });
+      c.ships = ships;
+      c.offersBy = {};
+    }
+    c.tlVersion = TL_VERSION;
+    if (!c.storyDone || typeof c.storyDone !== "object") c.storyDone = {};
+    if (oldStory) {      // offers become story missions (version 2: only the command offers change)
+      if ((c.storyVersion || 0) < 1) c.offersBy = {}; else delete c.offersBy.captain;
+      c.storyVersion = STORY_VERSION;
+    }
+    // Careers from before reputation went up and down: each path from 50, recalculated from the
+    // mission history it holds (outcome and tech level; nothing replayed), oldest first.
+    if (oldRep) {
+      STATIONS.forEach(function (s) { c.stations[s].rep = REP.start; });
+      c.history.slice().reverse().forEach(function (h) {
+        var st = c.stations[h.station || "engineer"]; if (!st) return;
+        var was = st.rep;
+        st.rep = Math.max(0, st.rep + repParts(h.station || "engineer", h.outcome, h.tl, 0, 0).reduce(function (a, p) { return a + p[1]; }, 0));
+        h.rep = st.rep - was;
+      });
+      c.repVersion = REP_VERSION;
+    }
+    // Careers from before the ship roster: start the service records from the mission history,
+    // and replace offers that still carry the old generic names.
+    if (oldNames) {
+      c.history.slice().reverse().forEach(function (h) { logService(c, h, {}); });
+      c.offersBy = {};
+      c.namesVersion = NAMES_VERSION;
+    }
+    STATIONS.forEach(function (s) {
+      if (!PLAYABLE[s]) return;
+      if (!Array.isArray(c.offersBy[s]) || !c.offersBy[s].length) generateOffers(c, s);
+      ensureStepUp(c, s);
+      uniqueShips(c.offersBy[s], BL.rng(c.offerSeed + 11), c);    // (offers saved before names were kept unique)
+    });
+    refreshCommand(c);
+    return c;
+  }
+
+  function fileName(c) {
+    var safe = cleanName(c.name).replace(/[^A-Za-z0-9_-]+/g, "_").replace(/^_+|_+$/g, "") || "career";
+    return BL.APP_TAG + "_" + safe + ".json";
+  }
+  function exportText(c) { return JSON.stringify(c, null, 2); }
+  function importText(text) {
+    var data;
+    try { data = JSON.parse(text); } catch (e) { throw new Error("That file isn't readable JSON."); }
+    return normalize(data);
+  }
+
+  /* ------------------------------------------------------------ Ranks */
+  function qualified(c, station) { return c.stations[station].qualified; }
+  function rank(c, station) {
+    var q = qualified(c, station);
+    return q ? STATION_NAME[station] + "-" + q : "Recruit";
+  }
+  function highestClass(c) { return Math.max.apply(null, CREW.map(function (s) { return c.stations[s].qualified; })); }
+  // Command of class n: engineer, gunner and pilot all qualified on it, and command of the class
+  // below (the gunboat first, as coxswain).
+  function canCommand(c, n) {
+    return n >= 1 && n <= 9 && built("captain", n) && CREW.every(function (s) { return c.stations[s].qualified >= n; }) && c.stations.captain.qualified >= n - 1;
+  }
+  // What command of class n still needs, as short phrases ("gunner on destroyers"), or [].
+  function commandNeeds(c, n) {
+    var cls = BL.classByN(n), out = CREW.filter(function (s) { return c.stations[s].qualified < n; }).map(function (s) { return STATION_NAME[s].toLowerCase(); });
+    if (!cls) return out;
+    var nd = out.length ? [out.join(", ").replace(/, ([^,]*)$/, " and $1") + " qualified on the " + cls.name.toLowerCase()] : [];
+    if (c.stations.captain.qualified < n - 1) nd.push("command of the " + BL.classByN(n - 1).name.toLowerCase());
+    return nd;
+  }
+  // The best rank held, short, for the title screen's button: "E4", or "E4 · G1" (Engineer-4,
+  // Gunner-1; C for Command).
+  function ranks(c) {
+    var held = STATIONS.filter(function (s) { return qualified(c, s) > 0; }).map(function (s) { return STATION_NAME[s].charAt(0) + qualified(c, s); });
+    return held.length ? held.join(" · ") : "Recruit";
+  }
+  function signoffsTotal(c) { return Math.max(0, highestClass(c) - 2); }
+  function signoffsHeld(c) { return signoffsTotal(c) - c.signoffsUsed.length; }
+  // The class a station is working toward: the one above its qualification (class 1 to start).
+  function targetClass(c, station) { return Math.min(9, qualified(c, station) + 1); }
+
+  /* ------------------------------------------------------------ Offers
+     Generic postings for now: a ship class, a tech level and a ship name; one list per station.
+     Always a lowest-tech offer (tech level 4 on a gunboat, 5 above) for the class you're on and, once you're qualified, one
+     for the class above; more offers from the class above come as reputation grows.
+     A gunner job names the engineer you'd serve with (the same one the mission will roll); a
+     pilot job the engineer and the gun crew.
+     Crew hooks: a job names each crewmate it knows as job.engineer, job.gunner or job.pilot
+     ({ name, who, label, skill }); the listing shows whichever are there. To come: engineer
+     jobs name the gunner and pilot, gunner jobs the pilot, pilot jobs the engineer and gunner,
+     each picked from the job seed so the mission gets the same people. */
+  function makeJob(rng, station, n, tl, serious, story) {
+    var cls = BL.classByN(n);
+    var job = { id: "j" + Math.floor(rng.next() * 1e9).toString(36), station: station, classId: cls.id, n: n, tl: tl,
+      ship: BL.shipName(rng, cls.id, tl), seed: 1 + Math.floor(rng.next() * 999999), serious: serious !== false };
+    job.hull = BL.hullNumber(cls.id, job.ship);
+    if (station === "gunner") { job.weapons = (BL.GUNNERY.loadout[cls.id] || ["pulse"]).slice(); if (BL.pickEngineer) job.engineer = BL.pickEngineer(job.seed, cls.id); }
+    if (station === "pilot") { job.helm = true; if (BL.pickEngineer) job.engineer = BL.pickEngineer(job.seed, cls.id); }
+    // A command job: the bridge (the crew are the ones the mission rolls from its seed); on the
+    // gunboat and destroyer escort, now and then an escort mission.
+    if (station === "captain") {
+      job.helm = true; job.captain = true;
+      job.escort = !!ESCORT_CLASSES[cls.id] && rng.chance(ESCORT_SHARE);
+      if (BL.pickEngineer) job.engineer = BL.pickEngineer(job.seed, cls.id);
+      if (BL.pickPilot) job.pilot = BL.pickPilot(job.seed, cls.id);
+    }
+    if (story) {
+      job.story = story.id; job.title = story.title; job.chapter = story.chapter;
+      // (a Captain story mission says whether it's an escort, and of what: carrier, convoy or capital ship)
+      if (station === "captain") { job.escort = !!story.escort; job.escortKind = story.escort || null; }
+    }
+    return job;
+  }
+
+  /* Story missions (story.js): each station's storyline has three missions per class, in any
+     order. Offers are the ones not yet completed, on the class you're on and the class above;
+     a failed one stays on offer. Winning any dreadnought mission completes the storyline. When
+     a class you still need has none left (after being sent back), plain jobs fill in. */
+  function hasStory(station) { return !!(BL.STORY && BL.STORY[station]); }
+  function storyComplete(c, station) {
+    return hasStory(station) && BL.STORY[station].some(function (m) { return m.n === 9 && c.storyDone[m.id]; });
+  }
+  function storyLeft(c, station, n) {
+    if (!hasStory(station) || (n === 9 && storyComplete(c, station))) return [];
+    return BL.STORY[station].filter(function (m) { return m.n === n && !c.storyDone[m.id]; });
+  }
+  function storyOffers(c, station, rng) {
+    var q = qualified(c, station), out = [], cmd = station === "captain";
+    var classes = q >= 1 ? [q, q + 1] : [1];
+    classes.forEach(function (n) {
+      if (!BL.classByN(n) || !built(station, n)) return;
+      if (cmd && n > q && !canCommand(c, n)) return;      // (command of a class: the command ladder, canCommand)
+      var left = storyLeft(c, station, n);
+      left.forEach(function (m, i) { out.push(makeJob(rng, station, n, i === 0 ? lowTL(n) : anyTL(rng, n), true, m)); });
+      if (!left.length && n > q && !storyComplete(c, station)) {
+        out.push(makeJob(rng, station, n, lowTL(n)));
+        out.push(makeJob(rng, station, n, anyTL(rng, n)));
+      }
+    });
+    // Command: the class you command has no story left and the next isn't open yet: plain jobs on it.
+    if (cmd && q >= 1 && !out.some(function (j) { return j.n === q; }) && !out.some(function (j) { return j.n > q; })) {
+      out.push(makeJob(rng, station, q, lowTL(q)));
+      for (var i = rng.int([1, 2]); i > 0; i--) out.push(makeJob(rng, station, q, anyTL(rng, q)));
+    }
+    return out;
+  }
+  function offers(c, station) { return c.offersBy[station] || []; }
+  // Every ship in a list of jobs is a different ship: a repeat gets a new name of its class and tech level.
+  // A lost gunboat's PT number is never drawn again; a named ship lost in action comes back as a new
+  // ship of the same name and tech level under a new hull number (see retireShip).
+  function uniqueShips(list, rng, c) {
+    var used = {};
+    if (c) Object.keys(c.ships).forEach(function (k) { if (c.ships[k].lost && c.ships[k].classId === "gunboat") used[k] = true; });
+    list.forEach(function (j) {
+      if (used[j.ship]) j.ship = BL.shipName(rng, j.classId, j.tl, used);
+      j.hull = hullOf(c, j);
+      used[j.ship] = true;
+    });
+    return list;
+  }
+  function hullOf(c, j) { return (c && c.hulls && c.hulls[j.ship]) || BL.hullNumber(j.classId, j.ship); }
+  // A ship destroyed or abandoned is gone: its service record is marked lost, and the next ship of
+  // that name gets the class's next new hull number (137 up, past the 36 on the name lists).
+  function retireShip(c, entry) {
+    var rec = c.ships[recKey(entry)];
+    if (rec) rec.lost = entry.date;
+    if (entry.classId === "gunboat") return;
+    var k = c.nextHull[entry.classId] || 137;
+    c.nextHull[entry.classId] = k + 1;
+    c.hulls[entry.ship] = BL.HULL_CODES[entry.classId] + "-" + k;
+    Object.keys(c.offersBy).forEach(function (s) { (c.offersBy[s] || []).forEach(function (j) { j.hull = hullOf(c, j); }); });
+  }
+  function generateOffers(c, station) {
+    station = station || "engineer";
+    var rng = BL.rng(c.offerSeed = (c.offerSeed * 48271 + 11) % 2147483647 || 1);
+    var q = qualified(c, station), offers = [];
+    if (hasStory(station)) {
+      offers = storyOffers(c, station, rng);
+      offers.sort(function (a, b) { return b.n - a.n || (a.story || "").localeCompare(b.story || "") || a.tl - b.tl; });
+      c.offersBy[station] = uniqueShips(offers, rng, c);
+      return offers;
+    }
+    if (station === "captain") return commandOffers(c, rng);
+    var current = Math.max(1, q);
+    if (!built(station, current)) current = Math.min(current, station === "gunner" ? GUNNER_CLASSES : current);
+    if (!built(station, current)) current = 1;
+    offers.push(makeJob(rng, station, current, lowTL(current)));
+    var extra = rng.int([1, 2]);
+    for (var i = 0; i < extra; i++) offers.push(makeJob(rng, station, current, anyTL(rng, current)));
+    var next = BL.classByN(q + 1);
+    if (q >= 1 && next && built(station, next.n)) {
+      offers.push(makeJob(rng, station, next.n, lowTL(next.n)));
+      var rep = c.stations[station].rep;
+      var chance = clamp(0.45 + rep / (3 * next.baseRep), 0.45, 0.95);
+      if (rng.chance(chance) || c.stepUps[station] >= 2) {
+        offers.push(makeJob(rng, station, next.n, anyTL(rng, next.n)));
+        c.stepUps[station] = 0;
+      } else c.stepUps[station] = (c.stepUps[station] || 0) + 1;
+    }
+    offers.sort(function (a, b) { return b.n - a.n || a.tl - b.tl; });
+    c.offersBy[station] = uniqueShips(offers, rng, c);
+    return offers;
+  }
+  // Command: postings on the class you command and, once you may, the class above (canCommand);
+  // none until you may command a gunboat.
+  function commandOffers(c, rng) {
+    var q = qualified(c, "captain"), offers = [];
+    [q, q + 1].forEach(function (n) {
+      if (n < 1 || (n > q && !canCommand(c, n)) || !built("captain", n)) return;
+      offers.push(makeJob(rng, "captain", n, lowTL(n)));
+      for (var i = rng.int([1, 2]); i > 0; i--) offers.push(makeJob(rng, "captain", n, anyTL(rng, n)));
+    });
+    offers.sort(function (a, b) { return b.n - a.n || a.tl - b.tl; });
+    c.offersBy.captain = uniqueShips(offers, rng, c);
+    return offers;
+  }
+  // A station qualification can open command of the next class: then the command offers are drawn again.
+  function refreshCommand(c) {
+    var q = qualified(c, "captain"), list = offers(c, "captain");
+    if (canCommand(c, q + 1) && !list.some(function (o) { return o.n === q + 1; })) generateOffers(c, "captain");
+  }
+  // Tech levels for a class (BL.TECH.levels): the lowest, and any one at random.
+  function lowTL(n) { return BL.TECH.levels(BL.classByN(n).id)[0]; }
+  function anyTL(rng, n) { var L = BL.TECH.levels(BL.classByN(n).id); return L[rng.int([0, L.length - 1])]; }
+  // Careers saved before the step-up rule may lack the guaranteed lowest-tech offer.
+  function ensureStepUp(c, station) {
+    var q = qualified(c, station), next = BL.classByN(q + 1), list = offers(c, station);
+    if (q < 1 || !next || !built(station, next.n) || hasStory(station) || station === "captain") return;
+    var has = list.some(function (o) { return o.n === next.n && o.tl === lowTL(next.n); });
+    if (!has) {
+      list.push(makeJob(BL.rng(c.offerSeed + 3), station, next.n, lowTL(next.n)));
+      list.sort(function (a, b) { return b.n - a.n || a.tl - b.tl; });
+      uniqueShips(list, BL.rng(c.offerSeed + 5), c);
+    }
+  }
+
+  // Requalifying: jobs below your current class, always available. You've already qualified on
+  // them, so they're practice or requalification, and earn half that class's reputation. With a
+  // storyline, they're the story missions you skipped on those classes.
+  function lowerJobs(c, station) {
+    var q = qualified(c, station), out = [];
+    var rng = BL.rng(c.offerSeed + 7);
+    for (var n = 1; n < q; n++) {
+      if (!built(station, n)) continue;
+      if (hasStory(station)) { storyLeft(c, station, n).forEach(function (m) { out.push(makeJob(rng, station, n, anyTL(rng, n), false, m)); }); continue; }
+      BL.TECH.levels(BL.classByN(n).id).forEach(function (tl) { out.push(makeJob(rng, station, n, tl, false)); });
+    }
+    return uniqueShips(out, rng, c);
+  }
+  /* Reputation: a man's standing on each path (Reputation and crew refusals, Nov 2, 2026). It
+     starts at 50, never goes below 0 and has no top. A mission's outcome counts once (a success
+     gains more at TL5 and TL6: an old beater's success gets talked about; a requalifying job's
+     the same); at command, a squadron left behind, each crewman killed and dropping down to a
+     station (once a mission) come on top. */
+  var REP = { start: 50, success: 1, tlBonus: { 5: 2, 6: 1 }, failure: -1, destroyed: -2, abandoned: -1,
+    wardLost: -1, dropMissed: -3, squadronLost: -3, killed: -1, droppedDown: -1 };
+  function repFor(job) { return REP.success + (REP.tlBonus[job.tl] || 0); }      // what a success earns
+  // The mission's reputation, part by part: [[what, points], ...].
+  function repParts(station, outcome, tl, squadrons, killed, dropped) {
+    var cmd = station === "captain", out = [];
+    if (outcome === "success") { out.push(["success", REP.success]); if (REP.tlBonus[tl]) out.push(["tech level " + tl, REP.tlBonus[tl]]); }
+    else if (outcome === "destroyed") out.push(["ship destroyed", REP.destroyed]);
+    else if (outcome === "abandoned") out.push(["abandoned ship", REP.abandoned]);
+    else if (cmd && outcome === "wardLost") out.push(["escorted ship lost", REP.wardLost]);
+    else if (cmd && outcome === "dropMissed") out.push(["planet buster drop missed", REP.dropMissed]);
+    else out.push(["failed mission", REP.failure]);
+    if (cmd && squadrons) out.push(["squadron left behind", REP.squadronLost * squadrons]);
+    if (cmd && killed) out.push([killed + " crew killed", REP.killed * killed]);
+    if (cmd && dropped) out.push(["dropped down to a station", REP.droppedDown]);
+    return out;
+  }
+
+  /* ------------------------------------------------------- Mission result
+     Every mission moves reputation on that path (repParts); success qualifies you on the class.
+     Any two failures at a post (station + class) send you back one class, where you
+     requalify with a real mission. Failures on jobs below your class don't count. */
+  function applyResult(c, job, r) {
+    var st = c.stations[job.station], post = job.n, before = st.qualified;
+    var report = { rep: 0, qualifiedBefore: before, qualifiedAfter: before, promoted: false, demoted: false, failuresAtPost: 0,
+      profileBefore: profile(c) };
+    var success = r.outcome === "success";
+    if (success) {
+      if (job.story) { c.storyDone[job.story] = today(); report.storyDone = job.story; }
+      st.failures[post] = 0;
+      if (post > st.qualified) { st.qualified = post; report.promoted = true; }
+    } else if (post >= st.qualified) {
+      st.failures[post] = (st.failures[post] || 0) + 1;
+      report.failuresAtPost = st.failures[post];
+      if (st.failures[post] >= 2) {
+        st.failures[post] = 0;
+        var back = Math.max(0, Math.min(st.qualified, post - 2));
+        // Classes lost this way must be requalified with real missions, not rapid sign-offs.
+        st.realUntil = Math.max(st.realUntil || 0, st.qualified);
+        if (back < st.qualified) { st.qualified = back; report.demoted = true; }
+        report.sentBack = true;
+      }
+    }
+    report.qualifiedAfter = st.qualified;
+    // Rapid sign-offs held can't exceed what the new top class allows.
+    while (c.signoffsUsed.length > signoffsTotal(c)) c.signoffsUsed.pop();
+    // Reputation profile, one per station: running averages over every mission at that station.
+    // At the gun, accuracy fills the efficiency slot and threats stopped the demands-met slot.
+    // At the helm: orders followed (efficiency slot), dodging (the breaks the captain ordered and
+    // you made; demands slot) and guns on target (the share of enemy ships the gun crew destroyed).
+    var p = c.profiles[job.station] = c.profiles[job.station] || blankProfile(), n = p.missions;
+    report.profileBefore = profile(c, job.station);
+    function avg(old, v) { return (old * n + v) / (n + 1); }
+    var gun = job.station === "gunner", hm = job.station === "pilot" && r.helm, cp = job.station === "captain" && r.captain;
+    p.aggression = avg(p.aggression, r.aggression || 0);
+    // Command: navigation (efficiency slot), command (demands slot) and guns on target.
+    if (cp) {
+      p.efficiency = avg(p.efficiency, (r.parts.navigation || 0) / 25);
+      p.demands = avg(p.demands, (r.parts.command || 0) / 25);
+      p.guns = avg(p.guns || 0, cp.ships ? cp.kills / cp.ships : 0);
+      p.delegation = avg(p.delegation === undefined ? 1 : p.delegation, cp.dropped ? 0 : 1);     // (the share of missions he stayed on the bridge)
+    } else if (hm) {
+      var asked = hm.orders + hm.requests + hm.evasive + hm.disobeyed;
+      p.efficiency = avg(p.efficiency, asked ? (hm.ordersMet + hm.requestsMet + hm.evasiveMet) / asked : 1);
+      p.demands = avg(p.demands, hm.evasive ? hm.evasiveMet / hm.evasive : 1);
+      p.guns = avg(p.guns || 0, hm.ships ? hm.kills / hm.ships : 0);
+    } else {
+      p.efficiency = avg(p.efficiency, gun ? (r.gunner ? r.gunner.accuracyPct : 0) / 100 : r.detail.efficiencyPct / 100);
+      p.demands = avg(p.demands, (gun ? r.parts.threats : r.parts.demands) / 25);
+    }
+    p.condition = avg(p.condition, r.parts.condition / 25);
+    p.missions = n + 1;
+    if (success) p.wins++; else p.losses++;
+    report.profileAfter = profile(c, job.station);
+    // Command: the roster crew's losses, growth and morale (BL.roster.afterMission); then reputation.
+    if (job.station === "captain" && BL.roster) report.crew = BL.roster.afterMission(c, job, r, { date: today() });
+    report.repParts = repParts(job.station, r.outcome, job.tl, cp && r.detail ? r.detail.squadronsLost || 0 : 0, report.crew ? report.crew.lost.length : 0, cp && cp.dropped);
+    var repWas = st.rep;
+    st.rep = Math.max(0, st.rep + report.repParts.reduce(function (a, p) { return a + p[1]; }, 0));
+    report.rep = st.rep - repWas;
+    var entry = { date: today(), station: job.station, classId: job.classId, n: job.n, tl: job.tl, ship: job.ship, hull: job.hull || hullOf(c, job),
+      seed: job.seed, outcome: r.outcome, score: r.score, rep: report.rep, serious: job.serious, story: job.story, title: job.title };
+    c.history.unshift(entry);
+    if (c.history.length > 200) c.history.length = 200;
+    logService(c, entry, r);
+    if (r.outcome === "destroyed" || r.outcome === "abandoned") { retireShip(c, entry); report.shipLost = true; }
+    generateOffers(c, job.station);
+    refreshCommand(c);
+    return report;
+  }
+
+  /* ------------------------------------------------------ Rapid sign-offs
+     Qualified on class N at any station, you hold N - 2 sign-offs in total. Each qualifies you
+     at another station on its next class, as long as that class is no higher than N - 2 and
+     built for that station. No reputation, and never to win back a class lost to failures. */
+  function signoffOptions(c) {
+    var top = highestClass(c), out = [];
+    if (signoffsHeld(c) <= 0) return out;
+    CREW.forEach(function (s) {
+      var st = c.stations[s], n = st.qualified + 1;
+      if (!PLAYABLE[s] || n > top - 2 || !built(s, n) || n <= (st.realUntil || 0)) return;
+      out.push({ station: s, n: n });
+    });
+    return out;
+  }
+  function spendSignoff(c, station, n) {
+    var ok = signoffOptions(c).some(function (o) { return o.station === station && o.n === n; });
+    if (!ok) return false;
+    c.stations[station].qualified = n;
+    c.signoffsUsed.push({ station: station, n: n, date: today() });
+    generateOffers(c, station);
+    refreshCommand(c);
+    return true;
+  }
+
+  /* Service records: one per ship, kept for the whole career (never trimmed). Each mission
+     aboard adds an entry: who served, at which station, how it went and what the ship took. */
+  // Keyed by name; a later ship of the same name (new hull number) adds its hull number to the key.
+  function recKey(h) { return h.ship + (h.hull && h.hull !== BL.hullNumber(h.classId, h.ship) ? " " + h.hull : ""); }
+  function logService(c, h, r) {
+    var key = recKey(h), rec = c.ships[key];
+    if (!rec) rec = c.ships[key] = { name: h.ship, hull: h.hull || "", classId: h.classId, n: h.n, tl: h.tl, firstServed: h.date, missions: [] };
+    var d = r.detail || {};
+    rec.missions.push({ date: h.date, hero: c.name, station: h.station, seed: h.seed, outcome: h.outcome, score: h.score,
+      rep: h.rep, serious: h.serious, kills: d.kills, hullLost: d.hullLost, jumpsOnTime: d.jumpsOnTime,
+      encounters: (r.jumps || []).map(function (j) { return j.encounter; }), damageReports: (r.damage || []).length });
+    rec.lastServed = h.date;
+  }
+  function serviceRecord(c, ship) { return c.ships[ship] || null; }
+
+  // Reputation profile factors for one station, 0..1 each, shown as slider bars.
+  function profile(c, station) {
+    var p = c.profiles[station || "engineer"] || blankProfile(), flown = p.wins + p.losses;
+    return {
+      aggression: p.aggression,
+      winloss: flown ? p.wins / flown : 0,
+      efficiency: p.efficiency,
+      demands: p.demands,
+      condition: p.condition,
+      guns: p.guns || 0,
+      delegation: p.delegation === undefined ? 1 : p.delegation
+    };
+  }
+
+  BL.career = {
+    STATIONS: STATIONS, CREW: CREW, STATION_NAME: STATION_NAME, PLAYABLE: PLAYABLE, built: built, canCommand: canCommand, commandNeeds: commandNeeds,
+    create: create, save: save, load: load, normalize: normalize,
+    fileName: fileName, exportText: exportText, importText: importText,
+    qualified: qualified, rank: rank, ranks: ranks, targetClass: targetClass,
+    signoffsTotal: signoffsTotal, signoffsHeld: signoffsHeld, signoffOptions: signoffOptions, spendSignoff: spendSignoff,
+    offers: offers, generateOffers: generateOffers, lowerJobs: lowerJobs, repFor: repFor, REP: REP,
+    applyResult: applyResult, profile: profile, serviceRecord: serviceRecord,
+    storyComplete: storyComplete, storyLeft: storyLeft
+  };
+})(typeof window !== "undefined" ? window : globalThis);
