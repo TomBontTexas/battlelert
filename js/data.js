@@ -1030,8 +1030,10 @@
                       // (the mission types' own targets, BL.COMMAND.ops; Nov 9, 2026. capital: a strike's one big
                       // target, its wave by our class, encBy; merchant: a raided convoy's ship, making for its
                       // own exit off the map; bastion: a fortress outranged by our guns (bombard); flagship: an
-                      // enemy capital ship, broadsides (duel))
+                      // enemy capital ship, broadsides (duel). nameBy: its name by the wave it is fought as, so a
+                      // gunboat's strike target is called the frigate it is; Nov 9, 2026)
                       capital: { name: "Azurian capital ship", enc: "cruiserA", encBy: { gunboat: "frigate", picket: "frigate", destroyerEscort: "frigate", battleship: "battleshipA", dreadnought: "battleshipA" },
+                                 nameBy: { frigate: "Azurian frigate", cruiserA: "Azurian cruiser", battleshipA: "Azurian battleship" },
                                  hp: 1200, speed: 0.5, patrol: true, guns: [[0, 30, 2, "lead"], [90, 60, 5], [-90, 60, 5]], range: 18 },
                       merchant: { name: "Merchant", enc: "raiders", hp: 260, speed: 0.6, convoy: true, guns: [[0, 180, 1]], range: 8 },
                       bastion: { name: "Bastion", enc: "fortress", hp: 1800, speed: 0, guns: [[0, 180, 9]], range: 13 },
@@ -1076,7 +1078,7 @@
       escort: { name: "Escort", escort: true, brief: "Keep station on the ship you escort and bring her through every system.",
         detail: "Keep station on the ship you escort (ahead, port, starboard or astern) while she sails the navigator's course; you don't plot. Half of the enemy goes for her. Shoot down what you can, and order COVER to put your shields in the way of a burst aimed at her. A gunboat escorts the carrier and is recovered from ASTERN. Lose her and the mission fails." },
       strike: { name: "Torpedo strike", map: true, place: "strike", brief: "Each system holds one big enemy ship: sink her before the sortie ends.",
-        detail: "Each system holds one big enemy ship (gold, OBJECTIVE), with an escort or two about. Plot a course that passes near her, or tap her on the bridge map once you're in the system to go straight for her, and sink her with your torpedoes and gun. Warp (or be recovered) with her still afloat and the mission fails." },
+        detail: "Each system holds one big enemy ship (gold, OBJECTIVE), with an escort or two about: a frigate against a gunboat, picket or destroyer escort, a cruiser against a destroyer or cruiser, a battleship against a battleship or dreadnought. Plot a course that passes near her, or tap her on the bridge map once you're in the system to go straight for her, and sink her with your torpedoes and gun. Warp (or be recovered) with her still afloat and the mission fails." },
       hunt: { name: "Hunt the damaged", map: true, place: "hunt", need: 0.6, brief: "Damaged enemy ships are running: sink at least 3 in 5 of them in each system.",
         detail: "Damaged enemy ships (gold) are scattered over each system, and they run from you once they see you. They're weak but quick to get away: tap one on the bridge map to chase it. Sink at least 3 in 5 of them in each system before you warp on, or the mission fails." },
       watch: { name: "Picket watch", hold: 45, hidden: true, brief: "Sit on the station marked in each system for 45 s, at slow or stopped so they don't find you, then warp on.",

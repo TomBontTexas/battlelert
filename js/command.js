@@ -747,6 +747,7 @@
       var T = { id: out.length, letter: M.letters[out.length] || "?", kind: kind, K: K, pos: { x: p.x, y: p.y }, hdg: hdg, hp: hp, hpMax: hp, obj: o.obj !== undefined ? !!o.obj : !!K.objective,
         rep: along(p, r.next() * 360, off), unknown: false, seen: false, last: null, dead: false, victim: null, hunt: null, wave: null, reserve: 0, waves: 0, by: null, exit: o.exit || null, flee: !!o.flee,
         enc: K.encBy && K.encBy[m.data.classId] || K.enc };
+      T.name = K.nameBy && K.nameBy[T.enc] || K.name;
       out.push(T); return T;
     }
     var side = function () { return r.chance(0.5) ? 1 : -1; }, way = function (f, off) { return along(along(map.start, hb, f * D), hb + 90, off * D); };
@@ -1066,7 +1067,7 @@
           vis.forEach(function (o) { var dd = dist(o.pos, T.pos); if (dd < M.sensor * 1.2 * cs && dd < pd) { pd = dd; prey = o; } });
           var pno = prey ? (prey.g ? prey.g.no : 0) : null;
           // (warn the commander when a pack turns on one of his ships out on her own)
-          if (pno && pno !== T.hunt && !ours.some(function (o) { return o !== prey && dist(o.pos, prey.pos) < M.range * cs; })) { es.alert = { at: t, text: T.letter + " · " + T.K.name + " turning on " + prey.g.name }; self.sqSay("sqHunted", prey.g, { L: T.letter, what: self.sqWhat(T) }, "warn"); }
+          if (pno && pno !== T.hunt && !ours.some(function (o) { return o !== prey && dist(o.pos, prey.pos) < M.range * cs; })) { es.alert = { at: t, text: T.letter + " · " + T.name + " turning on " + prey.g.name }; self.sqSay("sqHunted", prey.g, { L: T.letter, what: self.sqWhat(T) }, "warn"); }
           T.hunt = pno;
           if (prey) { want = bearing(T.pos, prey.pos); if (pd < T.K.standOff * T.K.range * cs) sp = 0; }
         } else if (T.K.guard) {
@@ -1132,7 +1133,7 @@
       g.firingOn = best.id;
       var dmg = self.gunsBear(g.pos, g.hdg, best.pos) * self.sqGun * Q.tick * self.capK(g) * self.capT(g)[1];
       es.fx.push({ at: t, a: { x: g.pos.x, y: g.pos.y }, b: { x: best.pos.x, y: best.pos.y } });
-      if (self.hitTarget(best, dmg)) { g.kills++; self.stats.sqKills++; best.by = g.no; self.sqSay("sqKill", g, { L: best.letter, name: best.K.name.toLowerCase() }, "good", true); }
+      if (self.hitTarget(best, dmg)) { g.kills++; self.stats.sqKills++; best.by = g.no; self.sqSay("sqKill", g, { L: best.letter, name: best.name.toLowerCase() }, "good", true); }
     });
     // How hot the fight is (targets firing on us, and ships of ours below half hull under fire now);
     // a hot one, the captains talk to each other.
@@ -1236,7 +1237,7 @@
     // (the whole target, its ships that much tougher; its torpedoes as its encounter fires them,
     // a new wave of them when those are spent and it fights on)
     var amt = T.hp;
-    T.reserve = 0; w.hp = w.hpMax = amt; w.aim = null; w.quiet = true; w.name = T.K.name; w.target = T.id;
+    T.reserve = 0; w.hp = w.hpMax = amt; w.aim = null; w.quiet = true; w.name = T.name; w.target = T.id;
     w.bearing = norm(bearing(this.pos, T.pos) - m.helm.compass());
     T.wave = w; T.waves++;
   };
@@ -1347,7 +1348,7 @@
   };
   // A target in a call: "a raider pack", "drive hunters"; "the raider pack".
   // (Azurian keeps its capital)
-  function lowName(T) { return T.K.name.toLowerCase().replace(/azurian/g, "Azurian"); }
+  function lowName(T) { return T.name.toLowerCase().replace(/azurian/g, "Azurian"); }
   Captain.prototype.sqWhat = function (T) { var n = lowName(T); return /s$/.test(n) ? n : (/^[aeiou]/i.test(n) ? "an " : "a ") + n; };
   Captain.prototype.sqThe = function (T) { return "the " + lowName(T); };
   // A battle-view point on the map (the inverse of Captain.toView).
@@ -1366,7 +1367,7 @@
     });
     var sent = this.escort.wing.filter(function (g) { var o = self.orderOf(g); return g.hull > 0 && o.kind === "target" && o.id === T.id; }).map(function (g) { return g.name; });
     if (this.flagGo && this.flagGo.kind === "target" && this.flagGo.id === T.id) sent.unshift(this.flagName);
-    return { letter: T.letter, name: T.unknown && !T.seen && !T.last ? "Unknown contact" : T.K.name, known: !T.unknown || T.seen || !!T.last, seen: T.seen,
+    return { letter: T.letter, name: T.unknown && !T.seen && !T.last ? "Unknown contact" : T.name, known: !T.unknown || T.seen || !!T.last, seen: T.seen,
       pct: Math.round(100 * T.hp / T.hpMax), dead: T.dead, objective: !!T.obj, moves: !!T.K.speed, guns: T.K.guns.reduce(function (a, g) { return a + g[2]; }, 0),
       range: T.K.range, on: T.victim === null ? null : T.victim === 0 ? this.flagName + " (the flagship)" : (this.escort.wing.filter(function (g) { return g.no === T.victim; })[0] || {}).name, sent: sent, ours: ours, theirs: theirs };
   };
@@ -1379,7 +1380,7 @@
       alert: es.alert ? es.alert.text : null, flag: this.flagCaptain, flagName: this.flagName, flagGo: this.flagGo,
       ships: es.wing.map(function (g) {
         var o = self.orderOf(g), T = o.kind === "target" ? self.sqTargets && self.sqTargets[o.id] : null;
-        var doing = g.left ? "left behind" : g.hull <= 0 ? "lost" : o.kind === "target" ? (T && !T.dead ? "→ " + T.letter + " " + T.K.name.toLowerCase() : "target gone") : o.kind === "spot" ? "→ a spot" : "in formation";
+        var doing = g.left ? "left behind" : g.hull <= 0 ? "lost" : o.kind === "target" ? (T && !T.dead ? "→ " + T.letter + " " + T.name.toLowerCase() : "target gone") : o.kind === "spot" ? "→ a spot" : "in formation";
         if (g.hull > 0 && o.kind === "form" && g.pos && dist(g.pos, self.slotAt(g, g.form)) > BL.COMMAND.escort.near * self.map().D * 3) doing = "forming up";
         if (g.hull > 0 && g.hold) doing += " · holding fire";
         return { no: g.no, name: g.name, cap: g.cap, hull: g.hull / g.hullMax, sh: g.sh / g.shMax, doing: doing, live: g.hull > 0, order: o.kind, pend: g.pend.some(function (q) { return q.what === "order" || q.what === "hold" || q.what === "form"; }), stPend: g.pend.some(function (q) { return q.what === "spacing" || q.what === "dress"; }), progress: self.sqProgress(g), kills: g.kills, hold: g.hold };

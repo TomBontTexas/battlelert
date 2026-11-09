@@ -1664,7 +1664,7 @@
     fitButtons($("cp-sq-form").closest(".cp-side"));
     // (the flagship's line: her flag captain, hull and shields, what she's doing)
     var sh = sim.sys("shield"), fh = Math.round(100 * sim.ship.hull / sim.ship.hullMax), fg = c.flagGo, fT = fg && fg.kind === "target" ? c.sqTargets[fg.id] : null;
-    var fdo = fT ? "→ " + fT.letter + " " + fT.K.name.toLowerCase() : fg ? "→ a spot" : "flagship · on " + (c.helmView().own ? "your course" : "the plot");
+    var fdo = fT ? "→ " + fT.letter + " " + fT.name.toLowerCase() : fg ? "→ a spot" : "flagship · on " + (c.helmView().own ? "your course" : "the plot");
     var flagLn = '<button data-sel="1" class="flagrow' + (sqSel.indexOf(1) >= 0 ? " sel" : "") + '" title="The flagship: ' + esc(v.flag.name) + ", your " + cap(sim.data.classId, "flag captain") + '. Tap to select her (1)"' + (live ? "" : " disabled") + "><b>1</b> " + esc(v.flagName) + " " + fh + "% · sh " + Math.round(100 * sh.mj / sh.maxMJ) + "% <span>· " + fdo + "</span>" +
       '<i class="' + (fh < 35 ? "low" : "") + '" style="width:' + fh + '%"></i></button>';
     cpHtml("cp-sq-ships", flagLn + v.ships.map(function (x) {
@@ -1780,7 +1780,7 @@
       ctx.setLineDash([]);
       if (solid && T.K.speed) { var hp2 = fr.toPx(BL.alongMap(at, T.hdg, 0.05 * c.map().D)); ctx.strokeStyle = "#ff6b6b"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(hp2.x, hp2.y); ctx.stroke(); }
       if (sel) { ctx.strokeStyle = "#ffd666"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(p.x, p.y, s + 9, 0, Math.PI * 2); ctx.stroke(); }
-      var lines = [[T.letter + (big ? " · " + T.K.name.toUpperCase() + (plan ? "" : " " + Math.round(100 * T.hp / T.hpMax) + "%") + (T.obj ? " · OBJECTIVE" : "") : ""), T.obj ? "#ffd666" : "#ffb3a8"]];
+      var lines = [[T.letter + (big ? " · " + T.name.toUpperCase() + (plan ? "" : " " + Math.round(100 * T.hp / T.hpMax) + "%") + (T.obj ? " · OBJECTIVE" : "") : ""), T.obj ? "#ffd666" : "#ffb3a8"]];
       if (big && !solid && !plan) lines.push([T.last ? "last seen" : "reported", "#8899a8"]);
       place(lines, p, s + 4);
       if (!plan) T.lbl = occ[occ.length - 1];      // (its label: a tap on it picks the target too)
@@ -2295,7 +2295,7 @@
     var c = sim.captain, pre = c.preOrders[plotEd.i], ts = c.sqMaps[plotEd.i];
     $("pl-squad").innerHTML = '<div class="ps-hd">YOUR SHIPS · tap to send one to a target</div>' + c.sqLive().map(function (g) {
       var T = pre[g.no] !== undefined ? ts[pre[g.no]] : null;
-      return '<button data-pre="' + g.no + '"><b>' + g.no + "</b> " + esc(g.name) + " → " + (T ? T.letter + " " + T.K.name.toLowerCase() : "in formation") + "</button>";
+      return '<button data-pre="' + g.no + '"><b>' + g.no + "</b> " + esc(g.name) + " → " + (T ? T.letter + " " + T.name.toLowerCase() : "in formation") + "</button>";
     }).join("") + '<div class="muted small-text">' + (sim.sys("buster") ? "No objective: get through and make the drop. Fortress ships guard the drop zone." : sim.op && sim.op !== "depot" ? "The objectives are gold." : "The objective is the depot (gold).") + ' The flagship flies your course. "?" are contacts the pickets missed.</div>';
   }
   // A new plot: straight to the approach point, then in along the jump heading.
