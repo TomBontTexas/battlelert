@@ -451,6 +451,10 @@
     else if (b.id === "btn-snd-restart") BL.audio.restart();
     else if (b.id === "btn-snd-recover") { BL.audio.recover(true); $("snd-say").textContent = "Recovered by your tap (new sound engine). Try an effect."; }
     else if (b.dataset.say) sayTrial(b.dataset.say === "1");
+    else if (b.id === "btn-snd-loop") {
+      var on = !BL.audio.mediaLooping(); BL.audio.mediaLoop(on);
+      setTimeout(function () { b.textContent = "Silent loop: " + (BL.audio.mediaLooping() ? "on" : "off"); }, 300);
+    }
     else if (b.id === "btn-snd-close") { BL.audio.humTest(null); clearInterval(sndTimer); overlay("ov-sounds", false); return; }
     setTimeout(sndInfo, 150);
   });

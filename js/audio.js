@@ -16,7 +16,7 @@
   // iPad/iPhone: Safari mutes Web Audio in silent mode unless the page counts as media
   // playback. Newer Safari has navigator.audioSession; older ones switch over once an
   // <audio> element plays, so play a tiny silent clip on the first tap.
-  var unlocked = false;
+  var unlocked = false, loopEl = null;
   function silentWavUrl() {
     var n = 800, buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
     function str(o, s) { for (var i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); }
@@ -166,6 +166,19 @@
       if (rebuild && ctx) { try { ctx.close(); } catch (e) {} ctx = null; hum = null; rebuilt++; init(); }
       else if (ctx) { try { var r = ctx.resume(); if (r && r.catch) r.catch(function () {}); } catch (e) {} }
     },
+    // Sound test, speech trial 2: a silent clip looping the whole time, to keep the iPad's media
+    // playback busy so a voice line may mix in instead of taking the sound from the effects.
+    mediaLoop: function (on) {
+      if (!on) { if (loopEl) { try { loopEl.pause(); } catch (e) {} loopEl = null; } return false; }
+      if (loopEl) return true;
+      try {
+        loopEl = document.createElement("audio");
+        loopEl.setAttribute("playsinline", ""); loopEl.loop = true; loopEl.src = silentWavUrl(); loopEl.volume = 0.01;
+        var p = loopEl.play(); if (p && p.catch) p.catch(function () { loopEl = null; });
+      } catch (e) { loopEl = null; }
+      return !!loopEl;
+    },
+    mediaLooping: function () { return !!(loopEl && !loopEl.paused); },
     restart: function () { if (ctx) { try { ctx.close(); } catch (e) {} ctx = null; hum = null; rebuilt++; } init(); },
     // The Sound test: one sound (skipping the repeat gap), the hum at a load (null: back to the game).
     test: function (name) { lastPlayed[name] = 0; play(name); },
