@@ -422,6 +422,13 @@
   });
   $("opt-voice").onchange = function () { settings.voice = this.checked; applySettings(); saveSettings(); if (settings.voice) BL.speech.say("Bridge: voices on.", "info"); };
   $("vol-voice").oninput = function () { settings.voiceVol = +this.value; applySettings(); saveSettings(); };
+  // Restart sound: a new sound engine, for when the iPad leaves the old one silent.
+  function restartSound(statusId) {
+    BL.audio.restart();
+    setTimeout(function () { BL.audio.play("click"); $(statusId).textContent = BL.speech.status() + " Sound effects: " + BL.audio.status() + "."; }, 200);
+  }
+  $("btn-sound-pause").onclick = function () { restartSound("pause-voice"); };
+  $("btn-sound-opt").onclick = function () { restartSound("voice-status"); };
   $("btn-voice-test").onclick = function () { BL.audio.init(); BL.speech.test(); renderVoiceTable(); $("voice-details").open = true; };
   function renderVoiceTable() {
     var q = ["", "", "Enhanced", "Premium"];

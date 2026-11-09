@@ -11,6 +11,11 @@
   // next tap wakes it. wakeAt: when that was asked; a woken engine that is still not running
   // after REBUILD_MS is replaced by a new one (iPad can leave one stuck "interrupted").
   var wakeAt = 0, REBUILD_MS = 800, rebuilt = 0;
+  // stale: the engine may say "running" yet be silent (iPad, after the screen locks, another app
+  // or the page goes to the background; closing the tab was the only cure): the next tap replaces
+  // it with a new one. Set when the page comes back into view, or when the watchdog finds a
+  // "running" engine whose clock has stopped.
+  var stale = false, dogT = 0, dogWall = 0;
   var MIN_GAP = { shot: 0.09, tick: 0.05, chatter: 0.25, shieldHit: 0.08, pulse: 0.06, shipHit: 0.05, torpLaunch: 0.12 };
 
   // iPad/iPhone: Safari mutes Web Audio in silent mode unless the page counts as media
@@ -40,11 +45,8 @@
   // Safe to call from any tap or keypress: creates the audio engine the first time and
   // wakes it again after Safari suspends or interrupts it (backgrounding, screen lock).
   function init() {
+    if (ctx && (stale || ctx.state !== "running" && wakeAt && Date.now() - wakeAt > REBUILD_MS)) drop();
     unlockMediaPlayback();
-    if (ctx && ctx.state !== "running" && wakeAt && Date.now() - wakeAt > REBUILD_MS) {
-      try { ctx.close(); } catch (e) {}
-      ctx = null; hum = null; rebuilt++;
-    }
     if (ctx) { if (ctx.state !== "running") wake(); speechUnlock(); return; }
     var AC = root.AudioContext || root.webkitAudioContext;
     if (!AC) return;
@@ -59,6 +61,11 @@
     for (var i = 0; i < ch.length; i++) ch[i] = Math.random() * 2 - 1;
   }
 
+  // Throw the engine away (the next init builds a new one, and plays the silent clip again).
+  function drop() {
+    try { ctx.close(); } catch (e) {}
+    ctx = null; hum = null; rebuilt++; stale = false; unlocked = false; dogT = 0; dogWall = 0;
+  }
   function wake() {
     if (!wakeAt) wakeAt = Date.now();
     try { var r = ctx.resume(); if (r && r.catch) r.catch(function () {}); } catch (e) {}
@@ -144,11 +151,21 @@
   }
 
   ["pointerdown", "touchend", "keydown"].forEach(function (type) {
-    document.addEventListener(type, function () { if (!ctx || ctx.state !== "running") init(); }, true);
+    document.addEventListener(type, function () { if (!ctx || stale || ctx.state !== "running") init(); }, true);
   });
+  document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible" && ctx) stale = true; });
+  root.addEventListener("pageshow", function (ev) { if (ev.persisted && ctx) stale = true; });
+  setInterval(function () {
+    if (!ctx || ctx.state !== "running" || document.visibilityState !== "visible") { dogT = 0; dogWall = 0; return; }
+    var now = Date.now(), t = ctx.currentTime;
+    if (dogWall && now - dogWall > 1500 && t - dogT < 0.5) stale = true;
+    dogT = t; dogWall = now;
+  }, 2000);
 
   BL.audio = {
     init: init,
+    // The "Restart sound" button (pause, Options): a new engine now (it runs in the tap).
+    restart: function () { if (ctx) drop(); init(); },
     play: play,
     humStart: humStart,
     humSet: humSet,
