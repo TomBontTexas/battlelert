@@ -176,6 +176,9 @@
       if (speaking || synth.speaking || synth.pending) return;
       // A real line wakes Safari where the silent primer may not, so say a waiting line now.
       if (queue.length) { unlocked = true; primedAt = Date.now(); next(); return; }
+      // Once a real line has been spoken, no more silent lines: on the iPad each one turned the
+      // sound effects down (a tap every few seconds in a fight faded them to nothing; Nov 9, 2026).
+      if (stats.started > 0) return;
       if (unlocked && Date.now() - primedAt < 3000) return;
       unlocked = true; primedAt = Date.now();
       if (synth.paused) synth.resume();

@@ -53,7 +53,7 @@
   function init() {
     if (ctx && Date.now() - lastRebuild > REBUILD_GAP && (stale || ctx.state !== "running" && wakeAt && Date.now() - wakeAt > REBUILD_MS)) drop();
     unlockMediaPlayback();
-    if (ctx) { if (ctx.state !== "running") wake(); speechUnlock(); return; }
+    if (ctx) { if (ctx.state !== "running") { wake(); speechUnlock(); } return; }
     var AC = root.AudioContext || root.webkitAudioContext;
     if (!AC) return;
     ctx = new AC();
