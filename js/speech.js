@@ -171,7 +171,9 @@
     // lose that permission again (after a cancel, a pause or the screen locking). Every tap
     // re-primes it with a silent line while nothing is being said.
     unlock: function () {
-      if (!synth) return;
+      // (Spoken messages off: no speech at all, not even the silent line; on iPadOS 27.2 any
+      // speech seems to silence the sound effects, Nov 9, 2026)
+      if (!synth || !enabled) return;
       if (!voices.length) loadVoices();
       if (speaking || synth.speaking || synth.pending) return;
       // A real line wakes Safari where the silent primer may not, so say a waiting line now.
