@@ -186,7 +186,9 @@
     });
   }
 
-  ["pointerdown", "touchend", "keydown"].forEach(function (type) {
+  // (touchend, click and keys only: Safari on the iPad doesn't count a finger going down as
+  // leave to start sound, and an engine built then can say "running" yet stay silent)
+  ["touchend", "click", "keydown"].forEach(function (type) {
     document.addEventListener(type, function () { if (!ctx || stale || ctx.state !== "running") init(); }, true);
   });
   document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible" && ctx) stale = true; });
