@@ -449,9 +449,24 @@
     if (b.dataset.snd) BL.audio.test(b.dataset.snd);
     else if (b.dataset.hum) BL.audio.humTest(b.dataset.hum === "null" ? null : +b.dataset.hum);
     else if (b.id === "btn-snd-restart") BL.audio.restart();
+    else if (b.id === "btn-snd-recover") { BL.audio.recover(true); $("snd-say").textContent = "Recovered by your tap (new sound engine). Try an effect."; }
+    else if (b.dataset.say) sayTrial(b.dataset.say === "1");
     else if (b.id === "btn-snd-close") { BL.audio.humTest(null); clearInterval(sndTimer); overlay("ov-sounds", false); return; }
     setTimeout(sndInfo, 150);
   });
+  // Speech trial: one line straight to the browser's speech (whatever Spoken messages says), then,
+  // if asked, the effects take the sound back once it ends.
+  function sayTrial(recover) {
+    var syn = window.speechSynthesis;
+    if (!syn) { $("snd-say").textContent = "This browser can't speak."; return; }
+    var u = new SpeechSynthesisUtterance("Voice test, one two three.");
+    $("snd-say").textContent = "Speaking…";
+    u.onend = u.onerror = function () {
+      if (recover) setTimeout(function () { BL.audio.recover(false); sndInfo(); $("snd-say").textContent = "Line done; effects told to take the sound back. Try an effect."; }, 300);
+      else $("snd-say").textContent = "Line done; nothing else done. Try an effect.";
+    };
+    syn.speak(u);
+  }
   $("btn-sound-test").onclick = function () { BL.audio.init(); overlay("ov-sounds", true); sndInfo(); clearInterval(sndTimer); sndTimer = setInterval(sndInfo, 500); };
   $("btn-voice-test").onclick = function () { BL.audio.init(); BL.speech.test(); renderVoiceTable(); $("voice-details").open = true; };
   function renderVoiceTable() {

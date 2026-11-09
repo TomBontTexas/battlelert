@@ -157,6 +157,15 @@
     humSet: humSet,
     // Restored to v0.271.00 (Nov 9, 2026, TexasBont); only the buttons below were added back, and
     // they act only when pressed. Restart sound: a new engine now (it runs in the tap).
+    // Sound test, speech trial (iPadOS 27.2 silences the effects once speech has run): take the
+    // sound back for the effects: the media session again, the silent clip, then wake the engine
+    // (rebuild: a new engine, from a tap only).
+    recover: function (rebuild) {
+      try { if (navigator.audioSession) { navigator.audioSession.type = "auto"; navigator.audioSession.type = "playback"; } } catch (e) {}
+      unlocked = false; unlockMediaPlayback();
+      if (rebuild && ctx) { try { ctx.close(); } catch (e) {} ctx = null; hum = null; rebuilt++; init(); }
+      else if (ctx) { try { var r = ctx.resume(); if (r && r.catch) r.catch(function () {}); } catch (e) {} }
+    },
     restart: function () { if (ctx) { try { ctx.close(); } catch (e) {} ctx = null; hum = null; rebuilt++; } init(); },
     // The Sound test: one sound (skipping the repeat gap), the hum at a load (null: back to the game).
     test: function (name) { lastPlayed[name] = 0; play(name); },
