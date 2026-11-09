@@ -94,13 +94,16 @@
   // One sound: its nodes are all disconnected when it ends (Safari keeps connected nodes alive,
   // and they pile up over a long fight).
   function voice(r, t0, vol) {
-    var dur = r.a + r.s + r.d, nodes = [], owner = ctx;
+    var dur = r.a + r.s + r.d, nodes = [], owner = ctx, over = false;
     live++;
+    // (once only: from the sound's "ended" or, as Safari doesn't always send that, a timer)
     function done() {
+      if (over) return; over = true;
       nodes.forEach(function (n) { try { n.disconnect(); } catch (e) {} });
       nodes.length = 0;
       if (ctx === owner && live > 0) live--;
     }
+    setTimeout(done, 1000 * (Math.max(0, t0 - ctx.currentTime) + dur + 0.3));
     try { make(); } catch (e) { done(); }
     function make() {
     var env = ctx.createGain(); nodes.push(env);
@@ -166,7 +169,10 @@
   // volume or on/off has changed: retuning it 60-120 times a second filled the iPad's audio with
   // scheduled changes until the hum, then every sound, went silent (Nov 9, 2026).
   var humLast = null, HUM_MS = 250;
-  function humSet(loadPct, on) {
+  // humTest: the Sound test's hum load (% or null): while set, the game's own calls are ignored.
+  var humTest = null;
+  function humSet(loadPct, on, test) {
+    if (humTest !== null && !test) return;
     if (!hum) { if (!ctx || !on) return; humStart(); if (!hum) return; }     // (a rebuilt engine starts its hum again)
     var p = Math.min(loadPct, 160) / 100, now = Date.now(), L = humLast;
     if (L && L.on === on && L.fx === vols.fx && (now - L.at < HUM_MS || Math.abs(p - L.p) < 0.03)) return;
@@ -174,8 +180,8 @@
     var t = ctx.currentTime;
     [[hum.osc.frequency, 40 + 22 * p, 0.3], [hum.osc2.frequency, 40.6 + 22 * p, 0.3], [hum.flt.frequency, 160 + 380 * p, 0.3],
      [hum.g.gain, on ? 0.05 * vols.fx * (0.6 + 0.6 * p) : 0, 0.15]].forEach(function (a) {
-      // (hold where it has got to, so the old change ending early makes no click)
-      if (a[0].cancelAndHoldAtTime) a[0].cancelAndHoldAtTime(t); else a[0].cancelScheduledValues(t);
+      // (start the new change from where it has got to)
+      var v = a[0].value; a[0].cancelScheduledValues(t); a[0].setValueAtTime(v, t);
       a[0].setTargetAtTime(a[1], t, a[2]);
     });
   }
@@ -201,6 +207,17 @@
     humStart: humStart,
     humSet: humSet,
     // For the Options screen: what state the sound engine is in.
+    // The Sound test: one sound (skipping the repeat gap), the hum at a load (null: back to the game).
+    test: function (name) { lastPlayed[name] = 0; play(name); },
+    humTest: function (pct) {
+      humTest = pct; humLast = null;
+      if (pct === null) { humSet(0, false, true); return; }
+      humSet(pct, true, true);
+    },
+    // For the Sound test: the engine's state, its clock and how many sounds are playing.
+    info: function () {
+      return !ctx ? "Sound engine: not started." : "Sound engine: " + ctx.state + (rebuilt ? " (restarted " + rebuilt + "×)" : "") + " · clock " + ctx.currentTime.toFixed(1) + " s · " + live + " of " + MAX_LIVE + " sounds playing · hum " + (hum ? (humLast && humLast.on ? "on" : "off") : "not started") + ".";
+    },
     status: function () { return !ctx ? "not started" : ctx.state + (rebuilt ? " (restarted " + rebuilt + "×)" : "") + ", " + live + " sounds playing"; },
     setVolume: function (ch, v) { vols[ch] = v; },
     volumes: vols

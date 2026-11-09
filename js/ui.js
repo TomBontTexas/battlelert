@@ -429,6 +429,20 @@
   }
   $("btn-sound-pause").onclick = function () { restartSound("pause-voice"); };
   $("btn-sound-opt").onclick = function () { restartSound("voice-status"); };
+  // Sound test (Options): a button for every sound and the hum, and the engine's state.
+  var sndTimer = null;
+  function sndInfo() { $("snd-info").textContent = BL.audio.info(); }
+  $("snd-grid").innerHTML = Object.keys(BL.SOUND_NAMES).map(function (k) { return '<button data-snd="' + k + '">' + BL.SOUND_NAMES[k] + "</button>"; }).join("");
+  $("ov-sounds").addEventListener("click", function (ev) {
+    var b = ev.target.closest("button"); if (!b) return;
+    BL.audio.init();
+    if (b.dataset.snd) BL.audio.test(b.dataset.snd);
+    else if (b.dataset.hum) BL.audio.humTest(b.dataset.hum === "null" ? null : +b.dataset.hum);
+    else if (b.id === "btn-snd-restart") BL.audio.restart();
+    else if (b.id === "btn-snd-close") { BL.audio.humTest(null); clearInterval(sndTimer); overlay("ov-sounds", false); return; }
+    setTimeout(sndInfo, 150);
+  });
+  $("btn-sound-test").onclick = function () { BL.audio.init(); overlay("ov-sounds", true); sndInfo(); clearInterval(sndTimer); sndTimer = setInterval(sndInfo, 500); };
   $("btn-voice-test").onclick = function () { BL.audio.init(); BL.speech.test(); renderVoiceTable(); $("voice-details").open = true; };
   function renderVoiceTable() {
     var q = ["", "", "Enhanced", "Premium"];

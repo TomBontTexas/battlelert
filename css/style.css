@@ -279,6 +279,7 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 .ov-card.wide { max-width: 720px; }
 .ov-card .menu button { min-width: 0; width: 100%; }
 #ov-options { z-index: 60; }
+#ov-sounds { z-index: 61; }
 .opt-grid { display: grid; grid-template-columns: auto 1fr; gap: 10px 16px; align-items: center; }
 .opt-grid input[type=checkbox] { justify-self: start; width: 18px; height: 18px; }
 .keys { font-size: 14px; border-collapse: collapse; }
@@ -287,6 +288,8 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 .voice-details { margin: 12px 0; font-size: 14px; }
 .voice-details summary { cursor: pointer; color: var(--charge); }
 .opt-grid + .opt-grid { margin-top: 10px; }
+.snd-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin-bottom: 12px; }
+.snd-grid button { padding: 10px 6px; }
 .grav-list { padding-left: 20px; }
 
 /* -------------------------------------------------------------- Career */

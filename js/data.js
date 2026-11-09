@@ -1353,6 +1353,14 @@
   /* ------------------------------------------------------ Sound recipes
      bfxr-style: wave, frequency start/end (Hz), attack/sustain/decay (s), volume,
      optional vibrato, square duty, noise mix. Channel picks the volume slider. */
+  // The Sound test's names for them (Options, Test sounds), in its order.
+  BL.SOUND_NAMES = {
+    click: "Button press", tick: "Dial tick", toggle: "Switch", chatter: "Radio click",
+    warn: "Warning beep", warnBurn: "Burn warning", request: "Request chime", alarm: "Heat alarm", trip: "Breaker trip", breach: "Hull breach alarm", reclose: "Breaker reset",
+    shot: "Gun shot", pulse: "Pulse cannon", rail: "Rail gun", ion: "Ion gun", main: "Main gun", pd: "Point defense", dry: "Gun empty",
+    torpLaunch: "Enemy torpedo launch", ptLaunch: "Our torpedo launch", launch: "Launch", torpDown: "Torpedo shot down",
+    shipHit: "Hit on enemy ship", kill: "Enemy destroyed", shieldHit: "Hit on our shields", shieldBoom: "Torpedo on our shields", hullHit: "Hit on our hull",
+    jump: "Warp out", arrive: "Warp in", win: "Mission won", lose: "Mission lost" };
   BL.SOUNDS = {
     click:    { ch: "fx",    wave: "square",   f0: 880,  f1: 660,  a: 0.002, s: 0.02, d: 0.04, vol: 0.18 },
     tick:     { ch: "fx",    wave: "triangle", f0: 1200, f1: 1100, a: 0.001, s: 0.005, d: 0.02, vol: 0.10 },
