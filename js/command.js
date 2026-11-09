@@ -1209,7 +1209,13 @@
   };
   Captain.prototype.sinkTarget = function (T) {
     T.dead = true; T.hp = 0; this.disengage(T);
-    this.stats.targetsDown++; if (T.obj) { this.stats.objectivesDown++; this.sqSay("sqObjective", null, null, "good", true); }
+    // (the objective by name: the depot, or a mission type's own, BL.COMMAND.ops; a mission needing several, how many more)
+    this.stats.targetsDown++;
+    if (T.obj) {
+      this.stats.objectivesDown++;
+      var list = this.sqTargets || [], left = (list.need === undefined ? 1 : list.need) - objDown(list);
+      this.sqSay(left > 0 ? "sqObjectiveMore" : "sqObjective", null, { what: T.kind === "depot" ? "depot" : lowName(T), left: left }, "good", true);
+    }
     this.m.cue("kill");
   };
   // A target firing on the flagship comes into the battle view as its wave (its encounter's ships,

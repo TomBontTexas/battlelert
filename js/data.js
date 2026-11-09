@@ -1340,7 +1340,9 @@
     sqKill:      ["{ship}: {L} destroyed!", "{ship}: scratch one {name}!", "{ship}: {L} is breaking up!"],
     sqKillT:     ["Tactical: {L} destroyed.", "Tactical: {L} breaking up."],
     sqLost:      ["Tactical: we lost {name}!", "Tactical: {name} is gone!"],
-    sqObjective: ["Tactical: the depot is down! Objective complete."],
+    // ({what}: the objective destroyed, "depot" or what a mission type's is; sqObjectiveMore: it needs more of them)
+    sqObjective: ["Tactical: the {what} is down! Objective complete."],
+    sqObjectiveMore: ["Tactical: the {what} is down! {left} more to go."],
     sqCross:     ["{ship}: {other}, you've got one on you!", "{ship}: hang on, {other}, I'm coming!", "{ship}: {other}, watch your flank!", "{ship}: {other}, get out of there!"],
     sqBusy:      ["{ship}: they're everywhere!", "{ship}: keep it together, people!", "{ship}: this is getting hot!"],
     warnEng:     ["Engineering: standing by for your burn.", "Engineering: understood, power's ready for the engines.", "Engineering: copy, Helm. Engines get first call."]
