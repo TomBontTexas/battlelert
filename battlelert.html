@@ -6,7 +6,7 @@
 <meta name="copyright" content="© 2011–2026 Tom Bont. All rights reserved.">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Battlelert</title>
-<link rel="stylesheet" href="css/style.css?b=4cb49c33">
+<link rel="stylesheet" href="css/style.css?b=9fd2fcf4">
 </head>
 <body>
 
@@ -158,6 +158,7 @@
     <h1>Mission Briefing</h1>
     <p class="brief-story" id="brief-story" hidden></p>
     <p class="lede" id="brief-lede"></p>
+    <p id="brief-op" class="brief-op" hidden></p>
     <h2 id="brief-route-title">Route</h2>
     <div class="table-wrap"><table id="brief-route" class="db-table brief-t"></table></div>
     <p id="brief-route-note" class="muted" hidden></p>
@@ -165,7 +166,6 @@
     <div class="card-top"><div id="brief-art" class="card-art"></div><table id="brief-ship" class="db-table card-stats"></table></div>
     <div class="table-wrap"><table id="brief-guns" class="db-table brief-t brief-guns"></table></div>
     <h2 id="brief-station">Your Station: Main Engineering</h2>
-    <p id="brief-op" hidden></p>
     <p id="brief-post" class="muted"></p>
     <div id="brief-squad" class="table-wrap" hidden></div>
     <div id="brief-crew" class="table-wrap" hidden></div>
@@ -877,7 +877,7 @@
       <li><b>Score.</b> The objective is half the share of each system's objective destroyed (a dreadnought squadron: all of it, with none to destroy) and half the share of your ships brought home (the flagship one of them; if she's destroyed, the mission is lost); the flagship's condition and navigation as on the bridge; command is half the bridge's and half the share of the systems' targets destroyed.</li>
     </ol>
     <h2>Mission Types</h2>
-    <p>Besides each class's usual mission, the <b>Starforce Academy</b> has a mission picker beside <b>Captain bridge</b> and <b>Squadron</b>, each class with missions of its own (the career's jobs fly the usual ones for now). The plotting screen describes the mission in full: what it asks, what fails it, and how to go about it. On a targets mission a lone ship fights targets on the map as a squadron does: tap a target on the bridge map to send her after it (RESUME brings her back to the plot); its objectives are gold. A station to hold is a ring on the map: the pilot slows and stops in it, and the time counts while she's inside (on a picket watch, no new enemy comes while she sits there at slow or stopped).</p>
+    <p>Besides each class's usual mission, the <b>Starforce Academy</b> has a mission picker beside <b>Captain bridge</b> and <b>Squadron</b>, each class with missions of its own (the career's jobs fly the usual ones for now). The briefing and the plotting screen describe the mission in full: what it asks, what fails it, and how to go about it. On a targets mission a lone ship fights targets on the map as a squadron does: tap a target on the bridge map to send her after it (RESUME brings her back to the plot); its objectives are gold. A station to hold is a ring on the map: the pilot slows and stops in it, and the time counts while she's inside (on a picket watch, no new enemy comes while she sits there at slow or stopped).</p>
     <ul class="tight" id="how-missions"></ul>
     <h2>Admirals</h2>
     <p>A Fleet Admiral fights a campaign, not a mission: take one Azurian world. In your career: the career hub, <b>Admiral ›</b>, once it opens. To try any level: career hub, <b>Starforce Academy</b>, <b>Admirals</b>, and pick the fleet. Fleets are escort pyramids: every ship has two escorts of the class below, all the way down, and every destroyer escort has a squadron of 4 picket ships as escorts and scouts. Each level has 2 ships at the top, each with her whole pyramid: <b>F3</b>, the Fleet Commodore, 2 destroyer escorts (10 ships); <b>F4</b> 2 destroyers (22); <b>F5</b> 2 light cruisers (46); <b>F6</b> 2 cruisers (94); <b>F7</b> 2 heavy cruisers (190); <b>F8</b> 2 battleships (382); and <b>G9</b>, the Grand Admiral, 4 dreadnoughts (1,532). The admiral doesn't deploy gunboat squadrons: a capital ship's gunboats stay with her. The campaign is played in turns on a hex map: each hex is a star system, one warp from the next, and one turn is one warp.</p>
@@ -932,6 +932,6 @@
 <script src="js/ribbons.js?b=7eceb924"></script>
 <script src="js/admirals.js?b=0ab9384a"></script>
 <script src="js/admiralsview.js?b=f07c650b"></script>
-<script src="js/ui.js?b=4c08977c"></script>
+<script src="js/ui.js?b=8f386244"></script>
 </body>
 </html>

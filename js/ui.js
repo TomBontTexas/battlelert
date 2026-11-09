@@ -225,6 +225,10 @@
   // (after "flag coxswain" his rank isn't said again)
   function noCox(classId, name) { var k = BL.COMMAND.squad.skipper[classId]; return k ? String(name).replace(new RegExp("^" + k[1] + " "), "") : name; }
   /* ------------------------------------------------------------ Briefing */
+  // The mission being flown (BL.COMMAND.ops): its type, or with none the class's usual one (an escort job: the escort).
+  function missionOf() {
+    return sim.op || (sim.escort ? "escort" : sim.flag ? (sim.sys("buster") ? "finale" : "depot") : BL.COMMAND.checkpoints.classes.indexOf(sim.data.classId) >= 0 ? "scout" : "standard");
+  }
   function startBriefing(j) {
     job = j; overlay("ov-tests", false);
     // The turret test fires the gun picked on the title screen; a real gunner job, the ship's own guns.
@@ -292,9 +296,9 @@
       : ["Your Station: Main Engineering", "You run the power."];
     $("brief-station").textContent = post[0];
     $("brief-post").textContent = post[1] + (j.test ? "" : " Reputation for a success: +" + BL.career.repFor(j) + ".");
-    // (a mission type, BL.COMMAND.ops: its name and what it asks, above the post)
-    $("brief-op").hidden = !sim.op;
-    if (sim.op) $("brief-op").innerHTML = "<b>Mission: " + sim.opK.name + ".</b> " + sim.opK.brief;
+    // (the mission, as the plotting screen describes it: on the bridge and in a squadron, TexasBont, Nov 9, 2026)
+    $("brief-op").hidden = !sim.captain;
+    if (sim.captain) { var bop = BL.COMMAND.ops[missionOf()]; $("brief-op").innerHTML = "<b>Mission: " + bop.name + ".</b> " + bop.detail; }
     // A squadron: its ships and captains in a table; how orders reach them is in How to play.
     var sqv = sim.flag && sim.captain.squadView();
     $("brief-squad").hidden = !sqv;
@@ -2279,7 +2283,7 @@
     $("pl-squad").hidden = !sim.flag;
     // The mission: what it asks and how to go about it (TexasBont, Nov 9, 2026: in place of the plotting
     // instructions, which are in How to play). A job with no mission type: the class's usual one.
-    var opId = sim.op || (sim.flag ? (sim.sys("buster") ? "finale" : "depot") : BL.COMMAND.checkpoints.classes.indexOf(sim.data.classId) >= 0 ? "scout" : "standard"), opK = BL.COMMAND.ops[opId];
+    var opK = BL.COMMAND.ops[missionOf()];
     $("pl-hint").innerHTML = "<b>Mission: " + opK.name + "</b><br>" + opK.detail;
     $("pl-new").hidden = !(job && job.test && i === 0);
     overlay("ov-plot", true);

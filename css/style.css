@@ -978,3 +978,7 @@ body.hints [data-hint]:hover { outline: 1px dashed var(--warn); outline-offset: 
 /* The plotting screen's mission description (in place of the plotting instructions). */
 .plot-mission { line-height: 1.4; margin: 0 0 8px; }
 .plot-mission b { color: var(--warn); }
+
+/* The briefing's mission description (as on the plotting screen), under the opening paragraph. */
+.brief-op { line-height: 1.45; }
+.brief-op b { color: var(--warn); }
