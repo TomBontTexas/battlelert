@@ -15,21 +15,27 @@
   // or the page goes to the background; closing the tab was the only cure): the next tap replaces
   // it with a new one. Set when the page comes back into view, or when the watchdog finds a
   // "running" engine whose clock has stopped.
-  var stale = false, dogT = 0, dogWall = 0;
+  // A rebuild waits REBUILD_GAP ms after the last one, and the watchdog needs two stopped checks
+  // in a row: replacing engines quickly can crash Safari on the iPad.
+  var stale = false, dogT = 0, dogWall = 0, dogMiss = 0, lastRebuild = 0, REBUILD_GAP = 3000;
+  // Sounds playing at once (each a few audio nodes); past MAX_LIVE new effects are skipped (alarms
+  // still play), so a heavy fight can't overload the iPad's audio.
+  var live = 0, MAX_LIVE = 16;
   var MIN_GAP = { shot: 0.09, tick: 0.05, chatter: 0.25, shieldHit: 0.08, pulse: 0.06, shipHit: 0.05, torpLaunch: 0.12 };
 
   // iPad/iPhone: Safari mutes Web Audio in silent mode unless the page counts as media
   // playback. Newer Safari has navigator.audioSession; older ones switch over once an
   // <audio> element plays, so play a tiny silent clip on the first tap.
-  var unlocked = false;
+  var unlocked = false, silentUrl = null;
   function silentWavUrl() {
+    if (silentUrl) return silentUrl;
     var n = 800, buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
     function str(o, s) { for (var i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); }
     str(0, "RIFF"); v.setUint32(4, 36 + n * 2, true); str(8, "WAVE"); str(12, "fmt ");
     v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
     v.setUint32(24, 8000, true); v.setUint32(28, 16000, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
     str(36, "data"); v.setUint32(40, n * 2, true);
-    return URL.createObjectURL(new Blob([buf], { type: "audio/wav" }));
+    return (silentUrl = URL.createObjectURL(new Blob([buf], { type: "audio/wav" })));
   }
   function unlockMediaPlayback() {
     if (unlocked) return;
@@ -45,7 +51,7 @@
   // Safe to call from any tap or keypress: creates the audio engine the first time and
   // wakes it again after Safari suspends or interrupts it (backgrounding, screen lock).
   function init() {
-    if (ctx && (stale || ctx.state !== "running" && wakeAt && Date.now() - wakeAt > REBUILD_MS)) drop();
+    if (ctx && Date.now() - lastRebuild > REBUILD_GAP && (stale || ctx.state !== "running" && wakeAt && Date.now() - wakeAt > REBUILD_MS)) drop();
     unlockMediaPlayback();
     if (ctx) { if (ctx.state !== "running") wake(); speechUnlock(); return; }
     var AC = root.AudioContext || root.webkitAudioContext;
@@ -64,7 +70,8 @@
   // Throw the engine away (the next init builds a new one, and plays the silent clip again).
   function drop() {
     try { ctx.close(); } catch (e) {}
-    ctx = null; hum = null; rebuilt++; stale = false; unlocked = false; dogT = 0; dogWall = 0;
+    ctx = null; hum = null; humLast = null; rebuilt++; stale = false; unlocked = false; dogT = 0; dogWall = 0; dogMiss = 0;
+    live = 0; lastRebuild = Date.now();
   }
   function wake() {
     if (!wakeAt) wakeAt = Date.now();
@@ -84,9 +91,19 @@
     return src;
   }
 
+  // One sound: its nodes are all disconnected when it ends (Safari keeps connected nodes alive,
+  // and they pile up over a long fight).
   function voice(r, t0, vol) {
-    var dur = r.a + r.s + r.d;
-    var env = ctx.createGain();
+    var dur = r.a + r.s + r.d, nodes = [], owner = ctx;
+    live++;
+    function done() {
+      nodes.forEach(function (n) { try { n.disconnect(); } catch (e) {} });
+      nodes.length = 0;
+      if (ctx === owner && live > 0) live--;
+    }
+    try { make(); } catch (e) { done(); }
+    function make() {
+    var env = ctx.createGain(); nodes.push(env);
     env.gain.setValueAtTime(0.0001, t0);
     env.gain.linearRampToValueAtTime(vol, t0 + r.a);
     env.gain.setValueAtTime(vol, t0 + r.a + r.s);
@@ -94,25 +111,28 @@
     env.connect(master);
     var f1 = Math.max(20, r.f1);
     if (r.wave === "noise") {
-      var flt = ctx.createBiquadFilter(); flt.type = "lowpass"; flt.Q.value = 1.5;
+      var flt = ctx.createBiquadFilter(); flt.type = "lowpass"; flt.Q.value = 1.5; nodes.push(flt);
       flt.frequency.setValueAtTime(r.f0 * 4, t0);
       flt.frequency.exponentialRampToValueAtTime(f1 * 4, t0 + dur);
-      noiseSource(t0, dur).connect(flt); flt.connect(env);
+      var ns = noiseSource(t0, dur); nodes.push(ns); ns.onended = done;
+      ns.connect(flt); flt.connect(env);
     } else {
-      var osc = ctx.createOscillator(); osc.type = r.wave;
+      var osc = ctx.createOscillator(); osc.type = r.wave; nodes.push(osc);
       osc.frequency.setValueAtTime(r.f0, t0);
       osc.frequency.exponentialRampToValueAtTime(f1, t0 + dur);
       if (r.vib) {
-        var lfo = ctx.createOscillator(), depth = ctx.createGain();
+        var lfo = ctx.createOscillator(), depth = ctx.createGain(); nodes.push(lfo, depth);
         lfo.frequency.value = r.vib.rate; depth.gain.value = r.f0 * r.vib.depth;
         lfo.connect(depth); depth.connect(osc.frequency);
         lfo.start(t0); lfo.stop(t0 + dur + 0.05);
       }
-      osc.connect(env); osc.start(t0); osc.stop(t0 + dur + 0.05);
+      osc.connect(env); osc.onended = done; osc.start(t0); osc.stop(t0 + dur + 0.05);
       if (r.noise) {
-        var ng = ctx.createGain(); ng.gain.value = r.noise;
-        noiseSource(t0, dur).connect(ng); ng.connect(env);
+        var ng = ctx.createGain(); ng.gain.value = r.noise; nodes.push(ng);
+        var ns2 = noiseSource(t0, dur); nodes.push(ns2);
+        ns2.connect(ng); ng.connect(env);
       }
+    }
     }
   }
 
@@ -127,6 +147,7 @@
     var now = ctx.currentTime;
     if (lastPlayed[name] && now - lastPlayed[name] < (MIN_GAP[name] || 0.03)) return;
     lastPlayed[name] = now;
+    if (live >= MAX_LIVE && r.ch !== "alarm") return;
     var reps = r.repeat || 1, step = r.a + r.s + r.d + (r.gap || 0);
     for (var i = 0; i < reps; i++) voice(r, now + 0.005 + i * step, vol);
   }
@@ -139,15 +160,24 @@
     flt.type = "lowpass"; flt.frequency.value = 220; g.gain.value = 0;
     osc.connect(flt); osc2.connect(flt); flt.connect(g); g.connect(master);
     osc.start(); osc2.start();
-    hum = { osc: osc, osc2: osc2, flt: flt, g: g };
+    hum = { osc: osc, osc2: osc2, flt: flt, g: g }; humLast = null;
   }
+  // Called every frame, but the hum is retuned at most every HUM_MS and only when the load, the
+  // volume or on/off has changed: retuning it 60-120 times a second filled the iPad's audio with
+  // scheduled changes until the hum, then every sound, went silent (Nov 9, 2026).
+  var humLast = null, HUM_MS = 250;
   function humSet(loadPct, on) {
     if (!hum) { if (!ctx || !on) return; humStart(); if (!hum) return; }     // (a rebuilt engine starts its hum again)
-    var t = ctx.currentTime, p = Math.min(loadPct, 160) / 100;
-    hum.osc.frequency.setTargetAtTime(40 + 22 * p, t, 0.3);
-    hum.osc2.frequency.setTargetAtTime(40.6 + 22 * p, t, 0.3);
-    hum.flt.frequency.setTargetAtTime(160 + 380 * p, t, 0.3);
-    hum.g.gain.setTargetAtTime(on ? 0.05 * vols.fx * (0.6 + 0.6 * p) : 0, t, 0.15);
+    var p = Math.min(loadPct, 160) / 100, now = Date.now(), L = humLast;
+    if (L && L.on === on && L.fx === vols.fx && (now - L.at < HUM_MS || Math.abs(p - L.p) < 0.03)) return;
+    humLast = { p: p, on: on, fx: vols.fx, at: now };
+    var t = ctx.currentTime;
+    [[hum.osc.frequency, 40 + 22 * p, 0.3], [hum.osc2.frequency, 40.6 + 22 * p, 0.3], [hum.flt.frequency, 160 + 380 * p, 0.3],
+     [hum.g.gain, on ? 0.05 * vols.fx * (0.6 + 0.6 * p) : 0, 0.15]].forEach(function (a) {
+      // (hold where it has got to, so the old change ending early makes no click)
+      if (a[0].cancelAndHoldAtTime) a[0].cancelAndHoldAtTime(t); else a[0].cancelScheduledValues(t);
+      a[0].setTargetAtTime(a[1], t, a[2]);
+    });
   }
 
   ["pointerdown", "touchend", "keydown"].forEach(function (type) {
@@ -158,19 +188,20 @@
   setInterval(function () {
     if (!ctx || ctx.state !== "running" || document.visibilityState !== "visible") { dogT = 0; dogWall = 0; return; }
     var now = Date.now(), t = ctx.currentTime;
-    if (dogWall && now - dogWall > 1500 && t - dogT < 0.5) stale = true;
+    dogMiss = dogWall && now - dogWall > 1500 && t - dogT < 0.5 ? dogMiss + 1 : 0;
+    if (dogMiss >= 2) stale = true;
     dogT = t; dogWall = now;
   }, 2000);
 
   BL.audio = {
     init: init,
     // The "Restart sound" button (pause, Options): a new engine now (it runs in the tap).
-    restart: function () { if (ctx) drop(); init(); },
+    restart: function () { if (ctx && Date.now() - lastRebuild > REBUILD_GAP) drop(); init(); },
     play: play,
     humStart: humStart,
     humSet: humSet,
     // For the Options screen: what state the sound engine is in.
-    status: function () { return !ctx ? "not started" : ctx.state + (rebuilt ? " (restarted " + rebuilt + "×)" : ""); },
+    status: function () { return !ctx ? "not started" : ctx.state + (rebuilt ? " (restarted " + rebuilt + "×)" : "") + ", " + live + " sounds playing"; },
     setVolume: function (ch, v) { vols[ch] = v; },
     volumes: vols
   };
