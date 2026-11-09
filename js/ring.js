@@ -121,6 +121,32 @@
     b.seek = best; b.dir = 0; this.trackSeek(b);
     return true;
   };
+  /* The captain's designated target (Nov 9, 2026, TexasBont: "I should be able to select the target
+     I'm shooting at"): tap an enemy ship in the battle view and the gun crews fire on it first
+     whenever it's in a gun's arc and reach (torpedoes about to land still come first on POINT
+     DEFENSE), and our torpedoes lock onto it. Tap it again to clear it. Returns the ship marked, or null. */
+  RingTurret.prototype.markAt = function (x, y) {
+    var best = null, bd = 1e9;
+    this.ships.forEach(function (s) {
+      if (s.dead || s.state === "leave") return;
+      var d = Math.hypot(s.x - x, s.y - y);
+      if (d < Math.max(s.w, s.h) * 0.6 + 0.02 && d < bd) { bd = d; best = s; }
+    });
+    if (!best) return undefined;
+    this.mark = this.mark === best ? null : best;
+    this.bats.forEach(function (b) { b.aiNext = 0; });       // (the crews take it up at once)
+    return this.mark;
+  };
+  RingTurret.prototype.marked = function () {
+    var s = this.mark;
+    if (s && (s.dead || s.state === "leave" || this.ships.indexOf(s) < 0)) s = this.mark = null;
+    return s;
+  };
+  RingTurret.prototype.lockFor = function (tp) {
+    var mk = this.marked();
+    if (mk && mk.lockable && mk.y >= 0) return mk;
+    return BL.Turret.prototype.lockFor.call(this, tp);
+  };
   RingTurret.prototype.trackSeek = function (b) {
     var s = b.seek;
     if (s.dead || s.state === "leave" || (this.ships.indexOf(s) < 0 && this.torps.indexOf(s) < 0)) { b.seek = null; return; }
@@ -897,15 +923,16 @@
     }
     // A squadron (command.js Squadron): the commander's target first; then a group after us before
     // one after another ship of the squadron.
-    var sqe = m.captain && m.captain.escort && m.captain.escort.flag ? m.captain.escort : null, sqT = sqe ? sqe.target : null;
+    var sqe = m.captain && m.captain.escort && m.captain.escort.flag ? m.captain.escort : null, sqT = sqe ? sqe.target : null, mk = this.marked();
     function ships(matched, penalty) {
       self.ships.forEach(function (s) {
         if (s.dead || s.state === "leave") return;
         var rr = self.inReachOf(b, s.x, s.y); if (rr === null) return;
         seen.push([s, rr]);
         var good = b.w.best.indexOf(s.type) >= 0;
-        if (matched && !good && !(sqT !== null && s.wave === sqT)) return;
-        var d = Math.abs(norm(rr - b.rel)) / 180 + (good ? 0 : penalty) + (sqe ? (s.wave === sqT ? -0.6 : s.aim !== null && s.aim !== undefined ? 0.25 : 0) : 0);
+        if (matched && !good && !(sqT !== null && s.wave === sqT) && s !== mk) return;
+        // (the captain's designated target before any other: RingTurret.markAt)
+        var d = Math.abs(norm(rr - b.rel)) / 180 + (good ? 0 : penalty) + (sqe ? (s.wave === sqT ? -0.6 : s.aim !== null && s.aim !== undefined ? 0.25 : 0) : 0) + (s === mk ? -2 : 0);
         if (d < best) { best = d; target = s; rel = rr; }
       });
     }
@@ -919,8 +946,10 @@
     if (cw) {
       // A person: sometimes after something else they can see; once on a target, they stay on
       // it a while (a new pick only when it's gone or out of reach, or now and then).
+      // (the captain's designated target, once they're on it, they stay on: no straying from it)
       var keep = b.aiTarget && !b.aiTarget.dead && b.aiTarget.state !== "leave" && seen.some(function (x) { return x[0] === b.aiTarget; });
-      if (keep && r.chance(0.7)) { target = b.aiTarget; seen.forEach(function (x) { if (x[0] === target) rel = x[1]; }); }
+      if (mk && target === mk) {}
+      else if (keep && r.chance(0.7)) { target = b.aiTarget; seen.forEach(function (x) { if (x[0] === target) rel = x[1]; }); }
       else if (seen.length && r.chance(lerp(C.wrong) * strain)) { var w = r.pick(seen); target = w[0]; rel = w[1]; }
       if (target !== b.aiTarget) b.aiOnAt = m.totalT;
       var settle = 1 / (1 + (m.totalT - (b.aiOnAt || 0)) / C.settle);   // walking their fire in

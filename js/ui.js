@@ -1281,6 +1281,14 @@
       // At the helm: tap the compass tape to steer to the heading tapped, on autopilot. (The
       // tape only shows the ship's heading: the course is set on the strip at the right.)
       if (sim && helmUi()) {
+        // The captain: a tap on an enemy ship designates it the target (again: clears it; RingTurret.markAt).
+        if (turretActive() && sim.captain && !cpAt && sim.turret.ring) {
+          var cr0 = cv.getBoundingClientRect();
+          if (BL.compassAt(ev.clientX - cr0.left, ev.clientY - cr0.top) === null) {
+            var mp = ringPoint(ev), mr = sim.turret.markAt(mp.x, mp.y);
+            if (mr !== undefined) { click(); ev.preventDefault(); return; }
+          }
+        }
         if (turretActive()) {
           var cr = cv.getBoundingClientRect(), hd = BL.compassAt(ev.clientX - cr.left, ev.clientY - cr.top), hm = sim.helm;
           if (hd !== null) {
@@ -1574,7 +1582,7 @@
     $("cp-side").hidden = $("cp-mapbox").hidden = false; $("cp-orders").hidden = true;      // (every order is in the BRIDGE column)
     $("tu-station").textContent = "Bridge · " + (job.test ? sim.data.className : BL.shipLabel(job.classId, job.ship, job.hull)) + " (TL" + sim.data.tl + ")";
     var hasMain = !!sim.sys("main"), hasHangar = !!(sim.sys("hangar") && sim.data.hangar);
-    $("tu-keys").textContent = "← → course 10° (Shift 1°) · R resume plot · ↑ ↓ engines · Z break port · X take it · C break starboard · " + (hasMain ? "M main gun · " : "") + (hasHangar ? "L launch / recover · " : "") + (sim.helm.canBreak(BL.GUNNERY.torpedo.travel) ? "B pilot · " : "") + "G gunners · S engineer · E warn engineering · J warp · V swap map · + − F zoom · Esc pause · Tap the compass or the map to steer";
+    $("tu-keys").textContent = "← → course 10° (Shift 1°) · R resume plot · ↑ ↓ engines · Z break port · X take it · C break starboard · " + (hasMain ? "M main gun · " : "") + (hasHangar ? "L launch / recover · " : "") + (sim.helm.canBreak(BL.GUNNERY.torpedo.travel) ? "B pilot · " : "") + "G gunners · S engineer · E warn engineering · J warp · V swap map · + − F zoom · Esc pause · Tap the compass or the map to steer · Tap an enemy ship to make it the target";
     // Light cruiser and up: MAIN GUN; cruiser and up: LAUNCH / RECOVER the squadron.
     $("cp-main").hidden = !hasMain; $("cp-hangar").hidden = !hasHangar; $("cp-ship-grp").hidden = !hasMain && !hasHangar;
     $("cp-tele").innerHTML = BRIDGE_ENG.slice().reverse().map(function (id) { var p = h.preset(id); return '<button data-eng="' + id + '" title="All ' + p.name.toLowerCase() + '">' + p.short + "</button>"; }).join("");
@@ -1771,6 +1779,7 @@
       var lines = [[T.letter + (big ? " · " + T.K.name.toUpperCase() + (plan ? "" : " " + Math.round(100 * T.hp / T.hpMax) + "%") + (T.obj ? " · OBJECTIVE" : "") : ""), T.obj ? "#ffd666" : "#ffb3a8"]];
       if (big && !solid && !plan) lines.push([T.last ? "last seen" : "reported", "#8899a8"]);
       place(lines, p, s + 4);
+      if (!plan) T.lbl = occ[occ.length - 1];      // (its label: a tap on it picks the target too)
     });
   }
   // The squadron on the bridge map: our sensor range round the flagship, the targets, the fire
@@ -2235,7 +2244,12 @@
       // A lone ship on a targets mission: a tap on a target sends her to it (RESUME: back to the plot).
       if (sim.solo) {
         var st0 = null, sd0 = 22;
-        c.sqGroups().forEach(function (T) { if (T.unknown && !T.seen && !T.last) return; var q = fr0.toPx(c.shownAt(T)), d = Math.hypot(q.x - p.at.x, q.y - p.at.y); if (d < sd0) { sd0 = d; st0 = T; } });
+        c.sqGroups().forEach(function (T) {
+          if (T.unknown && !T.seen && !T.last) return;
+          var q = fr0.toPx(c.shownAt(T)), d = Math.hypot(q.x - p.at.x, q.y - p.at.y), L = T.lbl;
+          if (L && p.at.x >= L.x0 && p.at.x <= L.x1 && p.at.y >= L.y0 && p.at.y <= L.y1) d = Math.min(d, 1);     // (on its label)
+          if (d < sd0) { sd0 = d; st0 = T; }
+        });
         if (st0) { c.flagTo({ kind: "target", id: st0.id }); click(); return; }
       }
       c.orderCourse(BL.navBearing(c.pos, t));

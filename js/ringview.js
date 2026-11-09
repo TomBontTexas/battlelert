@@ -162,6 +162,19 @@
       if (tp.t1 - m.t < 1.2) { c.strokeStyle = Math.floor(t * 8) % 2 ? "rgba(255,90,70,0.9)" : "rgba(255,90,70,0.3)"; c.beginPath(); c.arc(tp.x1, tp.y1, 0.02, 0, Math.PI * 2); c.stroke(); }
     });
 
+    // The captain's designated target (RingTurret.markAt): steady amber brackets and TARGET.
+    var mk = tu.marked && tu.marked();
+    if (mk) {
+      var mb = Math.max(mk.w, mk.h) * 0.62, mkk = 0.03;
+      c.strokeStyle = "rgba(255,214,102,0.95)"; c.lineWidth = 2.5 / S;
+      [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(function (q) {
+        var x = mk.x + q[0] * mb, y = mk.y + q[1] * mb;
+        c.beginPath(); c.moveTo(x - q[0] * mkk, y); c.lineTo(x, y); c.lineTo(x, y - q[1] * mkk); c.stroke();
+      });
+      c.save(); c.setTransform(1, 0, 0, 1, 0, 0); var mdpr = c.canvas.width / W; c.scale(mdpr, mdpr);     // (the label upright, in pixels)
+      c.fillStyle = "rgba(255,214,102,0.95)"; c.font = "700 11px ui-monospace, Menlo, Consolas, monospace"; c.textAlign = "center"; c.textBaseline = "bottom";
+      var mlp = toScreen(mk.x, mk.y - mb - 0.006); c.fillText("TARGET", mlp.x, mlp.y); c.restore();
+    }
     // Our torpedoes, and brackets on what each one is locked onto.
     var pts = sprite("ptTorpedo");
     tu.ptTorps.forEach(function (tp) {
