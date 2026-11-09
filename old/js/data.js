@@ -106,7 +106,7 @@
       aux: { capacity: 650, rateMW: 50 }, hullPerMJ: 0.3,
       mission: { jumps: 3, windows: [150, 160, 170] }, encounters: ["raiders", "interceptors", "siege", "minefield", "hunters"],
       mainGun: { dmgPerMJ: 0.6 },
-      hangar: { launchAfter: [6, 12], lead: 10, window: 8, retry: 15, recoverBefore: 25, recoverLead: 12, recoverWindow: 10, intercept: 0.25, mineClear: 0.5, dps: 6 },
+      hangar: { launchAfter: [6, 12], lead: 10, window: 8, retry: 15, recoverBefore: 25, recoverLead: 12, recoverWindow: 10, intercept: 0.25, dps: 6 },
       systems: [
         sys("life", "Life support", "LIFE", "life", 80, 16, 80, 4, { drainMW: 4 }),
         sys("shield", "Shields", "SHLD", "shield", 334, 107, 167, 24),
@@ -126,7 +126,7 @@
       mission: { jumps: 3, windows: [160, 170, 180] }, encounters: ["raiders", "interceptors", "siege", "minefield", "hunters"],
       gunnerEncounters: ["raiders", "interceptors", "siege", "minefield", "hunters", "cruiserA"],
       mainGun: { dmgPerMJ: 0.6 },
-      hangar: { launchAfter: [6, 12], lead: 10, window: 8, retry: 15, recoverBefore: 25, recoverLead: 12, recoverWindow: 10, intercept: 0.25, mineClear: 0.5, dps: 6 },
+      hangar: { launchAfter: [6, 12], lead: 10, window: 8, retry: 15, recoverBefore: 25, recoverLead: 12, recoverWindow: 10, intercept: 0.25, dps: 6 },
       systems: [
         sys("life", "Life support", "LIFE", "life", 90, 18, 90, 5, { drainMW: 4.5 }),
         sys("shield", "Shields", "SHLD", "shield", 434, 134, 217, 26),
@@ -148,7 +148,7 @@
       mission: { jumps: 3, windows: [170, 180, 190] }, encounters: ["raiders", "interceptors", "siege", "minefield", "hunters"],
       gunnerEncounters: ["raiders", "interceptors", "siege", "minefield", "hunters", "cruiserA", "battleshipA"],
       mainGun: { dmgPerMJ: 0.6 },
-      hangar: { launchAfter: [6, 12], lead: 10, window: 8, retry: 15, recoverBefore: 25, recoverLead: 12, recoverWindow: 10, intercept: 0.25, mineClear: 0.5, dps: 7 },
+      hangar: { launchAfter: [6, 12], lead: 10, window: 8, retry: 15, recoverBefore: 25, recoverLead: 12, recoverWindow: 10, intercept: 0.25, dps: 7 },
       systems: [
         sys("life", "Life support", "LIFE", "life", 100, 20, 100, 5, { drainMW: 5, reactor: 0 }),
         sys("shield", "Shields", "SHLD", "shield", 565, 167, 282, 28, { reactor: 0 }),
@@ -172,7 +172,7 @@
       mission: { jumps: 3, windows: [180, 190, 200] }, encounters: ["raiders", "interceptors", "siege", "minefield", "hunters"],
       gunnerEncounters: ["raiders", "interceptors", "siege", "minefield", "hunters", "cruiserA", "battleshipA"], gunnerFinal: "fortress",
       mainGun: { dmgPerMJ: 0.6 },
-      hangar: { launchAfter: [6, 12], lead: 10, window: 8, retry: 15, recoverBefore: 25, recoverLead: 12, recoverWindow: 10, intercept: 0.25, mineClear: 0.5, dps: 8 },
+      hangar: { launchAfter: [6, 12], lead: 10, window: 8, retry: 15, recoverBefore: 25, recoverLead: 12, recoverWindow: 10, intercept: 0.25, dps: 8 },
       systems: [
         sys("life", "Life support", "LIFE", "life", 110, 22, 110, 6, { drainMW: 5.5, reactor: 0 }),
         sys("shield", "Shields", "SHLD", "shield", 734, 209, 367, 30, { reactor: 0 }),
@@ -300,10 +300,6 @@
     arrivalSeconds: 8,                 // calm before the first wave of each jump
     jumpWindowNotice: 40,              // "Jump window in 40 s"
     jumpOnTimeGrace: 5,                // drive full within this many seconds of the window = on time
-    // The dreadnought's last system: no warp out. She drops the planet buster (MOAB) on the target
-    // world from the drop zone: MOAB full, window open; past the window + dropLate s it's a failure.
-    dropLate: 10,
-    dropWorlds: ["industrial", "military", "transportation"],
     jumpCountdown: 3,
     forecastSpan: 15,                  // seconds shown on the forecast strip
     breakOff: 60,                      // no new enemy waves this long after the jump window opens
@@ -343,7 +339,7 @@
   // dreadnought x1.1 (TexasBont, after playing the battleship).
   BL.FORCE_ENC = {
     gunboat:         { raiders: 3.6, interceptors: 2.01, frigate: 1.27, minefield: 3.5 },   // interceptors a notch under the AI's even (TexasBont at the gun)
-    picket:          { raiders: 3.39, interceptors: 2.29, siege: 2.1, frigate: 1.15 },   // siege: Nov 1, 2026 (TexasBont), a siege system costs about what a raider one does
+    picket:          { raiders: 3.39, interceptors: 2.29, frigate: 1.15 },
     destroyerEscort: { raiders: 4.37, interceptors: 3.9, frigate: 1.57, hunters: 0.5 },
     destroyer:       { interceptors: 5.04, siege: 5.2, frigate: 2.72, cruiserA: 1.7, hunters: 0.5 },
     lightCruiser:    { raiders: 8.72, siege: 7.3, frigate: 3.55, cruiserA: 2.3, hunters: 0.5 },
@@ -489,7 +485,7 @@
     // mission at the gun. It never moves and never gives up; its torpedoes (volleys of three)
     // keep coming for the whole fight unless it is destroyed. Four interceptor escorts, stragglers.
     fortress: {
-      name: "Planetary fortress",
+      name: "Homeworld fortress",
       enemy: "Azurian fortress",
       what: "The fortress guarding the Azurian world and four escorts; its torpedoes come in threes every 6 to 8 s for the whole fight",
       tests: "Holding out until the planet buster is away",
@@ -638,9 +634,7 @@
       // circle their target at `orbit` (spin radians/s) strafing it, and every `tick` s shoot at
       // a torpedo within `look` (kill = the chance it goes down). Their strafing adds up to the
       // class's hangar dps.
-      // (sweep: in a minefield, with no ship to fight, the gunboats patrol `sweep` x the shield's
-      // size out ahead of the bow, spread `spread` degrees either side, shooting mines as they come)
-      wing: { n: 4, speed: 0.32, orbit: 0.075, spin: 1.4, size: 0.042, look: 0.1, tick: 0.4, kill: 0.35, sweep: 1.7, spread: 40
+      wing: { n: 4, speed: 0.32, orbit: 0.075, spin: 1.4, size: 0.042, look: 0.1, tick: 0.4, kill: 0.35
       }
     },
     aiGunner: 0.75,                    // skill of the machine gunner (rail view)
@@ -685,30 +679,8 @@
     // Gunboats draw from the better end: they are the easy first job.
     engineer: { skill: { gunboat: [0.6, 0.95], other: [0.3, 0.95] },
       ranks: ["Engineer's Mate", "Petty Officer", "Chief"],
-      // Every crewman's names, drawn from the Dallas–Fort Worth population: Texas's common given
-      // names (SSA state lists) and the area's common surnames, in rough proportion to its people.
-      // The captain's crew pool never gives two men the same first or last name (js/roster.js).
-      first: ["Michael", "Christopher", "Joshua", "Daniel", "David", "James", "Matthew", "Jose", "Juan", "Carlos", "Luis", "Jesus",
-        "Anthony", "Andrew", "Brandon", "Justin", "Tyler", "Jacob", "Ryan", "Kevin", "Eric", "Jonathan", "Robert", "John", "William",
-        "Marcus", "Cody", "Derrick", "Jorge", "Miguel", "Alejandro", "Diego", "Adrian", "Isaiah", "Jamal", "Darnell", "Terrell",
-        "Hung", "Minh", "Raj", "Arjun", "Sanjay", "Chidi", "Tunde", "Kwame", "Wei", "Jin", "Omar", "Ali", "Travis", "Dustin", "Hector",
-        "Ricardo", "Javier", "Mateo", "Santiago", "Noah", "Liam", "Elijah", "Caleb",
-        "Jessica", "Ashley", "Amanda", "Sarah", "Jennifer", "Brittany", "Stephanie", "Maria", "Elizabeth", "Lauren", "Samantha",
-        "Megan", "Rachel", "Hannah", "Emily", "Vanessa", "Andrea", "Monica", "Alejandra", "Gabriela", "Guadalupe", "Leticia",
-        "Yesenia", "Destiny", "Jasmine", "Tiffany", "Keisha", "Aaliyah", "Linh", "Mai", "Priya", "Anjali", "Grace", "Sofia",
-        "Isabella", "Kayla", "Courtney", "Crystal", "Olivia", "Ximena"],
-      last: ["Garcia", "Hernandez", "Martinez", "Rodriguez", "Lopez", "Gonzalez", "Perez", "Sanchez", "Ramirez", "Torres", "Flores",
-        "Rivera", "Gomez", "Diaz", "Cruz", "Morales", "Reyes", "Gutierrez", "Ortiz", "Chavez", "Ramos", "Vasquez", "Castillo",
-        "Mendoza", "Jimenez", "Salazar", "Herrera", "Medina", "Aguilar", "Vargas", "Guerrero", "Delgado",
-        "Smith", "Johnson", "Williams", "Brown", "Jones", "Davis", "Miller", "Wilson", "Moore", "Taylor", "Anderson", "Thomas",
-        "Jackson", "White", "Harris", "Martin", "Thompson", "Robinson", "Lewis", "Walker", "Hall", "Allen", "Young", "King",
-        "Wright", "Scott", "Green", "Baker", "Adams", "Nelson", "Carter", "Mitchell", "Roberts", "Turner", "Phillips", "Campbell",
-        "Parker", "Evans", "Edwards", "Collins", "Stewart", "Morris", "Murphy", "Cook", "Rogers", "Washington", "Brooks", "Coleman",
-        "Jenkins", "Bell", "Hughes", "Price", "Henderson", "Patterson", "Simmons", "Fletcher", "Dawson",
-        "Nguyen", "Tran", "Le", "Pham", "Patel", "Shah", "Kim", "Lee", "Park", "Chen", "Wang", "Huang", "Singh", "Reddy",
-        "Okafor", "Adeyemi", "Mensah", "Tesfaye"] },
-    // The bridge pilot (BL.pickPilot): skill as the engineer's; names from the engineer's lists.
-    pilot: { ranks: ["Pilot's Mate", "Petty Officer", "Chief"] },
+      first: ["Dana", "Ike", "Mara", "Theo", "Priya", "Sol", "Wren", "Kofi", "Lena", "Rafe", "Juno", "Tam", "Ines", "Bo", "Nadia", "Cass"],
+      last: ["Reyes", "Okafor", "Lindqvist", "Brandt", "Kowalski", "Haddad", "Moreau", "Tanaka", "Byrne", "Novak", "Silva", "Petrov", "Achebe", "Quinn", "Varga", "Holt"] },
     // How each encounter's enemies look and fly. count = ships per wave (the wave's toughness is
     // split between them); band = the height they hold; sway = side-to-side swing; dive = how far
     // they swoop down now and then.
@@ -832,26 +804,6 @@
      minefield's mines (rockField), and at the enemy ships around her too.
      Navigation scores full marks in the zone by the window + zoneGrace s. An ordered jump allows
      zoneHold x the zone's radius (the ship coasting to a stop). */
-  /* The captain's crew roster (Captain path, stage 2; js/roster.js): one pool of named men per
-     career, made at its first Command job. Skills 0 to 1 as the stations' crews (engineers and
-     pilots from GUNNERY.engineer.skill.other, gun crews from GUNNERY.crew.skill).
-     pool: men per post; hire: a green new hire's skill (one joins for each man killed);
-     grow: skill added per mission served, and for a success, up to cap;
-     morale: start, a success, a failure, each shipmate killed aboard; in battle a man works at
-     his skill times eff[0] (morale 0) to eff[1] (morale 100);
-     temper: each temperament's number (0 cautious to 1 aggressive: AIEngineer, Captain.pilotCall,
-     RingTurret.aiBattery);
-     sign: crew refusals (BL.roster.willSign): last mission's men stay on at morale `stay` or more;
-     the man's roll takes (morale - 50) / `morale` off. */
-  BL.ROSTER = {
-    pool: { engineer: 12, pilot: 12, gun: 24 }, hire: [0.3, 0.5],
-    grow: { served: 0, success: 0.01, cap: 0.95 },     // (one point for a success: TexasBont, Nov 2, 2026)
-    morale: { start: 60, success: 5, failure: -10, killed: -10, replaced: -1, eff: [0.9, 1.1] },
-    temper: { cautious: 0.2, steady: 0.5, aggressive: 0.8 },
-    sign: { stay: 25, morale: 5 },
-    record: 100                                  // missions kept on each man's record
-  };
-
   BL.COMMAND = {
     scale: 1, reach: 0.9, driveTau: 5, jumpOff: [0, 50], zone: 0.08,
     // Asteroid fields and enemy areas: each overlapping lobes (rockR / clusterR) along a bent line,
@@ -904,122 +856,26 @@
     // keeps `clear` view units between our shield and her.
     escort: { arrive: 0.9, station: 0.06, near: 0.025, lead: 3, sides: { ahead: 0, port: -90, stbd: 90, astern: 180 },
               cover: 0.55, coverTime: 0.8, squad: [2, 4], wingStop: 0.5, wingRisk: 0.2, wingPerMJ: 0.1, wingHull: 100,
-              aimWard: 0.5, wingSelf: 0.5, gunWard: 0.3, gunWing: 0.3, wardLead: 0.04, wardRadius: 0.025, wingTurn: 60, botAstern: 30,
+              aimWard: 0.5, wingSelf: 0.5, gunWard: 0.3, gunWing: 0.3, wardLead: 0.04, wardRadius: 0.025, wingTurn: 60,
               kinds: { carrier: { name: "carrier", label: "CARRIER", ships: [1, 1], hull: 100, perMJ: 0.03, size: 1.8, width: 0.29 },
                        capital: { name: "capital ship", label: "CAPITAL SHIP", ships: [1, 1], hull: 100, perMJ: 0.03, size: 1.8, width: 0.26 },
                        convoy: { name: "convoy", label: "CONVOY", ships: [3, 5], hull: 100, perMJ: 0.08, gap: 0.015, station: 0.075, size: 0.9, width: 0.42 } }, clear: 0.08 },
-    // Squadrons (approved Nov 2, 2026; the Squadron test). Revised Nov 2, 2026 (TexasBont liked all
-    // four sample screens): the squadron fights on the map. Each system has enemy targets with places,
-    // headings and gun arcs on a larger map (`window` x a lone ship's warp window, so the map is that
-    // much bigger); the commander sends his ships to them, singly or together, or to a spot; fire is
-    // decided by which guns bear and range, so crossing the T and an L-shaped ambush work. The
-    // flagship's own fight is the battle view: a target that fires on her comes in there as its wave.
-    // Distances are in seconds at our cruise speed. `size`: ships per class, the flagship included.
-    // Formations (the ships not sent anywhere, round the flagship): slots [degrees off her bow,
-    // station gaps]; LINE AHEAD (trail) follows her own track round every corner (TexasBont, Nov 2,
-    // 2026). A gap keeps `clear` view units between two ships' shields (at least `gap` x the map).
-    // Ships sent together to a spot line up there the same way: in line ahead broadsides to the
-    // nearest enemy, in line abreast bows on. An order reaches a captain `lag` s / his skill later.
-    // Temper: [aggressive, steady, cautious] x her distance, fire, risk.
-    // map: `sensor` our ships see that far; a reported target is off by up to `reportOff`;
-    // `close`: a ship sent to a target closes to that share of her gun range and then keeps it on
-    // her beam; `range` our ships' gun range; each gun that bears does `gunDps` x our guns' best
-    // damage a second (x 0.6 + 0.4 x her captain's skill); each enemy gun that bears does `enemyDps`
-    // MJ a second (shields first, then hull at our hullPerMJ); her shields recharge at `shield` x our
-    // charger. HOLD FIRE: a ship holds until an enemy is inside `ambush` of her range, and till she
-    // fires only an enemy that close sees her. Per system: one objective (the depot) and `targets`
-    // others, `unknown` of them not in the pickets' report. Kinds: `enc` the encounter its ships
-    // are in the battle view; `hp`; `speed` x our cruise (0: fixed); `hunt`: goes for our nearest
-    // ship it sees, standing off at `standOff` of its range; `patrol`: holds its course, turning its
-    // broadside to a ship in range; `guns` [[degrees off its bow, half the arc, guns, lead only]]
-    // ("lead": only the column's lead ship's, masked for the rest); `range`.
-    // A system's objective must be destroyed before the squadron warps on, or the mission fails
-    // (objectiveMissed). (Nov 2, 2026: each target three waves' worth; the flagship's crew and the
-    // ships near her made short work of anything smaller.)
-    // (Headless, squadron test bot, TL5 to 7, 18 missions: 11 won (2 flagships lost, 5 objectives missed),
-    // 2.4 of 4 ships home; with no orders, every ship in formation: none won, the objective almost never reached.)
-    squad: { size: { gunboat: 6, picket: 4, destroyerEscort: 4, destroyer: 4, lightCruiser: 4, cruiser: 4, heavyCruiser: 4, battleship: 3, dreadnought: 2 },
-             test: ["destroyer"],
-             formations: {
-               ahead: { name: "Line ahead", short: "LINE AHEAD", slots: [[180, 1], [180, 2], [180, 3], [180, 4], [180, 5]], trail: true },
-               abreast: { name: "Line abreast", short: "LINE ABREAST", slots: [[-90, 1], [90, 1], [-90, 2], [90, 2], [-90, 3]] } },
-             formationList: ["ahead", "abreast"], start: "ahead",
-             gap: 0.03, clear: 0.06, lag: 2, tick: 0.5, hire: [0.4, 0.95],
-             temper: { aggressive: [0.85, 1.1, 1.1], steady: [1, 1, 1], cautious: [1.2, 0.9, 0.85] },
-             ranks: ["Lieutenant", "Lieutenant Commander", "Commander"],
-             map: { window: 1.5, sensor: 55, reportOff: 10, range: 16, close: 0.75, gunDps: 0.1, enemyDps: 3, shield: 0.08, ambush: 0.6,
-                    targets: [3, 4], unknown: [1, 2], letters: "ABCDEFGH",
-                    kinds: {
-                      depot: { name: "Supply depot", enc: "siege", hp: 720, speed: 0, objective: true, guns: [[0, 180, 3]], range: 12 },
-                      siege: { name: "Siege battery", enc: "siege", hp: 600, speed: 0, ships: 4, guns: [[0, 180, 6]], range: 20 },
-                      raiders: { name: "Raider pack", enc: "raiders", hp: 450, speed: 1.4, hunt: true, standOff: 0.6, guns: [[0, 45, 6]], range: 13 },
-                      interceptors: { name: "Interceptor flight", enc: "interceptors", hp: 240, speed: 1.9, hunt: true, standOff: 0.5, guns: [[0, 45, 4]], range: 10 },
-                      frigate: { name: "Frigate group", enc: "frigate", hp: 900, speed: 0.7, patrol: true, guns: [[0, 30, 2, "lead"], [90, 60, 4], [-90, 60, 4]], range: 18 },
-                      hunters: { name: "Drive hunters", enc: "hunters", hp: 300, speed: 1.7, hunt: true, standOff: 0.7, guns: [[0, 180, 3]], range: 11 } },
-                    pick: ["siege", "raiders", "interceptors", "frigate", "hunters", "raiders"] } },
     // A picket's scouting run (the captain's path): `n` checkpoints of radius `r` (x the map's size)
     // to fly through in order, spread over `along` of the way to the jump point and `side` off it.
     // The navigator's plot keeps `slack` s in hand for each one.
     checkpoints: { classes: ["picket"], n: [2, 4], r: 0.06, along: [0.15, 0.8], side: [0.08, 0.22], slack: 8 },
-    // A siege line on the bridge (Nov 1, 2026, TexasBont; in the game, not on escort missions):
-    // the one enemy that doesn't move. It sits at one spot in its system, `r` across (x the map's
-    // size): near the straight way to the warp point (place.near of the time: `along` of the way and
-    // `off` to one side), across the straight way to the approach point (place.across, up to
-    // acrossOff off it), or anywhere (up to anyOff off the way). Its guns and torpedoes fire in full
-    // within `full` of her, easing off smoothly to nothing at `none` (BL.siegeFire). On the battle
-    // view its batteries sit at its true bearing, up to `back` view units farther out at long range.
-    // The navigator keeps navR from it while the plot still makes the window. punch: per class, its
-    // fire in range x this (guns faster; torpedoes, all of them sooner), so a siege system is about
-    // as deadly as the old line that fired all the time.
-    siegeLine: { place: { near: 0.5, across: 0.3 }, along: [0.3, 0.7], off: [0.08, 0.16], acrossOff: 0.03, anyOff: 0.45,
-                 r: 0.035, full: 0.06, none: 0.4, navR: 0.25, back: 0.12,
-                 punch: { picket: 2, destroyerEscort: 1.75, destroyer: 4, lightCruiser: 8, battleship: 3, dreadnought: 2 } },     // (Nov 1, 2026: captain bot, TL6, three siege systems, hull lost per system as the old line's)
     // Light cruiser and up: MAIN GUN swings the bow onto the biggest ship until the crew fires (at
     // most `timeout` s), then she comes back to the plot; the crew fires it only on that order. Cruiser and up: the
     // captain alone launches and recovers the gunboat squadron (LAUNCH / RECOVER, once the engineer
     // has the launchers or arresters full); the test bot recovers `botRecover` s before the window.
     mainSwing: { timeout: 25, botSwing: 60 },      // (botSwing: the test bot swings only for a target that far off the bow)
     hangarOrder: { botRecover: 40 },
-    // Lines the captain hears although the pilot's quiet list (BL.HELM.quiet) mutes them: the
-    // answer to his own LAUNCH, in its plain (bridge) wording.
-    hears: ["launched"],
     // Standing orders at the start of a mission (the captain changes them on the bridge).
-    // On the bridge the crew act on the captain's orders and don't cover for him: the gunners have
-    // no fight's suggestion (FREE until he orders otherwise), and the engineer guards the shields
-    // against the torpedoes he sees coming only on SHIELDS (AIEngineer.think). The pilot breaks on
-    // his own by the captain's standing policy (pilots); the captain's BREAK buttons override it.
-    standing: { guns: "free", stance: "balanced", pilot: "hold" },
-    guardOnShields: true, guardReact: 2.5,
-    // Orders take time to carry out: a new stance reaches the engineer's board, a new gun order each
-    // gun crew, a new break policy the pilot, this many s after the captain gives it for a crewman of
-    // skill 100 (by the ship's tech level; the gunboat is tech level 4), divided by his skill
-    // (skill 50: twice as long). The same for all three orders.
-    // (Captain.carryOut; the button blinks, a bar filling along its bottom, till then.)
-    orderLag: { 4: 1, 5: 3, 6: 2, 7: 1 },
-    // An enemy area on the map (a red cluster): fly into one (a break, a course order) and a swarm
-    // comes out of it, mult x this system's force in waves (at least min); fly out and half of
-    // what's left of it goes back, the other half stays on her. (Captain.step)
-    swarm: { mult: 3, min: 3 },
-    // The pickets' survey of the systems ahead: on the bridge, this share of missions has one
-    // system's report wrong, naming any other encounter instead (the enemy itself is the same at every station; only the report is off).
-    // Minefields are always reported right: the mines are on the map. (Mission.reported)
-    intelWrong: 0.2,
-    // SHIELDS costs the guns: on it the engineer gives the guns and the main gun only this share of
-    // the power they'd ask for (AIEngineer.think), so the captain switches it on for the torpedoes
-    // and off again to shoot.
-    shieldsGuns: 0.15,
-    // The captain answers for his ship: his ship condition part loses this many times the share of
-    // hull lost (2: half the hull gone, nothing left of the part), so the reputation hit doubles.
-    hullCost: 2,
-    botShields: 0.6,     // (the test bot orders SHIELDS when they're below this share of full)
-    pilots: { evade: { name: "Evade: break for every burst he can", short: "EVADE" }, hold: { name: "Hold course: break only when the shields can't take it", short: "HOLD" },
-      steady: { name: "Steady: no breaks, take everything on the shields", short: "STEADY" } },
-    pilotList: ["evade", "hold", "steady"],
-    // (drive first: after life support the drive charges to be full by the window (its last percent flat out), the rest share what's left)
-    stances: { shields: { name: "Shields first (the guns get little power)", short: "SHIELDS" }, balanced: { name: "Balanced", short: "BALANCE" }, guns: { name: "Guns first", short: "GUNS" },
-      drive: { name: "Drive first", short: "DRIVE" }, main: { name: "Main gun first", short: "MAIN GUN" }, moab: { name: "Planet buster first", short: "MOAB" } },
-    // (main: light cruiser and up; drive: ships with a warp drive; moab: the dreadnought's planet buster)
-    stanceList: ["balanced", "shields", "guns", "main", "drive", "moab"],
+    standing: { guns: "auto", stance: "balanced" },
+    // (drive first: after life support the drive charges to be full by the window, the rest share what's left)
+    stances: { shields: { name: "Shields first", short: "SHIELDS" }, balanced: { name: "Balanced", short: "BALANCE" }, guns: { name: "Guns first", short: "GUNS" },
+      drive: { name: "Drive first", short: "DRIVE" }, main: { name: "Main gun first", short: "MAIN GUN" } },
+    stanceList: ["shields", "balanced", "guns", "main", "drive"],      // (main: light cruiser and up; drive: ships with a warp drive)
     // The gunners' order buttons on the bridge: what the guns go after (BL.GUNNERY.orders underneath).
     gunShort: { auto: "SUGG", defend: "TORP", stop: "LAUNCH", hunt: "HUNT", free: "FREE" }
   };
@@ -1033,7 +889,7 @@
     recovered:   ["Carrier: gunboat recovered. Well flown.", "Coxswain: we're on the deck. Nice work, Engineering."],
     arrival:     ["Bridge: dropping out of warp space. Drive is empty.", "Captain: we're out of warp space. Start charging the drive, Engineering.", "Helm: normal space. Drive reads empty."],
     briefing:    ["Tactical: expect {enemies}. {what}.", "Tactical: scopes show {enemies} on approach."],
-    fortressIn:  ["Tactical: the planetary fortress, dead ahead. Hold it off until the buster's away.", "Captain: there's the fortress guarding their world. Guns, keep it off us.",
+    fortressIn:  ["Tactical: the homeworld fortress, dead ahead. Hold it off until the buster's away.", "Captain: there's the fortress guarding their world. Guns, keep it off us.",
                   "Tactical: Azurian fortress dead ahead. It won't move and it won't stop firing."],
     waveIn:      ["Tactical: {enemy} on scope.", "Tactical: new contacts, {enemy}.", "Tactical: {enemy} closing."],
     salvo:       ["Tactical: enemy salvo in {t} s.", "Tactical: incoming fire, {t} seconds.", "Tactical: they're locking on. Salvo in {t}."],
@@ -1045,8 +901,6 @@
     hit:         ["Damage control: hull breach! {dmg} damage.", "Damage control: we're hit! Hull down {dmg}.", "That one got through! Hull down {dmg}."],
     surprise:    ["Tactical: unannounced salvo! Sorry, Engineering!", "Tactical: that one came out of nowhere!"],
     killed:      ["Gunner {n}: {enemy} destroyed!", "Tactical: {enemy} breaking up.", "Gunner {n}: splash one {enemy}!"],
-    // (TexasBont's lines: the bridge's report was wrong, Mission.spawnWave; {reported} what the pickets said, {enemies} what came)
-    intelWrong:  ["Captain: So much for the intelligence.", "Captain: Those don't look like {reported}.", "Captain: What are {enemies} doing here?"],
     withdrew:    ["Tactical: {enemy} pulling back.", "Tactical: {enemy} out of range."],
     trip:        ["Failsafe: {sys} tripped offline.", "Failsafe: reactor overheat. {sys} breaker open.", "Failsafe tripped {sys}!"],
     reclose:     ["Failsafe: {sys} breaker closed.", "{sys} back on the reactor."],
@@ -1054,10 +908,10 @@
     lifeLow:     ["Medical: air's getting thin.", "Medical: life support is failing."],
     lifeOut:     ["Medical: crew passing out! Gunners are slowing down.", "Medical: life support's out. The crew can't keep this up."],
     lifeBack:    ["Medical: air's back. Crew recovering."],
-    jumpNotice:  ["Navigation: warp window in {t} s. Drive must be full.", "Bridge: warp window opens in {t} seconds."],
-    jumpOpen:    ["Navigation: warp window open. Waiting on the drive.", "Captain: window's open. Where's my drive, Engineering?"],
-    jumpOpenNav: ["Navigation: warp window open. Waiting on the drive."],      // the bridge: Navigation's line only
-    jumpGo:      ["Bridge: drive full. Warping in {t}.", "Bridge: all hands, warp in {t}."],
+    jumpNotice:  ["Navigation: jump window in {t} s. Drive must be full.", "Bridge: jump window opens in {t} seconds."],
+    jumpOpen:    ["Navigation: jump window open. Waiting on the drive.", "Captain: window's open. Where's my drive, Engineering?"],
+    jumpOpenNav: ["Navigation: jump window open. Waiting on the drive."],      // the bridge: Navigation's line only
+    jumpGo:      ["Bridge: drive full. Jumping in {t}.", "Bridge: all hands, jump in {t}."],
     damaged:     ["Damage control: {what}."],
     killedOther: ["Tactical: {enemy} destroyed.", "Tactical: {enemy} breaking up."],
     mainFired:   ["Gunnery: main gun fired! Direct hit.", "Gunnery: main gun away! {enemy} is hurting.", "Gunnery: main gun on target. Keep it coming, Engineering!"],
@@ -1074,10 +928,8 @@
     recoverCall: ["Flight deck: recovering the squadron in {t} s. Charge the arresters.", "Captain: gunboats coming home in {t} seconds. Arresters must be full."],
     recovered2:  ["Flight deck: squadron recovered. All gunboats aboard.", "Flight deck: arresters caught them. Squadron's home."],
     recoverLate: ["Flight deck: arresters aren't charged! The gunboats are circling.", "Captain: we can't take the squadron aboard, Engineering. Charge those arresters!"],
-    holdForSquadron: ["Bridge: holding the warp until the squadron is aboard.", "Captain: we don't leave without our gunboats."],
-    squadronLeft:["Captain: hangar bay destroyed. We have to leave them. Warping now!", "Bridge: hangar bay destroyed. We have to leave them."],
-    leftBehind: ["Carrier: hangar bay destroyed. We have to leave you."],     // (a gunboat escort: the carrier at 20% or less)
-    squadronLeftC: ["Bridge: hangar bay destroyed. We have to leave them."],     // (on the bridge: the warp is the player's own order)
+    holdForSquadron: ["Bridge: holding the jump until the squadron is aboard.", "Captain: we don't leave without our gunboats."],
+    squadronLeft:["Captain: we can't wait for the gunboats. Jumping now!", "Bridge: hull's too far gone. We're leaving the squadron behind."],
     intercepted: ["Squadron: we caught that salvo!", "Flight deck: gunboats knocked down a salvo."],
     mineHit:     ["Damage control: mine strike! Hull down {dmg}.", "We clipped a mine! Hull down {dmg}."],
     strike:      ["Tactical: drive strike inbound, {t} s!", "Tactical: hunters are going for the drive. Impact in {t}.", "Tactical: missile on the drive in {t} seconds!"],
@@ -1086,7 +938,7 @@
     driveHit:    ["Damage control: drive strike! We lost {pct}% of the drive charge.", "Navigation: they hit the drive. Charge down {pct}%!"],
     heatR:       ["Reactor room: reactor {r} is running hot!", "Reactor room: heat's climbing on reactor {r}!"],
     auxEmptyR:   ["Aux bank {r} is empty."],
-    busterWait:  ["Bridge: the planet buster isn't charged. We can't make the drop!", "Weapons: buster's not ready, Captain. Holding the drop."],
+    busterWait:  ["Bridge: the planet buster isn't charged. We can't make the final jump!", "Weapons: buster's not ready, Captain. Holding the jump."],
     starved:     ["Helm: engines are starved! I can't hold the course!", "Helm: not enough power to the engines, we're drifting into the mines!"],
     auxEmpty:    ["Aux bank is empty."],
     // Gunner station. A key ending in G replaces the plain one while the player is at a gun.
@@ -1105,8 +957,8 @@
     ptMiss:      ["Tactical: torpedo missed.", "Coxswain: it slipped the torpedo."],
     // The helm. A key ending in H replaces the plain one (and the gunner's G one) at the helm.
     launchH:     ["Carrier: Transferring launch control to gunboats. Launch when ready."],   // TexasBont's launch line (Oct 13, 2026)
-    arrivalH:    ["Navigation: out of warp space. Warp heading {hdg}, Helm.", "Captain: normal space. Helm, she's yours; warp heading is {hdg}."],
-    takeConn:    ["Captain: I have the conn. Coming to {hdg} for the warp.", "Captain: I'll take her, Helm. Warp heading {hdg}."],
+    arrivalH:    ["Navigation: out of warp space. Jump heading {hdg}, Helm.", "Captain: normal space. Helm, she's yours; jump heading is {hdg}."],
+    takeConn:    ["Captain: I have the conn. Coming to {hdg} for the jump.", "Captain: I'll take her, Helm. Jump heading {hdg}."],
     recoveredH:  ["Carrier: gunboat recovered. Nice flying.", "Coxswain: we're on the deck. Good flying, Helm."],
     burnH:       [],                     // the captain's orders replace the bridge's burns at the helm
     mainReadyH:  ["Engineering: main gun's charged."],   // a report only: where the bow goes is the captain's call
@@ -1134,8 +986,8 @@
     evadeOwn:    ["Helm: breaking {dir}!"],
     evadeMissed: ["{who}: too slow on that break, Helm!", "{who}: I said break, Helm!"],
     helmReq:     ["Gunner {n}: Captain, nothing in my arc. Target {side}."],     // to the captain, who orders the helm
-    jumpNoticeH: ["Navigation: warp window in {t} s. Warp heading {hdg}."],     // reports; the captain orders the heading
-    jumpHeading: ["Navigation: drive's full. We're off the warp heading."],
+    jumpNoticeH: ["Navigation: jump window in {t} s. Jump heading {hdg}."],     // reports; the captain orders the heading
+    jumpHeading: ["Navigation: drive's full. We're off the jump heading."],
     warnEng:     ["Engineering: standing by for your burn.", "Engineering: understood, power's ready for the engines.", "Engineering: copy, Helm. Engines get first call."]
   };
 

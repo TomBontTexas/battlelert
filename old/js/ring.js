@@ -27,7 +27,7 @@
     });
     // At the helm (opts.helm) the player holds no gun: a crewman works every one of them.
     this.crewAll = !!opts.helm;
-    var crew = m.crewSet && m.crewSet.guns ? m.crewSet.guns : BL.pickGunCrew(m.seed, m.data.classId, this.crewAll);
+    var crew = BL.pickGunCrew(m.seed, m.data.classId, this.crewAll);
     this.bats.forEach(function (b, i) { b.crew = crew[i] || null; });
     this.pilot = cls.pilot || null;            // main gun ships: the AI pilot turns the bow onto the big target
     this.heading = 0;                          // degrees the ship has turned (the starfield turns with it)
@@ -309,14 +309,12 @@
 
   /* ------------------------------------------------------------ Squadron
      Cruiser and up: when the launchers fire, the gunboats fly out of the hangar bays, circle
-     the enemy ships strafing them, and shoot down torpedoes that pass close. In a minefield they
-     patrol ahead of the bow and shoot the mines coming at her (not the rocks). When the arresters
+     the enemy ships strafing them, and shoot down torpedoes that pass close. When the arresters
      bring them home they fly back aboard. Your bolts pass them by. */
   RingTurret.prototype.runWing = function (dt) {
     var m = this.m, hg = m.data.hangar, W = this.G.ring.wing, self = this;
     if (!hg) return;
-    var sq = m.squadron, enc = m.encounter();
-    var mined = m.captain ? m.captain.inMines : !!(enc && (enc.mines || enc.sweep));
+    var sq = m.squadron;
     if (sq !== this.lastSquadron) {
       if (sq === "out") this.launchWing();
       else if (this.lastSquadron === "out") this.wing.forEach(function (g) { g.state = "home"; });
@@ -333,10 +331,7 @@
         if (!tg || tg.dead || tg.state === "leave" || self.ships.indexOf(tg) < 0) tg = g.target = self.wingTarget(i);
         g.orbitA += W.spin * dt;
         if (tg) { tx = tg.x + Math.cos(g.orbitA) * W.orbit; ty = tg.y + Math.sin(g.orbitA) * W.orbit; }
-        else if (mined) {                                                // a minefield: sweep ahead of the bow
-          var ah = self.rim((i - (W.n - 1) / 2) / Math.max(1, (W.n - 1) / 2) * W.spread), R0 = self.R;
-          tx = R0.cx + (ah.x - R0.cx) * W.sweep + Math.cos(g.orbitA) * 0.03; ty = R0.cy + (ah.y - R0.cy) * W.sweep + Math.sin(g.orbitA) * 0.03;
-        } else {                                                         // nothing to fight: patrol off our side
+        else {                                                           // nothing to fight: patrol off our side
           var R = self.R, p = self.rim(g.bay);
           tx = R.cx + (p.x - R.cx) * 2.2 + Math.cos(g.orbitA) * 0.04; ty = R.cy + (p.y - R.cy) * 1.5 + Math.sin(g.orbitA) * 0.04;
         }
@@ -353,7 +348,7 @@
       if (g.state !== "home" && m.totalT >= g.next) {
         g.next = m.totalT + W.tick;
         var tp = null, bd = W.look;
-        self.torps.forEach(function (x) { if (x.rock) return; var dd = Math.hypot(x.x - g.x, x.y - g.y); if (dd < bd) { bd = dd; tp = x; } });
+        self.torps.forEach(function (x) { var dd = Math.hypot(x.x - g.x, x.y - g.y); if (dd < bd) { bd = dd; tp = x; } });
         if (tp) {
           self.effects.push({ type: "tracer", x: g.x, y: g.y, x1: tp.x, y1: tp.y, at: m.totalT });
           if (self.rng.chance(W.kill)) { self.downTorpedo(tp, null); m.stats.intercepts++; }
@@ -565,9 +560,6 @@
     // Escort mission: the group picks its target as it arrives (Captain.pickAim): the ward, a
     // wingman, or us (null). It forms up round its target, wherever that is in the view.
     if (wave.aim === undefined) wave.aim = this.m.captain && this.m.captain.escort ? this.m.captain.pickAim(r) : null;
-    // A fixed siege line (BL.COMMAND.siegeLine): its batteries sit at its true bearing from her.
-    var fixed = type === "siege" && this.m.captain && this.m.captain.siegeOn();
-    if (fixed) wave.bearing = this.m.captain.siegeBearing();
     if (wave.bearing === undefined) wave.bearing = look.bearing !== undefined ? look.bearing : this.pickBearing();
     var band = look.ringR || [0.36, 0.44], groupPhase = r.next() * Math.PI * 2, groupPeriod = r.range(look.period);
     var hold = r.range(band) - R.pull, spread = (look.w + 0.05) / hold / RAD;
@@ -582,7 +574,6 @@
         dive: look.dive * 0.5, diveAt: t + 3 + r.next() * 4, diveUntil: 0,
         born: t, state: "enter", ionUntil: 0, flashAt: -9, dead: false, x: 0, y: 0, rot: 0, aim: wave.aim
       };
-      if (fixed) { s.fixed = true; s.still = true; s.slot = home - wave.bearing; s.hold0 = s.hold; }     // (Captain.step keeps it on the line's bearing)
       this.placeShip(s);
       list.push(s); this.ships.push(s);
     }
@@ -637,7 +628,6 @@
     m.events.forEach(function (e) {
       if ((e.type !== "salvo" && e.type !== "strike") || e.done || e.torp) return;
       if (t < e.at - (e.travel || G.torpedo.travel)) return;
-      if (m.siegeSilent(e)) return;           // (a fixed siege line out of range: BL.siegeFire)
       var s = self.shipOf(e);
       if (!s || s.dead || s.state === "leave") { e.done = true; e.cancelled = true; e.visible = false; return; }
       var ion = BL.WEAPONS.ion.ion;
@@ -651,7 +641,7 @@
       if (aim !== null && aim !== undefined && e.type === "strike") { e.done = true; e.cancelled = true; e.visible = false; return; }
       if (ward) { e.ward = true; e.wardShip = cp.wardPick(self.rng); cp.wardLaunched(e, s); }
       else if (wing !== null) { e.wing = wing; cp.wingLaunched(e); }
-      else if (m.helm && e.type === "salvo") { m.helm.torpedoLaunched(e, s); if (cp && cp.escort && cp.escort.flag) cp.flagGuard(e, s); }       // Tactical reports it; the captain: break, or take it (a squadron in SCREEN may shoot it down)
+      else if (m.helm && e.type === "salvo") m.helm.torpedoLaunched(e, s);       // Tactical reports it; the captain: break, or take it
       var hitB = s.bearing + (self.rng.next() - 0.5) * 24, hit = ward ? cp.wardView(e.wardShip) : wing !== null ? cp.wingView(wing) : self.rim(hitB);
       var nose = { x: s.x - Math.sin(s.rot) * s.h / 2, y: s.y + Math.cos(s.rot) * s.h / 2 };
       var torp = { id: self.nextId++, ev: e, x0: nose.x, y0: nose.y, x1: hit.x, y1: hit.y, hitB: hitB, t0: t, t1: e.at, x: nose.x, y: nose.y, weak: !!e.ionized,
@@ -670,7 +660,7 @@
     });
     // Torpedoes at the ward follow the ship they're aimed at (she and we both move); a wingman
     // guarding that side shoots one down on its way (Captain.wingGuard).
-    if (m.captain && m.captain.escort && (m.captain.wardAlive() || m.captain.escort.flag)) {
+    if (m.captain && m.captain.wardAlive()) {
       var cp2 = m.captain;
       this.torps.slice().forEach(function (tp) {
         var e = tp.ev;
@@ -892,17 +882,14 @@
         if (d < best) { best = d; target = s; rel = rr; }
       });
     }
-    // A squadron (command.js Squadron): the commander's target first; then a group after us before
-    // one after another ship of the squadron.
-    var sqe = m.captain && m.captain.escort && m.captain.escort.flag ? m.captain.escort : null, sqT = sqe ? sqe.target : null;
     function ships(matched, penalty) {
       self.ships.forEach(function (s) {
         if (s.dead || s.state === "leave") return;
         var rr = self.inReachOf(b, s.x, s.y); if (rr === null) return;
         seen.push([s, rr]);
         var good = b.w.best.indexOf(s.type) >= 0;
-        if (matched && !good && !(sqT !== null && s.wave === sqT)) return;
-        var d = Math.abs(norm(rr - b.rel)) / 180 + (good ? 0 : penalty) + (sqe ? (s.wave === sqT ? -0.6 : s.aim !== null && s.aim !== undefined ? 0.25 : 0) : 0);
+        if (matched && !good) return;
+        var d = Math.abs(norm(rr - b.rel)) / 180 + (good ? 0 : penalty);
         if (d < best) { best = d; target = s; rel = rr; }
       });
     }
@@ -933,7 +920,7 @@
       var dx = target.x - b.x, dy = target.y - b.y, along = dx * b.nx + dy * b.ny, off = Math.abs(dx * b.ny - dy * b.nx);
       var rad = target.w ? Math.max(target.w, target.h) * 0.45 : 0.024;
       if (cw) { var d = Math.hypot(dx, dy), miss = Math.abs(norm(self.bearingOf(target.x, target.y) + b.aiJitter - b.phi));
-        aligned = along > 0 && miss * RAD * d < rad * lerp(C.loose) * (cw.temperK === undefined ? 1 : 0.7 + 0.6 * cw.temperK); }     // (an aggressive crew fires on a rougher aim, a cautious one waits: BL.ROSTER.temper)
+        aligned = along > 0 && miss * RAD * d < rad * lerp(C.loose); }
       else aligned = along > 0 && off < rad * (0.6 + 0.6 * skill);
     }
     b.firing = aligned && gun.mj >= b.w.shotMJ;

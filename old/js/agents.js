@@ -60,10 +60,6 @@
       return inc.next > 8 ? Math.min(w, (s.maxMJ - s.mj) / (6 + slack * 14)) : w;
     }
     var salvos = incomingOf("salvo"), strikes = incomingOf("strike");
-    // On the bridge the engineer guards the shields against what's coming only on the captain's
-    // SHIELDS stance; otherwise he just keeps them topping up (BL.COMMAND.standing).
-    // (he still reacts once a burst is guardReact s out, too late to charge for it fully)
-    if (m.captain && BL.COMMAND.guardOnShields && m.captain.stanceOn !== "shields" && salvos.next > BL.COMMAND.guardReact) salvos = { next: 99, mj: 0 };
 
     var want = {};
     want.life = life.mj < life.maxMJ * 0.9 ? 7 : 3.5;
@@ -81,8 +77,6 @@
     // Main gun: fires whenever full, so feed it hard while there's a target, else let it sit.
     var main = m.sys("main");
     if (main) want.main = wavesUp || m.mainFirst ? main.maxMW : Math.min(main.maxMW, (main.maxMJ - main.mj) / 20);
-    // (the bridge: the captain's SHIELDS stance gives the guns only a share, BL.COMMAND.shieldsGuns)
-    if (m.captain && m.captain.stanceOn === "shields") ship.systems.forEach(function (s) { if ((s.kind === "gun" || s.kind === "main") && want[s.id]) want[s.id] *= BL.COMMAND.shieldsGuns; });
     // Hangar: full power when a call is open or coming soon, else top up slowly.
     ship.systems.forEach(function (s) {
       if (s.kind !== "hangar") return;
@@ -110,16 +104,11 @@
     });
     // Fill in priority order, each from its own reactor; the drive and buster take what's left
     // (unless the captain's stance is drive first: then the drive in its place, fast enough to be
-    // full a few seconds before the window, at its full rate once the window is near or open, and
-    // flat out over its last percent: paced to the very end it crawled at 99%, or hung there).
-    if (drive && m.isDrop()) drive = null;      // the drop: no warp out, so the drive gets nothing
-    if (m.sys("drive") && m.isDrop()) m.setSetpoint("drive", 0);
-    if (drive && m.driveFirst) want.drive = drive.mj >= drive.maxMJ * 0.99 ? drive.maxMW : Math.min(drive.maxMW, 1.2 * (drive.maxMJ - drive.mj) / Math.max(1, m.windowIn() - 8));
-    // (the captain's MOAB stance: the planet buster in its place, flat out)
-    if (buster && m.busterFirst) want.buster = buster.maxMW;
+    // full a few seconds before the window, at its full rate once the window is near or open).
+    if (drive && m.driveFirst) want.drive = Math.min(drive.maxMW, 1.2 * (drive.maxMJ - drive.mj) / Math.max(1, m.windowIn() - 8));
     order.forEach(function (id) {
       var s = m.sys(id);
-      if ((s.kind === "drive" && !m.driveFirst) || (s.kind === "buster" && !m.busterFirst)) return;
+      if ((s.kind === "drive" && !m.driveFirst) || s.kind === "buster") return;
       var full = s.mj >= s.maxMJ - 0.5;
       var w = Math.min(want[id] || 0, s.maxMW);
       // On the bridge a capacitor at (or nearly at) full gets a trickle charge, enough to hold it
@@ -141,15 +130,12 @@
       m.setSetpoint("drive", dg);
       left[drive.reactor] -= dg;
     }
-    if (buster && m.busterFirst) m.setSetpoint("buster", Math.min(buster.maxMW, buster.set + Math.max(0, left[buster.reactor])));
-    else if (buster) {
+    if (buster) {
       // Spread the buster's charge over the time left in the mission, with a margin.
       var timeLeft = Math.max(0, m.windowIn());
       for (var j = m.jumpIndex + 1; j < m.cfg.jumps; j++) timeLeft += m.windowFor(j);
       var needRate = (buster.maxMJ - buster.mj) / Math.max(10, timeLeft - 15);
-      // (never less than enough to top it off against its bleed, or it can hang just short of full)
-      var top = buster.mj < buster.maxMJ - 0.5 ? m.holdMW(buster) * 1.25 + 2 : 0;
-      m.setSetpoint("buster", Math.min(buster.maxMW, Math.max(needRate * 1.2, left[buster.reactor], top)));
+      m.setSetpoint("buster", Math.min(buster.maxMW, Math.max(needRate * 1.2, left[buster.reactor])));
     }
 
     // Aux: bridge shield and point-defense gaps right before a hit, and dry guns during a request.

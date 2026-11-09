@@ -42,8 +42,6 @@
     this.phys = BL.PHYSICS;
     this.dt = 1 / BL.TICK_RATE;
     this.quiet = !!opts.quiet;              // harness: skip chatter text and sound cues
-    // A Command job's crew from the roster (BL.roster.forMission): { engineer, pilot, guns: [...] }; else rolled from the seed.
-    this.crewSet = opts.crew || null;
 
     // Pilot training (training.js): one endless system with no enemies and no jump.
     this.training = !!opts.training;
@@ -53,24 +51,6 @@
     // A story mission (story.js) flies the systems its story names. The mine lane needs the gun
     // view, so in the engine room it's a minefield. reports: a line to play in each system.
     if (opts.route) this.route = opts.route.map(function (id) { return id === "sweep" && !opts.gunner ? "minefield" : id; });
-    // A squadron fights its map's targets (command.js Squadron): no minefield systems for it yet.
-    if (opts.flag && opts.captain) this.route = this.route.map(function (id) { return id === "minefield" || id === "sweep" ? "raiders" : id; });
-    this.intelKnown = {};                     // (systems where the report turned out wrong: Mission.shown)
-    // The bridge's survey of each system (Mission.reported): its own random stream, so the
-    // mission's is unchanged.
-    if (opts.captain && !this.training) {
-      var ir = BL.rng((this.seed ^ 0x9e3779b9) >>> 0), pool = (this.data.encounters || Object.keys(BL.ENCOUNTERS)).filter(function (ty) { return ty !== "minefield" && ty !== "sweep"; });
-      // One roll per mission: if it's wrong, one system's report names another encounter.
-      // (A test mission from the title screen always has one wrong, if any system can be.)
-      var self = this, can = this.route.map(function (id, i) { return i; }).filter(function (i) {
-        var id = self.route[i]; return id !== "minefield" && id !== "sweep" && pool.some(function (ty) { return ty !== id; });
-      });
-      this.intel = this.route.slice();
-      if (can.length && (ir.chance(BL.COMMAND.intelWrong) || opts.test)) {
-        var k = ir.pick(can); this.intel[k] = ir.pick(pool.filter(function (ty) { return ty !== self.route[k]; }));
-      }
-    }
-    if (opts.route && this.dropping() && this.route[this.route.length - 1] === "hunters") this.route[this.route.length - 1] = "raiders";     // (no drive hunters at the drop)
     this.reports = opts.reports || [];
     this.jumpIndex = 0;
     this.phase = "briefing";                // briefing | arrival | engage | countdown | gravspace | done
@@ -82,7 +62,6 @@
     this.result = null;
     this.buildShip();
     this.hasDrive = !!this.sys("drive");
-    this.world = opts.world || (this.sys("buster") ? r0pick(this.seed, this.cfg.dropWorlds) : null);     // the drop's target world
     // Gunner station: the player aims one gun (opts.gunner = { weapon, gun }); see gunnery.js.
     this.turret = !opts.gunner ? null : opts.gunner.ring ? new BL.RingTurret(this, opts.gunner) : new BL.Turret(this, opts.gunner);
     // Pilot station: the player at the helm (opts.helm), the gun crew on every gun; see helm.js.
@@ -90,9 +69,7 @@
     // Command (opts.captain): the player is the captain; an NPC pilot flies the helm; see command.js.
     // opts.escort: an escort mission (a gunboat squadron screens the carrier each sortie, a
     // destroyer escort squadron a convoy or capital ship each system; Captain, BL.COMMAND.escort).
-    this.escort = !!opts.escort; this.escortKind = opts.escortKind || null;     // (a story mission names the ward: carrier, convoy or capital)
-    // opts.flag: a squadron mission (the Squadron test): we're the flagship of a squadron (Captain, BL.COMMAND.squad).
-    this.flag = !!opts.flag && !!opts.captain;
+    this.escort = !!opts.escort;
     this.captain = opts.captain && this.helm ? new BL.Captain(this) : null;
     this.trainer = null;                    // made on arrival (the helm's heading is set then)
     this.stats = {
@@ -111,25 +88,13 @@
       damageReports: []
     };
   }
-  // (a pick that doesn't touch the mission's own random numbers)
-  function r0pick(seed, list) { return list[((seed >>> 0) * 2654435761 >>> 0) % list.length]; }
   BL.Mission = Mission;
 
-  // The dreadnought's last system is the drop (no warp out): see runDrop.
-  // What the pickets reported for system i: on the bridge sometimes wrong (BL.COMMAND.intelWrong).
-  Mission.prototype.reported = function (i) { return this.intel ? this.intel[i] : this.route[i]; };
-  // What the bridge believes is in system i: the report until the enemy shows it's wrong.
-  Mission.prototype.shown = function (i) { return this.intelKnown[i] ? this.route[i] : this.reported(i); };
-  Mission.prototype.isDrop = function () { return !!this.sys("buster") && this.jumpIndex === this.cfg.jumps - 1; };
-  // (the class carries a planet buster: its last system is the drop; usable before the ship is built)
-  Mission.prototype.dropping = function () { return this.data.systems.some(function (s) { return s.id === "buster"; }); };
   Mission.prototype.planRoute = function (gunner) {
     var types = ((gunner && this.data.gunnerEncounters) || this.data.encounters || Object.keys(BL.ENCOUNTERS)).slice(), route = [];
     // At the gun a dreadnought's final system is always the homeworld fortress.
     var last = gunner && this.data.gunnerFinal;
-    // The drop (a dreadnought's last system) has no drive hunters: she isn't warping out.
-    var noHunt = this.dropping() ? types.filter(function (ty) { return ty !== "hunters"; }) : types;
-    for (var i = 0; i < this.cfg.jumps; i++) route.push(last && i === this.cfg.jumps - 1 ? last : this.rng.pick(i === this.cfg.jumps - 1 ? noHunt : types));
+    for (var i = 0; i < this.cfg.jumps; i++) route.push(last && i === this.cfg.jumps - 1 ? last : this.rng.pick(types));
     // On longer routes every encounter type appears at least once.
     if (!last && route.length >= types.length) types.forEach(function (ty, k) {
       if (route.indexOf(ty) < 0) route[(k + this.seed) % route.length] = ty;
@@ -189,8 +154,7 @@
   // Jump window (or carrier recovery) for system i; a minefield shortens it: the captain wants out.
   Mission.prototype.windowFor = function (i) {
     var w = this.cfg.jumpWindowAt[Math.min(i, this.cfg.jumpWindowAt.length - 1)], enc = BL.ENCOUNTERS[this.route[i]];
-    // (a squadron's map is BL.COMMAND.squad.map.window x bigger, and its window that much longer)
-    return Math.round(w * ((enc && enc.windowScale) || 1) * (this.flag ? BL.COMMAND.squad.map.window : 1));
+    return Math.round(w * ((enc && enc.windowScale) || 1));
   };
 
   /* ---------------------------------------------------------- Player input */
@@ -246,24 +210,13 @@
   };
   Mission.prototype.chat = function (key, vars, kind, now) {
     if (this.quiet || this.hushed(key)) return;
-    // At the helm a key ending in H wins, at the gun one ending in G (not for the captain's own lines).
-    var own = this.captain && BL.COMMAND.hears.indexOf(key) >= 0;
-    var lines = (this.helm && !own && BL.CHATTER[key + "H"]) || (this.turret && BL.CHATTER[key + "G"]) || BL.CHATTER[key]; if (!lines || !lines.length) return;
-    // (the drop: no line about the drive, and the warp's window, zone and heading are the drop's)
-    if (this.isDrop() && /^(jump|arrival)/.test(key)) lines = lines.filter(function (l) { return !/drive/i.test(l); });
-    // (on the bridge the drop has no heading: a line giving one gives way to the plain line, if any)
-    if (this.isDrop() && this.captain && lines.some(function (l) { return /\{hdg\}/.test(l); })) {
-      lines = lines.filter(function (l) { return !/\{hdg\}/.test(l); });
-      if (!lines.length) lines = (BL.CHATTER[key] || []).filter(function (l) { return !/\{hdg\}/.test(l) && !(/^(jump|arrival)/.test(key) && /drive/i.test(l)); });
-    }
-    if (!lines.length) return;
-    var line = fill(this.rng.pick(lines), vars);
-    if (this.isDrop()) line = line.replace(/\b(warp|Warp)( window| zone| heading)/g, function (x, w, what) { return (w === "Warp" ? "Drop" : "drop") + what; });
-    this.say(line, kind, now);
+    // At the helm a key ending in H wins, at the gun one ending in G.
+    var lines = (this.helm && BL.CHATTER[key + "H"]) || (this.turret && BL.CHATTER[key + "G"]) || BL.CHATTER[key]; if (!lines || !lines.length) return;
+    this.say(fill(this.rng.pick(lines), vars), kind, now);
     this.cue("chatter");
   };
   // The helm hears no running commentary (BL.HELM.quiet).
-  Mission.prototype.hushed = function (key) { return !!this.helm && BL.HELM.quiet.indexOf(key) >= 0 && !(this.captain && BL.COMMAND.hears.indexOf(key) >= 0); };
+  Mission.prototype.hushed = function (key) { return !!this.helm && BL.HELM.quiet.indexOf(key) >= 0; };
   Mission.prototype.cue = function (name) { if (!this.quiet) this.fx.push(name); };
 
   /* --------------------------------------------------------------- Phases */
@@ -288,8 +241,7 @@
     if (this.squadron !== "lost") this.squadron = "aboard";
     this.recoverCalled = false; this.holdSaid = false;
     // (on the bridge the captain launches and recovers it himself: Captain.orderHangar)
-    // (in a minefield too: clearing mines ahead of the ship is part of the squadron's job)
-    this.nextLaunchAt = this.sys("hangar") && !this.training && !this.captain && this.squadron === "aboard" ? this.cfg.arrivalSeconds + r.range(this.data.hangar.launchAfter) : Infinity;
+    this.nextLaunchAt = this.sys("hangar") && !enc.mines && !this.training && !this.captain && this.squadron === "aboard" ? this.cfg.arrivalSeconds + r.range(this.data.hangar.launchAfter) : Infinity;
     this.hangarMode("launch");
     this.ship.gTarget = this.data.cruiseG;
     var drive = this.sys("drive"); if (drive) drive.mj = 0;
@@ -305,10 +257,9 @@
     if (this.captain) this.captain.reset();
     if (this.training) { this.trainer = new BL.Trainer(this); this.reportAt = Infinity; this.gunSaid = false; this.spawnedHere = 0; return; }
     this.chat(this.hasDrive ? "arrival" : "launch", { hdg: this.helm && this.helm.jumpHdg !== null ? BL.hdgText(this.helm.jumpHdg) : "" }, "info");
-    var rep = BL.ENCOUNTERS[this.reported(this.jumpIndex)];     // (on the bridge, the pickets' report: Mission.reported)
-    this.chat(rep.chat || "briefing", { enemies: BL.plural(rep.enemy), what: rep.what }, "info");
+    this.chat(enc.chat || "briefing", { enemies: BL.plural(enc.enemy), what: enc.what }, "info");
     this.reportAt = this.reports[this.jumpIndex] ? this.cfg.arrivalSeconds + 4 : Infinity;   // the story's report for this system
-    this.gunSaid = false; this.spawnedHere = 0; this.intelSaid = false;
+    this.gunSaid = false; this.spawnedHere = 0;
   };
 
   // Called by the display after the warp space report (or by the harness).
@@ -333,7 +284,7 @@
     this.cue("jump");
     if (!this.hasDrive) this.chat("recovered", null, "good");
     if (this.jumpIndex >= this.cfg.jumps - 1) {
-      if (this.sys("buster")) this.say("Bridge: Azurian " + this.world + " world dead ahead. Planet buster away!", "good");   // (only a dreadnought carries one)
+      if (this.sys("buster")) this.say("Bridge: Azurian world dead ahead. Planet buster away!", "good");   // (only a dreadnought carries one)
       this.finish("success");
     } else {
       this.phase = "gravspace";
@@ -351,7 +302,6 @@
         encounter: this.route[this.stats.jumps.length] });
     }
     this.jumpIndex = this.cfg.jumps - 1;
-    this.testWinning = true;      // (a squadron's objectives don't count against a test win: Mission.finish)
     this.finish("success");
     var r = this.result;
     Object.keys(r.parts).forEach(function (k) { r.parts[k] = Math.round(25 * pct / 100); });
@@ -359,8 +309,6 @@
   };
 
   Mission.prototype.finish = function (outcome) {
-    // (a squadron that warped on leaving a system's objective standing has failed its mission)
-    if (this.flag && outcome === "success" && !this.testWinning && this.captain && this.captain.sqMissed()) outcome = "objectiveMissed";
     this.phase = "done";
     this.closeOverloadRun();
     this.result = this.captain ? BL.scoreCaptain(this, outcome) : this.helm ? BL.scoreHelm(this, outcome) : this.turret ? BL.scoreGunner(this, outcome) : BL.score(this, outcome);
@@ -393,23 +341,17 @@
     // Once the jump window has been open a while, the enemy breaks off (drive hunters at once),
     // so a drive that can't keep up never stalls the mission forever.
     var cutoff = this.windowAt() + (enc.breakOff === undefined ? this.cfg.breakOff : enc.breakOff);
-    // (a squadron: its enemies are the map's targets, Captain.runSquad, not waves on a timer)
-    if (!enc.mines && !enc.sweep && t >= this.nextWaveAt && t < cutoff && !this.flag) {
+    if (!enc.mines && !enc.sweep && t >= this.nextWaveAt && t < cutoff) {
       this.queueWaves(this.forceCount(), enc);
       this.nextWaveAt = t + r.range(enc.waveEvery);
     }
     // Stragglers: light waves of another encounter type that join the fight (frigate groups).
-    if (enc.stragglers && t >= this.nextStragglerAt && t < cutoff && !this.flag) {
-      // (no drive-hunter stragglers at the drop)
-      var stys = this.isDrop() ? enc.stragglers.types.filter(function (ty) { return ty !== "hunters"; }) : enc.stragglers.types;
-      for (var q = this.forceCount(), qi = 0; qi < q; qi++) { var sty = r.pick(stys); this.queueWaves(1, BL.ENCOUNTERS[sty], sty, "straggler", qi); }
+    if (enc.stragglers && t >= this.nextStragglerAt && t < cutoff) {
+      for (var q = this.forceCount(), qi = 0; qi < q; qi++) { var sty = r.pick(enc.stragglers.types); this.queueWaves(1, BL.ENCOUNTERS[sty], sty, "straggler", qi); }
       this.nextStragglerAt = t + r.range(enc.stragglers.every);
     }
     // Groups that were due together come in one after another (BL.MISSION.staggerGap apart).
-    while (this.spawnQueue.length && this.spawnQueue[0].at <= t) {
-      var sq = this.spawnQueue.shift(); this.spawnWave(sq.enc, sq.typeId, sq.line);
-      if (sq.swarm && this.captain) this.captain.swarm.push(this.waves[this.waves.length - 1].id);     // (Captain.enemyArea)
-    }
+    while (this.spawnQueue.length && this.spawnQueue[0].at <= t) { var sq = this.spawnQueue.shift(); this.spawnWave(sq.enc, sq.typeId, sq.line); }
     var b = enc.burns;
     // At the helm the captain gives course and engine orders instead of the bridge's burns.
     if (this.helm) this.helm.schedule(t);
@@ -486,14 +428,6 @@
     }
     this.waves.push(wave);
     this.chat(line || "waveIn", { enemy: wave.name }, "info");
-    // The bridge: the system's first enemy isn't what the pickets reported (Mission.reported).
-    // (Tactical names them first, though the bridge doesn't usually hear a wave come in)
-    if (this.intel && !typeId && !this.intelSaid && this.reported(this.jumpIndex) !== this.route[this.jumpIndex]) {
-      this.intelSaid = true; this.intelKnown[this.jumpIndex] = true;
-      if (this.captain) { var smap = this.captain.maps[this.jumpIndex]; if (smap.siege) smap.siege.known = true; }     // (BL.siegeSeen)
-      if (!this.quiet && this.hushed("waveIn")) this.say(fill(this.rng.pick(BL.CHATTER.waveIn), { enemy: wave.name }), "info");
-      this.chat("intelWrong", { reported: BL.plural(BL.ENCOUNTERS[this.reported(this.jumpIndex)].enemy), enemies: BL.plural(wave.name) }, "warn");
-    }
   };
 
   /* ------------------------------------------------------------ The tick */
@@ -538,11 +472,9 @@
       // the share of the wave still fighting: its ships at the gun and the helm, its toughness in the engine room
       var alive = w.ships ? w.ships.filter(function (s) { return !s.dead && s.state !== "leave"; }).length / Math.max(1, w.ships.length) : w.hp / w.hpMax;
       if (alive <= 0) return;
-      // (a fixed siege line fires by her distance from it: BL.siegeFire)
-      var near = w.type === "siege" && self.captain && self.captain.siegeOn() ? self.captain.siegeK() : 1;
       enc.guns.forEach(function (g) {
         var spec = G[g[0]], n = Math.ceil(g[1] * alive - 1e-9);
-        for (var k = 0; k < n; k++) if (self.rng.chance(spec.rate * near * dt)) {
+        for (var k = 0; k < n; k++) if (self.rng.chance(spec.rate * dt)) {
           var hit = self.rng.chance(G.hit);
           if (self.turret && self.turret.enemyShot) self.turret.enemyShot(w, g[0], hit);
           // (a group after another ship of the escort: it takes the hit)
@@ -567,7 +499,6 @@
     var t = this.t, keep = [];
     for (var i = 0; i < this.events.length; i++) {
       var e = this.events[i];
-      if (!e.announced && t >= e.announceAt && this.siegeSilent(e)) continue;
       if (!e.announced && t >= e.announceAt) {
         e.announced = true;
         if (e.visible) this.announce(e);
@@ -582,15 +513,6 @@
     this.events = keep;
   };
 
-  // A fixed siege line's salvo (BL.COMMAND.siegeLine): fired, by her distance from the line when
-  // it's first called or launched, at BL.siegeFire's share; a silent one is dropped. true: silent.
-  Mission.prototype.siegeSilent = function (e) {
-    if (e.siegeOk !== undefined || e.type !== "salvo" || !this.captain || !this.captain.siegeOn()) return e.siegeOk === false;
-    var w = this.waves.filter(function (x) { return x.id === e.wave; })[0];
-    e.siegeOk = !w || w.type !== "siege" || this.rng.chance(Math.min(1, this.captain.siegeK()));
-    if (!e.siegeOk) { e.done = true; e.cancelled = true; e.visible = false; }
-    return !e.siegeOk;
-  };
   Mission.prototype.announce = function (e) {
     var lead = Math.max(1, Math.round(e.at - this.t));
     if (e.type === "salvo") {
@@ -638,7 +560,7 @@
       this.ship.gTarget = e.g; this.burnUntil = e.at + e.dur;
       if (this.encounter().mines) this.curBurn = { short: 0, jump: this.jumpIndex + 1 };
     }
-    else if (e.type === "launch" || e.type === "recover") { var hg = this.sys("hangar"); if (hg && !this.hangarGone()) hg.call = { until: e.at + e.dur, type: e.type }; }
+    else if (e.type === "launch" || e.type === "recover") { var hg = this.sys("hangar"); if (hg) hg.call = { until: e.at + e.dur, type: e.type }; }
     else if (e.type === "request") {
       var s = this.sys("gun" + e.gun);
       if (s) {
@@ -647,7 +569,7 @@
         s.nextShot = Math.min(s.nextShot, this.t);
       }
     } else if (e.type === "jump") {
-      if (this.hasDrive && this.phase !== "countdown" && !this.isDrop()) this.chat(this.captain ? "jumpOpenNav" : "jumpOpen", null, "warn");     // (on the bridge no "where's my drive" in the player's name)
+      if (this.hasDrive && this.phase !== "countdown") this.chat(this.captain ? "jumpOpenNav" : "jumpOpen", null, "warn");     // (on the bridge no "where's my drive" in the player's name)
     }
   };
 
@@ -901,18 +823,11 @@
     return this.waves.some(function (x) { return x !== w && !x.dead; });
   };
 
-  // A wave pulls back before it's done (the bridge: half a swarm going back to its enemy area).
-  Mission.prototype.withdrawWave = function (w) {
-    this.waves = this.waves.filter(function (x) { return x !== w; });
-    this.events = this.events.filter(function (e) { return e.wave !== w.id || e.done; });
-    this.chat("withdrew", { enemy: w.name }, "info");
-  };
-
   Mission.prototype.runWaves = function () {
     var t = this.t, self = this;
     this.waves = this.waves.filter(function (w) {
       if (w.dead) return false;
-      if (t > w.lastAt + 3) { if (!w.quiet) self.chat("withdrew", { enemy: w.name }, "info"); return false; }     // (quiet: a map target's wave, renewed while it fights on)
+      if (t > w.lastAt + 3) { self.chat("withdrew", { enemy: w.name }, "info"); return false; }
       return true;
     });
   };
@@ -937,9 +852,7 @@
         if (this.curBurn) this.curBurn.short += dt;
         if (!this.starvedSaid) { this.starvedSaid = true; this.chat("starved", null, "bad"); }
         // (At the gunner station the mines are seen and shot instead; starving brings more of them.)
-        // (the squadron, while it's out, clears hangar.mineClear of the mines in her way)
-        var clear = this.squadron === "out" && this.data.hangar ? 1 - this.data.hangar.mineClear : 1;
-        if (!(this.turret && this.turret.ring) && this.rng.chance(enc.mines.strikePerSec * this.force("minefield") * clear * Math.min(1, short / Math.max(1, ship.gWant)) * dt)) this.mineStrike(enc);
+        if (!(this.turret && this.turret.ring) && this.rng.chance(enc.mines.strikePerSec * this.force("minefield") * Math.min(1, short / Math.max(1, ship.gWant)) * dt)) this.mineStrike(enc);
       } else if (short < 0.05) this.starvedSaid = false;
     }
     ship.engineMW = ship.g * perG;
@@ -982,8 +895,6 @@
       if (tw.hp <= 0) { this.chat("mainKill", { enemy: tw.name }, "good"); this.killWave(tw, 0, true); }
       else this.chat("mainFired", { enemy: tw.name }, "good");
     }
-    // (the hangar bay destroyed: a launch or recovery under way is off, and no one is marked down for it)
-    var hgs = this.sys("hangar"); if (hgs && hgs.call && this.hangarGone()) hgs.call = null;
     for (var i = 0; i < list.length; i++) {
       var s = list[i], q = s.call;
       if (!q) continue;
@@ -1026,10 +937,6 @@
   };
   Mission.prototype.holdMW = function (s) { return s.drainMW + s.mj * this.bleedOf(s); };
 
-  // The hull at 20% or less: the hangar bay is destroyed. No launch and no recovery till repairs
-  // in warp space bring her back above it; a squadron that's out is left behind at the warp
-  // (Mission.runJump).
-  Mission.prototype.hangarGone = function () { return !!this.data.hangar && this.ship.hull <= this.ship.hullMax * 0.2; };
   Mission.prototype.hangarMode = function (mode) {
     var s = this.sys("hangar"); if (!s) return;
     s.mode = mode;
@@ -1150,24 +1057,7 @@
     if (ship.crippled) this.stats.crippledTime += dt;
   };
 
-  /* The dreadnought's last system: the drop. No warp out: she launches the planet buster at the
-     target world from the drop zone. It goes once the MOAB is full and the window open (at the
-     helm, on the drop heading; on the bridge, the captain's order, in the zone). She may be early
-     and wait; if it hasn't gone by the window + cfg.dropLate s, the mission fails. */
-  Mission.prototype.runDrop = function () {
-    var t = this.t, win = this.windowAt();
-    if (this.phase !== "engage") return;
-    var ready = this.busterFull();
-    if (!ready && t >= win && !this.busterSaid) { this.busterSaid = true; this.chat("busterWait", null, "bad"); }
-    if (ready && this.helm && !this.captain && !this.helm.inJumpCorridor()) ready = false;
-    if (ready && this.captain && !this.captain.mayJump()) ready = false;
-    if (ready && t >= win) { this.driveFullAt = t; this.doJump(); return; }
-    if (t > win + this.cfg.dropLate) this.finish("dropMissed");
-  };
-  // When the drop window closes (s from now), in the drop system; else null.
-  Mission.prototype.dropClosesIn = function () { return this.isDrop() ? this.windowAt() + this.cfg.dropLate - this.t : null; };
   Mission.prototype.runJump = function () {
-    if (this.isDrop()) { this.runDrop(); return; }
     var drive = this.sys("drive"), t = this.t;
     if (!drive) {                       // gunboat: the carrier recovers it when the sortie timer runs out
       // (on the bridge the coxswain orders the recovery, in the recovery zone on its heading)
@@ -1185,7 +1075,7 @@
       if (this.ship.hull <= this.ship.hullMax * 0.2 && t >= this.windowAt()) {
         this.squadron = "lost"; this.stats.squadronsLost++;
         var hs = this.sys("hangar"); if (hs) { hs.call = null; hs.name = "Hangar"; hs.short = "HNGR"; hs.mode = "lost"; }
-        this.chat(this.captain ? "squadronLeftC" : "squadronLeft", null, "bad");
+        this.chat("squadronLeft", null, "bad");
       } else {
         if (t >= this.windowAt() && !this.holdSaid) { this.holdSaid = true; this.chat("holdForSquadron", null, "warn"); }
         full = false;

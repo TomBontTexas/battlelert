@@ -26,19 +26,7 @@
     var p = { x: a.x + u * dx, y: a.y + u * dy };
     return { d: dist(p, c), p: p, u: u };
   }
-  BL.navBearing = bearing; BL.alongMap = along;
-  // A fixed siege line's fire at point p (BL.COMMAND.siegeLine): 1 within `full` of it, easing
-  // off smoothly to 0 at `none`; 1 on a map with no siege line.
-  BL.siegeFire = function (map, p) {
-    var S = BL.COMMAND.siegeLine, s = map && map.siege;
-    if (!s) return 1;
-    var t = clamp((dist(p, s) / map.D - S.full) / (S.none - S.full), 0, 1);
-    return 1 - t * t * (3 - 2 * t);
-  };
-  // Whether the bridge knows of a siege line here (what the plot, the navigator and the battle
-  // view show): the pickets' report until the first wave shows it (known, Mission.spawnWave).
-  // Its guns fire only if it's real (Captain.siegeOn).
-  BL.siegeSeen = function (map) { var s = map && map.siege; return !!s && (s.known ? s.real : s.rep); };
+  BL.navBearing = bearing;
 
   /* ------------------------------------------------------------------ The map */
   // One system's map. opts: { window (s), cruiseG, hasDrive }.
@@ -51,7 +39,7 @@
     // The jump heading (to the nearest 5 degrees) and the approach point on the line leading in to it.
     var jh = Math.round(to360(jb + r.range([0, K.jumpTurn]) * (r.chance(0.5) ? 1 : -1)) / 5) * 5 % 360;
     var app = along(jump, jh + 180, K.approach * D);
-    var map = { D: D, start: start, jump: { x: jump.x, y: jump.y, r: K.zone * D }, jumpHdg: jh, approach: app, rocks: [], clusters: [], window: opts.window, recovery: opts.hasDrive === false, drop: !!opts.drop };     // (recovery: a gunboat's carrier pickup)
+    var map = { D: D, start: start, jump: { x: jump.x, y: jump.y, r: K.zone * D }, jumpHdg: jh, approach: app, rocks: [], clusters: [], window: opts.window, recovery: opts.hasDrive === false };     // (recovery: a gunboat's carrier pickup)
     // A picket's scouting run (opts.checkpoints): checkpoints to fly through in order, spread along
     // the way to the jump point and off to either side. Placed first: every area keeps clear of them.
     map.checkpoints = [];
@@ -65,21 +53,9 @@
       }
     }
     map.legs = [K.legs[0], K.legs[1] + map.checkpoints.length];     // (a leg more allowed for each checkpoint)
-    // A fixed siege line (opts.siege, BL.COMMAND.siegeLine): near the straight way, across it, or
-    // anywhere; clear of the start and the jump zone. Every area keeps clear of it.
-    if (opts.siege) {
-      var SL = K.siegeLine, roll = r.next(), hb0 = bearing(start, app), sp = null, kind = roll < SL.place.near ? "near" : roll < SL.place.near + SL.place.across ? "across" : "any";
-      for (var ts = 0; ts < 40 && !sp; ts++) {
-        var c0 = kind === "near" ? along(along(start, jb, r.range(SL.along) * D), jb + 90, r.range(SL.off) * D * (r.chance(0.5) ? 1 : -1))
-          : kind === "across" ? along(along(start, hb0, r.range(SL.along) * dist(start, app)), hb0 + 90, r.range([-SL.acrossOff, SL.acrossOff]) * D)
-          : along(along(start, jb, r.range(K.along) * D), jb + 90, r.range([-SL.anyOff, SL.anyOff]) * D);
-        if (dist(c0, start) > (SL.full + K.zone) * D && dist(c0, jump) > (SL.full + K.zone * 1.5) * D) sp = c0;
-      }
-      if (sp) map.siege = { x: sp.x, y: sp.y, r: SL.r * D, kind: kind, lobes: [{ x: sp.x, y: sp.y, r: SL.r * D }] };
-    }
     // Room for an area: every lobe clear of the start, the jump zone and its approach lane, and a
     // lane (K.lane margins) from every lobe already placed, so there's always a way between them.
-    var lobesNow = function () { return [].concat.apply([], map.rocks.concat(map.clusters, map.mines ? [map.mines] : [], map.siege ? [map.siege] : []).map(function (o) { return o.lobes; })); };
+    var lobesNow = function () { return [].concat.apply([], map.rocks.concat(map.clusters, map.mines ? [map.mines] : []).map(function (o) { return o.lobes; })); };
     var clear = function (o) {
       var have = lobesNow(), lane = K.lane * K.margin * D;
       return o.lobes.every(function (l) {
@@ -145,14 +121,7 @@
   BL.inField = function (map, p) { return rockLobes(map).some(function (l) { return dist(l, p) < l.r; }); };
   BL.inMines = function (map, p) { return !!map.mines && map.mines.lobes.some(function (l) { return dist(l, p) < l.r; }); };
   // Every obstacle on the map, with the margin the navigator keeps.
-  // (the navigator's plot also keeps navR off a siege line, unless that ring holds the start,
-  // the jump zone or its approach lane: siege)
-  function obstacles(map, siege) {
-    var K = BL.COMMAND, m = K.margin * map.D, out = rockLobes(map).concat(enemyLobes(map)).map(function (o) { return { x: o.x, y: o.y, r: o.r + m }; });
-    var s = BL.siegeSeen(map) && map.siege, R = s && K.siegeLine.navR * map.D;
-    if (siege && s && dist(s, map.start) > R * 1.1 && dist(s, map.jump) > R + map.jump.r && segNear(map.approach, map.jump, s).d > R * 1.05) out.push({ x: s.x, y: s.y, r: R });
-    return out;
-  }
+  function obstacles(map) { var m = BL.COMMAND.margin * map.D; return rockLobes(map).concat(enemyLobes(map)).map(function (o) { return { x: o.x, y: o.y, r: o.r + m }; }); }
   // The first obstacle the segment a-b runs through (with its margin), or null.
   function blocked(map, a, b, obs) {
     var hit = null, best = 2;
@@ -179,24 +148,21 @@
     // timed against the window.
     var n = legs.length, last = legs[n - 1], zoneEta = n ? eta - Math.min(last.len, map.jump.r) / (Math.max(0.1, gOf(last.eng)) * K.scale) : eta;
     var late = zoneEta > map.window - K.early, lastHdg = n ? last.hdg : null;
-    var offJump = !map.drop && (lastHdg === null || Math.abs(norm(lastHdg - map.jumpHdg)) > K.jumpTol);     // (the drop has no heading)
+    var offJump = lastHdg === null || Math.abs(norm(lastHdg - map.jumpHdg)) > K.jumpTol;
     // A scouting run: the checkpoints no leg passes through (a warning; each missed costs navigation).
     var cpMiss = (map.checkpoints || []).filter(function (c) {
       for (var j = 0; j < pts.length - 1; j++) if (segNear(pts[j], pts[j + 1], c).d < c.r) return false;
       return true;
     }).map(function (c) { return c.n; });
-    // A siege line: the most of its fire the course passes under (BL.siegeFire at its closest point).
-    var siegeFire = 0;
-    if (BL.siegeSeen(map)) for (var q2 = 0; q2 < pts.length - 1; q2++) siegeFire = Math.max(siegeFire, BL.siegeFire(map, segNear(pts[q2], pts[q2 + 1], map.siege).p));
-    return { legs: legs, eta: eta, zoneEta: zoneEta, late: late, rocks: rocks, clusters: clusters, mines: mines, sharp: sharp, count: n, offJump: offJump, lastHdg: lastHdg, cpMiss: cpMiss, siegeFire: siegeFire,
+    return { legs: legs, eta: eta, zoneEta: zoneEta, late: late, rocks: rocks, clusters: clusters, mines: mines, sharp: sharp, count: n, offJump: offJump, lastHdg: lastHdg, cpMiss: cpMiss,
       minLegs: LG[0], maxLegs: LG[1], ok: n >= LG[0] && n <= LG[1] && !late && !clusters && !offJump, jumpHdg: map.jumpHdg };     // (through asteroids is allowed, with a warning)
   };
   // The navigator's plot: the shortest way round every obstacle (corners of an octagon drawn
   // round each one, so a leg between them stays clear) through each checkpoint in turn to the
   // approach point, then in along the jump heading; 1 to 8 legs (and one more per checkpoint),
   // engines set to arrive in time.
-  BL.navPlot = function (map, gOf, lc, noSiege) {
-    var K = BL.COMMAND, LG = map.legs || K.legs, obs = obstacles(map, !noSiege), start = { x: map.start.x, y: map.start.y }, goal = { x: map.approach.x, y: map.approach.y }, jp = { x: map.jump.x, y: map.jump.y };
+  BL.navPlot = function (map, gOf, lc) {
+    var K = BL.COMMAND, LG = map.legs || K.legs, obs = obstacles(map), start = { x: map.start.x, y: map.start.y }, goal = { x: map.approach.x, y: map.approach.y }, jp = { x: map.jump.x, y: map.jump.y };
     var corners = [];
     obs.forEach(function (o) {
       var R = o.r * 1.04 / Math.cos(Math.PI / 8);
@@ -247,7 +213,7 @@
       pts.splice(li + 1, 0, cand[0] || mid);
     }
     // Too many legs: again, with each leg costing more.
-    if (pts.length - 1 > LG[1] && lc < 0.6) return BL.navPlot(map, gOf, lc * 2.5, noSiege);
+    if (pts.length - 1 > LG[1] && lc < 0.6) return BL.navPlot(map, gOf, lc * 2.5);
     pts = pts.map(function (p) { return { x: p.x, y: p.y }; });
     var plot = { pts: pts, eng: pts.slice(1).map(function () { return "cruise"; }) };
     // Late at cruise: standard from the first leg on, then full, until it fits (on a scouting run
@@ -257,7 +223,6 @@
     ["standard", "full"].forEach(function (eng) {
       for (var k = 0; k < plot.eng.length && late(); k++) plot.eng[k] = eng;
     });
-    if (BL.siegeSeen(map) && !noSiege && late()) return BL.navPlot(map, gOf, undefined, true);     // (no time to keep clear of a siege line: past it)
     return plot;
   };
 
@@ -266,42 +231,25 @@
     this.m = m;
     var h = m.helm, self = this;
     this.who = "Captain";
-    // (a siege line goes on the map if it's real or the pickets report one: real, rep, BL.siegeSeen)
     this.maps = m.route.map(function (id, i) {
-      var enc = BL.ENCOUNTERS[id] || {}, rep = m.reported(i), map;
-      map = BL.makeNavMap(m.seed, i, { window: m.windowFor(i), cruiseG: h.gOf("cruise"), hasDrive: m.hasDrive, drop: !!m.sys("buster") && i === m.route.length - 1, mines: enc.sweep ? "sweep" : enc.mines ? "minefield" : null,
-        checkpoints: BL.COMMAND.checkpoints.classes.indexOf(m.data.classId) >= 0,
-        siege: (id === "siege" || rep === "siege") && !m.escort && !m.flag });
-      if (m.flag) map.clusters = [];     // (a squadron's enemies are its map's targets: Captain.makeTargets)
-      if (map.siege) { map.siege.real = id === "siege"; map.siege.rep = rep === "siege"; }
-      return map;
+      var enc = BL.ENCOUNTERS[id] || {};
+      return BL.makeNavMap(m.seed, i, { window: m.windowFor(i), cruiseG: h.gOf("cruise"), hasDrive: m.hasDrive, mines: enc.sweep ? "sweep" : enc.mines ? "minefield" : null,
+        checkpoints: BL.COMMAND.checkpoints.classes.indexOf(m.data.classId) >= 0 });
     });
     this.plots = [];
-    this.stance = BL.COMMAND.standing.stance; this.guns = BL.COMMAND.standing.guns; this.breaks = BL.COMMAND.standing.pilot;
-    // (stance, guns: what he ordered; stanceOn, gunsOn: what the crew are doing, BL.COMMAND.orderLag s later)
-    this.stanceOn = this.stance; this.gunsOn = this.guns; this.breaksOn = this.breaks; this.lag = {};
+    this.stance = BL.COMMAND.standing.stance; this.guns = BL.COMMAND.standing.guns;
     this.basePriority = m.priority.slice();
     this.stats = { rockHits: 0, calls: 0, breaks: 0, pilotBreaks: 0, breaksMade: 0, taken: 0, unanswered: 0, systems: [],
-      wardTorps: 0, wardCalls: 0, covers: 0, covered: 0, wingStops: 0, swarms: 0, attacks: 0, guards: 0, sqKills: 0, flagBridge: false, targetsDown: 0, objectivesDown: 0 };
+      wardTorps: 0, wardCalls: 0, covers: 0, covered: 0, wingStops: 0 };
     this.pilot = new CaptainPilot();
-    this.pilotCrew = (m.crewSet && m.crewSet.pilot) || BL.pickPilot(m.seed, m.data.classId);     // (his name and skill: how fast he takes an order)
     // Escort (BL.COMMAND.escort): the ward's hull carries over from system to system.
-    // A squadron (m.flag, BL.COMMAND.squad) works the same way with no ward: the flagship is its middle.
-    this.escort = m.escort ? this.makeEscort() : m.flag ? this.makeSquad() : null;
+    this.escort = m.escort ? this.makeEscort() : null;
     this.station = "ahead"; this.wcall = null;
-    // Dropping down: where he is off the bridge (null, "engine", "helm", "gun"), whether he has
-    // been this mission, and the men he took a station from.
-    this.away = null; this.dropped = false; this.replacedMen = []; this.aside = null;
   }
   BL.Captain = Captain;
   // The system she's in (set on arrival: after a jump the display still shows the last one until the next arrival).
   Captain.prototype.map = function () { return this.maps[this.at === undefined ? this.m.jumpIndex : this.at]; };
   Captain.prototype.gOf = function (id) { return this.m.helm.gOf(id); };
-  // A fixed siege line in this system (BL.COMMAND.siegeLine): there is one; its fire at her now
-  // (BL.siegeFire); its bearing from her bow, as the battle view shows it.
-  Captain.prototype.siegeOn = function () { return !!this.pos && !!this.map().siege && this.map().siege.real; };
-  Captain.prototype.siegeK = function () { return this.siegeOn() ? BL.siegeFire(this.map(), this.pos) * (BL.COMMAND.siegeLine.punch[this.m.data.classId] || 1) : 1; };
-  Captain.prototype.siegeBearing = function () { return norm(bearing(this.pos, this.map().siege) - this.m.helm.compass()); };
   // The plot for system i (the display sets it in warp space; the navigator's if none).
   Captain.prototype.setPlot = function (i, plot) { this.plots[i] = { pts: plot.pts.map(function (p) { return { x: p.x, y: p.y }; }), eng: plot.eng.slice() }; };
   Captain.prototype.plotFor = function (i) {
@@ -316,20 +264,19 @@
     h.base = to360(map.start.hdg - (m.turret ? m.turret.heading : 0));
     h.jumpHdg = info.jumpHdg; h.jumpShown = h.jumpHdg !== null; h.course = null;
     this.info = info; this.leg = 0; this.hdgOrder = null; this.engOrder = null; this.jumpOrdered = false;
-    this.inRock = false; this.inMines = false; this.inCluster = -1; this.swarm = []; this.zoneAt = null; this.holding = false; this.call = null; this.drRate = null; this.drLast = null; this.swing = null;
+    this.inRock = false; this.inMines = false; this.zoneAt = null; this.holding = false; this.call = null; this.drRate = null; this.drLast = null; this.swing = null;
     this.cur = { rockHits: 0, zoneAt: null, window: m.windowAt(), legs: info.count, onStation: 0, stationT: 0, cps: map.checkpoints.map(function () { return false; }) };
     this.stats.systems[m.jumpIndex] = this.cur;
     // Escort: the carrier sails the plotted course (the navigator's) from the start, reaching the
     // jump point at BL.COMMAND.escort.arrive of the time to the window.
-    if (this.escort && !this.escort.flag) {
+    if (this.escort) {
       var L = 0; for (var k = 1; k < plot.pts.length; k++) L += dist(plot.pts[k - 1], plot.pts[k]);
       var w = this.escort; w.L = L; w.s = 0; w.v = L / Math.max(10, m.windowAt() * BL.COMMAND.escort.arrive); w.pos = { x: map.start.x, y: map.start.y };
       w.hdg = plot.pts.length > 1 ? bearing(plot.pts[0], plot.pts[1]) : map.start.hdg; this.wcall = null; this.placeWard();
       w.wing.forEach(function (g) { g.pos = null; });      // (each wingman starts the system on his station)
     }
     this.makeFields();
-    if (this.escort && this.escort.flag) this.resetSquad();
-    this.applyStance(); this.applyGuns();
+    this.applyStance(); this.applyGuns(true);
   };
   /* The battle view's scale (view units per map unit: the map streams past at rockField.flow view
      units/s at standard, slower on a slow-turning class) and every rock and mine in this system's
@@ -386,11 +333,6 @@
   // "window" | "drive", win, drive }.
   Captain.prototype.readyEta = function () {
     var m = this.m, d = m.sys("drive"), win = Math.max(0, m.windowAt() - m.t), drv = 0;
-    // (the drop: the MOAB instead of the drive)
-    if (m.isDrop()) {
-      var bu = m.sys("buster"), bt = bu.mj >= bu.maxMJ - 0.5 ? 0 : this.buRate > 0.05 ? (bu.maxMJ - bu.mj) / this.buRate : null;
-      return { at: bt === null ? null : Math.max(win, bt), by: bt === null || bt > win ? "moab" : "window", win: win, drive: bt };
-    }
     if (d && d.mj < d.maxMJ - 0.5) drv = this.drRate > 0.05 ? (d.maxMJ - d.mj) / this.drRate : null;
     var at = drv === null ? null : Math.max(win, drv);
     return { at: at, by: drv === null || drv > win ? "drive" : "window", win: win, drive: drv };
@@ -403,20 +345,12 @@
     // Holding in the zone: slow up to the jump point, stopped once she's past it.
     var past = (this.pos.x - j.x) * Math.sin(hd) + (this.pos.y - j.y) * Math.cos(hd) > 0;
     var hold = past ? "stop" : "deadSlow";
-    // Escort: the pilot keeps station on the ward until she's at the jump point; then he brings
-    // the destroyer escort into the warp zone on its heading, as on any plot. A gunboat keeps
-    // station on the carrier to the end: she recovers it only from ASTERN (Captain.asternOk).
-    if (this.escort && !this.escort.flag && (this.escort.s < this.escort.L || this.carrierRecovery())) {
+    // Escort: the pilot keeps station on the carrier until she's at the jump point; then he brings
+    // the gunboat into the recovery zone on its heading, as on any plot.
+    if (this.escort && this.escort.s < this.escort.L) {
       var sv = this.stationView();
       return { hdg: this.hdgOrder !== null ? this.hdgOrder : sv.hdg, eng: this.engOrder || sv.eng, own: this.hdgOrder !== null || !!this.engOrder, nav: nv, holding: false, station: sv };
     }
-    // A squadron's flagship sent to a target or a spot (Captain.flagTo): she goes there like the
-    // others, at standard, then holds it on her beam (or her place) at slow, till RESUME.
-    var fg = this.flagGo && this.hdgOrder === null && !this.holding ? this.goalOf(null, this.pos) : null;
-    if (fg) {
-      var fd = dist(this.pos, fg), fn = BL.COMMAND.escort.near * this.map().D;
-      return { hdg: Math.round(fd > fn ? bearing(this.pos, fg) : fg.hdg) % 360, eng: this.engOrder || (fd > fn * 4 ? "standard" : fd > fn ? "cruise" : "deadSlow"), own: !!this.engOrder, nav: nv, holding: false, sent: true };
-    } else if (this.flagGo && this.flagGo.kind === "target" && (!this.sqTargets[this.flagGo.id] || this.sqTargets[this.flagGo.id].dead)) this.flagGo = null;
     // MAIN GUN: the bow on the target until the crew fires (Captain.orderMain).
     var sw = this.swing && !this.holding ? this.m.helm.compass() + this.m.turret.bearingOf(this.swing.s.x, this.swing.s.y) : null;
     return { hdg: this.hdgOrder !== null ? this.hdgOrder : sw !== null ? Math.round(to360(sw)) % 360 : nv.steer, eng: this.engOrder || (this.holding ? hold : nv.eng), own: this.hdgOrder !== null || !!this.engOrder, nav: nv, holding: this.holding, main: sw !== null };
@@ -437,9 +371,7 @@
   var WING_SIDES = ["port", "stbd", "astern", "ahead"];
   Captain.prototype.makeEscort = function () {
     var m = this.m, E = BL.COMMAND.escort, r = BL.rng((Math.imul(m.seed, 0x9e3779b1) ^ 0x51ed270b) >>> 0 || 1); r.next();
-    var kind = !m.hasDrive ? "carrier" : r.chance(0.5) ? "convoy" : "capital", W, n, ships = [];
-    if (m.hasDrive && (m.escortKind === "convoy" || m.escortKind === "capital")) kind = m.escortKind;     // (a story mission's own)
-    W = E.kinds[kind]; n = r.int(W.ships);
+    var kind = !m.hasDrive ? "carrier" : r.chance(0.5) ? "convoy" : "capital", W = E.kinds[kind], n = r.int(W.ships), ships = [];
     // A convoy sails two abreast, `gap` x the map's size apart.
     // (a, c: rows ahead and places across, in Captain.placeWard's gaps)
     var rows = Math.ceil(n / 2);
@@ -493,8 +425,7 @@
     // Aim a few seconds ahead of the station (she's moving); close in, sail her heading.
     var aim = moving ? along(st, w.hdg, vw * E.lead) : st, hdg = d > near * 0.6 ? bearing(this.pos, aim) : w.hdg;
     // Speed: flat out to catch up from far off; near, her speed plus or minus as the station is ahead or behind.
-    // (she's stopped, waiting to recover the gunboat: closing on it at all, from wherever it is)
-    var ahead = moving ? (st.x - this.pos.x) * Math.sin(w.hdg * RAD) + (st.y - this.pos.y) * Math.cos(w.hdg * RAD) : d;
+    var ahead = (st.x - this.pos.x) * Math.sin(w.hdg * RAD) + (st.y - this.pos.y) * Math.cos(w.hdg * RAD);
     var want = d > 4 * near ? Infinity : Math.max(0, vw + clamp(ahead / near, -1, 1) * Math.max(vw, 2 * K.scale) * 0.6);
     var eng = "full", bestD = Infinity;
     if (want !== Infinity) ["stop", "deadSlow", "cruise", "standard", "full"].forEach(function (id) { var dd = Math.abs(h.gOf(id) * K.scale - want); if (dd < bestD) { bestD = dd; eng = id; } });
@@ -517,9 +448,7 @@
     return this.toView(s && s.pos ? s.pos : w.pos, w.hdg);
   };
   // Where wingman i is (on his station) in the battle view.
-  Captain.prototype.wingView = function (i) { var g = this.escort.wing[i]; return g ? this.toView(this.wingPos(g), g.pos ? g.hdg : this.escort.hdg) : null; };
-  // Where a wingman is on the map (his station or slot until he has moved).
-  Captain.prototype.wingPos = function (g) { return g.pos || (this.escort.flag ? this.slotAt(g, g.form) : this.stationAt(g.station)); };
+  Captain.prototype.wingView = function (i) { var g = this.escort.wing[i]; return g ? this.toView(g.pos || this.stationAt(g.station), g.pos ? g.hdg : this.escort.hdg) : null; };
   // She sails her course like a ship: steering for a point `wardLead` x the map's size ahead of
   // where the course has got to (w.s), turning on a circle of `wardRadius` x the map's size, faster
   // to catch up when she's behind it and slowing to a stop at its end. Corners are curves.
@@ -567,7 +496,7 @@
   Captain.prototype.wingStopped = function (e) {
     var E = BL.COMMAND.escort, g = this.escort.wing[e.wingStop.w];
     this.stats.wingStops++; g.stops++;
-    if (e.wing === undefined && !this.escort.flag && this.rng.chance(E.wingRisk)) this.wingDamage(e.wingStop.w, e.mj * E.wingPerMJ);
+    if (e.wing === undefined && this.rng.chance(E.wingRisk)) this.wingDamage(e.wingStop.w, e.mj * E.wingPerMJ);
   };
   /* Who an arriving enemy group goes after (ring.js addGroup): the ward `aimWard` of the time, else
      one of the squadron's ships still in it, us included, alike. "ward", a wingman's index, or null (us). */
@@ -581,33 +510,24 @@
   Captain.prototype.aimView = function (aim) { return aim === "ward" ? this.wardView() : this.wingView(aim); };
   // A torpedo at a wingman: his own gun shoots it down `wingSelf` of the time (ring.js, as for a guard).
   Captain.prototype.wingLaunched = function (e) {
-    var m = this.m, es = this.escort, g = es.wing[e.wing]; this.rng = this.rng || BL.rng((m.seed ^ 0x3c6ef372) >>> 0);
-    // (a squadron's ship: her own guns, BL.COMMAND.squad.selfDown, by her captain's skill)
-    var k = es.flag ? BL.COMMAND.squad.selfDown * this.capK(g) : BL.COMMAND.escort.wingSelf;
-    if (this.rng.chance(k)) e.wingStop = { at: m.t + (e.at - m.t) * this.rng.range([0.35, 0.7]), w: e.wing };
+    var m = this.m; this.rng = this.rng || BL.rng((m.seed ^ 0x3c6ef372) >>> 0);
+    if (this.rng.chance(BL.COMMAND.escort.wingSelf)) e.wingStop = { at: m.t + (e.at - m.t) * this.rng.range([0.35, 0.7]), w: e.wing };
   };
-  Captain.prototype.wingHit = function (e) { e.outcome = "wing"; if (this.escort.flag) this.sqHit(e.wing, e.mj); else this.wingDamage(e.wing, e.mj * BL.COMMAND.escort.wingPerMJ); };
+  Captain.prototype.wingHit = function (e) { e.outcome = "wing"; this.wingDamage(e.wing, e.mj * BL.COMMAND.escort.wingPerMJ); };
   // Enemy gunfire at the group's target: the ward (one of her ships) or a wingman.
   Captain.prototype.gunAt = function (aim, mj) {
     var E = BL.COMMAND.escort, es = this.escort;
     if (aim === "ward") { if (!this.wardAlive()) return; this.rng = this.rng || BL.rng((this.m.seed ^ 0x3c6ef372) >>> 0); this.wardHit({ mj: mj * E.gunWard, wardShip: this.wardPick(this.rng) }); }
-    else if (es.flag) this.sqHit(aim, mj);
     else this.wingDamage(aim, mj * E.gunWing * E.wingPerMJ);
   };
-  // A wingman's hull; at 0 he's lost, and the groups after him turn on the ward (a squadron's:
-  // on another of the squadron's ships).
+  // A wingman's hull; at 0 he's lost, and the groups after him turn on the ward.
   Captain.prototype.wingDamage = function (i, d) {
-    var g = this.escort.wing[i], m = this.m, self = this;
+    var g = this.escort.wing[i], m = this.m;
     if (!g || g.hull <= 0) return;
     g.hull = Math.max(0, g.hull - d);
     if (g.hull > 0) return;
     m.cue("hullHit");
-    this.rng = this.rng || BL.rng((m.seed ^ 0x3c6ef372) >>> 0);
-    m.waves.forEach(function (w) {
-      if (w.aim !== i) return;
-      var to = self.escort.flag ? self.pickAim(self.rng) : "ward";
-      w.aim = to; (w.ships || []).forEach(function (s) { s.aim = to; });
-    });
+    m.waves.forEach(function (w) { if (w.aim === i) { w.aim = "ward"; (w.ships || []).forEach(function (s) { s.aim = "ward"; }); } });
   };
   Captain.prototype.wardCallView = function () {
     var m = this.m, c = this.wcall;
@@ -643,436 +563,14 @@
     if (w.hull <= 0 && m.phase !== "done") m.finish("wardLost");
   };
 
-  /* ------------------------------------------------------------- Squadron
-     (Approved Nov 2, 2026; the map model, revised the same day from TexasBont's four sample
-     screens.) The squadron commander fights on the map. Each system has enemy targets with places,
-     headings, gun arcs and ranges (BL.COMMAND.squad.map); our ships see them within sensor range,
-     else he has the pickets' report (off by a little) or an unknown contact. He sends ships to a
-     target or a spot, singly or together; the rest keep formation on the flagship. Fire is decided
-     by the guns that bear and range, both ways, so crossing the T and an L-shaped ambush work. The
-     flagship (us) is flown on the plot or sent like the others; a target that fires on her comes
-     into the battle view as its own wave, and what her crew does to that wave is done to it.
-     Every order reaches a captain BL.COMMAND.squad.lag s / his skill later. Distances are seconds
-     at our cruise speed (Captain.cs). */
-  Captain.prototype.makeSquad = function () {
-    var m = this.m, Q = BL.COMMAND.squad, E = BL.GUNNERY.engineer, r = BL.rng((Math.imul(m.seed, 0x85ebca6b) ^ 0x1b873593) >>> 0 || 1); r.next();
-    var n = Q.size[m.data.classId] || 4, sh = m.sys("shield"), taken = { first: {}, last: {} }, wing = [], self = this;
-    // (each captain's first and last names differ from every other captain's)
-    function pick(list, used) { var free = list.filter(function (x) { return !used[x]; }), x = r.pick(free.length ? free : list); used[x] = true; return x; }
-    function captain() {
-      var s = Math.round(r.range(Q.hire) * 100) / 100, first = pick(E.first, taken.first), last = pick(E.last, taken.last);
-      var rank = Q.ranks[s >= 0.85 ? 2 : s >= 0.65 ? 1 : 0];
-      return { name: rank + " " + first + " " + last, who: first + " " + last, last: last, skill: s, temper: r.pick(["cautious", "steady", "aggressive"]),
-        label: s >= 0.85 ? "sharp" : s >= 0.7 ? "steady" : s >= 0.5 ? "green" : "sloppy" };
-    }
-    this.flagCaptain = captain();
-    for (var k = 1; k < n; k++) wing.push({ no: k + 1, slot: k - 1, hull: m.data.hull, hullMax: m.data.hull, sh: sh.maxMJ, shMax: sh.maxMJ, stops: 0, kills: 0, cap: captain(),
-      form: Q.start, order: { kind: "form" }, hold: false, pend: [], fireAt: 0, left: false, task: "form", attackUntil: 0 });
-    // Every system's targets, made now from the seed (the plotting screen shows them).
-    this.sqMaps = this.maps.map(function (map, i) { return self.makeTargets(map, i); });
-    this.preOrders = this.maps.map(function () { return {}; });       // (orders given on the plotting screen: ship number -> target id)
-    return { flag: true, kind: "squadron", W: { name: "squadron", label: "SQUADRON" }, ships: [], wing: wing, hull: 0, hullMax: 0, pos: null, hdg: 0,
-      form: Q.start, target: null, attackReady: 0, attackUntil: 0, n: n, alert: null, fx: [] };
-  };
-  // Seconds at our cruise speed, in map units.
-  Captain.prototype.cs = function () { return this.m.helm.gOf("cruise") * BL.COMMAND.scale; };
-  /* A system's targets: the objective (the depot) somewhere off the straight way, then `targets`
-     others spread over the map, clear of the start, each other and the asteroid fields; `unknown`
-     of them aren't in the pickets' report. Moving ones start heading roughly toward the start. */
-  Captain.prototype.makeTargets = function (map, i) {
-    var M = BL.COMMAND.squad.map, r = BL.rng(((this.m.seed ^ Math.imul(0x7feb352d, i + 3)) >>> 0) || 1), D = map.D, cs = this.cs(), out = [];
-    var hb = bearing(map.start, map.jump), x0 = Math.min(map.start.x, map.jump.x) - 0.25 * D, x1 = Math.max(map.start.x, map.jump.x) + 0.25 * D,
-      y0 = Math.min(map.start.y, map.jump.y) - 0.25 * D, y1 = Math.max(map.start.y, map.jump.y) + 0.25 * D;
-    function ok(p, gap) {
-      if (dist(p, map.start) < M.sensor * cs * 0.9 || dist(p, map.jump) < map.jump.r * 2) return false;
-      if (BL.inField(map, p)) return false;
-      return out.every(function (t) { return dist(t.pos, p) > gap * D; });
-    }
-    function add(kind, p) {
-      var K = M.kinds[kind], hp = Math.round(K.hp * BL.enemyTlFactor(r.pick([5, 6])));
-      var hdg = K.speed ? to360(bearing(p, map.start) + r.range([-60, 60])) : 0, off = r.range([0, M.reportOff]) * cs;
-      out.push({ id: out.length, letter: M.letters[out.length], kind: kind, K: K, pos: { x: p.x, y: p.y }, hdg: hdg, hp: hp, hpMax: hp,
-        rep: along(p, r.next() * 360, off), unknown: false, seen: false, last: null, dead: false, victim: null, hunt: null, wave: null, reserve: 0, waves: 0, by: null });
-    }
-    for (var t = 0; t < 60 && !out.length; t++) { var p0 = along(along(map.start, hb, r.range([0.4, 0.7]) * D), hb + 90, r.range([0.1, 0.25]) * D * (r.chance(0.5) ? 1 : -1)); if (ok(p0, 0.15)) add("depot", p0); }
-    var n = r.int(M.targets);
-    for (var q = 0, tries = 0; q < n && tries < 300; tries++) {
-      var p = { x: x0 + r.next() * (x1 - x0), y: y0 + r.next() * (y1 - y0) };
-      if (!ok(p, 0.16)) continue;
-      add(r.pick(M.pick), p); q++;
-    }
-    // (some aren't in the pickets' report: unknown contacts until our ships see them)
-    var others = out.filter(function (x) { return !x.K.objective; });
-    for (var u = r.int(M.unknown); u > 0 && others.length; u--) { var x = others.splice(Math.floor(r.next() * others.length), 1)[0]; x.unknown = true; }
-    return out;
-  };
-  // A new system: the flagship at the map's start, every ship on her slot; orders given on the
-  // plotting screen go out at once.
-  Captain.prototype.resetSquad = function () {
-    var es = this.escort, Q = BL.COMMAND.squad, R = this.m.turret.R, map = this.map(), self = this;
-    // A ship left behind at the last warp (Captain.mayJump) is gone from the squadron.
-    (this.sqLeave || []).forEach(function (g) { if (g.hull > 0) { g.left = true; g.hull = 0; } });
-    this.sqLeave = null;
-    es.pos = { x: this.pos.x, y: this.pos.y }; es.hdg = map.start.hdg;
-    // (a station gap keeps two ships' shields `clear` apart in the battle view)
-    es.stD = Math.max(Q.gap * map.D, this.kView ? (2 * Math.max(R.rx, R.ry) + Q.clear) / this.kView : 0);
-    // (the flagship's track for LINE AHEAD: it starts as a straight line astern of her)
-    es.trail = [{ x: this.pos.x, y: this.pos.y }, along(this.pos, es.hdg + 180, 8 * es.stD)];
-    es.alert = null; es.fx = []; es.sel = null; this.flagGo = null;
-    this.sqTargets = this.sqMaps[this.at];
-    var pre = this.preOrders[this.at] || {};
-    es.wing.forEach(function (g) {
-      g.pos = null; g.pend = []; g.form = es.form; g.hold = false; g.attackUntil = 0;
-      g.order = pre[g.no] !== undefined && g.hull > 0 ? { kind: "target", id: pre[g.no] } : { kind: "form" };
-      g.task = g.order.kind === "form" ? "form" : "detach";
-    });
-    this.sqDps = null;
-  };
-  // A captain's skill as a factor (0.6 at 0 to 1 at 1) and his temper's [distance, fire, risk].
-  Captain.prototype.capK = function (g) { return 0.6 + 0.4 * (g && g.cap ? g.cap.skill : 1); };
-  Captain.prototype.capT = function (g) { return BL.COMMAND.squad.temper[g.cap.temper] || [1, 1, 1]; };
-  // Her slot in formation `form` round the flagship (a cautious captain keeps farther off). In LINE
-  // AHEAD (a trail formation) it's that far back along the flagship's own track, on the heading she
-  // had there, so the column follows her round every corner.
-  Captain.prototype.slotAt = function (g, form) {
-    var es = this.escort, F = BL.COMMAND.squad.formations[form || es.form] || BL.COMMAND.squad.formations.ahead, sl = F.slots[g.slot % F.slots.length];
-    var far = sl[1] * (es.stD || BL.COMMAND.squad.gap * this.map().D) * this.capT(g)[0];
-    if (F.trail && es.trail && es.trail.length > 1) return this.trailAt(far);
-    var p = along(es.pos || this.pos, es.hdg + sl[0], far); p.hdg = es.hdg; return p;
-  };
-  // The point `far` map units back along the flagship's track, with the heading she had there.
-  Captain.prototype.trailAt = function (far) {
-    var tr = this.escort.trail, a = this.pos, left = far, lastH;
-    for (var i = 0; i < tr.length; i++) {
-      var b = tr[i], L = dist(a, b);
-      if (L >= left && L > 1e-9) { var u = left / L, p = { x: a.x + (b.x - a.x) * u, y: a.y + (b.y - a.y) * u }; p.hdg = bearing(b, a); return p; }
-      left -= L; if (L > 1e-9) lastH = bearing(b, a); a = b;
-    }
-    var h = lastH === undefined ? this.escort.hdg : lastH, q = along(a, h + 180, left); q.hdg = h;
-    return q;
-  };
-  // Lay the flagship's track (newest first): a point every tenth of a station gap, as long as the longest column.
-  Captain.prototype.layTrail = function () {
-    var es = this.escort, step = es.stD * 0.1, tr = es.trail;
-    if (!tr) return;
-    if (dist(this.pos, tr[0]) >= step) tr.unshift({ x: this.pos.x, y: this.pos.y });
-    var keep = 8 * es.stD, tot = 0;
-    for (var i = 1; i < tr.length; i++) { tot += dist(tr[i - 1], tr[i]); if (tot > keep) { tr.length = i + 1; break; } }
-  };
-  Captain.prototype.sqLive = function () { return this.escort.wing.filter(function (g) { return g.hull > 0; }); };
-  Captain.prototype.shipNo = function (no) { return this.escort.wing.filter(function (g) { return g.no === no && g.hull > 0; })[0] || null; };
-  // An order to a captain: it reaches him lag / his skill s from now.
-  Captain.prototype.sqOrder = function (g, what, v) {
-    var t = this.m.totalT + BL.COMMAND.squad.lag / Math.max(0.25, g.cap.skill);
-    g.pend = g.pend.filter(function (p) { return p.what !== what; }); g.pend.push({ what: what, v: v, at: t, t0: this.m.totalT });
-  };
-  // How far an order is on its way to him (0 to 1; null: none).
-  Captain.prototype.sqProgress = function (g) {
-    var t = this.m.totalT, p = g.pend[0]; return p ? Math.min(1, (t - p.t0) / Math.max(0.01, p.at - p.t0)) : null;
-  };
-  // What she's been told to do, counting an order still on its way.
-  Captain.prototype.orderOf = function (g) { var p = g.pend.filter(function (x) { return x.what === "order"; })[0]; return p ? p.v : g.order; };
-  Captain.prototype.setFormation = function (id) {
-    var Q = BL.COMMAND.squad, self = this;
-    if (!Q.formations[id] || !this.escort.flag) return;
-    this.escort.form = id;
-    this.sqLive().forEach(function (g) { if (g.form !== id || g.pend.some(function (p) { return p.what === "form"; })) self.sqOrder(g, "form", id); });
-    this.m.cue("tick");
-  };
-  /* Orders to ships (numbers): to a target (its id), to a spot on the map (they line up there,
-     in the formation's way, facing the nearest enemy), or back to formation. Ships sent to the same
-     spot together share it. */
-  Captain.prototype.sendTo = function (nos, targetId) {
-    var self = this, T = this.sqTargets[targetId];
-    if (!T || T.dead) return false;
-    nos.forEach(function (no) { var g = self.shipNo(no); if (g) self.sqOrder(g, "order", { kind: "target", id: targetId }); });
-    this.m.cue("tick"); return true;
-  };
-  Captain.prototype.sendSpot = function (nos, p) {
-    var self = this, grp = { x: p.x, y: p.y, n: 0 };
-    nos.forEach(function (no) { var g = self.shipNo(no); if (g) self.sqOrder(g, "order", { kind: "spot", spot: grp, k: grp.n++ }); });
-    this.m.cue("tick"); return grp;     // (the spot: the flagship can join them there, Captain.flagTo)
-  };
-  Captain.prototype.recall = function (nos) {
-    var self = this;
-    nos.forEach(function (no) { var g = self.shipNo(no); if (g) self.sqOrder(g, "order", { kind: "form" }); });
-    this.m.cue("tick");
-  };
-  // HOLD FIRE (on or off) for ships `nos`: hidden till an enemy is close, then they open up.
-  Captain.prototype.setHold = function (nos, on) {
-    var self = this;
-    nos.forEach(function (no) { var g = self.shipNo(no); if (g) self.sqOrder(g, "hold", !!on); });
-    this.m.cue("tick");
-  };
-  // The flagship: sent to a target or a spot like the others (RESUME, or a course of your own, ends it).
-  Captain.prototype.flagTo = function (o) { this.flagGo = o; this.hdgOrder = null; this.engOrder = null; this.m.cue("tick"); };
-  // The targets still in this system.
-  Captain.prototype.sqGroups = function () { return (this.sqTargets || []).filter(function (t) { return !t.dead; }); };
-  // Where a target shows on the map: where it is if we see it (or have seen it), else the report.
-  Captain.prototype.shownAt = function (T) { return T.seen ? T.pos : T.last || T.rep; };
-  // The guns of a ship of ours (her class's arcs) that bear on point p from her place and heading.
-  Captain.prototype.gunsBear = function (from, hdg, p) {
-    var arcs = (BL.GUNNERY.ring.classes[this.m.data.classId] || {}).arcs || [[0, 180]], rel = norm(bearing(from, p) - hdg);
-    return arcs.filter(function (a) { return a[1] >= 180 || Math.abs(norm(rel - a[0])) <= a[1]; }).length;
-  };
-  // A target's guns that bear on point p ("lead" guns: only toward its bow; the rest as their arcs say).
-  Captain.prototype.enemyGunsOn = function (T, p) {
-    var rel = norm(bearing(T.pos, p) - T.hdg);
-    return T.K.guns.reduce(function (a, gn) { return a + (gn[1] >= 180 || Math.abs(norm(rel - gn[0])) <= gn[1] ? gn[2] : 0); }, 0);
-  };
-  // Our ships for the enemy to see and shoot at: the flagship (null) and every ship still with us.
-  Captain.prototype.ourShips = function () {
-    var out = [{ g: null, pos: this.pos, hdg: this.m.helm.compass() }];
-    this.escort.wing.forEach(function (g, i) { if (g.hull > 0 && g.pos) out.push({ g: g, i: i, pos: g.pos, hdg: g.hdg }); });
-    return out;
-  };
-  // Where a ship of ours is going: her slot, the spot she was sent to (lined up there), or a
-  // place at `close` of her range from her target, keeping it on her beam.
-  Captain.prototype.goalOf = function (g, from) {
-    var M = BL.COMMAND.squad.map, cs = this.cs(), o = g ? g.order : this.flagGo, es = this.escort;
-    if (!o || o.kind === "form") return g ? this.slotAt(g, g.form) : null;
-    if (o.kind === "target") {
-      var T = this.sqTargets[o.id];
-      if (!T || T.dead) return g ? this.slotAt(g, g.form) : null;
-      var at = this.shownAt(T), R = M.range * cs * M.close * (g ? this.capT(g)[0] : 1), b = bearing(at, from);
-      var p = dist(from, at) > R ? along(at, b, R) : { x: from.x, y: from.y };
-      var tb = bearing(p, at), h1 = to360(tb + 90), h2 = to360(tb - 90), cur = g ? (g.hdg || 0) : this.m.helm.compass();
-      p.hdg = Math.abs(norm(h1 - cur)) <= Math.abs(norm(h2 - cur)) ? h1 : h2;
-      return p;
-    }
-    // A spot: facing the nearest enemy we know of (in line ahead broadsides on, in line abreast
-    // bows on), the ships sent together in a line there.
-    var sp = o.spot, near = null, nd = Infinity, self = this;
-    this.sqGroups().forEach(function (T) { if (T.unknown && !T.seen) return; var d = dist(self.shownAt(T), sp); if (d < nd) { nd = d; near = T; } });
-    var face = near ? bearing(sp, this.shownAt(near)) : es.hdg, line = es.form === "abreast";
-    var hd = line ? face : to360(face + 90), k = o.k || 0, n = Math.max(1, o.spot.n || 1), gap = es.stD;
-    var q = line ? along(sp, hd + 90, (k - (n - 1) / 2) * gap) : along(sp, hd + 180, k * gap);
-    q.hdg = hd; return q;
-  };
-  // Each tick: orders reach the captains; ships and targets move; who sees whom; fire both ways.
-  Captain.prototype.runSquad = function (dt) {
-    var m = this.m, es = this.escort, Q = BL.COMMAND.squad, M = Q.map, t = m.totalT, tu = m.turret, self = this, cs = this.cs();
-    es.pos = { x: this.pos.x, y: this.pos.y }; es.hdg = m.helm.compass(); this.layTrail();
-    var rate = M.shield * m.sys("shield").maxMW, fight = m.phase === "engage" || m.phase === "countdown";
-    if (this.sqDps === null) {
-      var dps = 0; tu.bats.forEach(function (b) { dps += b.w.damage / b.w.interval; });
-      this.sqGun = dps / Math.max(1, tu.bats.length) * M.gunDps;       // (one gun's damage a second)
-    }
-    var vmax = m.helm.gOf("full") * BL.COMMAND.scale, near = BL.COMMAND.escort.near * this.map().D;
-    // Our ships: orders reach them, shields recharge, they move to their goals.
-    es.wing.forEach(function (g) {
-      if (g.hull <= 0) return;
-      g.pend = g.pend.filter(function (p) {
-        if (t < p.at) return true;
-        if (p.what === "form") g.form = p.v;
-        else if (p.what === "order") { g.order = p.v; g.task = p.v.kind === "form" ? "form" : "detach"; }
-        else if (p.what === "hold") g.hold = p.v;
-        return false;
-      });
-      g.sh = Math.min(g.shMax, g.sh + rate * dt);
-      if (!g.pos) { var s0 = self.slotAt(g, g.form); g.pos = { x: s0.x, y: s0.y }; g.hdg = es.hdg; }
-      var goal = self.goalOf(g, g.pos), d = dist(g.pos, goal), k = self.capK(g);
-      var want = d > near ? bearing(g.pos, goal) : goal.hdg !== undefined ? goal.hdg : es.hdg;
-      g.hdg = to360(g.hdg + clamp(norm(want - g.hdg), -BL.COMMAND.escort.wingTurn * k * dt, BL.COMMAND.escort.wingTurn * k * dt));
-      var v = vmax * (0.8 + 0.2 * k);
-      if (d > near) g.pos = along(g.pos, g.hdg, Math.min(d, v * dt * Math.max(0.2, Math.cos(norm(want - g.hdg) * RAD))));
-      else g.pos = along(g.pos, bearing(g.pos, goal), Math.min(d, v * dt));
-    });
-    var ours = this.ourShips();
-    // The targets: who sees whom, then each moves (hunters after the nearest of ours they see,
-    // a patrol turning its broadside to a ship in range) and picks a ship to fire on.
-    this.sqGroups().forEach(function (T) {
-      var seenNow = ours.some(function (o) { return dist(o.pos, T.pos) <= M.sensor * cs; });
-      if (seenNow) { T.seen = true; T.last = { x: T.pos.x, y: T.pos.y }; } else if (T.seen) T.seen = false;
-      // (a ship holding fire is hidden from it until it's within `ambush` of its range)
-      var vis = ours.filter(function (o) { return !(o.g && o.g.hold) || dist(o.pos, T.pos) <= M.ambush * T.K.range * cs; });
-      var inR = vis.filter(function (o) { return dist(o.pos, T.pos) <= T.K.range * cs; });
-      // The ship it fires on: the one it was firing on while she's still in range; else the
-      // flagship if she's in range and its guns bear on her; else the one most of its guns bear on, nearest first.
-      var victim = null, vb = -1, was = T.victim;
-      // (it keeps her till she's 1.3 x its range off, so a fight at the edge of range doesn't flicker in and out)
-      vis.forEach(function (o) { if ((o.g ? o.g.no : 0) === was && dist(o.pos, T.pos) <= 1.3 * T.K.range * cs) victim = o; });
-      if (!victim) inR.forEach(function (o) { var gb = self.enemyGunsOn(T, o.pos) * 10 - dist(o.pos, T.pos) / cs + (o.g ? 0 : self.enemyGunsOn(T, o.pos) ? 1000 : 0); if (gb > vb) { vb = gb; victim = o; } });
-      T.victim = victim ? (victim.g ? victim.g.no : 0) : null;
-      if (T.K.speed) {
-        var sp = T.K.speed * cs, want = T.hdg;
-        if (T.K.hunt) {
-          var prey = null, pd = Infinity;
-          vis.forEach(function (o) { var dd = dist(o.pos, T.pos); if (dd < M.sensor * 1.2 * cs && dd < pd) { pd = dd; prey = o; } });
-          var pno = prey ? (prey.g ? prey.g.no : 0) : null;
-          // (warn the commander when a pack turns on one of his ships out on her own)
-          if (pno && pno !== T.hunt && !ours.some(function (o) { return o !== prey && dist(o.pos, prey.pos) < M.range * cs; })) es.alert = { at: t, text: T.letter + " · " + T.K.name + " turning on ship " + pno };
-          T.hunt = pno;
-          if (prey) { want = bearing(T.pos, prey.pos); if (pd < T.K.standOff * T.K.range * cs) sp = 0; }
-        } else if (T.K.patrol && victim) {
-          var tb = bearing(T.pos, victim.pos), a1 = to360(tb + 90), a2 = to360(tb - 90);
-          want = Math.abs(norm(a1 - T.hdg)) <= Math.abs(norm(a2 - T.hdg)) ? a1 : a2;
-        }
-        // (back toward the middle of the map from its edge)
-        var mid = { x: (self.map().start.x + self.map().jump.x) / 2, y: (self.map().start.y + self.map().jump.y) / 2 };
-        if (dist(T.pos, mid) > self.map().D * 0.85) want = bearing(T.pos, mid);
-        T.hdg = to360(T.hdg + clamp(norm(want - T.hdg), -40 * dt, 40 * dt));
-        T.pos = along(T.pos, T.hdg, sp * dt);
-      }
-      // Firing on the flagship: its own wave in the battle view; on another ship: on the map.
-      if (fight && victim && !victim.g) self.engageFlag(T); else self.disengage(T);
-      // Its guns: on the map at another ship; at the flagship as gunfire on her shields (Mission.gunHit),
-      // on top of its wave's torpedoes in the battle view.
-      if (fight && victim && t >= (T.fireAt || 0)) {
-        T.fireAt = t + Q.tick;
-        var ng = self.enemyGunsOn(T, victim.pos), mj = ng * M.enemyDps * Q.tick * Math.sqrt(Math.max(0, T.hp / T.hpMax));
-        if (ng) { if (victim.g) self.sqHit(victim.i, mj); else m.gunHit(mj); es.fx.push({ at: t, a: { x: T.pos.x, y: T.pos.y }, b: { x: victim.pos.x, y: victim.pos.y }, foe: true }); }
-      }
-      if (T.wave) { T.hp = T.reserve + Math.max(0, T.wave.hp); self.steerWave(T); }
-    });
-    // Our ships' guns: on her own target if it's in range and her guns bear, else the one firing
-    // on her, else the nearest that's in range. A ship holding fire waits for an enemy inside `ambush`.
-    // The flagship's crew fight what's in the battle view; a target in her range that isn't firing
-    // on her (so isn't there) she fires on like the others.
-    if (fight && t >= (this.flagFireAt || 0)) {
-      this.flagFireAt = t + Q.tick;
-      var fh = m.helm.compass(), fb = null, fs = -Infinity;
-      this.sqGroups().forEach(function (T) {
-        if (T.wave || dist(self.pos, T.pos) > M.range * cs) return;
-        var ng = self.gunsBear(self.pos, fh, T.pos); if (ng && ng * 10 - dist(self.pos, T.pos) / cs > fs) { fs = ng * 10 - dist(self.pos, T.pos) / cs; fb = T; }
-      });
-      if (fb) { es.fx.push({ at: t, a: { x: this.pos.x, y: this.pos.y }, b: { x: fb.pos.x, y: fb.pos.y } }); if (this.hitTarget(fb, this.gunsBear(this.pos, fh, fb.pos) * this.sqGun * Q.tick)) fb.by = 1; }
-    }
-    es.wing.forEach(function (g) {
-      if (g.hull <= 0 || !fight || t < g.fireAt) return;
-      g.fireAt = t + Q.tick;
-      var best = null, score = -Infinity, R = M.range * cs;
-      self.sqGroups().forEach(function (T) {
-        var d = dist(g.pos, T.pos); if (d > R) return;
-        var ng = self.gunsBear(g.pos, g.hdg, T.pos); if (!ng) return;
-        var sc = ng * 10 - d / cs + (g.order.kind === "target" && g.order.id === T.id ? 100 : 0) + (T.victim === g.no ? 30 : 0);
-        if (sc > score) { score = sc; best = T; }
-      });
-      if (!best) return;
-      if (g.hold) { if (dist(g.pos, best.pos) > M.ambush * R) return; g.hold = false; }
-      var dmg = self.gunsBear(g.pos, g.hdg, best.pos) * self.sqGun * Q.tick * self.capK(g) * self.capT(g)[1];
-      es.fx.push({ at: t, a: { x: g.pos.x, y: g.pos.y }, b: { x: best.pos.x, y: best.pos.y } });
-      if (self.hitTarget(best, dmg)) { g.kills++; self.stats.sqKills++; best.by = g.no; }
-    });
-    es.fx = es.fx.filter(function (f) { return t - f.at < 0.4; });
-    if (es.alert && t - es.alert.at > 10) es.alert = null;
-  };
-  // Damage to a target from one of our other ships; true if that sank it. Fighting the flagship,
-  // it lands on its wave's ships in the battle view.
-  Captain.prototype.hitTarget = function (T, dmg) {
-    var tu = this.m.turret;
-    if (T.wave && !T.wave.dead && T.wave.ships) { tu.byWing = true; tu.hitWave(T.wave, dmg); tu.byWing = false; T.hp = T.reserve + Math.max(0, T.wave.hp); }
-    else T.hp -= dmg;
-    if (T.hp <= 0.5 && !T.dead && !(T.wave && !T.wave.dead && T.reserve > 0)) { this.sinkTarget(T); return true; }
-    return false;
-  };
-  Captain.prototype.sinkTarget = function (T) {
-    T.dead = true; T.hp = 0; this.disengage(T);
-    this.stats.targetsDown++; if (T.K.objective) this.stats.objectivesDown++;
-    this.m.cue("kill");
-  };
-  // A target firing on the flagship comes into the battle view as its wave (its encounter's ships,
-  // the whole target's strength), on its true bearing from her; when that wave's torpedoes are
-  // spent and the target fights on, the next comes in quietly.
-  Captain.prototype.engageFlag = function (T) {
-    var m = this.m, w = T.wave;
-    if (w && (w.dead || m.waves.indexOf(w) < 0)) {
-      T.hp = T.reserve + (w.dead ? 0 : Math.max(0, w.hp)); T.wave = null;
-      if (T.hp <= 0.5) { this.sinkTarget(T); return; }
-    }
-    if (T.wave || T.dead) return;
-    var enc = BL.ENCOUNTERS[T.K.enc]; if (!enc || !enc.wave) return;
-    var n0 = m.waves.length;
-    m.spawnWave(enc, T.K.enc, T.waves ? "quietWave" : null);
-    if (m.waves.length === n0) return;
-    w = m.waves[m.waves.length - 1];
-    // (the whole target, its ships that much tougher; its torpedoes as its encounter fires them,
-    // a new wave of them when those are spent and it fights on)
-    var amt = T.hp;
-    T.reserve = 0; w.hp = w.hpMax = amt; w.aim = null; w.quiet = true; w.name = T.K.name; w.target = T.id;
-    w.bearing = norm(bearing(this.pos, T.pos) - m.helm.compass());
-    T.wave = w; T.waves++;
-  };
-  // Its wave's ships keep to its true bearing from her as she and it move.
-  Captain.prototype.steerWave = function (T) {
-    var w = T.wave; if (!w || !w.ships) return;
-    var b = norm(bearing(this.pos, T.pos) - this.m.helm.compass());
-    w.ships.forEach(function (s) { if (s.homeOff === undefined) s.homeOff = norm(s.home - (w.bearing || 0)); s.home = b + s.homeOff; });
-  };
-  // No longer firing on the flagship: its wave leaves the battle view (what's left goes back to it).
-  Captain.prototype.disengage = function (T) {
-    var m = this.m, w = T.wave;
-    if (!w) return;
-    T.wave = null;
-    if (w.dead || m.waves.indexOf(w) < 0) { T.hp = T.dead ? 0 : T.reserve + (w.dead ? 0 : Math.max(0, w.hp)); return; }
-    if (!T.dead) T.hp = T.reserve + Math.max(0, w.hp);
-    m.waves = m.waves.filter(function (x) { return x !== w; });
-    m.events = m.events.filter(function (e) { return e.wave !== w.id || e.done; });
-    (w.ships || []).forEach(function (s) { s.state = "leave"; });
-  };
-  // The systems flown whose objective is still standing (a squadron's mission fails with any).
-  Captain.prototype.sqMissed = function () {
-    var n = this.m.stats.jumps.length;
-    return (this.sqMaps || []).slice(0, Math.max(1, n)).filter(function (list) { return list.some(function (T) { return T.K.objective && !T.dead; }); }).length;
-  };
-  // Every ship still with the squadron formed up on her slot (the warp waits for it).
-  Captain.prototype.sqFormed = function () {
-    var self = this, near = BL.COMMAND.escort.near * this.map().D * 3;
-    return this.sqLive().every(function (g) { return g.order.kind === "form" && !g.pend.some(function (p) { return p.what === "order"; }) && (!g.pos || dist(g.pos, self.slotAt(g, g.form)) <= near); });
-  };
-  // (SCREEN is gone from the map model; nothing guards the flagship from a burst on its way.)
-  Captain.prototype.flagGuard = function () {};
-  // A torpedo or gunfire (mj) at ship i of the squadron: her shields first, the rest on her hull
-  // at our hullPerMJ (by her captain's temper).
-  Captain.prototype.sqHit = function (i, mj) {
-    var g = this.escort.wing[i];
-    if (!g || g.hull <= 0) return;
-    mj *= this.capT(g)[2];
-    var took = Math.min(g.sh, mj); g.sh -= took;
-    if (mj > took) this.wingDamage(i, (mj - took) * this.m.data.hullPerMJ);
-  };
-  // A battle-view point on the map (the inverse of Captain.toView).
-  Captain.prototype.fromView = function (x, y) {
-    var R = this.m.turret.R, k = this.kView || 1, dx = x - R.cx, dy = R.cy - y;
-    return along(this.pos, this.m.helm.compass() + Math.atan2(dx, dy) / RAD, Math.hypot(dx, dy) / k);
-  };
-  // What the screens show of a target: letter, name, strength, guns, range, what it's doing, and
-  // the guns that bear each way between it and the ships near it.
-  Captain.prototype.targetView = function (T) {
-    var M = BL.COMMAND.squad.map, cs = this.cs(), self = this, ours = 0, theirs = 0;
-    this.ourShips().forEach(function (o) {
-      var d = dist(o.pos, T.pos);
-      if (d <= M.range * cs) ours += self.gunsBear(o.pos, o.hdg, T.pos);
-      if (d <= T.K.range * cs) theirs = Math.max(theirs, self.enemyGunsOn(T, o.pos));
-    });
-    var sent = this.escort.wing.filter(function (g) { var o = self.orderOf(g); return g.hull > 0 && o.kind === "target" && o.id === T.id; }).map(function (g) { return g.no; });
-    if (this.flagGo && this.flagGo.kind === "target" && this.flagGo.id === T.id) sent.unshift(1);
-    return { letter: T.letter, name: T.unknown && !T.seen && !T.last ? "Unknown contact" : T.K.name, known: !T.unknown || T.seen || !!T.last, seen: T.seen,
-      pct: Math.round(100 * T.hp / T.hpMax), dead: T.dead, objective: !!T.K.objective, moves: !!T.K.speed, guns: T.K.guns.reduce(function (a, g) { return a + g[2]; }, 0),
-      range: T.K.range, on: T.victim === null ? null : T.victim === 0 ? "the flagship" : "ship " + T.victim, sent: sent, ours: ours, theirs: theirs };
-  };
-  // The squadron's ships for the screens: number, captain, hull, shields and what she's doing.
-  Captain.prototype.squadView = function () {
-    var es = this.escort, t = this.m.totalT, self = this;
-    if (!es || !es.flag) return null;
-    return { form: es.form, alert: es.alert ? es.alert.text : null, flag: this.flagCaptain, flagGo: this.flagGo,
-      ships: es.wing.map(function (g) {
-        var o = self.orderOf(g), T = o.kind === "target" ? self.sqTargets && self.sqTargets[o.id] : null;
-        var doing = g.left ? "left behind" : g.hull <= 0 ? "lost" : o.kind === "target" ? (T && !T.dead ? "→ " + T.letter + " " + T.K.name.toLowerCase() : "target gone") : o.kind === "spot" ? "→ a spot" : "in formation";
-        if (g.hull > 0 && o.kind === "form" && g.pos && dist(g.pos, self.slotAt(g, g.form)) > BL.COMMAND.escort.near * self.map().D * 3) doing = "forming up";
-        if (g.hull > 0 && g.hold) doing += " · holding fire";
-        return { no: g.no, cap: g.cap, hull: g.hull / g.hullMax, sh: g.sh / g.shMax, doing: doing, live: g.hull > 0, order: o.kind, pend: g.pend.length > 0, progress: self.sqProgress(g), kills: g.kills, hold: g.hold };
-      }) };
-  };
-
   /* ------------------------------------------------------------- Orders */
   Captain.prototype.orderCourse = function (hdg) {
-    this.hdgOrder = Math.round(to360(hdg)) % 360; this.swing = null; this.flagGo = null;
+    this.hdgOrder = Math.round(to360(hdg)) % 360; this.swing = null;
     this.m.cue("tick");
   };
   Captain.prototype.orderEngines = function (id) { if (!this.m.helm.preset(id)) return; this.engOrder = id; this.m.cue("tick"); };
   // Back to the plot: the navigation computer steers for the next waypoint.
-  Captain.prototype.resumePlot = function () { this.hdgOrder = null; this.engOrder = null; this.swing = null; this.flagGo = null; this.m.cue("tick"); };
+  Captain.prototype.resumePlot = function () { this.hdgOrder = null; this.engOrder = null; this.swing = null; this.m.cue("tick"); };
   /* MAIN GUN (light cruiser and up): with the gun charged, the pilot swings the bow onto the
      biggest ship out there and holds it on her until the crew fires (ring.js crewWeapons), then
      she comes back to the plot. The crew holds the main gun's fire until the captain orders it. */
@@ -1104,10 +602,10 @@
   Captain.prototype.hangarView = function () {
     var m = this.m, hs = m.sys("hangar");
     if (!hs || !m.data.hangar) return null;
-    var sq = m.squadron, full = hs.mj >= hs.maxMJ - 0.5;
-    var can = !hs.call && full && !m.hangarGone() && (sq === "aboard" || sq === "out") && (m.phase === "engage" || m.phase === "countdown" && sq === "out");
+    var sq = m.squadron, mines = !!(m.encounter() || {}).mines, full = hs.mj >= hs.maxMJ - 0.5;
+    var can = !hs.call && full && (sq === "aboard" || sq === "out") && !(mines && sq === "aboard") && (m.phase === "engage" || m.phase === "countdown" && sq === "out");
     return { squadron: sq, pending: !!hs.call, call: hs.call ? hs.call.type : null, can: can, full: full, pct: Math.floor(hs.mj / hs.maxMJ * 100),
-      order: sq === "out" ? "recover" : "launch" };
+      mines: mines && sq === "aboard", order: sq === "out" ? "recover" : "launch" };
   };
   Captain.prototype.orderHangar = function () {
     var v = this.hangarView(), m = this.m;
@@ -1116,60 +614,23 @@
     m.cue("tick");
     return true;
   };
-  Captain.prototype.setStance = function (id) { if (!BL.COMMAND.stances[id]) return; this.stance = id; this.order("stance"); };
-  // An order takes BL.COMMAND.orderLag[tech level] s / the crewman's skill to reach him: the
-  // engineer for a stance, each gun crew for a gun order (none if it's what they're doing already).
-  function lagFor(m, skill) { return (BL.COMMAND.orderLag[m.data.tl] || 2) / Math.max(0.2, skill || 1); }
-  // (lag[what]: { t0: given, at: carried out }; for the guns, when the last gun has it)
-  Captain.prototype.order = function (what) {
-    var m = this.m, t = m.totalT, id = this[what], L = this.lag;
-    if (what !== "guns") {
-      if (id === this[what + "On"]) delete L[what];
-      else L[what] = { t0: t, at: t + lagFor(m, what === "stance" ? m.turret && m.turret.engineer.skill : this.pilotCrew.skill) };
-    } else if (m.turret) {
-      var at = t;
-      m.turret.bats.forEach(function (b) {
-        if (b.order === id) { b.orderTo = null; return; }
-        b.orderTo = id; b.orderAt = t + lagFor(m, b.crew && b.crew.skill); at = Math.max(at, b.orderAt);
-      });
-      if (at > t) L.guns = { t0: t, at: at }; else delete L.guns;
-    }
-    m.cue("tick");
-  };
-  // How far an order is on its way to the crew, 0 to 1 (null: none on its way).
-  Captain.prototype.orderProgress = function (what) {
-    var o = this.lag[what]; if (!o) return null;
-    return Math.min(1, (this.m.totalT - o.t0) / Math.max(0.01, o.at - o.t0));
-  };
-  // The orders that have reached the crew by now (the gunners answer once every gun has it).
-  Captain.prototype.carryOut = function () {
-    var L = this.lag, m = this.m, t = m.totalT, tu = m.turret;
-    if (L.stance && t >= L.stance.at) { delete L.stance; this.stanceOn = this.stance; this.applyStance(); }
-    if (L.breaks && t >= L.breaks.at) { delete L.breaks; this.breaksOn = this.breaks; }
-    if (!tu || this.gunsOn === this.guns && !tu.bats.some(function (b) { return b.orderTo; })) return;
-    tu.bats.forEach(function (b) { if (b.orderTo && t >= b.orderAt) { b.order = b.orderTo; b.orderTo = null; } });
-    var id = this.guns;
-    if (tu.bats.every(function (b) { return b.order === id; })) { delete L.guns; if (this.gunsOn !== id) { this.gunsOn = id; m.say("Gunners: " + BL.GUNNERY.orders[id].ack, "good"); } }
-  };
+  Captain.prototype.setStance = function (id) { if (!BL.COMMAND.stances[id]) return; this.stance = id; this.applyStance(); this.m.cue("tick"); };
   // The engineer's stance is his priority order: shields first, guns first, the drive first (after
-  // life support; the AI engineer then charges it to be full by the window (its last percent flat out), not just with what's left:
-  // AIEngineer.think), or as the ship comes.
+  // life support; the AI engineer then charges it to be full by the window, not just with what's
+  // left: AIEngineer.think), or as the ship comes.
   Captain.prototype.applyStance = function () {
     var m = this.m, base = this.basePriority.slice(), guns = base.filter(function (id) { var s = m.sys(id); return s && s.kind === "gun"; });
-    var on = this.stanceOn;
-    m.driveFirst = on === "drive" && !!m.sys("drive");
-    m.mainFirst = on === "main" && !!m.sys("main");       // (main gun first: after life support, charged flat out: AIEngineer.think)
-    m.busterFirst = on === "moab" && !!m.sys("buster");   // (MOAB: the planet buster likewise)
-    var first = on === "shields" ? ["shield"] : on === "guns" ? guns : m.driveFirst ? ["life", "drive"] : m.mainFirst ? ["life", "main"] : m.busterFirst ? ["life", "buster"] : [];
+    m.driveFirst = this.stance === "drive" && !!m.sys("drive");
+    m.mainFirst = this.stance === "main" && !!m.sys("main");       // (main gun first: after life support, charged flat out: AIEngineer.think)
+    var first = this.stance === "shields" ? ["shield"] : this.stance === "guns" ? guns : m.driveFirst ? ["life", "drive"] : m.mainFirst ? ["life", "main"] : [];
     m.setPriority(first.concat(base.filter(function (id) { return first.indexOf(id) < 0; })));
   };
-  // The pilot's standing break policy (BL.COMMAND.pilots): EVADE, HOLD or STEADY.
-  Captain.prototype.setPilot = function (id) { if (!BL.COMMAND.pilots[id]) return; this.breaks = id; this.order("breaks"); };
-  Captain.prototype.setGuns = function (id) { if (!BL.GUNNERY.orders[id]) return; this.guns = id; this.order("guns"); };
-  Captain.prototype.applyGuns = function () {
-    var tu = this.m.turret, id = this.gunsOn;
+  Captain.prototype.setGuns = function (id) { if (!BL.GUNNERY.orders[id]) return; this.guns = id; this.applyGuns(); this.m.cue("tick"); };
+  Captain.prototype.applyGuns = function (quiet) {
+    var tu = this.m.turret, id = this.guns;
     if (!tu) return;
-    tu.bats.forEach(function (b) { if (!b.orderTo) b.order = id; });     // (an order on its way still gets there)
+    tu.bats.forEach(function (b) { b.order = id; });
+    if (!quiet) this.m.say("Gunners: " + BL.GUNNERY.orders[id].ack, "good");
   };
   // Torpedoes at us that no break covers and that haven't landed.
   Captain.prototype.openFish = function () { var h = this.m.helm; return h.fishInAir().filter(function (f) { return f.hold; }); };
@@ -1179,23 +640,19 @@
     var m = this.m;
     e.hold = true;
     if (this.call && m.t - this.call.at < BL.HELM.evade.burst && !this.call.done) { this.call.fish.push(e); return; }
-    if (this.call && !this.call.done) this.closeCall();
-    this.call = { at: m.t, fish: [e], ship: s, done: false, could: false };
+    if (this.call && !this.call.done) { this.call.done = true; this.stats.unanswered++; }
+    this.call = { at: m.t, fish: [e], ship: s, done: false };
     this.stats.calls++;
   };
   Captain.prototype.callView = function () {
     var m = this.m, c = this.call, h = m.helm;
     if (!c || c.done) return null;
     var live = c.fish.filter(function (f) { return !f.done && f.hold && f.at > m.t; });
-    if (!live.length) { this.closeCall(); return null; }
-    var land = Math.min.apply(null, live.map(function (f) { return f.at; })), can = h.canBreak(BL.GUNNERY.torpedo.travel) && !(h.evade && m.t < h.evade.until);
-    if (can && !this.away) c.could = true;      // (off the bridge he can't call it: not unanswered)
-    return { n: live.length, in: land - m.t, mj: live.reduce(function (a, f) { return a + f.mj; }, 0), canBreak: can,
+    if (!live.length) { c.done = true; this.stats.unanswered++; return null; }
+    var land = Math.min.apply(null, live.map(function (f) { return f.at; }));
+    return { n: live.length, in: land - m.t, mj: live.reduce(function (a, f) { return a + f.mj; }, 0), canBreak: h.canBreak(BL.GUNNERY.torpedo.travel) && !(h.evade && m.t < h.evade.until),
       bearing: c.ship ? norm(c.ship.bearing) : 0 };
   };
-  // A burst landed or was overtaken with no call: unanswered only if a break was ever possible
-  // (a ship that can't break, like the light cruiser, has nothing to call: taken on the shields).
-  Captain.prototype.closeCall = function () { this.call.done = true; if (this.call.could) this.stats.unanswered++; else this.stats.taken++; };
   // dir: -1 break to port, 1 to starboard; 0 = take it on the shields.
   Captain.prototype.answer = function (dir) {
     var m = this.m, h = m.helm, cv = this.callView();
@@ -1208,16 +665,14 @@
     return true;
   };
   // No call from the captain and the burst about to land (BL.HELM.evade.lateMin s): the pilot
-  // breaks on his own by the captain's standing policy, away from asteroid fields: EVADE for any
-  // burst, HOLD only when the shields can't take it, STEADY never; else it's taken.
+  // sometimes (BL.COMMAND.pilotOwn) breaks on his own if the shields can't take it, away from
+  // asteroid fields; else it's taken.
   Captain.prototype.pilotCall = function () {
     var m = this.m, E = BL.HELM.evade, cv = this.callView();
-    if (!cv || cv.in > E.lateMin || !cv.canBreak || this.breaksOn === "steady") return;
-    // (his temperament, BL.ROSTER.temper: an aggressive pilot breaks sooner under HOLD, a cautious
-    // one later, and under EVADE a cautious one lets a burst the shields easily take come in)
-    var tk = this.pilotCrew.temperK === undefined ? 0.5 : this.pilotCrew.temperK, sh = m.sys("shield").mj;
-    if (this.breaksOn === "hold" && sh >= cv.mj * E.cover * (0.5 + tk)) return;
-    if (this.breaksOn === "evade" && tk < 0.5 && sh >= cv.mj * E.cover * 2) return;
+    if (!cv || cv.in > E.lateMin || !cv.canBreak || m.sys("shield").mj >= cv.mj * E.cover) return;
+    this.rng = this.rng || BL.rng((m.seed ^ 0x3c6ef372) >>> 0);
+    if (this.call.own === undefined) this.call.own = this.rng.chance(BL.COMMAND.pilotOwn);
+    if (!this.call.own) return;
     this.call.done = true; this.stats.pilotBreaks++;
     m.helm.orderBreak(this.openFish(), this.call.ship, this.awayFromRocks(cv.bearing < 0 ? 1 : -1), true);
   };
@@ -1236,137 +691,30 @@
   // Once ordered, it goes when she's in the zone and on the heading; `wait` says what it's waiting for.
   Captain.prototype.jumpView = function () {
     var m = this.m, d = m.sys("drive"), h = m.helm;
-    if (m.isDrop()) {                  // the drop: the MOAB full, the window open, in the zone (no heading, no drive)
-      var bu = m.sys("buster"), moab = !m.busterFull() ? "MOAB " + Math.floor(bu.mj / bu.maxMJ * 100) + "%" : null;
-      var dwhy = moab || (m.t < m.windowAt() ? "Window in " + Math.ceil(m.windowAt() - m.t) + "s" : !this.inZone() ? "Outside the zone" : null);
-      var dwait = !this.jumpOrdered ? null : moab || (!this.inZone(BL.COMMAND.zoneHold) ? "BACK TO THE ZONE" : m.t < m.windowAt() ? "WAITING" : null);
-      return { ready: !moab && this.inZone(), why: dwhy, ordered: this.jumpOrdered, wait: dwait, drop: true };
-    }
     var drive = !d ? null : d.mj < d.maxMJ - 0.5 ? "Drive " + Math.floor(d.mj / d.maxMJ * 100) + "%" : null;
-    // (a dreadnought's final jump also waits for the planet buster: Mission.runJump)
-    var bu = m.sys("buster");
-    if (!drive && bu && m.jumpIndex === m.cfg.jumps - 1 && !m.busterFull()) drive = "Buster " + Math.floor(bu.mj / bu.maxMJ * 100) + "%";
     var steer = "Steer " + BL.hdgText(this.info.jumpHdg);
     // (the squadron must be aboard first, unless her hull is down to the point of leaving it: Mission.runJump)
     var out = m.squadron === "out" && m.ship.hull > m.ship.hullMax * 0.2 ? "Recover gunboats" : null;
-    var astern = this.carrierRecovery() && !this.asternOk() ? "Station ASTERN" : null;
-    var why = drive || out || (m.t < m.windowAt() ? "Window in " + Math.ceil(m.windowAt() - m.t) + "s" : astern || !this.inZone() ? "Outside the zone" : !h.inJumpCorridor() ? steer : null);
-    var form = this.escort && this.escort.flag && !this.sqFormed() && m.ship.hull > m.ship.hullMax * 0.2 ? "SQUADRON FORMING UP" : null;
-    var wait = !this.jumpOrdered ? null : drive || (out && out.toUpperCase()) || (astern && "ASTERN OF THE CARRIER") || (!this.inZone(BL.COMMAND.zoneHold) ? "BACK TO THE ZONE" : !h.inJumpCorridor() ? steer.toUpperCase() : form);
+    var why = drive || out || (m.t < m.windowAt() ? "Window in " + Math.ceil(m.windowAt() - m.t) + "s" : !this.inZone() ? "Outside the zone" : !h.inJumpCorridor() ? steer : null);
+    var wait = !this.jumpOrdered ? null : drive || (out && out.toUpperCase()) || (!this.inZone(BL.COMMAND.zoneHold) ? "BACK TO THE ZONE" : !h.inJumpCorridor() ? steer.toUpperCase() : null);
     return { ready: !why, why: why, ordered: this.jumpOrdered, wait: wait };
   };
   Captain.prototype.orderJump = function () {
     if (!this.jumpView().ready || this.jumpOrdered) return false;
     this.jumpOrdered = true; this.m.cue("tick");
-    // (a squadron: every detached ship is called back to form up for the warp)
-    var self = this;
-    if (this.escort && this.escort.flag) { this.flagGo = null; this.sqLive().forEach(function (g) { if (self.orderOf(g).kind !== "form") self.sqOrder(g, "order", { kind: "form" }); }); }
     return true;
-  };
-  // An enemy area (BL.COMMAND.swarm): into one, a swarm comes out of it; out again, half of what's
-  // left of the swarm goes back, the rest stays on her.
-  Captain.prototype.enemyArea = function () {
-    var m = this.m, pos = this.pos, K = BL.COMMAND.swarm, k = -1;
-    this.map().clusters.forEach(function (c, i) { if (k < 0 && (c.lobes || [c]).some(function (o) { return dist(pos, o) < o.r; })) k = i; });
-    if (k === this.inCluster) return;
-    var was = this.inCluster; this.inCluster = k;
-    if (k >= 0 && was < 0) {
-      var enc = m.encounter(), id = m.route[m.jumpIndex];
-      if (!enc.wave || this.siegeOn()) { id = "raiders"; enc = BL.ENCOUNTERS.raiders; }     // (a siege line doesn't move: raiders swarm out instead)
-      var n = Math.max(K.min, Math.round(K.mult * m.force(id))), before = m.nextId, q0 = m.spawnQueue.slice();
-      m.queueWaves(n, enc, id, "straggler");
-      // (the first comes at once; the rest are queued, and join the swarm as they spawn: Mission.schedule)
-      this.swarm = m.waves.filter(function (w) { return w.id >= before; }).map(function (w) { return w.id; });
-      m.spawnQueue.forEach(function (q) { if (q0.indexOf(q) < 0) q.swarm = true; });
-      this.stats.swarms++;
-      m.cue("tick");
-    } else if (k < 0 && was >= 0) {
-      // Out again: every other one of the swarm goes back (one still to come never comes).
-      var ids = this.swarm, all = m.waves.filter(function (w) { return !w.dead && ids.indexOf(w.id) >= 0; }).concat(m.spawnQueue.filter(function (q) { return q.swarm; }));
-      all.forEach(function (x, i) {
-        if (i % 2) return;
-        if (x.enc) m.spawnQueue.splice(m.spawnQueue.indexOf(x), 1); else m.withdrawWave(x);
-      });
-      m.spawnQueue.forEach(function (q) { q.swarm = false; });
-      this.swarm = [];
-    }
   };
   // Mission.runJump asks: may the countdown run?
-  // (a squadron warps together: it waits for every ship to form up, unless the flagship's hull is
-  // down to 20%; then the ones still out are left behind)
-  Captain.prototype.mayJump = function () {
-    if (!(this.jumpOrdered && this.inZone(BL.COMMAND.zoneHold) && (!this.carrierRecovery() || this.asternOk()))) return false;
-    if (!this.escort || !this.escort.flag || this.sqFormed()) return true;
-    if (this.m.ship.hull > this.m.ship.hullMax * 0.2) return false;
-    var self = this, near = BL.COMMAND.escort.near * this.map().D * 3;
-    this.sqLeave = this.sqLive().filter(function (g) { return g.order.kind !== "form" || (g.pos && dist(g.pos, self.slotAt(g, g.form)) > near); });
-    return true;
-  };
-  // A gunboat escort mission: the carrier recovers the gunboat only from astern of her, on that
-  // station (the pilot keeps it once the station is ordered).
-  Captain.prototype.carrierRecovery = function () { return !!this.escort && !this.m.hasDrive; };
-  Captain.prototype.asternOk = function () { return this.station === "astern" && dist(this.pos, this.stationAt("astern")) <= BL.COMMAND.escort.near * this.map().D * 1.5; };
-
-  /* ------------------------------------------------------------- Dropping down
-     (Approved Nov 2, 2026.) The captain leaves the bridge to run one station himself: the engine
-     room, the helm or a gun. The man there stands aside till he's back. Meanwhile the bridge gives
-     no new orders (the crew keep his standing ones: the pilot flies the plot, the engineer his
-     stance, the guns their order) and only the captain warps. The cost, once a mission: -1
-     command reputation (BL.career) and -1 morale to each man he replaced (BL.roster). */
-  Captain.prototype.canDrop = function () { var p = this.m.phase; return !this.away && !!this.pos && (p === "arrival" || p === "engage" || p === "countdown"); };
-  Captain.prototype.dropTo = function (where, gun) {
-    var m = this.m, tu = m.turret;
-    if (!this.canDrop()) return false;
-    if (where === "gun") {
-      var b = tu.bats[gun]; if (!b) return false;
-      this.replaced(b.crew); this.aside = b.crew; b.crew = null;
-      tu.crewAll = false; tu.sel = gun; b.firing = false; b.dir = 0; b.aimRel = b.rel;
-      tu.bats.forEach(function (x) { x.seek = null; });
-    } else if (where === "helm") this.replaced(this.pilotCrew);
-    else if (where === "engine") this.replaced(tu.engineer);
-    else return false;
-    this.away = where; this.dropped = true;
-    m.cue("toggle");
-    return true;
-  };
-  // At the guns he can trade to another gun (RingTurret.select): its man is replaced too.
-  Captain.prototype.takeGun = function (i) {
-    var tu = this.m.turret, b = tu.bats[i], man = b && b.crew;
-    if (this.away !== "gun" || !b || !tu.select(i)) return false;
-    this.replaced(man);
-    return true;
-  };
-  Captain.prototype.replaced = function (man) {
-    if (!man || this.replacedMen.some(function (x) { return x === man || (man.id !== undefined && x.id === man.id); })) return;
-    this.replacedMen.push(man);
-  };
-  // Back to the bridge: the man who stood aside takes his station again.
-  Captain.prototype.toBridge = function () {
-    var m = this.m, tu = m.turret, self = this;
-    if (!this.away) return false;
-    if (this.away === "gun") {
-      tu.bats.forEach(function (b) { b.firing = false; b.dir = 0; b.seek = null; if (!b.crew) { b.crew = self.aside; b.aiNext = m.totalT + 0.5; b.aiTarget = null; } });
-      tu.crewAll = true; tu.sel = 0; this.aside = null;
-    }
-    this.away = null;
-    m.cue("toggle");
-    return true;
-  };
+  Captain.prototype.mayJump = function () { return this.jumpOrdered && this.inZone(BL.COMMAND.zoneHold); };
 
   /* ------------------------------------------------------------- The tick */
   Captain.prototype.step = function (dt) {
     var m = this.m, h = m.helm, K = BL.COMMAND, map = this.map();
-    this.carryOut();
     if (!this.pos) return;
     // The ship moves on the map at her speed, on her compass heading.
     var hdg = h.compass(), v = h.speed * K.scale;
     this.pos.x += Math.sin(hdg * RAD) * v * dt; this.pos.y += Math.cos(hdg * RAD) * v * dt;
-    // The drive's charge rate, MJ/s, averaged over the last few seconds (and the MOAB's, for the drop).
-    var bu = m.sys("buster");
-    if (bu && dt > 0) {
-      if (this.buLast !== null && this.buLast !== undefined) { var br = (bu.mj - this.buLast) / dt, ba = Math.min(1, dt / K.driveTau); this.buRate = this.buRate === null || this.buRate === undefined ? br : this.buRate + (br - this.buRate) * ba; }
-      this.buLast = bu.mj;
-    }
+    // The drive's charge rate, MJ/s, averaged over the last few seconds.
     var dr = m.sys("drive");
     if (dr && dt > 0) {
       if (this.drLast !== null) { var rate = (dr.mj - this.drLast) / dt, a = Math.min(1, dt / K.driveTau); this.drRate = this.drRate === null ? rate : this.drRate + (rate - this.drRate) * a; }
@@ -1381,16 +729,6 @@
       if (dist(this.pos, b) > (cpw ? cpw.r * 0.4 : K.capture * map.D) && n.u < 0.999) break;
       this.leg++;
     }
-    this.enemyArea();
-    // A fixed siege line: its batteries keep to its true bearing, farther out the farther it is.
-    if (this.siegeOn() && m.turret) {
-      var sb = this.siegeBearing(), back = K.siegeLine.back * (1 - BL.siegeFire(map, this.pos));
-      m.turret.ships.forEach(function (s) { if (s.fixed && s.state !== "leave") { s.home = sb + s.slot; s.hold = s.hold0 + back; } });
-    }
-    // A gunboat escort: a carrier down to 20% (as a ship leaves her squadron, Mission.runJump) has lost
-    // her hangar bay; with the gunboat out (not still in her tube) she warps without it.
-    var es = this.escort;
-    if (this.carrierRecovery() && !m.helm.inTube && es.hull > 0 && es.hull <= es.hullMax * 0.2 && m.phase !== "done") { m.chat("leftBehind", null, "bad"); m.finish("leftBehind"); return; }
     // Checkpoints flown through.
     var cur = this.cur, pos = this.pos;
     map.checkpoints.forEach(function (c, i) { if (!cur.cps[i] && dist(pos, c) < c.r) { cur.cps[i] = true; m.cue("tick"); } });
@@ -1399,8 +737,7 @@
     // In the zone on the last leg, the pilot holds her there (slow, then stopped) for the jump.
     this.holding = zone && (this.leg >= pts.length - 2 || this.jumpOrdered);
     // Escort: the carrier sails on; time on station counts while the fight is on.
-    if (this.escort && this.escort.flag && this.escort.pos) this.runSquad(dt);
-    else if (this.escort && this.escort.pos) {
+    if (this.escort && this.escort.pos) {
       var w = this.escort; w.s = Math.min(w.L, w.s + w.v * dt);
       this.moveWard(dt); this.placeWard(); this.moveWing(dt);
       if (m.phase === "engage" || m.phase === "countdown") { this.cur.stationT += dt; if (this.stationView().on) this.cur.onStation += dt; }
@@ -1408,7 +745,7 @@
     // Asteroids: inside a field the rocks stream through the battle view (RingTurret.dropRock).
     this.inRock = BL.inField(map, this.pos); this.inMines = BL.inMines(map, this.pos);
     this.runSwing();
-    if (m.phase !== "done" && this.away !== "helm") this.pilot.think(m, this);     // (at the helm the captain flies her)
+    if (m.phase !== "done") this.pilot.think(m, this);
   };
   // A rock touched the shield (ring.js; it lands like a mine, shields first).
   Captain.prototype.rockStruck = function () { this.stats.rockHits++; if (this.cur) this.cur.rockHits++; };
@@ -1455,42 +792,26 @@
     // (escort: navigation is the share of the fight spent on station)
     // (a scouting run: half the zone, half the share of its checkpoints flown through)
     sys.forEach(function (s) {
-      var z = c.escort && !c.escort.flag ? (s.stationT ? s.onStation / s.stationT : 0) : s.zoneAt !== null && s.zoneAt <= s.window + K.zoneGrace ? 1 : s.zoneAt !== null ? 0.5 : 0;
+      var z = c.escort ? (s.stationT ? s.onStation / s.stationT : 0) : s.zoneAt !== null && s.zoneAt <= s.window + K.zoneGrace ? 1 : s.zoneAt !== null ? 0.5 : 0;
       if (s.cps && s.cps.length) z = 0.5 * z + 0.5 * s.cps.filter(Boolean).length / s.cps.length;
       nav += z * Math.max(0, 1 - 0.25 * s.rockHits);
     });
     nav = sys.length ? nav / sys.length : 0;
     // Escort: the objective is her: brought home, worth her hull left (a convoy: the merchants that get through).
     var es = c.escort, afloat = es ? es.ships.filter(function (s) { return s.hull > 0; }).length : 0;
-    // (a squadron: the objective is half the share of each system's objective destroyed, half the
-    // share of the squadron's ships brought home, the flagship one of them)
-    var sqHome = es && es.flag ? (outcome === "destroyed" ? 0 : 1) + es.wing.filter(function (g) { return g.hull > 0; }).length : 0;
-    var sqAll = es && es.flag ? [].concat.apply([], c.sqMaps.slice(0, sys.length)) : [];
-    var sqObj = sqAll.filter(function (T) { return T.K.objective; }), sqObjDown = sqObj.filter(function (T) { return T.dead; }).length, sqDownAll = sqAll.filter(function (T) { return T.dead; }).length;
-    if (es && es.flag) r.parts.objective = Math.round(r.parts.objective * (0.5 * (sqObj.length ? sqObjDown / sqObj.length : 1) + 0.5 * sqHome / es.n));
-    else if (es) r.parts.objective = outcome === "wardLost" || outcome === "leftBehind" ? 0 : Math.round(r.parts.objective * (es.kind === "convoy" ? afloat / es.ships.length : es.hull / es.hullMax));
+    if (es) r.parts.objective = outcome === "wardLost" ? 0 : Math.round(r.parts.objective * (es.kind === "convoy" ? afloat / es.ships.length : es.hull / es.hullMax));
     var hs = m.helm.stats, stopped = m.stats.salvos ? (m.stats.salvosShielded + (tu.stats.downed || 0)) / (m.stats.salvos + (tu.stats.downed || 0)) : 1;
     var made = st.breaks + st.pilotBreaks ? hs.evasiveMet / (st.breaks + st.pilotBreaks) : 1;
     var command = clamp(0.6 * stopped + 0.4 * made, 0, 1);
-    // (a squadron: half of it is the share of the systems' targets destroyed)
-    if (es && es.flag) command = clamp(0.5 * command + 0.5 * (sqAll.length ? sqDownAll / sqAll.length : 1), 0, 1);
     r.station = "captain";
-    var cond = outcome === "destroyed" ? 0 : Math.max(0, 1 - K.hullCost * (1 - m.ship.hull / m.ship.hullMax));     // (BL.COMMAND.hullCost)
-    r.parts = { objective: r.parts.objective, condition: Math.round(25 * cond), navigation: Math.round(25 * nav), command: Math.round(25 * command) };
+    r.parts = { objective: r.parts.objective, condition: r.parts.condition, navigation: Math.round(25 * nav), command: Math.round(25 * command) };
     r.raw = r.parts.objective + r.parts.condition + r.parts.navigation + r.parts.command;
     r.score = Math.round(r.raw * Math.pow(1 - m.cfg.lookCostPct / 100, r.looks));
-    r.captain = { rockHits: st.rockHits, swarms: st.swarms, calls: st.calls, breaks: st.breaks, pilotBreaks: st.pilotBreaks, breaksMade: hs.evasiveMet, taken: st.taken, unanswered: st.unanswered,
+    r.captain = { rockHits: st.rockHits, calls: st.calls, breaks: st.breaks, pilotBreaks: st.pilotBreaks, breaksMade: hs.evasiveMet, taken: st.taken, unanswered: st.unanswered,
       systems: sys.map(function (s) { return { zoneAt: s.zoneAt === null ? null : Math.round(s.zoneAt), window: s.window, rockHits: s.rockHits, legs: s.legs, cps: s.cps.length, cpsHit: s.cps.filter(Boolean).length }; }),
       ships: tu.stats.ships, kills: tu.stats.kills, downed: tu.stats.downed,
-      rocks: tu.stats.rocks || 0, rocksDown: tu.stats.rocksDown || 0, rockEnemy: tu.stats.rockEnemy || 0,
-      // (dropping down: whether he did, and the men he replaced: roster ids for their morale, names for the debrief)
-      dropped: c.dropped, replaced: c.replacedMen.map(function (x) { return x.id; }).filter(function (id) { return id !== undefined; }),
-      replacedNames: c.replacedMen.map(function (x) { return x.name; }) };
-    if (es && es.flag) {
-      r.captain.squad = { n: es.n, home: sqHome, lost: es.wing.filter(function (g) { return g.hull <= 0 && !g.left; }).length, left: es.wing.filter(function (g) { return g.left; }).length,
-        kills: st.sqKills, targets: sqAll.length, targetsDown: sqDownAll, objectives: sqObj.length, objectivesDown: sqObjDown, flagWaves: sqAll.reduce(function (a, T) { return a + T.waves; }, 0), flagBridge: st.flagBridge, flag: c.flagCaptain.name,
-        ships: es.wing.map(function (g) { return { no: g.no, name: g.cap.name, hull: Math.round(100 * g.hull / g.hullMax), kills: g.kills, left: g.left }; }) };
-    } else if (c.escort) {
+      rocks: tu.stats.rocks || 0, rocksDown: tu.stats.rocksDown || 0, rockEnemy: tu.stats.rockEnemy || 0 };
+    if (c.escort) {
       r.captain.escort = { kind: es.kind, name: es.W.name, hull: Math.round(100 * es.hull / es.hullMax), ships: es.ships.length, afloat: afloat, torps: st.wardTorps, calls: st.wardCalls, covers: st.covers, covered: st.covered,
         squad: es.wing.length + 1, wingLost: es.wing.filter(function (g) { return g.hull <= 0; }).length, wingStops: st.wingStops,
         onStation: sys.map(function (s) { return s.stationT ? Math.round(100 * s.onStation / s.stationT) : 0; }) };
@@ -1499,18 +820,16 @@
   };
 
   /* -------------------------------------------------------------- Test bot
-     Plays the way an attentive captain does: takes the navigator's plot, leaves the breaks to the
-     pilot's standing policy, holds SHIELDS while there are enemy ships about, puts the guns on
-     HUNT, and orders the warp as soon as it's ready. (Pacing the engines to the window did no
-     better than the plot's.) (opts: the old bot's habits, for comparison: answer, every burst as
-     the AI captain at the helm does; suggest, the gun order the guns would suggest.) */
-  function CaptainBot(opts) { this.rng = null; this.o = opts || {}; }
+     Takes the navigator's plot, answers each burst the way the AI captain does at the helm
+     (break when the shields can't take what's in the air, else about half the time), and orders
+     the jump as soon as it's ready. */
+  function CaptainBot() { this.rng = null; }
   BL.CaptainBot = CaptainBot;
   CaptainBot.prototype.think = function (m) {
     var c = m.captain, E = BL.HELM.evade; if (!c) return;
     this.rng = this.rng || BL.rng((m.seed ^ 0x7f4a7c15) >>> 0);
-    var cv = c.callView(), o = this.o;
-    if (o.answer && cv && cv.in < BL.GUNNERY.torpedo.travel + 0.5) {
+    var cv = c.callView();
+    if (cv && cv.in < BL.GUNNERY.torpedo.travel + 0.5) {
       if (cv.canBreak && (m.sys("shield").mj < cv.mj * E.cover || this.rng.chance(E.chance))) c.answer(c.awayFromRocks(cv.bearing < 0 ? 1 : -1));
       else c.answer(0);
     }
@@ -1518,62 +837,13 @@
     var wv = c.wardCallView();
     var sh = m.sys("shield"), ours = c.openFish().reduce(function (a, f) { return a + f.mj; }, 0);
     if (wv && wv.canCover && wv.in < BL.GUNNERY.torpedo.travel && sh.mj >= (wv.mj + ours) * E.cover && sh.mj >= sh.maxMJ * 0.5) c.cover();
-    // The crew act on orders: SHIELDS while there are enemy ships about (else BALANCE), and HUNT
-    // (o.suggest: the gun order most of the guns would suggest for this fight, every few seconds).
-    // (SHIELDS costs the guns, so only for the torpedoes: a burst in the air, or the shields below
-    // botShields of full; o.holdShields: all fight)
-    if (!this.fixedStance) {
-      var up = m.waves && m.waves.some(function (w) { return !w.dead; }), shd = m.sys("shield");
-      var need = o.holdShields || c.openFish().length > 0 || shd.mj < shd.maxMJ * BL.COMMAND.botShields, want = up && need ? "shields" : "balanced";
-      if (c.stance !== want && c.stance !== "drive" && c.stance !== "moab") c.setStance(want);
-    }
-    if (m.turret && !o.suggest && c.guns !== "hunt") c.setGuns("hunt");
-    if (m.turret && o.suggest && m.totalT >= (this.gunAt || 0)) {
-      this.gunAt = m.totalT + 4;
-      var votes = {}; m.turret.bats.forEach(function (b) { var o = m.turret.suggestOrder(b).order; votes[o] = (votes[o] || 0) + 1; });
-      var best = Object.keys(votes).sort(function (a, b) { return votes[b] - votes[a]; })[0];
-      if (best && c.guns !== best) c.setGuns(best);
-    }
     // Gunboats: launch as soon as the launchers are full; recover botRecover s before the window.
     var hv2 = c.hangarView();
     if (hv2 && hv2.can && (hv2.order === "launch" ? m.t < m.windowAt() - BL.COMMAND.hangarOrder.botRecover - 20 : m.t >= m.windowAt() - BL.COMMAND.hangarOrder.botRecover)) c.orderHangar();
-    // The drop (a hard deadline): flank speed when she'd reach the zone too late, the plot's engines
-    // again once she's in it, and no main-gun swings in the last minute.
-    // (judged only over the last 90 s: early in the system her speed says little)
-    var drop = m.isDrop(), eta = drop ? c.zoneEta() : null, late = drop && !c.inZone() && m.windowIn() < 90 && eta !== null && eta > m.windowIn() - 5;
-    if (late && c.engOrder !== "flank") c.orderEngines("flank");
-    else if (!late && drop && c.engOrder === "flank") c.engOrder = null;
-    // Main gun: swing onto the big target once it's charged, if it's within botSwing degrees of the bow (a short swing), away from the warp zone.
-    if (!this.noMain && !c.inZone() && !c.callView() && !(drop && m.windowIn() < 60)) {
+    // Main gun: swing onto the big target once it's charged, if it's within botSwing degrees of the bow (a short swing), away from the jump zone.
+    if (!this.noMain && !c.inZone() && !c.callView()) {
       var mv = c.mainView();
       if (mv && mv.can && Math.abs(norm(m.turret.bearingOf(mv.target.x, mv.target.y))) <= BL.COMMAND.mainSwing.botSwing) c.orderMain();
-    }
-    // A gunboat escort: to ASTERN for the carrier's recovery, botAstern s before the window.
-    if (c.carrierRecovery() && c.station !== "astern" && m.windowIn() < BL.COMMAND.escort.botAstern) c.setStation("astern");
-    if (!o.noJump && c.jumpView().ready && !c.jumpOrdered) c.orderJump();     // (o.noJump: a flag captain; the squadron commander orders the warp)
-  };
-
-  /* The squadron test's commander bot: the navigator's plot, LINE AHEAD, and every other ship sent
-     to the system's objective (once it's known), then the nearest target to the flagship; a ship
-     down below `retire` of her hull comes back to formation. The warp as soon as it's ready. Its
-     flag captain is the captain test bot (noJump). (opts.form: a formation to hold; opts.idle:
-     no orders, every ship in formation, for comparison; opts.retire.) */
-  function SquadBot(opts) { this.o = opts || {}; this.flag = new CaptainBot({ noJump: true }); }
-  BL.SquadBot = SquadBot;
-  SquadBot.prototype.think = function (m) {
-    var c = m.captain, o = this.o; if (!c || !c.escort || !c.escort.flag || !c.pos) return;
-    this.flag.think(m);
-    if (o.form && c.escort.form !== o.form) c.setFormation(o.form);
-    if (!o.idle && m.totalT >= (this.tAt || 0) && (m.phase === "engage" || m.phase === "arrival")) {
-      this.tAt = m.totalT + 2;
-      var gs = c.sqGroups().filter(function (T) { return !T.unknown || T.seen; }), obj = gs.filter(function (T) { return T.K.objective; })[0], near = null, nd = Infinity;
-      gs.forEach(function (T) { var d = dist(c.shownAt(T), c.pos); if (d < nd) { nd = d; near = T; } });
-      var aim = obj || near, retire = o.retire === undefined ? 0.35 : o.retire;
-      c.sqLive().forEach(function (g) {
-        var ord = c.orderOf(g);
-        if (g.hull / g.hullMax < retire) { if (ord.kind !== "form") c.recall([g.no]); return; }
-        if (aim && (ord.kind !== "target" || ord.id !== aim.id) && !c.jumpOrdered) c.sendTo([g.no], aim.id);
-      });
     }
     if (c.jumpView().ready && !c.jumpOrdered) c.orderJump();
   };
@@ -1582,9 +852,9 @@
     var rc = BL.GUNNERY.ring.classes[classId];
     var m = new BL.Mission(Object.assign({ seed: seed, quiet: true, classId: classId, tl: tl, helm: true, captain: true,
       gunner: { weapons: BL.GUNNERY.loadout[classId], ring: true, arcs: rc.arcs, arcNames: rc.arcNames, helm: true } }, extra));
-    var en = m.turret.engineer, eng = new BL.AIEngineer(en.temperK === undefined ? 0.5 : en.temperK, 0.25, en.skill), bot = m.flag ? new SquadBot(extra && extra.bot) : new CaptainBot(extra && extra.bot);
-    if (extra && extra.noMain) (bot.flag || bot).noMain = true;      // (tests: the main gun on standing orders only)
-    if (extra && extra.stance) { m.captain.stance = m.captain.stanceOn = extra.stance; (bot.flag || bot).fixedStance = true; }     // (tests: a standing stance other than balanced, held all mission)
+    var eng = new BL.AIEngineer(0.5, 0.25, m.turret.engineer.skill), bot = new CaptainBot();
+    if (extra && extra.noMain) bot.noMain = true;      // (tests: the main gun on standing orders only)
+    if (extra && extra.stance) m.captain.stance = extra.stance;     // (tests: a standing stance other than balanced)
     m.beginJump();
     var guard = 0;
     while (m.phase !== "done" && guard++ < BL.TICK_RATE * 60 * 30) {

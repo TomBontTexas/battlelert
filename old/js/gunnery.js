@@ -29,7 +29,7 @@
     this.rng = BL.rng((m.seed ^ 0x5bd1e995) >>> 0);
     this.ships = []; this.torps = []; this.bolts = []; this.effects = [];
     this.nextId = 1;
-    this.engineer = (m.crewSet && m.crewSet.engineer) || BL.pickEngineer(m.seed, m.data.classId);
+    this.engineer = BL.pickEngineer(m.seed, m.data.classId);
     this.stats = { shots: 0, hits: 0, torpHits: 0, torps: 0, downed: 0, ships: 0, kills: 0, damage: 0, dryTime: 0, calls: 0, hullTorps: 0,
       ptFired: 0, ptHits: 0, ptDowned: 0, ptMissed: 0, firingTime: 0, liveTime: 0 };
     this.ptTorps = []; this.pt = [];
@@ -88,17 +88,6 @@
         label: skill >= 0.7 ? "sharp" : skill >= 0.5 ? "steady" : skill >= 0.35 ? "green" : "raw" });
     }
     return out;
-  };
-
-  /* The bridge pilot, picked from the mission seed like the engineer; his name never repeats the
-     engineer's or a gunner's. */
-  BL.pickPilot = function (seed, classId) {
-    var E = BL.GUNNERY.engineer, P = BL.GUNNERY.pilot, r = BL.rng((seed ^ 0x1f83d9ab) >>> 0), used = {};
-    [BL.pickEngineer(seed, classId)].concat(BL.pickGunCrew(seed, classId, true)).forEach(function (c) { c.who.split(" ").forEach(function (w) { used[w] = true; }); });
-    function pick(list) { var x, k = 0; do { x = r.pick(list); } while (used[x] && k++ < 40); used[x] = true; return x; }
-    var range = E.skill[classId] || E.skill.other, skill = Math.round(r.range(range) * 100) / 100, first = pick(E.first), last = pick(E.last);
-    return { name: P.ranks[skill >= 0.85 ? 2 : skill >= 0.7 ? 1 : 0] + " " + first + " " + last, who: first + " " + last, skill: skill,
-      label: skill >= 0.85 ? "sharp" : skill >= 0.7 ? "steady" : skill >= 0.5 ? "green" : "sloppy" };
   };
 
   /* ---------------------------------------------------------- Player input */
@@ -436,7 +425,7 @@
     if (wave) wave.hp -= dealt;
     if (s.hp > 0.001) return;
     s.dead = true;
-    if ((mine || this.crewAll) && !this.byWing) bump(this, "kills");     // (byWing: another ship of the squadron's guns, Captain.runSquad)
+    if (mine || this.crewAll) bump(this, "kills");
     if (s.chargeAt > m.t && this.rng.chance(0.6)) m.chat("chargeStopped", null, "good");
     this.effects.push({ type: "boom", x: s.x, y: s.y, at: m.totalT, size: s.w });
     var rest = wave ? wave.ships.filter(function (x) { return !x.dead; }).length : 0;

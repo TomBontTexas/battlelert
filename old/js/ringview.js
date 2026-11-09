@@ -546,9 +546,8 @@
   // merchants' short boxy hulls; and the squadron's wingmen on their stations (small teal hulls).
   function drawWard(c, S, m) {
     var cp = m.captain;
-    if (!cp || !cp.pos || !cp.escort || !(cp.wardAlive() || cp.escort.flag)) return;
+    if (!cp || !cp.wardAlive() || !cp.pos) return;
     var es = cp.escort, kind = es.kind;
-    if (es.flag) { drawSquad(c, S, m); return; }
     function off(v, k) { return v.x < -0.3 * k || v.x > 1 + 0.3 * k || v.y < -0.3 * k || v.y > 1 + 0.3 * k; }
     es.ships.forEach(function (s, i) {
       if (s.hull <= 0) return;
@@ -579,40 +578,6 @@
       c.fillStyle = "#2f5f5a"; c.strokeStyle = "#7fd8c8"; c.lineWidth = 1.5 / S;
       c.beginPath(); c.moveTo(0, -L / 2); c.lineTo(L * 0.3, L / 2); c.lineTo(0, L * 0.3); c.lineTo(-L * 0.3, L / 2); c.closePath(); c.fill(); c.stroke();
       c.restore();
-    });
-  }
-  // A squadron's other ships (command.js Squadron): our class's own art on her heading, a faint
-  // shield ring, her hull bar and her number (amber while detached); the target group's ships
-  // get red corner marks.
-  function drawSquad(c, S, m) {
-    var cp = m.captain, es = cp.escort, tu = m.turret, R = tu.R, sp = BL.sprite(m.data.classId === "gunboat" ? "gunboat" : "warship:" + m.data.classId);
-    es.wing.forEach(function (g, i) {
-      if (g.hull <= 0) return;
-      var v = cp.wingView(i), L = R.shipH;
-      if (v.x < -0.4 || v.x > 1.4 || v.y < -0.4 || v.y > 1.4) return;
-      c.strokeStyle = "rgba(90,170,255," + (0.12 + 0.3 * g.sh / g.shMax).toFixed(2) + ")"; c.lineWidth = 1.5 / S;
-      c.beginPath(); c.ellipse(v.x, v.y, R.rx, R.ry, v.rot * Math.PI / 180, 0, Math.PI * 2); c.stroke();
-      c.save(); c.translate(v.x, v.y); c.rotate(v.rot * Math.PI / 180);
-      if (sp) { var sw = L / sp.aspect; c.globalAlpha = 0.9; c.drawImage(sp.cv, -sw / 2, -L / 2, sw, L); c.globalAlpha = 1; }
-      c.restore();
-      var f = g.hull / g.hullMax, bw = Math.max(0.05, L * 0.6), by = v.y + R.ry + 0.012;
-      c.fillStyle = "rgba(0,0,0,.5)"; c.fillRect(v.x - bw / 2, by, bw, 0.012);
-      c.fillStyle = f > 0.5 ? "#4fd18b" : f > 0.25 ? "#ffd666" : "#ff6b6b"; c.fillRect(v.x - bw / 2, by, bw * f, 0.012);
-      // (her number in screen pixels, upright, under the bar)
-      var mt = c.getTransform(), px = mt.a * v.x + mt.c * (by + 0.016) + mt.e, py = mt.b * v.x + mt.d * (by + 0.016) + mt.f, dpr = window.devicePixelRatio || 1;
-      c.save(); c.setTransform(1, 0, 0, 1, 0, 0);
-      c.fillStyle = g.task === "detach" ? "#ffd666" : "#7fd8c8"; c.font = "700 " + Math.round(11 * dpr) + "px ui-monospace, Menlo, Consolas, monospace"; c.textAlign = "center"; c.textBaseline = "top";
-      c.fillText("" + g.no, px, py);
-      c.restore();
-    });
-    if (es.target === null) return;
-    c.strokeStyle = "rgba(255,90,70,.85)"; c.lineWidth = 2 / S;
-    tu.ships.forEach(function (s) {
-      if (s.dead || s.wave !== es.target || s.state === "leave") return;
-      var r = Math.max(s.w, s.h) * 0.7, k = r * 0.4;
-      [[-1, -1], [1, -1], [1, 1], [-1, 1]].forEach(function (q) {
-        c.beginPath(); c.moveTo(s.x + q[0] * r, s.y + q[1] * (r - k)); c.lineTo(s.x + q[0] * r, s.y + q[1] * r); c.lineTo(s.x + q[0] * (r - k), s.y + q[1] * r); c.stroke();
-      });
     });
   }
   // A drifting mine: a dark spiked ball with a blinking light, its path a faint grey line.
