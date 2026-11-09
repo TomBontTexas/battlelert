@@ -2263,6 +2263,10 @@
       : blankPlot(map) };
     $("pl-title").textContent = tc(sim.flag ? "Plan the attack · system " + (i + 1) + " of " + sim.cfg.jumps : "Plot the course · system " + (i + 1) + " of " + sim.cfg.jumps + " · " + BL.ENCOUNTERS[sim.reported(i)].name);
     $("pl-squad").hidden = !sim.flag;
+    // The mission: what it asks and how to go about it (TexasBont, Nov 9, 2026: in place of the plotting
+    // instructions, which are in How to play). A job with no mission type: the class's usual one.
+    var opId = sim.op || (sim.flag ? (sim.sys("buster") ? "finale" : "depot") : BL.COMMAND.checkpoints.classes.indexOf(sim.data.classId) >= 0 ? "scout" : "standard"), opK = BL.COMMAND.ops[opId];
+    $("pl-hint").innerHTML = "<b>Mission: " + opK.name + "</b><br>" + opK.detail;
     $("pl-new").hidden = !(job && job.test && i === 0);
     overlay("ov-plot", true);
     plW = 0; drawPlot();
@@ -2274,7 +2278,7 @@
     $("pl-squad").innerHTML = '<div class="ps-hd">YOUR SHIPS · tap to send one to a target</div>' + c.sqLive().map(function (g) {
       var T = pre[g.no] !== undefined ? ts[pre[g.no]] : null;
       return '<button data-pre="' + g.no + '"><b>' + g.no + "</b> " + esc(g.name) + " → " + (T ? T.letter + " " + T.K.name.toLowerCase() : "in formation") + "</button>";
-    }).join("") + '<div class="muted small-text">' + (sim.sys("buster") ? "No objective: get through and make the drop. Fortress ships guard the drop zone." : "The objective is the depot (gold).") + ' The flagship flies your course. "?" are contacts the pickets missed.</div>';
+    }).join("") + '<div class="muted small-text">' + (sim.sys("buster") ? "No objective: get through and make the drop. Fortress ships guard the drop zone." : sim.op && sim.op !== "depot" ? "The objectives are gold." : "The objective is the depot (gold).") + ' The flagship flies your course. "?" are contacts the pickets missed.</div>';
   }
   // A new plot: straight to the approach point, then in along the jump heading.
   function blankPlot(m) { return { pts: [{ x: m.start.x, y: m.start.y }, { x: m.approach.x, y: m.approach.y }, { x: m.jump.x, y: m.jump.y }], eng: ["cruise", "cruise"] }; }
