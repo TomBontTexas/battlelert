@@ -414,6 +414,16 @@
   $("btn-options-title").onclick = function () { BL.audio.init(); click(); openOptions(); };
   $("btn-options-pause").onclick = openOptions;
   $("btn-options-close").onclick = function () { click(); overlay("ov-options", false); };
+  // Options' own pop-ups: Volumes and voices, and the keys for each station (one at a time).
+  $("btn-opt-sound").onclick = function () { click(); renderVoiceTable(); overlay("ov-opt-sound", true); };
+  $("btn-opt-sound-close").onclick = function () { click(); overlay("ov-opt-sound", false); };
+  $("opt-keys-btns").addEventListener("click", function (ev) {
+    var b = ev.target.closest("button"); if (!b) return;
+    click(); $("opt-keys-title").textContent = b.textContent;
+    document.querySelectorAll("#ov-opt-keys .opt-keys").forEach(function (d) { d.hidden = d.dataset.sec !== b.dataset.keys; });
+    overlay("ov-opt-keys", true); $("ov-opt-keys").scrollTop = 0;
+  });
+  $("btn-opt-keys-close").onclick = function () { click(); overlay("ov-opt-keys", false); };
   ["fx", "alarm", "chat"].forEach(function (ch) {
     $("vol-" + ch).oninput = function () {
       settings[ch] = +this.value; applySettings(); saveSettings();
@@ -629,7 +639,13 @@
   /* ------------------------------------------------------------ Keyboard */
   document.addEventListener("keydown", function (ev) {
     if (!$("ov-options").hidden || !$("ov-how").hidden) {
-      if (ev.key === "Escape") { overlay("ov-options", false); overlay("ov-how", false); }
+      // (Escape closes the top pop-up only)
+      if (ev.key === "Escape") {
+        if (!$("ov-sounds").hidden) $("btn-snd-close").click();
+        else if (!$("ov-opt-sound").hidden) overlay("ov-opt-sound", false);
+        else if (!$("ov-opt-keys").hidden) overlay("ov-opt-keys", false);
+        else { overlay("ov-options", false); overlay("ov-how", false); }
+      }
       return;
     }
     if (!$("ov-tests").hidden) { if (ev.key === "Escape") overlay("ov-tests", false); return; }

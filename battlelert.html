@@ -6,7 +6,7 @@
 <meta name="copyright" content="© 2011–2026 Tom Bont. All rights reserved.">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Battlelert</title>
-<link rel="stylesheet" href="css/style.css?b=6373278a">
+<link rel="stylesheet" href="css/style.css?b=68c37e3f">
 </head>
 <body>
 
@@ -660,13 +660,28 @@
 <section id="ov-options" class="overlay" hidden>
   <div class="ov-card">
     <h1>Options</h1>
+    <h3>Sound</h3>
+    <div class="snd-grid"><button id="btn-opt-sound">Volumes and voices</button><button id="btn-sound-test">Test sounds</button><button id="btn-sound-opt">Restart sound</button></div>
+    <h3>Display</h3>
+    <div class="opt-grid">
+      <label for="opt-contrast">High-contrast theme</label><input id="opt-contrast" type="checkbox">
+      <label for="opt-hints">Hint mode</label><input id="opt-hints" type="checkbox">
+    </div>
+    <h3>Keys and taps</h3>
+    <div id="opt-keys-btns" class="snd-grid"><button data-keys="0">Engine Room</button><button data-keys="1">At the Gun</button><button data-keys="2">At the Helm</button><button data-keys="3">On the Bridge</button><button data-keys="4">Commanding a Squadron</button><button data-keys="5">Admirals</button></div>
+    <div class="menu"><button id="btn-options-close" class="primary">Done</button></div>
+  </div>
+</section>
+<section id="ov-opt-sound" class="overlay" hidden>
+  <div class="ov-card">
+    <h1>Volumes and Voices</h1>
     <div class="opt-grid">
       <label for="vol-fx">Effects</label><input id="vol-fx" type="range" min="0" max="100" step="5">
       <label for="vol-alarm">Alarms</label><input id="vol-alarm" type="range" min="0" max="100" step="5">
       <label for="vol-chat">Radio clicks</label><input id="vol-chat" type="range" min="0" max="100" step="5">
       <label for="opt-voice">Spoken messages</label><input id="opt-voice" type="checkbox">
       <label for="vol-voice">Voices</label><input id="vol-voice" type="range" min="0" max="100" step="5">
-      <span></span><div><button id="btn-voice-test" class="small">Test crew voices</button> <button id="btn-sound-opt" class="small">Restart sound</button> <button id="btn-sound-test" class="small">Test sounds</button></div>
+      <span></span><div><button id="btn-voice-test" class="small">Test crew voices</button></div>
     </div>
     <p id="voice-status" class="muted small-text"></p>
     <details id="voice-details" class="voice-details">
@@ -675,11 +690,14 @@
       <table id="voice-table" class="keys"></table>
       <p class="muted small-text">For more natural voices on an iPad: Settings &gt; Accessibility &gt; Spoken Content &gt; Voices &gt; English. Download a few voices marked Enhanced or Premium (different accents work well), then reload the game.</p>
     </details>
-    <div class="opt-grid">
-      <label for="opt-contrast">High-contrast theme</label><input id="opt-contrast" type="checkbox">
-      <label for="opt-hints">Hint mode</label><input id="opt-hints" type="checkbox">
-    </div>
-    <h2>Engine Room</h2>
+    <div class="menu"><button id="btn-opt-sound-close" class="primary">Back</button></div>
+  </div>
+</section>
+<section id="ov-opt-keys" class="overlay" hidden>
+  <div class="ov-card wide">
+    <h1 id="opt-keys-title">Keys</h1>
+    <div class="opt-keys" data-sec="0" hidden>
+    
     <table class="keys">
       <tr><td>1 – 9</td><td>Select a system</td></tr>
       <tr><td>↑ ↓</td><td>Raise or lower its charge rate (hold Shift for big steps)</td></tr>
@@ -693,7 +711,9 @@
       <tr><td>H</td><td>Hint mode</td></tr>
       <tr><td>Enter</td><td>Continue after the report on each warp (after the last one, on to the debriefing)</td></tr>
     </table>
-    <h2>At the Gun</h2>
+    </div>
+    <div class="opt-keys" data-sec="1" hidden>
+    
     <table class="keys">
       <tr><td>← → (or A D)</td><td>Turn the gun clockwise or counterclockwise around the ship</td></tr>
       <tr><td>Space (or ↑)</td><td>Fire (hold)</td></tr>
@@ -708,7 +728,9 @@
       <tr><td>Mouse</td><td>The gun follows the pointer around the ship; click a ship or torpedo to swing to it; hold the button to fire</td></tr>
       <tr><td>Touch</td><td>Touch the view to point the gun, or drag on the aim pad; tap a ship or torpedo to swing to it; hold FIRE</td></tr>
     </table>
-    <h2>At the Helm</h2>
+    </div>
+    <div class="opt-keys" data-sec="2" hidden>
+    
     <table class="keys">
       <tr><td>← →</td><td>Turn the wheel to port or starboard (it stays where you leave it)</td></tr>
       <tr><td>0</td><td>Wheel amidships</td></tr>
@@ -726,7 +748,9 @@
       <tr><td>Enter</td><td>Continue after the carrier report</td></tr>
       <tr><td>Mouse / touch</td><td>Drag the wheel; tap an order on the telegraph (the middle column orders both engines); tap the compass across the top to steer there on autopilot; slide the strip at the far right up and down: on autopilot it sets the course, by hand it's the wheel; tap the captain's order or the warp heading to fly it on autopilot</td></tr>
     </table>
-    <h2>On the Bridge</h2>
+    </div>
+    <div class="opt-keys" data-sec="3" hidden>
+    
     <table class="keys">
       <tr><td>← →</td><td>Course 10° to port or starboard (Shift: 1°), a course of your own</td></tr>
       <tr><td>R</td><td>Resume the plotted course</td></tr>
@@ -749,7 +773,9 @@
       <tr><td>N / U / Enter</td><td>Plotting screen: navigator's plot / undo the last waypoint / accept</td></tr>
       <tr><td>Mouse / touch</td><td>Tap the compass across the top, or a point on the map, to steer there; drag the map to pan it, pinch or use the mouse wheel (or + − FIT) to zoom; ⇄ SWAP swaps the map and the battle view; every order is in the column at the left: the helm, the telegraphs (engines, gunners, engineer) with their meters, torpedoes, and the main gun, launch, warn and warp. Plotting: tap the map to lay a waypoint, tap a waypoint to remove it, tap a leg's engine order to change it</td></tr>
     </table>
-    <h2>Commanding a Squadron</h2>
+    </div>
+    <div class="opt-keys" data-sec="4" hidden>
+    
     <table class="keys">
       <tr><td>1 to 4</td><td>Select that ship (1 is the flagship); again to drop her. Tapping a ship on the map, or her line, does the same</td></tr>
       <tr><td>A</td><td>ALL SHIPS: select every ship</td></tr>
@@ -763,7 +789,9 @@
       <tr><td>V, + − / F, Esc</td><td>Swap the map and the battle view, zoom, pause, as on the bridge</td></tr>
       <tr><td>Plotting screen</td><td>Plot the flagship's course; tap a ship in YOUR SHIPS to send her to the next target in the report</td></tr>
     </table>
-    <h2>Admirals</h2>
+    </div>
+    <div class="opt-keys" data-sec="5" hidden>
+    
     <table class="keys">
       <tr><td>1 to 9</td><td>Select that force (again to drop it); tapping its chip on the map or its line in YOUR FLEET does the same</td></tr>
       <tr><td>Tap a system</td><td>With forces selected: send them there (one warp a turn, the shortest way). With none: what's there</td></tr>
@@ -774,7 +802,8 @@
       <tr><td>W</td><td>WITHDRAW: end the campaign now; what your forces hold still scores</td></tr>
       <tr><td>Enter / Esc</td><td>END TURN / clear the selection</td></tr>
     </table>
-    <div class="menu"><button id="btn-options-close" class="primary">Done</button></div>
+    </div>
+    <div class="menu"><button id="btn-opt-keys-close" class="primary">Back</button></div>
   </div>
 </section>
 <section id="ov-sounds" class="overlay" hidden>
@@ -946,6 +975,6 @@
 <script src="js/ribbons.js?b=7eceb924"></script>
 <script src="js/admirals.js?b=0ab9384a"></script>
 <script src="js/admiralsview.js?b=f07c650b"></script>
-<script src="js/ui.js?b=53017cbd"></script>
+<script src="js/ui.js?b=6a83e6eb"></script>
 </body>
 </html>
