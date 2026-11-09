@@ -938,7 +938,13 @@
               aimWard: 0.5, wingSelf: 0.5, gunWard: 0.3, gunWing: 0.3, wardLead: 0.04, wardRadius: 0.025, wingTurn: 60, botAstern: 30,
               kinds: { carrier: { name: "carrier", label: "CARRIER", ships: [1, 1], hull: 100, perMJ: 0.03, size: 1.8, width: 0.29 },
                        capital: { name: "capital ship", label: "CAPITAL SHIP", ships: [1, 1], hull: 100, perMJ: 0.03, size: 1.8, width: 0.26 },
-                       convoy: { name: "convoy", label: "CONVOY", ships: [3, 5], hull: 100, perMJ: 0.08, gap: 0.015, station: 0.075, size: 0.9, width: 0.42 } }, clear: 0.08 },
+                       convoy: { name: "convoy", label: "CONVOY", ships: [3, 5], hull: 100, perMJ: 0.08, gap: 0.015, station: 0.075, size: 0.9, width: 0.42, afloat: true },
+                       // (the mission types' wards, BL.COMMAND.ops: look, how she's drawn; start, her hull at
+                       // the start; aimWard, the share of groups that go for her; afloat: scored by the ships through)
+                       cripple: { name: "damaged cruiser", label: "DAMAGED SHIP", look: "capital", ships: [1, 1], hull: 100, start: 0.45, perMJ: 0.04, size: 1.6, width: 0.26 },
+                       bigConvoy: { name: "convoy", label: "CONVOY", look: "convoy", afloat: true, ships: [6, 8], hull: 100, perMJ: 0.08, gap: 0.015, station: 0.09, size: 0.9, width: 0.42 },
+                       busterShip: { name: "buster ship", label: "BUSTER SHIP", look: "capital", ships: [1, 1], hull: 100, perMJ: 0.025, size: 1.6, width: 0.26, aimWard: 0.6 },
+                       fleet: { name: "fleet", label: "FLEET", look: "capital", afloat: true, ships: [4, 5], hull: 100, start: 0.75, perMJ: 0.035, gap: 0.02, station: 0.09, size: 1, width: 0.26 } }, clear: 0.08 },
     // Squadrons (approved Nov 2, 2026; the Squadron test). Revised Nov 2, 2026 (TexasBont liked all
     // four sample screens): the squadron fights on the map. Each system has enemy targets with places,
     // headings and gun arcs on a larger map (`window` x a lone ship's warp window, so the map is that
@@ -1020,7 +1026,16 @@
                       // between the zone and the nearest of our ships it sees, never more than `guard` x its
                       // range from its post; `quiet`: no arrival call in the battle view, the captains'
                       // contact reports name it)
-                      fortress: { name: "Fortress ship", enc: "fortress", hp: 8000, speed: 0.35, guard: 0.6, quiet: true, guns: [[0, 180, 11]], range: 24 } },
+                      fortress: { name: "Fortress ship", enc: "fortress", hp: 8000, speed: 0.35, guard: 0.6, quiet: true, guns: [[0, 180, 11]], range: 24 },
+                      // (the mission types' own targets, BL.COMMAND.ops; Nov 9, 2026. capital: a strike's one big
+                      // target, its wave by our class, encBy; merchant: a raided convoy's ship, making for its
+                      // own exit off the map; bastion: a fortress outranged by our guns (bombard); flagship: an
+                      // enemy capital ship, broadsides (duel))
+                      capital: { name: "Azurian capital ship", enc: "cruiserA", encBy: { gunboat: "frigate", picket: "frigate", destroyerEscort: "frigate", battleship: "battleshipA", dreadnought: "battleshipA" },
+                                 hp: 1200, speed: 0.5, patrol: true, guns: [[0, 30, 2, "lead"], [90, 60, 5], [-90, 60, 5]], range: 18 },
+                      merchant: { name: "Merchant", enc: "raiders", hp: 260, speed: 0.6, convoy: true, guns: [[0, 180, 1]], range: 8 },
+                      bastion: { name: "Bastion", enc: "fortress", hp: 1800, speed: 0, guns: [[0, 180, 9]], range: 13 },
+                      flagship: { name: "Azurian battleship", enc: "battleshipA", hp: 1600, speed: 0.5, patrol: true, guns: [[0, 30, 3, "lead"], [90, 60, 8], [-90, 60, 8]], range: 19 } },
                     pick: ["siege", "raiders", "interceptors", "frigate", "hunters", "raiders"],
                     // A planet buster mission (the dreadnought; Nov 3, 2026, TexasBont: "They shouldn't be trying
                     // to do anything but get through the system without being shot down... the big fortress ships
@@ -1039,6 +1054,52 @@
                     // every ship left in formation: none, the dreadnought 9.)
                     classK: { gunboat: [0.2, 0.36], picket: [0.24, 0.54], destroyerEscort: [0.41, 0.61], destroyer: [0.83, 0.83], lightCruiser: [1.28, 1.09],
                               cruiser: [2.3, 1.73], heavyCruiser: [2.8, 2.2], battleship: [2.65, 3], dreadnought: [1.2, 3] } } },
+    /* Mission types (Nov 9, 2026, TexasBont: "I like them all ... these new ones are going to give us
+       extra options"; in the Starforce Academy for now, the career's jobs unchanged). opsBy: the types
+       each class flies, on the bridge (captain) and as a squadron; the first is the class's usual one.
+       A type is one of:
+       - targets on the map (map: its `place`), as a squadron fights them: a lone ship's have
+         `solo` x a squadron's strength for one of its ships, and `soloOthers` others; `need`: the
+         share of the objectives that must go (all if none); `zone`: the warp waits till they're gone, or the window has been open that many s.
+       - an escort (escort: true, the usual ward; or a kind of BL.COMMAND.escort.kinds).
+       - a station to hold (hold: s on it, inside its ring; the window that much longer; hidden: no
+         new waves come while she sits on it at slow or stopped).
+       - findSiege: a siege line in every system, unreported, found once its fire on her reaches `spot`.
+       - sweep: a minefield in every system, and a convoy following her course through it.
+       force: x the enemy's numbers. noBuster: she flies without the planet buster. */
+    ops: {
+      standard: { name: "Standard run", brief: "Get through every system and warp on." },
+      scout: { name: "Scouting run", brief: "Fly through each system's checkpoints in order, then warp on." },
+      escort: { name: "Escort", escort: true, brief: "Keep station on the ship you escort and bring her through every system." },
+      strike: { name: "Torpedo strike", map: true, place: "strike", brief: "Each system holds one big enemy ship: sink her before the sortie ends." },
+      hunt: { name: "Hunt the damaged", map: true, place: "hunt", need: 0.6, brief: "Damaged enemy ships are running: sink at least 3 in 5 of them in each system." },
+      watch: { name: "Picket watch", hold: 45, hidden: true, brief: "Sit on the station marked in each system for 45 s, at slow or stopped so they don't find you, then warp on." },
+      findSiege: { name: "Find the siege line", findSiege: true, spot: 0.5, brief: "Each system has a siege line the pickets haven't found. Find it (fly close enough to draw its full fire) to put it on the map, then warp on." },
+      rescue: { name: "Rescue", escort: "cripple", brief: "A badly damaged ship is limping home: escort her through every system." },
+      sweep: { name: "Mine sweep", escort: "convoy", sweep: true, mineK: 3, brief: "Each system is mined. Lead the convoy through it: your guns clear the lane, and a mine left in it can hit a merchant." },
+      raid: { name: "Convoy raid", map: true, place: "raid", need: 0.6, brief: "An Azurian convoy is crossing each system: sink at least 3 in 5 of its merchants before they get off the map." },
+      clearZone: { name: "Clear the warp zone", map: true, place: "zone", zone: 120, brief: "The enemy sits in each warp zone: destroy everything guarding it. You can't warp till it's clear (or till the window has been open 2 minutes, the objective missed)." },
+      convoyLead: { name: "Lead a convoy", escort: "bigConvoy", brief: "A big convoy: keep station and bring as many merchants through as you can." },
+      blockade: { name: "Break the blockade", map: true, place: "blockade", need: 0.01, brief: "Siege batteries stand across the way in each system: destroy at least one to punch a gap." },
+      hold: { name: "Hold the point", hold: 60, force: 1.3, brief: "Hold the station marked in each system for 60 s against everything they send, then warp on." },
+      depot: { name: "Depot strike", map: true, place: "depot", brief: "Destroy each system's supply depot before you warp on." },
+      bombard: { name: "Bombard a fortress", map: true, place: "bombard", brief: "Each system has a bastion: its guns reach 13 s, yours 16 s. Stand off and wear it down." },
+      busterEscort: { name: "Escort the buster ship", escort: "busterShip", brief: "She carries a planet buster: keep station and bring her through every system. The enemy goes for her." },
+      siege: { name: "Break the siege", map: true, place: "siege", brief: "A line of siege batteries in each system: destroy every one before you warp on." },
+      duel: { name: "Capital ship duel", map: true, place: "duel", brief: "An Azurian battleship in each system: sink her before you warp on." },
+      finale: { name: "Through the fortresses", map: true, place: "buster", brief: "Get through to the drop zone and drop the planet buster. Fortress ships guard the zone." },
+      lastStand: { name: "Last stand", escort: "fleet", force: 1.1, noBuster: true, brief: "The fleet is falling back, badly hurt: cover its retreat through every system." }
+    },
+    opsBy: {
+      captain: { gunboat: ["standard", "escort", "strike", "hunt"], picket: ["scout", "watch", "findSiege"], destroyerEscort: ["standard", "escort", "rescue", "sweep"],
+                 destroyer: ["standard", "raid", "clearZone"], lightCruiser: ["standard", "convoyLead", "blockade"], cruiser: ["standard", "hold", "depot"],
+                 heavyCruiser: ["standard", "bombard", "busterEscort"], battleship: ["standard", "siege", "duel"], dreadnought: ["standard", "finale", "lastStand"] },
+      squadron: { gunboat: ["depot", "strike", "hunt"], picket: ["depot"], destroyerEscort: ["depot"], destroyer: ["depot", "raid", "clearZone"],
+                  lightCruiser: ["depot", "blockade"], cruiser: ["depot"], heavyCruiser: ["depot", "bombard"], battleship: ["depot", "siege", "duel"], dreadnought: ["finale"] }
+    },
+    // A lone ship on a targets mission: `solo` x one squadron ship's share of the targets' strength,
+    // `soloOthers` besides the objectives. A station to hold: `r` x the map, `along` of the way and `side` off it.
+    solo: 1, soloOthers: [1, 2], holdAt: { r: 0.07, along: [0.4, 0.6], side: [0.08, 0.18] },
     // A picket's scouting run (the captain's path): `n` checkpoints of radius `r` (x the map's size)
     // to fly through in order, spread over `along` of the way to the jump point and `side` off it.
     // The navigator's plot keeps `slack` s in hand for each one.

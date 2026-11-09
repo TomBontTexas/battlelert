@@ -38,6 +38,13 @@
     this.seed = opts.seed || BL.randomSeed();
     this.rng = BL.rng(this.seed);
     this.data = BL.shipFor(opts.classId || "destroyer", opts.tl);
+    // The mission type (BL.COMMAND.ops; null: the class's usual mission). opK: its settings.
+    // (onMap: the enemy is the map's targets, a squadron's or a lone ship's: Captain.makeSquad)
+    this.op = opts.op && BL.COMMAND.ops[opts.op] ? opts.op : null;
+    var opK = this.opK = this.op ? BL.COMMAND.ops[this.op] : {};
+    if (opK.noBuster) this.data = Object.assign({}, this.data, { systems: this.data.systems.filter(function (s) { return s.id !== "buster"; }) });
+    this.solo = !!opK.map && !!opts.captain && !opts.flag;
+    var onMap = this.onMap = this.solo || (!!opts.flag && !!opts.captain);
     this.shipName = opts.shipName || null;          // (the job's ship, "INS Fletcher"; none in a test)
     this.cfg = Object.assign({}, BL.MISSION, { jumps: this.data.mission.jumps, jumpWindowAt: this.data.mission.windows });
     this.phys = BL.PHYSICS;
@@ -56,7 +63,11 @@
     // view, so in the engine room it's a minefield. reports: a line to play in each system.
     if (opts.route) this.route = opts.route.map(function (id) { return id === "sweep" && !opts.gunner ? "minefield" : id; });
     // A squadron fights its map's targets (command.js Squadron): no minefield systems for it yet.
-    if (opts.flag && opts.captain) this.route = this.route.map(function (id) { return id === "minefield" || id === "sweep" ? "raiders" : id; });
+    // (so does a lone ship on a targets mission)
+    if (onMap) this.route = this.route.map(function (id) { return id === "minefield" || id === "sweep" ? "raiders" : id; });
+    // (finding the siege line: one in every system; a mine sweep: mines in every one)
+    if (opK.findSiege) this.route = this.route.map(function () { return "siege"; });
+    if (opK.sweep) this.route = this.route.map(function () { return "sweep"; });
     this.intelKnown = {};                     // (systems where the report turned out wrong: Mission.shown)
     // The bridge's survey of each system (Mission.reported): its own random stream, so the
     // mission's is unchanged.
@@ -68,7 +79,7 @@
         var id = self.route[i]; return id !== "minefield" && id !== "sweep" && pool.some(function (ty) { return ty !== id; });
       });
       this.intel = this.route.slice();
-      if (can.length && (ir.chance(BL.COMMAND.intelWrong) || opts.test)) {
+      if (can.length && !opK.findSiege && (ir.chance(BL.COMMAND.intelWrong) || opts.test)) {
         var k = ir.pick(can); this.intel[k] = ir.pick(pool.filter(function (ty) { return ty !== self.route[k]; }));
       }
     }
@@ -92,7 +103,7 @@
     // Command (opts.captain): the player is the captain; an NPC pilot flies the helm; see command.js.
     // opts.escort: an escort mission (a gunboat squadron screens the carrier each sortie, a
     // destroyer escort squadron a convoy or capital ship each system; Captain, BL.COMMAND.escort).
-    this.escort = !!opts.escort; this.escortKind = opts.escortKind || null;     // (a story mission names the ward: carrier, convoy or capital)
+    this.escort = !!opts.escort || !!opK.escort; this.escortKind = typeof opK.escort === "string" ? opK.escort : opts.escortKind || null;     // (a story mission names the ward: carrier, convoy or capital)
     // opts.flag: a squadron mission (the Squadron test): we're the flagship of a squadron (Captain, BL.COMMAND.squad).
     this.flag = !!opts.flag && !!opts.captain;
     this.captain = opts.captain && this.helm ? new BL.Captain(this) : null;
@@ -192,7 +203,8 @@
   Mission.prototype.windowFor = function (i) {
     var w = this.cfg.jumpWindowAt[Math.min(i, this.cfg.jumpWindowAt.length - 1)], enc = BL.ENCOUNTERS[this.route[i]];
     // (a squadron's map is BL.COMMAND.squad.map.window x bigger, and its window that much longer)
-    return Math.round(w * ((enc && enc.windowScale) || 1) * (this.flag ? BL.COMMAND.squad.map.window : 1));
+    // (a lone ship's targets map likewise; a station to hold: its hold time longer)
+    return Math.round(w * ((enc && enc.windowScale) || 1) * (this.onMap ? BL.COMMAND.squad.map.window : 1)) + (this.opK.hold || 0);
   };
 
   /* ---------------------------------------------------------- Player input */
@@ -362,7 +374,8 @@
 
   Mission.prototype.finish = function (outcome) {
     // (a squadron that warped on leaving a system's objective standing has failed its mission)
-    if (this.flag && outcome === "success" && !this.testWinning && this.captain && this.captain.sqMissed()) outcome = "objectiveMissed";
+    // (so has a lone ship that left one, or a station not held, or a siege line not found: Captain.opMissed)
+    if (outcome === "success" && !this.testWinning && this.captain && ((this.onMap && this.captain.sqMissed()) || this.captain.opMissed())) outcome = "objectiveMissed";
     this.phase = "done";
     this.closeOverloadRun();
     this.result = this.captain ? BL.scoreCaptain(this, outcome) : this.helm ? BL.scoreHelm(this, outcome) : this.turret ? BL.scoreGunner(this, outcome) : BL.score(this, outcome);
@@ -383,6 +396,8 @@
     // Our ship's tech level: the forces are set for tech level 6 (the gunboat's 4); an older ship
     // meets fewer of them, a newer one more (BL.TECH.forceStep a level), so lower tech is harder
     // but not hopeless.
+    // (a mission type's own: BL.COMMAND.ops force)
+    f *= this.opK.force || 1;
     return c === "gunboat" ? f : f * (1 + BL.TECH.forceStep * (this.data.tl - 6));
   };
   // Under 1, it's the chance a wave comes at all when one is due (the system's first always comes).
@@ -399,12 +414,13 @@
     // so a drive that can't keep up never stalls the mission forever.
     var cutoff = this.windowAt() + (enc.breakOff === undefined ? this.cfg.breakOff : enc.breakOff);
     // (a squadron: its enemies are the map's targets, Captain.runSquad, not waves on a timer)
-    if (!enc.mines && !enc.sweep && t >= this.nextWaveAt && t < cutoff && !this.flag) {
+    // (on a picket watch, none come while she sits hidden on her station: Captain.hidden)
+    if (!enc.mines && !enc.sweep && t >= this.nextWaveAt && t < cutoff && !this.onMap && !(this.captain && this.captain.hidden())) {
       this.queueWaves(this.forceCount(), enc);
       this.nextWaveAt = t + r.range(enc.waveEvery);
     }
     // Stragglers: light waves of another encounter type that join the fight (frigate groups).
-    if (enc.stragglers && t >= this.nextStragglerAt && t < cutoff && !this.flag) {
+    if (enc.stragglers && t >= this.nextStragglerAt && t < cutoff && !this.onMap) {
       // (no drive-hunter stragglers at the drop)
       var stys = this.isDrop() ? enc.stragglers.types.filter(function (ty) { return ty !== "hunters"; }) : enc.stragglers.types;
       for (var q = this.forceCount(), qi = 0; qi < q; qi++) { var sty = r.pick(stys); this.queueWaves(1, BL.ENCOUNTERS[sty], sty, "straggler", qi); }

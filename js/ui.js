@@ -106,18 +106,26 @@
   // or destroyer); you on the bridge, plotting each system's course in warp space and giving the
   // orders; an NPC crew (pilot, gun crew, engineer) carries them out. On a gunboat you're the
   // coxswain: three sorties from the carrier, each ending at its recovery point.
-  // (…Escort: an escort mission, the squadron screening a carrier, convoy or capital ship; command.js Escort.
-  // A picket flies a scouting run through checkpoints.)
-  var CAPTAIN_SHIPS = ["gunboat", "gunboatEscort", "picket", "destroyerEscort", "destroyerEscortEscort", "destroyer", "lightCruiser", "cruiser", "heavyCruiser", "battleship", "dreadnought"];
-  var CAPTAIN_ESCORT = { gunboatEscort: "gunboat", destroyerEscortEscort: "destroyerEscort" };     // escort mission picks: their class
-  CAPTAIN_SHIPS.forEach(function (id) {
-    var esc = CAPTAIN_ESCORT[id], o = document.createElement("option"); o.value = id; o.textContent = BL.classById(esc || id).name + (esc ? " (escort mission)" : ""); $("cap-pick").appendChild(o);
-  });
+  // The mission picked beside it (BL.COMMAND.ops, Nov 9, 2026): the class's usual one, its escort
+  // mission (the gunboat and destroyer escort), and the new types, each class its own (opsBy.captain).
+  var CAPTAIN_SHIPS = ["gunboat", "picket", "destroyerEscort", "destroyer", "lightCruiser", "cruiser", "heavyCruiser", "battleship", "dreadnought"];
+  CAPTAIN_SHIPS.forEach(function (id) { var o = document.createElement("option"); o.value = id; o.textContent = BL.classById(id).name; $("cap-pick").appendChild(o); });
+  // (an old pick of the gunboat or destroyer escort on its escort mission: that class, the escort mission)
+  var OLD_ESCORT = { gunboatEscort: "gunboat", destroyerEscortEscort: "destroyerEscort" };
+  if (OLD_ESCORT[settings.capPick]) { settings.capPick = OLD_ESCORT[settings.capPick]; settings.capOp = "escort"; }
   $("cap-pick").value = CAPTAIN_SHIPS.indexOf(settings.capPick) >= 0 ? settings.capPick : "destroyer";
-  $("cap-pick").onchange = function () { settings.capPick = this.value; saveSettings(); };
+  // A mission picker: the types this class flies (the one wanted if it's among them, else the first).
+  function fillOps(sel, list, want) {
+    sel.innerHTML = list.map(function (id) { return '<option value="' + id + '">' + BL.COMMAND.ops[id].name + "</option>"; }).join("");
+    sel.value = list.indexOf(want) >= 0 ? want : list[0];
+  }
+  function capOps() { fillOps($("cap-op"), BL.COMMAND.opsBy.captain[$("cap-pick").value], settings.capOp); }
+  capOps();
+  $("cap-pick").onchange = function () { settings.capPick = this.value; capOps(); saveSettings(); };
+  $("cap-op").onchange = function () { settings.capOp = this.value; saveSettings(); };
   function captainJob(seed) {
-    var pick = $("cap-pick").value, escort = !!CAPTAIN_ESCORT[pick], id = CAPTAIN_ESCORT[pick] || pick, c = BL.classById(id);
-    return { test: true, station: "captain", classId: id, n: c.n, tl: BL.TECH.base(id), ship: c.name, seed: seed, helm: true, captain: true, escort: escort };
+    var id = $("cap-pick").value, op = $("cap-op").value, c = BL.classById(id);
+    return { test: true, station: "captain", classId: id, n: c.n, tl: BL.TECH.base(id), ship: c.name, seed: seed, helm: true, captain: true, escort: op === "escort", op: op };
   }
   $("btn-captain").onclick = function () {
     BL.audio.init(); click();
@@ -131,10 +139,13 @@
   $("sq-pick").value = BL.COMMAND.squad.test.indexOf(settings.sqPick) >= 0 ? settings.sqPick : "destroyer";
   function sqCount() { $("sq-n").textContent = (BL.COMMAND.squad.size[$("sq-pick").value] || 4) + " ships"; }
   sqCount();
-  $("sq-pick").onchange = function () { settings.sqPick = this.value; saveSettings(); sqCount(); };
+  function sqOps() { fillOps($("sq-op"), BL.COMMAND.opsBy.squadron[$("sq-pick").value], settings.sqOp); }
+  sqOps();
+  $("sq-pick").onchange = function () { settings.sqPick = this.value; sqOps(); saveSettings(); sqCount(); };
+  $("sq-op").onchange = function () { settings.sqOp = this.value; saveSettings(); };
   function squadronJob(seed) {
-    var id = $("sq-pick").value, c = BL.classById(id);
-    return { test: true, station: "squadron", classId: id, n: c.n, tl: BL.TECH.base(id), ship: c.name, seed: seed, helm: true, captain: true, flag: true };
+    var id = $("sq-pick").value, c = BL.classById(id), op = $("sq-op").value;
+    return { test: true, station: "squadron", classId: id, n: c.n, tl: BL.TECH.base(id), ship: c.name, seed: seed, helm: true, captain: true, flag: true, op: op };
   }
   $("btn-squadron").onclick = function () {
     BL.audio.init(); click();
@@ -179,6 +190,15 @@
     var e = BL.ENCOUNTERS[id], look = BL.GUNNERY.looks[id];
     return "<li><b>" + e.name + "</b>: " + (look && look.what ? look.what : e.what.charAt(0).toLowerCase() + e.what.slice(1)) + ".</li>";
   }).join("");
+  // How to play: every mission type, what it asks, and the classes that fly it (BL.COMMAND.ops).
+  (function () {
+    var by = BL.COMMAND.opsBy, low = function (id) { return BL.classById(id).name.toLowerCase(); };
+    $("how-missions").innerHTML = Object.keys(BL.COMMAND.ops).map(function (op) {
+      var K = BL.COMMAND.ops[op], who = function (lv) { return Object.keys(by[lv]).filter(function (c) { return by[lv][c].indexOf(op) >= 0; }).map(low); };
+      var cap = who("captain"), sq = who("squadron");
+      return "<li><b>" + K.name + "</b>: " + K.brief + " <span class=\"muted\">(" + [cap.length ? "bridge: " + cap.join(", ") : "", sq.length ? "squadron: " + sq.join(", ") : ""].filter(Boolean).join("; ") + ")</span></li>";
+    }).join("");
+  })();
   $("btn-how").onclick = function () { BL.audio.init(); click(); overlay("ov-how", true); };
   $("btn-how-close").onclick = function () { click(); overlay("ov-how", false); };
 
@@ -221,7 +241,7 @@
     // A squadron job: its captains from the captains pool (the Captains screen's picks, else the suggestion).
     var rsquad = null;
     if (j.flag && !j.test && career && BL.captains) { j.capsUsed = BL.captains.captainsOf(career, j, true); rsquad = BL.captains.forMission(career, j, j.capsUsed); }
-    sim = new BL.Mission({ seed: j.seed, crew: rcrew, squad: rsquad, classId: j.classId, tl: j.tl, shipName: j.test ? null : j.ship, gunner: guns, helm: !!j.helm, captain: !!j.captain, flag: !!j.flag, escort: !!j.escort, escortKind: j.escortKind || null, test: !!j.test, sweep: j.test && j.classId === "gunboat" && !!guns && !j.escort,
+    sim = new BL.Mission({ seed: j.seed, crew: rcrew, squad: rsquad, classId: j.classId, tl: j.tl, shipName: j.test ? null : j.ship, gunner: guns, helm: !!j.helm, captain: !!j.captain, flag: !!j.flag, escort: !!j.escort, escortKind: j.escortKind || null, test: !!j.test, sweep: j.test && j.classId === "gunboat" && !!guns && !j.escort && (!j.op || j.op === "standard"), op: j.op || null,
       route: story ? story.systems : null, reports: story ? story.reports.map(storyText) : null,
       world: story ? ((story.briefing || "").match(/(industrial|military|transportation|reclamation) world/) || [])[1] : null });
     if (j.test) $("seed-input").value = routeNo(j.seed);
@@ -272,11 +292,15 @@
       : ["Your Station: Main Engineering", "You run the power."];
     $("brief-station").textContent = post[0];
     $("brief-post").textContent = post[1] + (j.test ? "" : " Reputation for a success: +" + BL.career.repFor(j) + ".");
+    // (a mission type, BL.COMMAND.ops: its name and what it asks, above the post)
+    $("brief-op").hidden = !sim.op;
+    if (sim.op) $("brief-op").innerHTML = "<b>Mission: " + sim.opK.name + ".</b> " + sim.opK.brief;
     // A squadron: its ships and captains in a table; how orders reach them is in How to play.
     var sqv = sim.flag && sim.captain.squadView();
     $("brief-squad").hidden = !sqv;
     if (sqv) $("brief-squad").innerHTML = '<p>' + (sqv.ships.length + 1) + " " + cls.name.toLowerCase() + "s in " + BL.COMMAND.squad.formations[sqv.form].name.toLowerCase() + ". " +
       (sim.sys("buster") ? "Get through to the drop zone at the end of system " + sim.cfg.jumps + " and drop the planet buster; fight only what gets in the way. Fortress ships guard the drop zone." :
+      sim.op && sim.op !== "depot" ? "Each system's map shows the enemy's targets; its objectives are gold. Meet the mission's goal before the squadron warps on, or the mission fails." :
       "Each system's map shows the enemy's targets: destroy its objective, the supply depot, before the squadron warps on, or the mission fails.") + "</p><h3>Squadron</h3>" +
       peopleTable(["Ship", "Captain", "Skill", "Temper"], [[1 + " " + esc(sqv.flagName) + " ★", esc(noCox(j.classId, sqv.flag.name)), sqv.flag.label + " " + Math.round(sqv.flag.skill * 100), sqv.flag.temper]]
         .concat(sqv.ships.map(function (x) { return [x.no + " " + esc(x.name), esc(x.cap.name), x.cap.label + " " + Math.round(x.cap.skill * 100), x.cap.temper]; }))) +
@@ -1617,7 +1641,7 @@
     var home = 1 + v.ships.filter(function (x) { return x.live; }).length;
     sqSel = sqSel.filter(function (n) { return n === 1 || v.ships.some(function (x) { return x.no === n && x.live; }); });
     setText($("cp-sq-hd"), "SQUADRON · " + home + " of " + (v.ships.length + 1));
-    var left = c.sqGroups().length, obj = c.sqGroups().filter(function (T) { return T.K.objective; }).length;
+    var left = c.sqGroups().length, ovw = c.objView(), obj = ovw.down < ovw.need;
     cpLine("cp-sq-ln", "<b>" + Q.formations[v.form].short + "</b> · spacing " + Math.round(v.spacing * 100) + "% · " + left + " target" + (left === 1 ? "" : "s") + " left" + (sim.sys("buster") ? "" : obj ? " · objective standing" : " · <span style='color:#3dff7a'>objective down</span>"));
     cpLine("cp-sq-ln2", v.alert ? "⚠ " + esc(v.alert) : ""); $("cp-sq-ln2").hidden = !v.alert;     // (no blank line when there's no alert)
     var pendForm = v.ships.some(function (x) { return x.pend; });
@@ -1710,6 +1734,7 @@
     list.forEach(function (T) {
       var at = plan ? T.rep : c.shownAt(T), p = fr.toPx(at), sel = !plan && sqTgt === T.id, s = big ? 7 : 5;
       ctx.font = "600 " + (big ? 11 : 10) + "px " + mono; ctx.textAlign = "left"; ctx.textBaseline = "middle";
+      if (T.escaped) { place([[T.letter + (big ? " · got away" : ""), "rgba(154,166,178,.6)"]], p, s); return; }     // (a merchant off the map)
       if (T.dead) {
         ctx.strokeStyle = "rgba(255,107,107,.35)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(p.x - s, p.y - s); ctx.lineTo(p.x + s, p.y + s); ctx.moveTo(p.x + s, p.y - s); ctx.lineTo(p.x - s, p.y + s); ctx.stroke();
         place([[T.letter, "rgba(255,179,168,.5)"]], p, s); return;
@@ -1743,7 +1768,7 @@
       ctx.setLineDash([]);
       if (solid && T.K.speed) { var hp2 = fr.toPx(BL.alongMap(at, T.hdg, 0.05 * c.map().D)); ctx.strokeStyle = "#ff6b6b"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(hp2.x, hp2.y); ctx.stroke(); }
       if (sel) { ctx.strokeStyle = "#ffd666"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(p.x, p.y, s + 9, 0, Math.PI * 2); ctx.stroke(); }
-      var lines = [[T.letter + (big ? " · " + T.K.name.toUpperCase() + (plan ? "" : " " + Math.round(100 * T.hp / T.hpMax) + "%") + (T.K.objective ? " · OBJECTIVE" : "") : ""), T.K.objective ? "#ffd666" : "#ffb3a8"]];
+      var lines = [[T.letter + (big ? " · " + T.K.name.toUpperCase() + (plan ? "" : " " + Math.round(100 * T.hp / T.hpMax) + "%") + (T.obj ? " · OBJECTIVE" : "") : ""), T.obj ? "#ffd666" : "#ffb3a8"]];
       if (big && !solid && !plan) lines.push([T.last ? "last seen" : "reported", "#8899a8"]);
       place(lines, p, s + 4);
     });
@@ -1924,9 +1949,15 @@
     var wi = sim.windowIn(), win = wi > 0 ? "Window " + mmss(wi) : "Window open";
     var es = c.escort, sv = hv.station, nav;
     var afloat = es ? es.ships.filter(function (s) { return s.hull > 0; }).length : 0;
-    var cps = c.cur && c.cur.cps.length ? " · CP " + c.cur.cps.filter(Boolean).length + "/" + c.cur.cps.length : "";     // a scouting run's checkpoints
+    var cps = c.cur && c.cur.cps.length && !sim.opK.hold ? " · CP " + c.cur.cps.filter(Boolean).length + "/" + c.cur.cps.length : "";     // a scouting run's checkpoints
+    // (a mission type's goal, BL.COMMAND.ops: the objectives destroyed, the station held, the siege line found)
+    var hi = sim.opK.hold && c.cur ? c.map().checkpoints.map(function (q) { return !!q.hold; }).indexOf(true) : -1;
+    if (sim.solo && c.sqTargets) { var ovb = c.objView(); cps += " · OBJ " + ovb.down + "/" + ovb.need; }
+    else if (hi >= 0) cps += " · STN " + (c.cur.cps[hi] ? "held" : Math.floor(c.cur.held[hi]) + "/" + sim.opK.hold + "s") + (c.hidden() ? " hidden" : "");
+    else if (sim.opK.findSiege && c.cur) cps += " · SIEGE " + (c.cur.found ? "found" : "not found");
     if (c.inRock || c.inMines) nav = "⚠ <b>" + (c.inRock ? "ASTEROIDS" : "MINEFIELD") + "</b>";
-    else if (es && !es.flag) nav = (sv ? "<b>" + STATION_SHORT[c.station] + "</b> " + (sv.on ? "on" : "<b>off</b>") : "To the zone") + " · " + (es.kind === "convoy" ? "Convoy " + afloat + "/" + es.ships.length + " " : es.kind === "capital" ? "Capital " : "Carrier ") + "<b>" + Math.round(100 * es.hull / es.hullMax) + "%</b>";
+    else if (es && !es.flag) nav = (sv ? "<b>" + STATION_SHORT[c.station] + "</b> " + (sv.on ? "on" : "<b>off</b>") : "To the zone") + " · " + (WARD_SHORT[es.id] || "Ward") + " " + (es.W.afloat ? afloat + "/" + es.ships.length + " " : "") + "<b>" + Math.round(100 * es.hull / es.hullMax) + "%</b>";
+    else if (hv.onStation) nav = "<b>ON STATION</b> · " + Math.floor(c.cur.held[hi]) + "/" + sim.opK.hold + "s";
     else if (hv.holding) nav = "<b>IN THE ZONE</b> · " + hdg3(c.info.jumpHdg);
     else nav = "Leg <b>" + nv.leg + "</b>/" + nv.legs + " · " + (nv.next ? "<b>" + hdg3(nv.next.hdg) + "</b> in " + Math.ceil(nv.next.in) + "s" : "zone " + (h.speed > 0.2 ? Math.ceil(nv.toZone / spd) + "s" : "–"));
     cpLine("cp-nav-ln", nav);
@@ -2201,6 +2232,12 @@
         if (sqSel.length) { sqSpot(t); click(); return; }
         sqTgt = null;
       }
+      // A lone ship on a targets mission: a tap on a target sends her to it (RESUME: back to the plot).
+      if (sim.solo) {
+        var st0 = null, sd0 = 22;
+        c.sqGroups().forEach(function (T) { if (T.unknown && !T.seen && !T.last) return; var q = fr0.toPx(c.shownAt(T)), d = Math.hypot(q.x - p.at.x, q.y - p.at.y); if (d < sd0) { sd0 = d; st0 = T; } });
+        if (st0) { c.flagTo({ kind: "target", id: st0.id }); click(); return; }
+      }
       c.orderCourse(BL.navBearing(c.pos, t));
     }
     mv.addEventListener("pointerup", mapUp); mv.addEventListener("pointercancel", mapUp);
@@ -2250,6 +2287,7 @@
     var plabels = [];
     if (plCtx) BL.drawNavMap(plCtx, plW, plH, e.map, e.plot, { frame: pfr, info: info, labels: plabels });
     if (plCtx && sim.flag) { drawTargets(plCtx, pfr, sim.captain.sqMaps[e.i], true, sim.captain, true, plabels); drawPlotSquad(); }
+    else if (plCtx && sim.solo) drawTargets(plCtx, pfr, sim.captain.sqMaps[e.i], true, sim.captain, true, plabels);     // (a lone ship's targets: plot past them)
     // The legs: heading, time, engine order (tap to change).
     $("pl-legs").innerHTML = info.legs.map(function (l, k) {
       var t = l.len / Math.max(0.1, plotGOf(l.eng) * K.scale);
@@ -2342,18 +2380,30 @@
       (next ? "<h2>Next: " + tc(next.name) + "</h2><p>" + next.what + ". The drive will be empty again on arrival. Plot its course next; the clock is stopped.</p>" : "");
   }
   // The warp space report's squadron line: each ship's hull (a squadron only).
+  // (a lone ship on a targets mission: its targets line)
   function squadLine() {
-    var v = sim.flag && sim.captain.squadView();
-    if (!v) return "";
-    var ts = sim.captain.sqTargets || [], down = ts.filter(function (T) { return T.dead; }).length, obj = ts.filter(function (T) { return T.K.objective; })[0];
-    return "<li>Squadron: " + v.ships.map(function (x) { return esc(x.name) + " " + (x.live ? Math.round(x.hull * 100) + "%" : x.doing); }).join(", ") + "</li>" +
-      "<li>Targets destroyed: " + down + " of " + ts.length + (obj ? " · the objective (" + obj.letter + ") " + (obj.dead ? "destroyed" : "still standing") : "") + "</li>";
+    var c = sim.captain, v = sim.flag && c.squadView();
+    if (!v && !sim.solo) return "";
+    var ts = c.sqTargets || [], down = ts.filter(function (T) { return T.dead && !T.escaped; }).length, ov = c.objView(), obj = ts.filter(function (T) { return T.obj; });
+    var objTxt = obj.length === 1 ? " · the objective (" + obj[0].letter + ") " + (obj[0].dead ? "destroyed" : "still standing")
+      : obj.length ? " · objectives " + ov.down + " of " + ov.all + (ov.need < ov.all ? " (" + ov.need + " needed)" : "") + (ov.gone ? ", " + ov.gone + " got away" : "") : "";
+    return (v ? "<li>Squadron: " + v.ships.map(function (x) { return esc(x.name) + " " + (x.live ? Math.round(x.hull * 100) + "%" : x.doing); }).join(", ") + "</li>" : "") +
+      "<li>Targets destroyed: " + down + " of " + ts.length + objTxt + "</li>";
+  }
+  // The objectives line of the debrief's targets (a mission type's: those it needed, those that got away).
+  function objLine(q) { return q.objectives ? " (objectives " + q.objectivesDown + " of " + q.objectives + (q.need && q.need < q.objectives ? ", " + q.need + " needed" : "") + (q.escaped ? ", " + q.escaped + " got away" : "") + ")" : ""; }
+  function upFirst(t) { return String(t).replace(/^./, function (x) { return x.toUpperCase(); }); }
+  // Why an objective was missed: the squadron's or lone ship's targets, a station, a siege line.
+  function missedText() {
+    var c = sim.captain, n = sim.onMap ? c.sqMissed() : c.opMissed(), sy = n === 1 ? " system." : " systems.";
+    return sim.flag ? "The squadron warped on leaving the objective standing in " + n + sy : sim.solo ? "You warped on short of the objective in " + n + sy
+      : sim.opK.hold ? "The station wasn't held in " + n + sy : "The siege line wasn't found in " + n + sy;
   }
   function debriefCaptain(r) {
     var cp = r.captain, d = r.detail, K = BL.COMMAND, good = [];
     if (r.outcome === "success") good.push(sim.sys("buster") ? "The planet buster was dropped on the " + sim.world + " world." : sim.hasDrive ? "The ship made all its warps." : "The carrier recovered her after every sortie.");
     if (!cp.rockHits) good.push("No asteroid hits.");
-    if (cp.squad && cp.squad.home === cp.squad.n) good.push("Every ship of the squadron came home.");
+    if (cp.squad && !cp.squad.solo && cp.squad.home === cp.squad.n) good.push("Every ship of the squadron came home.");
     var onTime = cp.systems.filter(function (s) { return s.zoneAt !== null && s.zoneAt <= s.window + K.zoneGrace; }).length;
     if (onTime === cp.systems.length && cp.systems.length) good.push(sim.hasDrive ? "In the warp zone on time every time." : "In the recovery zone on time every time.");
     if (cp.breaks + cp.pilotBreaks && cp.breaksMade === cp.breaks + cp.pilotBreaks) good.push("Every break was made.");
@@ -2362,10 +2412,10 @@
     if (cpN && cpHit === cpN) good.push("Every checkpoint scouted.");
     $("db-good").textContent = good.join(" ");
     var sqLost = cp.squad ? cp.squad.lost + cp.squad.left : 0;
-    $("db-worst").textContent = r.outcome === "destroyed" ? "The ship was destroyed." : r.outcome === "objectiveMissed" ? "The squadron warped on leaving the objective standing in " + sim.captain.sqMissed() + (sim.captain.sqMissed() === 1 ? " system." : " systems.") : sqLost ? "The squadron lost " + sqLost + " of its " + cp.squad.n + " ships." : r.outcome === "dropMissed" ? "The drop window closed before the planet buster was launched." : r.outcome === "wardLost" ? "The " + cp.escort.name + " was lost." : r.outcome === "leftBehind" ? "The carrier's hangar bay was destroyed: she warped without you." :
+    $("db-worst").textContent = r.outcome === "destroyed" ? "The ship was destroyed." : r.outcome === "objectiveMissed" ? missedText() : sqLost ? "The squadron lost " + sqLost + " of its " + cp.squad.n + " ships." : r.outcome === "dropMissed" ? "The drop window closed before the planet buster was launched." : r.outcome === "wardLost" ? "The " + cp.escort.name + " was lost." : r.outcome === "leftBehind" ? "The carrier's hangar bay was destroyed: she warped without you." :
       cpHit < cpN ? "Missed " + (cpN - cpHit) + " of " + cpN + " checkpoints." : cp.rockHits ? "The ship hit asteroids " + cp.rockHits + (cp.rockHits === 1 ? " time." : " times.") :
       onTime < cp.systems.length ? "The ship reached the " + (sim.hasDrive ? "warp" : "recovery") + " zone late in " + (cp.systems.length - onTime) + " of " + cp.systems.length + (sim.hasDrive ? " systems." : " sorties.") :
-      cp.unanswered && !(cp.squad && !cp.squad.flagBridge) ? cp.unanswered + " torpedo bursts came and went with no call from you (taken on the shields)." : "Nothing went badly wrong.";     // (a squadron: the break calls were the flag captain's)
+      cp.unanswered && !(cp.squad && !cp.squad.solo && !cp.squad.flagBridge) ? cp.unanswered + " torpedo bursts came and went with no call from you (taken on the shields)." : "Nothing went badly wrong.";     // (a squadron: the break calls were the flag captain's)
     $("db-jumps").innerHTML = "<tr><th>" + (sim.hasDrive ? "Warp" : "Sortie") + "</th><th>Encounter</th><th>Legs</th><th>In the zone</th><th>Asteroid hits</th><th>Breaks made</th><th>Shielded</th><th>Hull lost</th><th>Seconds</th></tr>" +
       r.jumps.map(function (j, i) {
         var s = cp.systems[i] || {}, t = sim.helm.jumps[i] || {};
@@ -2382,15 +2432,18 @@
       ["Asteroid hits", cp.rockHits], ["Enemy areas flown into", cp.swarms || 0]].concat(cp.dropped ? [
       ["Dropped down", "you took a station yourself; stood aside: " + (cp.replacedNames.map(esc).join(", ") || "nobody") + " (once a mission: −1 command reputation, −1 morale to each man replaced)"]] : []).concat(cpN ? [
       ["Checkpoints", cp.systems.map(function (s) { return s.cpsHit + "/" + s.cps; }).join(" · ") + " (system by system)"]] : []).concat(cp.escort ? [
-      [cp.escort.kind === "convoy" ? "Convoy at the end" : (cp.escort.kind === "capital" ? "Capital ship" : "Carrier") + " hull at the end",
-        (cp.escort.kind === "convoy" ? cp.escort.afloat + " of " + cp.escort.ships + " merchants through, hull " : "") + cp.escort.hull + "%"],
+      [upFirst(cp.escort.name) + (cp.escort.counted ? " at the end" : " hull at the end"),
+        (cp.escort.counted ? cp.escort.afloat + " of " + cp.escort.ships + (cp.escort.id === "fleet" ? " ships" : " merchants") + " through, hull " : "") + cp.escort.hull + "%" + (cp.escort.mines ? " · " + cp.escort.mines + " mines hit her" : "")],
       ["Squadron", cp.escort.squad + " ships: wingmen shot down " + cp.escort.wingStops + " torpedoes" + (cp.escort.wingLost ? ", " + cp.escort.wingLost + " lost" : "")],
       ["On station", cp.escort.onStation.map(function (p) { return p + "%"; }).join(" · ") + (sim.hasDrive ? " (system by system)" : " (sortie by sortie)")],
-      ["Torpedoes at the " + cp.escort.name, cp.escort.calls + " bursts: " + cp.escort.covers + " covered (" + cp.escort.covered + " torpedoes taken on our shields), " + cp.escort.torps + " hit her"]] : []).concat(cp.squad ? [
+      ["Torpedoes at the " + cp.escort.name, cp.escort.calls + " bursts: " + cp.escort.covers + " covered (" + cp.escort.covered + " torpedoes taken on our shields), " + cp.escort.torps + " hit her"]] : []).concat(cp.squad && !cp.squad.solo ? [
       ["Squadron", cp.squad.home + " of " + cp.squad.n + " ships home" + (cp.squad.lost ? ", " + cp.squad.lost + " lost" : "") + (cp.squad.left ? ", " + cp.squad.left + " left behind" : "")],
       [cap(sim.data.classId, "Flag captain"), esc(cp.squad.flag) + (cp.squad.flagBridge ? " (you took his bridge: once a mission −1 squadron reputation, −1 morale to him)" : "")],
       [cap(sim.data.classId, "Captains"), cp.squad.ships.map(function (x) { return esc(x.ship) + " (" + esc(x.name) + "): " + (x.left ? "left behind" : x.hull > 0 ? "hull " + x.hull + "%" : "lost") + ", " + x.kills + " kills"; }).join(" · ")],
-      ["Targets destroyed", cp.squad.targetsDown + " of " + cp.squad.targets + (cp.squad.objectives ? " (objectives " + cp.squad.objectivesDown + " of " + cp.squad.objectives + ")" : "") + "; " + cp.squad.kills + " finished off by the other ships"]] : []).concat([
+      ["Targets destroyed", cp.squad.targetsDown + " of " + cp.squad.targets + objLine(cp.squad) + "; " + cp.squad.kills + " finished off by the other ships"]] : []).concat(cp.squad && cp.squad.solo ? [
+      ["Targets destroyed", cp.squad.targetsDown + " of " + cp.squad.targets + objLine(cp.squad)]] : []).concat(cp.held && sim.opK.hold ? [
+      ["Station held", cp.systems.map(function (s) { return s.cpsHit ? "yes" : "no"; }).join(" · ") + " (system by system)"]] : []).concat(sim.opK.findSiege ? [
+      ["Siege line found", cp.found.map(function (f) { return f ? "yes" : "no"; }).join(" · ") + " (system by system)"]] : []).concat([
       ["Enemy ships destroyed by your crew", cp.kills + " / " + cp.ships],
       ["Torpedoes shot down", cp.downed],
       ["Hull lost", d.hullLost],
@@ -2623,12 +2676,14 @@
     return String(t || "").replace(/\{hero\}/g, career ? career.name : "Recruit").replace(/\{ship\}/g, job ? BL.shipLabel(job.classId, job.ship, job.hull) : "the ship");
   }
 
+  // The ward on the bridge's NAVIGATION line (command.js Escort; the mission types' wards too).
+  var WARD_SHORT = { carrier: "Carrier", capital: "Capital", convoy: "Convoy", bigConvoy: "Convoy", cripple: "Damaged", busterShip: "Buster", fleet: "Fleet" };
   /* ---------------------------------------------------------- Debriefing */
   function showDebrief() {
     var r = sim.result, d = r.detail;
     show("scr-debrief");
     $("db-title").textContent = r.outcome === "success" ? (r.hasDrive ? (sim.sys("buster") ? "Mission complete: planet buster delivered" : "Mission complete") : "Sortie complete: recovered by the carrier") :
-      r.outcome === "destroyed" ? "Ship destroyed" : r.outcome === "dropMissed" ? "Drop window missed: the planet buster never launched" : r.outcome === "wardLost" ? (r.captain && r.captain.escort ? r.captain.escort.name.replace(/^./, function (x) { return x.toUpperCase(); }) : "Carrier") + " lost" : r.outcome === "leftBehind" ? "Left behind: the carrier's hangar bay was destroyed" : r.outcome === "objectiveMissed" ? "Objective missed: the squadron warped on with it still standing" : "Abandoned ship";
+      r.outcome === "destroyed" ? "Ship destroyed" : r.outcome === "dropMissed" ? "Drop window missed: the planet buster never launched" : r.outcome === "wardLost" ? (r.captain && r.captain.escort ? r.captain.escort.name.replace(/^./, function (x) { return x.toUpperCase(); }) : "Carrier") + " lost" : r.outcome === "leftBehind" ? "Left behind: the carrier's hangar bay was destroyed" : r.outcome === "objectiveMissed" ? (sim.flag ? "Objective missed: the squadron warped on with it still standing" : "Objective missed") : "Abandoned ship";
     $("db-title").textContent = tc($("db-title").textContent);
     if (r.testWin) $("db-title").textContent += " (test win)";
     $("db-lede").textContent = (job.test ? "" : BL.shipLabel(job.classId, job.ship, job.hull) + " (TL" + r.tl + ") · ") + "Route " + routeNo(r.seed) + " · " +

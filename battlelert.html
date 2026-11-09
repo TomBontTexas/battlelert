@@ -165,6 +165,7 @@
     <div class="card-top"><div id="brief-art" class="card-art"></div><table id="brief-ship" class="db-table card-stats"></table></div>
     <div class="table-wrap"><table id="brief-guns" class="db-table brief-t brief-guns"></table></div>
     <h2 id="brief-station">Your Station: Main Engineering</h2>
+    <p id="brief-op" hidden></p>
     <p id="brief-post" class="muted"></p>
     <div id="brief-squad" class="table-wrap" hidden></div>
     <div id="brief-crew" class="table-wrap" hidden></div>
@@ -639,7 +640,9 @@
       <button id="btn-ring" class="small">Gunner ring</button><span class="muted">Destroyer</span><span></span>
       <button id="btn-helm" class="small">Pilot helm</button><span class="muted">ship</span><select id="ship-pick" aria-label="ship"></select>
       <button id="btn-captain" class="small">Captain bridge</button><span class="muted">ship</span><select id="cap-pick" aria-label="ship"></select>
+      <span></span><span class="muted">mission</span><select id="cap-op" aria-label="captain's mission"></select>
       <button id="btn-squadron" class="small">Squadron</button><span id="sq-n" class="muted">4 ships</span><select id="sq-pick" aria-label="squadron"></select>
+      <span></span><span class="muted">mission</span><select id="sq-op" aria-label="squadron's mission"></select>
       <button id="btn-admirals" class="small">Admirals</button><span id="adm-n" class="muted">10 ships</span><select id="adm-pick" aria-label="fleet"></select>
     </div>
     <div class="test-seed">
@@ -872,6 +875,9 @@
       <li><b>Flag bridge</b> (D) drops you down to the flagship's bridge: you captain her yourself, with the bridge's own orders and STATIONS, and her flag captain stands aside. <b>SQUADRON</b> (Q) brings you back. Meanwhile the other ships keep the last orders you gave. In the career it costs, once a mission, 1 squadron reputation and 1 morale to the flag captain.</li>
       <li><b>Score.</b> The objective is half the share of each system's objective destroyed (a dreadnought squadron: all of it, with none to destroy) and half the share of your ships brought home (the flagship one of them; if she's destroyed, the mission is lost); the flagship's condition and navigation as on the bridge; command is half the bridge's and half the share of the systems' targets destroyed.</li>
     </ol>
+    <h2>Mission Types</h2>
+    <p>Besides each class's usual mission, the <b>Starforce Academy</b> has a mission picker beside <b>Captain bridge</b> and <b>Squadron</b>, each class with missions of its own (the career's jobs fly the usual ones for now). On a targets mission a lone ship fights targets on the map as a squadron does: tap a target on the bridge map to send her after it (RESUME brings her back to the plot); its objectives are gold. A station to hold is a ring on the map: the pilot slows and stops in it, and the time counts while she's inside (on a picket watch, no new enemy comes while she sits there at slow or stopped).</p>
+    <ul class="tight" id="how-missions"></ul>
     <h2>Admirals</h2>
     <p>A Fleet Admiral fights a campaign, not a mission: take one Azurian world. In your career: the career hub, <b>Admiral ›</b>, once it opens. To try any level: career hub, <b>Starforce Academy</b>, <b>Admirals</b>, and pick the fleet. Fleets are escort pyramids: every ship has two escorts of the class below, all the way down, and every destroyer escort has a squadron of 4 picket ships as escorts and scouts. Each level has 2 ships at the top, each with her whole pyramid: <b>F3</b>, the Fleet Commodore, 2 destroyer escorts (10 ships); <b>F4</b> 2 destroyers (22); <b>F5</b> 2 light cruisers (46); <b>F6</b> 2 cruisers (94); <b>F7</b> 2 heavy cruisers (190); <b>F8</b> 2 battleships (382); and <b>G9</b>, the Grand Admiral, 4 dreadnoughts (1,532). The admiral doesn't deploy gunboat squadrons: a capital ship's gunboats stay with her. The campaign is played in turns on a hex map: each hex is a star system, one warp from the next, and one turn is one warp.</p>
     <ol class="tight">
@@ -903,18 +909,18 @@
 
 <script src="version.js?b=3a5acdc2"></script>
 <script src="update-banner.js?b=ec7860dd"></script>
-<script src="js/data.js?b=6ff98505"></script>
-<script src="js/sim.js?b=c35bac51"></script>
+<script src="js/data.js?b=20924283"></script>
+<script src="js/sim.js?b=fab37c1f"></script>
 <script src="js/agents.js?b=39dd86f3"></script>
 <script src="js/gunnery.js?b=8882d97b"></script>
 <script src="js/ring.js?b=93393000"></script>
 <script src="js/helm.js?b=12e68ca5"></script>
-<script src="js/command.js?b=b9849d81"></script>
+<script src="js/command.js?b=b6b3f1ee"></script>
 <script src="js/training.js?b=48646f29"></script>
 <script src="js/art.js?b=ac37cac5"></script>
 <script src="js/turretview.js?b=960c39ae"></script>
 <script src="js/ringview.js?b=c677aa94"></script>
-<script src="js/bridgeview.js?b=d06c2cb7"></script>
+<script src="js/bridgeview.js?b=9b043268"></script>
 <script src="js/names.js?b=08410f0b"></script>
 <script src="js/story.js?b=d02a8c19"></script>
 <script src="js/captains.js?b=48672b3e"></script>
@@ -925,6 +931,6 @@
 <script src="js/ribbons.js?b=7eceb924"></script>
 <script src="js/admirals.js?b=0ab9384a"></script>
 <script src="js/admiralsview.js?b=f07c650b"></script>
-<script src="js/ui.js?b=9e33f19e"></script>
+<script src="js/ui.js?b=b45722f0"></script>
 </body>
 </html>
