@@ -810,7 +810,7 @@
     es.stD = Math.max(Q.gap * map.D, this.kView ? (2 * Math.max(R.rx, R.ry) + Q.clear) / this.kWing() : 0);
     // (the flagship's track for LINE AHEAD: it starts as a straight line astern of her)
     es.trail = [{ x: this.pos.x, y: this.pos.y }, along(this.pos, es.hdg + 180, 8 * es.stD)];
-    es.alert = null; es.fx = []; es.sel = null; this.flagGo = null;
+    es.alert = null; es.fx = []; es.sel = null; this.flagGo = null; this.selT = null;
     this.sqTargets = this.sqMaps[this.at];
     var pre = this.preOrders[this.at] || {};
     es.wing.forEach(function (g) {
@@ -925,6 +925,26 @@
     var self = this;
     nos.forEach(function (no) { var g = self.shipNo(no); if (g) self.sqOrder(g, "hold", !!on); });
     this.m.cue("tick");
+  };
+  /* A lone ship's target (Nov 9, 2026, TexasBont: "I can fly towards it, but I can't select it"): a
+     tap on a target on the bridge map selects it and sends her after it; once it fights her, its
+     ships in the battle view are the gun crews' target (RingTurret.markAt). Again: cleared. */
+  Captain.prototype.selectTarget = function (id) {
+    var T = this.sqTargets && this.sqTargets[id];
+    if (!T || T.dead) return false;
+    if (this.selT === id) { this.selT = null; if (this.flagGo && this.flagGo.id === id) this.flagGo = null; if (this.m.turret) this.m.turret.mark = null; this.m.cue("tick"); return true; }
+    this.selT = id; this.flagTo({ kind: "target", id: id });
+    return true;
+  };
+  // Its wave's biggest ship in the battle view takes the mark (a torpedo-lockable one first).
+  Captain.prototype.markSelected = function () {
+    var T = this.selT !== null && this.selT !== undefined && this.sqTargets ? this.sqTargets[this.selT] : null, tu = this.m.turret;
+    if (!T || T.dead) { if (T) this.selT = null; return; }
+    if (!tu || !T.wave) return;
+    var mk = tu.marked(); if (mk && mk.wave === T.wave.id) return;
+    var best = null;
+    tu.ships.forEach(function (s) { if (s.wave !== T.wave.id || s.dead || s.state === "leave") return; if (!best || (s.lockable && !best.lockable) || (!!s.lockable === !!best.lockable && s.w * s.h > best.w * best.h)) best = s; });
+    if (best) { tu.mark = best; tu.bats.forEach(function (b) { b.aiNext = 0; }); }
   };
   // The flagship: sent to a target or a spot like the others (RESUME, or a course of your own, ends it).
   Captain.prototype.flagTo = function (o) { this.flagGo = o; this.hdgOrder = null; this.engOrder = null; this.m.cue("tick"); };
@@ -1128,6 +1148,7 @@
         this.sqSay("sqCross", by[Math.floor(this.sqRng.next() * by.length)], { other: who.name });
       } else if (live.length) this.sqSay("sqBusy", live[Math.floor(this.sqRng.next() * live.length)]);
     }
+    this.markSelected();
     es.fx = es.fx.filter(function (f) { return t - f.at < 0.4; });
     if (es.alert && t - es.alert.at > 10) es.alert = null;
   };

@@ -1740,7 +1740,7 @@
       occ.push(best);
     }
     list.forEach(function (T) {
-      var at = plan ? T.rep : c.shownAt(T), p = fr.toPx(at), sel = !plan && sqTgt === T.id, s = big ? 7 : 5;
+      var at = plan ? T.rep : c.shownAt(T), p = fr.toPx(at), sel = !plan && (sqTgt === T.id || (sim.solo && c.selT === T.id)), s = big ? 7 : 5;     // (a lone ship's selected target: Captain.selectTarget)
       ctx.font = "600 " + (big ? 11 : 10) + "px " + mono; ctx.textAlign = "left"; ctx.textBaseline = "middle";
       if (T.escaped) { place([[T.letter + (big ? " · got away" : ""), "rgba(154,166,178,.6)"]], p, s); return; }     // (a merchant off the map)
       if (T.dead) {
@@ -2250,7 +2250,7 @@
           if (L && p.at.x >= L.x0 && p.at.x <= L.x1 && p.at.y >= L.y0 && p.at.y <= L.y1) d = Math.min(d, 1);     // (on its label)
           if (d < sd0) { sd0 = d; st0 = T; }
         });
-        if (st0) { c.flagTo({ kind: "target", id: st0.id }); click(); return; }
+        if (st0) { c.selectTarget(st0.id); click(); return; }
       }
       c.orderCourse(BL.navBearing(c.pos, t));
     }
