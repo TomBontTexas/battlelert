@@ -57,7 +57,8 @@
     var AC = root.AudioContext || root.webkitAudioContext;
     if (!AC) return;
     ctx = new AC();
-    ctx.onstatechange = function () { if (ctx && ctx.state === "running") wakeAt = 0; };
+    // (the iPad suspends the engine around speech: try to wake it at once, not only on a tap)
+    ctx.onstatechange = function () { if (!ctx) return; if (ctx.state === "running") wakeAt = 0; else if (ctx.state !== "closed") setTimeout(nudge, 300); };
     wakeAt = 0;
     if (ctx.state !== "running") wake();
     speechUnlock();
@@ -72,6 +73,12 @@
     try { ctx.close(); } catch (e) {}
     ctx = null; hum = null; humLast = null; rebuilt++; stale = false; unlocked = false; dogT = 0; dogWall = 0; dogMiss = 0;
     live = 0; lastRebuild = Date.now();
+  }
+  // Wake a suspended engine without a tap (after a voice line ends, or when it is suspended): the
+  // iPad allows it for an engine a tap has started before, once speech has let go.
+  function nudge() {
+    if (!ctx || ctx.state === "running" || ctx.state === "closed" || document.visibilityState !== "visible") return;
+    try { var r = ctx.resume(); if (r && r.catch) r.catch(function () {}); } catch (e) {}
   }
   function wake() {
     if (!wakeAt) wakeAt = Date.now();
@@ -203,6 +210,7 @@
 
   BL.audio = {
     init: init,
+    nudge: nudge,
     // The "Restart sound" button (pause, Options): a new engine now (it runs in the tap).
     restart: function () { if (ctx && Date.now() - lastRebuild > REBUILD_GAP) drop(); init(); },
     play: play,

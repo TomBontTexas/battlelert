@@ -124,15 +124,16 @@
   // A gunboat's number digit by digit: "PT-167" -> "P T one six seven", not "P T one hundred sixty-seven".
   function boats(words) { return words.replace(/\bPT-?(\d+)/g, function (x, d) { return "P T " + d.split("").join(" "); }); }
 
-  // Watchdog: if the browser never reports the line finished, let the queue move on anyway.
+  // Watchdog: if the browser never reports the line finished, let the queue move on anyway, but
+  // only once the line's own time is up, and always by cancelling it first: the iPad can say it
+  // has stopped while still talking, and the next line then talked over it, the two faded out
+  // and took the sound effects with them (Nov 9, 2026).
   function unstick() {
     if (!speaking) return;
-    var elapsed = Date.now() - startedAt;
-    var idle = !synth.speaking && !synth.pending && elapsed > 1500;
-    if (idle || elapsed > expectMs) {
+    if (Date.now() - startedAt > expectMs) {
       speaking = false; current = null; stats.rescued++;
       // Safari drops a line spoken right after cancel(), so the next line waits for the timer.
-      if (synth.speaking || synth.pending) { synth.cancel(); return true; }
+      synth.cancel(); return true;
     }
     return false;
   }
@@ -152,7 +153,7 @@
     if (a.voice) { u.voice = a.voice; u.lang = a.voice.lang; }
     u.pitch = p.pitch + a.shift; u.rate = rate; u.volume = volume;
     u.onstart = function () { if (current === u) stats.started++; };
-    u.onend = function () { if (current !== u) return; stats.finished++; speaking = false; current = null; next(); };
+    u.onend = function () { if (BL.audio && BL.audio.nudge) BL.audio.nudge(); if (current !== u) return; stats.finished++; speaking = false; current = null; next(); };
     u.onerror = function (ev) {
       var code = (ev && ev.error) || "error";
       if (code !== "interrupted" && code !== "canceled") { stats.errors++; stats.lastError = code; }
