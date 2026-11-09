@@ -124,15 +124,16 @@
   // A gunboat's number digit by digit: "PT-167" -> "P T one six seven", not "P T one hundred sixty-seven".
   function boats(words) { return words.replace(/\bPT-?(\d+)/g, function (x, d) { return "P T " + d.split("").join(" "); }); }
 
-  // Watchdog: if the browser never reports the line finished, let the queue move on anyway.
+  // Watchdog: if the browser never reports the line finished, let the queue move on anyway, but
+  // only once the line's own time is up, and always by cancelling it first: the iPad can say it
+  // has stopped while still talking, and the next line then talked over it, the two faded out
+  // and took the sound effects with them (Nov 9, 2026).
   function unstick() {
     if (!speaking) return;
-    var elapsed = Date.now() - startedAt;
-    var idle = !synth.speaking && !synth.pending && elapsed > 1500;
-    if (idle || elapsed > expectMs) {
+    if (Date.now() - startedAt > expectMs) {
       speaking = false; current = null; stats.rescued++;
       // Safari drops a line spoken right after cancel(), so the next line waits for the timer.
-      if (synth.speaking || synth.pending) { synth.cancel(); return true; }
+      synth.cancel(); return true;
     }
     return false;
   }
@@ -151,7 +152,8 @@
     var a = voiceFor(item.speaker);
     if (a.voice) { u.voice = a.voice; u.lang = a.voice.lang; }
     u.pitch = p.pitch + a.shift; u.rate = rate; u.volume = volume;
-    u.onstart = function () { if (current === u) stats.started++; };
+    // (the line's time runs from when it actually starts: the iPad can be slow to begin one)
+    u.onstart = function () { if (current === u) { stats.started++; startedAt = Date.now(); } };
     u.onend = function () { if (current !== u) return; stats.finished++; speaking = false; current = null; next(); };
     u.onerror = function (ev) {
       var code = (ev && ev.error) || "error";
@@ -172,12 +174,15 @@
     // re-primes it with a silent line while nothing is being said.
     unlock: function () {
       // (Spoken messages off: no speech at all, not even the silent line; on iPadOS 27.2 any
-      // speech seems to silence the sound effects, Nov 9, 2026)
+      // speech silences the sound effects, Nov 9, 2026)
       if (!synth || !enabled) return;
       if (!voices.length) loadVoices();
       if (speaking || synth.speaking || synth.pending) return;
       // A real line wakes Safari where the silent primer may not, so say a waiting line now.
       if (queue.length) { unlocked = true; primedAt = Date.now(); next(); return; }
+      // Once a real line has been spoken, no more silent lines: on the iPad each one turned the
+      // sound effects down (a tap every few seconds in a fight faded them to nothing; Nov 9, 2026).
+      if (stats.started > 0) return;
       if (unlocked && Date.now() - primedAt < 3000) return;
       unlocked = true; primedAt = Date.now();
       if (synth.paused) synth.resume();
