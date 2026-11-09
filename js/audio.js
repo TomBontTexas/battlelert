@@ -75,9 +75,13 @@
     live = 0; lastRebuild = Date.now();
   }
   // Wake a suspended engine without a tap (after a voice line ends, or when it is suspended): the
-  // iPad allows it for an engine a tap has started before, once speech has let go.
+  // iPad allows it for an engine a tap has started before, once speech has let go. Never while a
+  // voice is speaking: waking the engine then cut the line off with a squawk (Nov 9, 2026); it
+  // is tried again when the line ends.
   function nudge() {
     if (!ctx || ctx.state === "running" || ctx.state === "closed" || document.visibilityState !== "visible") return;
+    var syn = root.speechSynthesis;
+    if (syn && (syn.speaking || syn.pending)) return;
     try { var r = ctx.resume(); if (r && r.catch) r.catch(function () {}); } catch (e) {}
   }
   function wake() {

@@ -152,8 +152,9 @@
     var a = voiceFor(item.speaker);
     if (a.voice) { u.voice = a.voice; u.lang = a.voice.lang; }
     u.pitch = p.pitch + a.shift; u.rate = rate; u.volume = volume;
-    u.onstart = function () { if (current === u) stats.started++; };
-    u.onend = function () { if (BL.audio && BL.audio.nudge) BL.audio.nudge(); if (current !== u) return; stats.finished++; speaking = false; current = null; next(); };
+    // (the line's time runs from when it actually starts: the iPad can be slow to begin one)
+    u.onstart = function () { if (current === u) { stats.started++; startedAt = Date.now(); } };
+    u.onend = function () { if (BL.audio && BL.audio.nudge) setTimeout(BL.audio.nudge, 250); if (current !== u) return; stats.finished++; speaking = false; current = null; next(); };
     u.onerror = function (ev) {
       var code = (ev && ev.error) || "error";
       if (code !== "interrupted" && code !== "canceled") { stats.errors++; stats.lastError = code; }
