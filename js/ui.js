@@ -2527,11 +2527,12 @@
       ["Gun crew", crew.map(function (c) { return esc(c.name) + ", " + c.label + " (" + Math.round(c.skill * 100) + ")"; }).join(" · ")],
       ["Pilot", esc(pc.name) + ", " + pc.label + " (skill " + Math.round(pc.skill * 100) + ")"],
       ["Torpedo bursts", cp.calls + ": " + cp.breaks + " breaks ordered, " + cp.pilotBreaks + " by the pilot on his own (" + cp.breaksMade + " made), " + cp.taken + " taken on the shields, " + cp.unanswered + " with no call"],
-      ["Asteroid hits", cp.rockHits], ["Enemy areas flown into", cp.swarms || 0]].concat(cp.dropped ? [
+      ["Enemy areas flown into", cp.swarms || 0]].concat(cp.dropped ? [
       ["Dropped down", "you took a station yourself; stood aside: " + (cp.replacedNames.map(esc).join(", ") || "nobody") + " (once a mission: −1 command reputation, −1 morale to each man replaced)"]] : []).concat(cpN ? [
       ["Checkpoints", cp.systems.map(function (s) { return s.cpsHit + "/" + s.cps; }).join(" · ") + " (system by system)"]] : []).concat(cp.escort ? [
       [upFirst(cp.escort.name) + (cp.escort.counted ? " at the end" : " hull at the end"),
-        (cp.escort.counted ? cp.escort.afloat + " of " + cp.escort.ships + (cp.escort.id === "fleet" ? " ships" : " merchants") + " through, hull " : "") + cp.escort.hull + "%" + (cp.escort.mines ? " · " + cp.escort.mines + " mines hit her" : "")],
+        (cp.escort.counted ? cp.escort.afloat + " of " + cp.escort.ships + (cp.escort.id === "fleet" ? " ships" : " merchants") + " through, hull " : "") + cp.escort.hull + "%"],
+      ["Hits on the " + cp.escort.name, cp.escort.torps + " torpedoes, " + cp.escort.mines + " mines"],
       ["Squadron", cp.escort.squad + " ships: wingmen shot down " + cp.escort.wingStops + " torpedoes" + (cp.escort.wingLost ? ", " + cp.escort.wingLost + " lost" : "")],
       ["On station", cp.escort.onStation.map(function (p) { return p + "%"; }).join(" · ") + (sim.hasDrive ? " (system by system)" : " (sortie by sortie)")],
       ["Torpedoes at the " + cp.escort.name, cp.escort.calls + " bursts: " + cp.escort.covers + " covered (" + cp.escort.covered + " torpedoes taken on our shields), " + cp.escort.torps + " hit her"]] : []).concat(cp.squad && !cp.squad.solo ? [
@@ -2544,6 +2545,10 @@
       ["Siege line found", cp.found.map(function (f) { return f ? "yes" : "no"; }).join(" · ") + " (system by system)"]] : []).concat([
       ["Enemy ships destroyed by your crew", cp.kills + " / " + cp.ships],
       ["Torpedoes shot down", cp.downed],
+      ["Mines shot down", cp.minesDown || 0],
+      ["Asteroids shot down", cp.rocksDown || 0],
+      ["Mines that hit us", cp.minesHit || 0],
+      ["Asteroids that hit us", cp.rockHits],
       ["Hull lost", d.hullLost],
       ["Failsafe trips (the engineer's reactor)", d.trips],
       ["Damage reports", r.damage.length]

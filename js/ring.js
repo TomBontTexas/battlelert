@@ -540,6 +540,7 @@
           x0: x, y0: y, x1: x, y1: y, hitB: 0, t0: m.t, t1: m.t + 99, x: x, y: y, spin: o.spin, size: o.size };
         e.torp = tp; self.torps.push(tp);
         if (o.rock && !o.seen) self.stats.rocks = (self.stats.rocks || 0) + 1;
+        else if (!o.seen) self.stats.fieldMines = (self.stats.fieldMines || 0) + 1;     // (the captain's debrief)
         o.seen = true;
       }
       e = tp.ev;
@@ -576,6 +577,7 @@
     if (tp.obj) { tp.obj.dead = true; tp.obj.tp = null; }
     if (b && b.mine) count(this, "minesDowned");
     if (tp.rock) this.stats.rocksDown = (this.stats.rocksDown || 0) + 1;
+    else this.stats.minesDownAll = (this.stats.minesDownAll || 0) + 1;     // (by anyone: the captain's debrief)
     this.effects.push({ type: "boom", x: tp.x, y: tp.y, at: m.totalT, size: 0.07 });
     m.cue("torpDown");
     if (!tp.rock && this.rng.chance(0.25)) m.chat("mineDown", null, "good");

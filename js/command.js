@@ -1823,6 +1823,7 @@
       systems: sys.map(function (s) { return { zoneAt: s.zoneAt === null ? null : Math.round(s.zoneAt), window: s.window, rockHits: s.rockHits, legs: s.legs, cps: s.cps.length, cpsHit: s.cps.filter(Boolean).length }; }),
       ships: tu.stats.ships, kills: tu.stats.kills, downed: tu.stats.downed,
       rocks: tu.stats.rocks || 0, rocksDown: tu.stats.rocksDown || 0, rockEnemy: tu.stats.rockEnemy || 0,
+      mines: (tu.stats.mines || 0) + (tu.stats.fieldMines || 0), minesDown: tu.stats.minesDownAll || 0, minesHit: m.stats.minesHit || 0,
       // (dropping down: whether he did, and the men he replaced: roster ids for their morale, names for the debrief)
       dropped: c.dropped, replaced: c.replacedMen.map(function (x) { return x.id; }).filter(function (id) { return id !== undefined; }),
       replacedNames: c.replacedMen.map(function (x) { return x.name; }) };

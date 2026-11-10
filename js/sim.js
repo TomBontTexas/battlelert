@@ -659,6 +659,7 @@
       var w = null; for (var k = 0; k < this.waves.length; k++) if (this.waves[k].id === e.wave) w = this.waves[k];
       if (w && w.hpMax && !this.rng.chance(Math.max(0, w.hp) / w.hpMax)) { e.cancelled = true; return; }
     }
+    if (e.type === "mine" && !e.rock) this.stats.minesHit = (this.stats.minesHit || 0) + 1;     // (the captain's debrief; rocks: Captain.rockStruck)
     if (e.type === "salvo" || e.type === "mine") this.salvoHits(e);
     else if (e.type === "strike") this.strikeHits(e);
     else if (e.type === "order") { if (this.helm) this.helm.beginOrder(e); }
