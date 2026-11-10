@@ -1808,7 +1808,7 @@
         return;
       }
       var solid = !plan && T.seen, R = T.K.range * cs;
-      if (solid || sel) {
+      if ((solid || sel) && R) {
         ctx.strokeStyle = "rgba(255,107,107,.35)"; ctx.lineWidth = 1; ctx.setLineDash([4, 5]); ctx.beginPath(); ctx.arc(p.x, p.y, R * fr.s, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
         T.K.guns.forEach(function (g) {
           if (g[1] >= 180) return;
@@ -1829,7 +1829,8 @@
       ctx.setLineDash([]);
       if (solid && T.K.speed) { var hp2 = fr.toPx(BL.alongMap(at, T.hdg, 0.05 * c.map().D)); ctx.strokeStyle = "#ff6b6b"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(hp2.x, hp2.y); ctx.stroke(); }
       if (sel) { ctx.strokeStyle = "#ffd666"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(p.x, p.y, s + 9, 0, Math.PI * 2); ctx.stroke(); }
-      var lines = [[T.letter + (big ? " · " + T.name.toUpperCase() + (plan ? "" : " " + Math.round(100 * T.hp / T.hpMax) + "%") + (T.obj ? " · OBJECTIVE" : "") : ""), T.obj ? "#ffd666" : "#ffb3a8"]];
+      if (!T.letter && !big) return;     // (a wave in the battle view, drawWaves: no letter to show)
+      var lines = [[T.letter + (big ? (T.letter ? " · " : "") + T.name.toUpperCase() + (plan ? "" : " " + Math.round(100 * T.hp / T.hpMax) + "%") + (T.obj ? " · OBJECTIVE" : "") : ""), T.obj ? "#ffd666" : "#ffb3a8"]];
       if (big && !solid && !plan) lines.push([T.last ? "last seen" : "reported", "#8899a8"]);
       place(lines, p, s + 4);
       if (!plan) T.lbl = occ[occ.length - 1];      // (its label: a tap on it picks the target too)
@@ -1871,6 +1872,23 @@
       ctx.fillStyle = col; ctx.fillText(s, best.x0 + 1, (best.y0 + best.y1) / 2);
       occ.push({ x0: best.x0, y0: best.y0, x1: best.x1, y1: best.y1 });
     }
+  }
+  // The waves fighting her in the battle view (raiders, interceptors...; not a map target's, which
+  // is drawn as a target, nor a fixed siege line, which the map draws once it's found), on the map
+  // where they are round her: one glyph each at its ships' middle, its name and strength in the big map.
+  function drawWaves(ctx, fr, big, occ) {
+    var c = sim.captain, tu = sim.turret, cmp = sim.helm.compass(), list = [];
+    if (!tu || !tu.ring || !c.pos) return;
+    sim.waves.forEach(function (w) {
+      if (w.dead || w.target !== undefined || !w.ships) return;
+      var live = w.ships.filter(function (s) { return !s.dead && !s.fixed && s.state !== "leave"; });
+      if (!live.length) return;
+      var x = 0, y = 0;
+      live.forEach(function (s) { x += s.x / live.length; y += s.y / live.length; });
+      list.push({ id: "w" + w.id, kind: w.type, letter: "", name: w.name || w.type, hp: w.hp, hpMax: w.hpMax || 1, seen: true,
+        pos: c.fromView(x, y), hdg: cmp + live[0].bearing + 180, K: { range: 0, guns: [], speed: 0 } });
+    });
+    if (list.length) drawTargets(ctx, fr, list, big, c, false, occ);
   }
   var lastBridgeBox = {}, canBreakEver = true;
   var STATION_LIST = ["ahead", "port", "stbd", "astern"], STATION_SHORT = { ahead: "AHEAD", port: "PORT", stbd: "STBD", astern: "ASTERN" },
@@ -1937,6 +1955,7 @@
       if (big && !es.flag) { ctx.fillStyle = "rgba(207,227,255,.9)"; ctx.font = "600 11px ui-monospace, Menlo, Consolas, monospace"; ctx.textAlign = "left"; ctx.textBaseline = "middle"; ctx.fillText(es.W.label + " " + Math.round(100 * es.hull / es.hullMax) + "%", cp.x + (big ? 30 : 20), cp.y); }
       if (hv && hv.station) { var sp = fr.toPx(hv.station.pos); ctx.strokeStyle = hv.station.on ? "rgba(61,255,122,.9)" : "rgba(255,214,102,.9)"; ctx.lineWidth = 1.5; ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.arc(sp.x, sp.y, Math.max(4, BL.COMMAND.escort.near * map.D * fr.s), 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]); }
     }
+    drawWaves(ctx, fr, big, labels);
     // When she reaches the jump zone at her speed now, against when the jump can go (the window
     // open and the drive full at the rate it's charging now, whichever is later): EARLY (slow
     // down, or she waits there), LATE (more speed), else on time.
