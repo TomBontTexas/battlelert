@@ -437,8 +437,10 @@
         eng: this.engOrder || (hd2 < hs.c.r * 0.6 ? "stop" : "deadSlow"), own: this.hdgOrder !== null || !!this.engOrder, nav: nv, holding: false, onStation: true };
     }
     // A squadron's flagship sent to a target or a spot (Captain.flagTo): she goes there like the
-    // others, at standard, then holds it on her beam (or her place) at slow, till RESUME.
-    var fg = this.flagGo && this.hdgOrder === null && !this.holding ? this.goalOf(null, this.pos) : null;
+    // others, at standard, then holds it on her beam (or her place) at slow, till RESUME. In the
+    // zone too (Nov 9, 2026, TexasBont: in the zone "it really doesn't want to leave there to go
+    // after targets"); only an ordered warp or recovery keeps her there.
+    var fg = this.flagGo && this.hdgOrder === null && !(this.holding && this.jumpOrdered) ? this.goalOf(null, this.pos) : null;
     if (fg) {
       var fd = dist(this.pos, fg), fn = BL.COMMAND.escort.near * this.map().D;
       return { hdg: Math.round(fd > fn ? bearing(this.pos, fg) : fg.hdg) % 360, eng: this.engOrder || (fd > fn * 4 ? "standard" : fd > fn ? "cruise" : "deadSlow"), own: !!this.engOrder, nav: nv, holding: false, sent: true };
