@@ -1875,18 +1875,26 @@
   }
   // The waves fighting her in the battle view (raiders, interceptors...; not a map target's, which
   // is drawn as a target, nor a fixed siege line, which the map draws once it's found), on the map
-  // where they are round her: one glyph each at its ships' middle, its name and strength in the big map.
+  // where they are round her: one glyph each, its name and strength in the big map. Each sits where
+  // its ships hold (their home bearing and holding range, not the weave and dives of the tactical
+  // map) and glides there (w.mapAt), so it doesn't jump about.
   function drawWaves(ctx, fr, big, occ) {
-    var c = sim.captain, tu = sim.turret, cmp = sim.helm.compass(), list = [];
+    var c = sim.captain, tu = sim.turret, R = tu && tu.R, cmp = sim.helm.compass(), list = [], now = performance.now();
     if (!tu || !tu.ring || !c.pos) return;
     sim.waves.forEach(function (w) {
       if (w.dead || w.target !== undefined || !w.ships) return;
       var live = w.ships.filter(function (s) { return !s.dead && !s.fixed && s.state !== "leave"; });
       if (!live.length) return;
       var x = 0, y = 0;
-      live.forEach(function (s) { x += s.x / live.length; y += s.y / live.length; });
+      live.forEach(function (s) {
+        var a = s.aim !== null && s.aim !== undefined ? c.aimView(s.aim) : null, r = s.state === "enter" ? s.r : s.hold, b = s.home * Math.PI / 180;
+        x += ((a ? a.x : R.cx) + r * Math.sin(b)) / live.length; y += ((a ? a.y : R.cy) - r * Math.cos(b)) / live.length;
+      });
+      var goal = c.fromView(x, y), gx = goal.x - c.pos.x, gy = goal.y - c.pos.y, m = w.mapAt;     // (smoothed from her, so it keeps up as she moves)
+      if (!m || now - m.t > 2000) m = w.mapAt = { x: gx, y: gy, t: now };
+      else { var k = 1 - Math.exp(-(now - m.t) / 1500); m.x += (gx - m.x) * k; m.y += (gy - m.y) * k; m.t = now; }
       list.push({ id: "w" + w.id, kind: w.type, letter: "", name: w.name || w.type, hp: w.hp, hpMax: w.hpMax || 1, seen: true,
-        pos: c.fromView(x, y), hdg: cmp + live[0].bearing + 180, K: { range: 0, guns: [], speed: 0 } });
+        pos: { x: c.pos.x + m.x, y: c.pos.y + m.y }, hdg: cmp + live[0].home + 180, K: { range: 0, guns: [], speed: 0 } });
     });
     if (list.length) drawTargets(ctx, fr, list, big, c, false, occ);
   }
