@@ -203,9 +203,11 @@
   Mission.prototype.windowFor = function (i) {
     var w = this.cfg.jumpWindowAt[Math.min(i, this.cfg.jumpWindowAt.length - 1)], enc = BL.ENCOUNTERS[this.route[i]];
     // (a squadron's map is BL.COMMAND.squad.map.window x bigger, and its window that much longer)
-    // (a lone ship's targets map likewise; a station to hold: its hold time longer)
-    return Math.round(w * ((enc && enc.windowScale) || 1) * (this.onMap ? BL.COMMAND.squad.map.window : 1)) + (this.opK.hold || 0);
+    // (a lone ship's targets map likewise; a station to hold: its hold time longer; a lone ship's
+    // `cut`, BL.COMMAND.ops: that many s shorter, the map the same size)
+    return Math.round(w * ((enc && enc.windowScale) || 1) * (this.onMap ? BL.COMMAND.squad.map.window : 1)) + (this.opK.hold || 0) - this.windowCut();
   };
+  Mission.prototype.windowCut = function () { return this.solo ? this.opK.cut || 0 : 0; };
 
   /* ---------------------------------------------------------- Player input */
   Mission.prototype.setSetpoint = function (id, mw) {

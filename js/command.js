@@ -278,7 +278,7 @@
       // (a mission type, BL.COMMAND.ops: a picket's checkpoints only on the scouting run; a station to
       // hold; finding the siege line, one in every system that the pickets didn't report)
       var opK = m.opK;
-      map = BL.makeNavMap(m.seed, i, { window: m.windowFor(i), dWindow: m.windowFor(i) - (opK.hold || 0), cruiseG: h.gOf("cruise"), hasDrive: m.hasDrive, drop: !!m.sys("buster") && i === m.route.length - 1, mines: enc.sweep ? "sweep" : enc.mines ? "minefield" : null,
+      map = BL.makeNavMap(m.seed, i, { window: m.windowFor(i), dWindow: m.windowFor(i) - (opK.hold || 0) + m.windowCut(), cruiseG: h.gOf("cruise"), hasDrive: m.hasDrive, drop: !!m.sys("buster") && i === m.route.length - 1, mines: enc.sweep ? "sweep" : enc.mines ? "minefield" : null,
         checkpoints: BL.COMMAND.checkpoints.classes.indexOf(m.data.classId) >= 0 && (!m.op || m.op === "scout"), hold: opK.hold || 0,
         siege: !!opK.findSiege || ((id === "siege" || rep === "siege") && !m.escort && !m.onMap) });
       if (m.onMap) map.clusters = [];     // (a squadron's enemies are its map's targets: Captain.makeTargets; a lone ship's on a targets mission too)

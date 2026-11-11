@@ -1068,7 +1068,8 @@
          new waves come while she sits on it at slow or stopped).
        - findSiege: a siege line in every system, unreported, found once its fire on her reaches `spot`.
        - sweep: a minefield in every system, and a convoy following her course through it.
-       force: x the enemy's numbers. noBuster: she flies without the planet buster. brief: one line
+       cut: a lone ship's window that many s shorter, the map the same size (Nov 10, 2026, TexasBont:
+       bombard flown a minute early every time). force: x the enemy's numbers. noBuster: she flies without the planet buster. brief: one line
        (the briefing, How to play); detail: what it asks and how to go about it (the plotting screen). */
     ops: {
       standard: { name: "Standard run", brief: "Get through every system and warp on.",
@@ -1101,7 +1102,7 @@
         detail: "A station (the cyan ring marked S) lies off the way in each system. The course passes through it; there the pilot stops her. Hold it for 60 s in all against everything the enemy sends (more of them than usual), then go on to the warp zone. The window is 60 s longer to allow for it. Leave a station unheld and the mission fails." },
       depot: { name: "Depot strike", map: true, place: "depot", brief: "Destroy each system's supply depot before you warp on.",
         detail: "Each system has a supply depot (gold, the objective) off the way, with other enemy groups about. Destroy the depot before you warp on, or the mission fails. On the bridge, plot a course that passes it, or tap it on the bridge map to go for it." },
-      bombard: { name: "Bombard a fortress", map: true, place: "bombard", brief: "Each system has a bastion: its guns reach 13 s, yours 16 s. Stand off and wear it down.",
+      bombard: { name: "Bombard a fortress", map: true, place: "bombard", cut: 45, brief: "Each system has a bastion: its guns reach 13 s, yours 16 s. Stand off and wear it down.",
         detail: "Each system has a bastion (gold): a fortress whose guns reach 13 s, while yours reach 16 s. Stand off between the two ranges and it can't answer your fire. Come in closer and its torpedoes come for you. Destroy it before you warp on, or the mission fails." },
       busterEscort: { name: "Escort the buster ship", escort: "busterShip", brief: "She carries a planet buster: keep station and bring her through every system. The enemy goes for her.",
         detail: "The ship carrying a planet buster sails the navigator's course. Keep station on her: the enemy goes for her more than for any other ward. COVER the bursts aimed at her when your shields can take them. Lose her and the mission fails." },
