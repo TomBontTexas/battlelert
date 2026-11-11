@@ -424,7 +424,10 @@
     // Escort: the pilot keeps station on the ward until she's at the jump point; then he brings
     // the destroyer escort into the warp zone on its heading, as on any plot. A gunboat keeps
     // station on the carrier to the end: she recovers it only from ASTERN (Captain.asternOk).
-    if (this.escort && !this.escort.flag && (this.escort.s < this.escort.L || this.carrierRecovery())) {
+    // (once she's inside the warp zone, he brings us in too, even if our station is outside it:
+    // Nov 10, 2026, TexasBont, "the yellow position marker is outside the warp zone so it can't warp")
+    var wz = this.escort && this.escort.pos && dist(this.escort.pos, j) <= j.r;
+    if (this.escort && !this.escort.flag && ((this.escort.s < this.escort.L && !wz) || this.carrierRecovery())) {
       var sv = this.stationView();
       return { hdg: this.hdgOrder !== null ? this.hdgOrder : sv.hdg, eng: this.engOrder || sv.eng, own: this.hdgOrder !== null || !!this.engOrder, nav: nv, holding: false, station: sv };
     }
@@ -496,8 +499,18 @@
     w.ships.forEach(function (s) { s.pos = along(along(w.pos, w.hdg, s.a * ga), w.hdg + 90, s.c * gc); });
     w.hull = w.ships.reduce(function (a, s) { return a + s.hull; }, 0);
   };
+  // (set off the course's heading where she is, not her own: Nov 10, 2026, TexasBont, "extending
+  // out on the course leg" then swinging round too fast to keep up. The heading is the chord from
+  // a station's distance behind her on the course to one ahead, so it turns before each corner, a
+  // little at a time.)
   Captain.prototype.stationAt = function (id) {
-    var w = this.escort; return along(w.pos, w.hdg + BL.COMMAND.escort.sides[id], w.stD || (w.W.station || BL.COMMAND.escort.station) * this.map().D);
+    var w = this.escort; return along(w.pos, this.stationHdg() + BL.COMMAND.escort.sides[id], w.stD || (w.W.station || BL.COMMAND.escort.station) * this.map().D);
+  };
+  Captain.prototype.stationHdg = function () {
+    var w = this.escort, sd = w.stD || (w.W.station || BL.COMMAND.escort.station) * this.map().D;
+    if (w.L === undefined || !this.plotFor(this.at)) return w.hdg;
+    var a = this.wardAt(Math.max(0, w.s - sd)), b = this.wardAt(Math.min(w.L, w.s + sd));
+    return dist(a, b) > sd * 0.2 ? bearing(a, b) : w.hdg;
   };
   // The wingman (still with the squadron) on a station, or null.
   Captain.prototype.wingOn = function (id) { var es = this.escort; return es && es.wing.filter(function (g) { return g.hull > 0 && g.station === id; })[0] || null; };
@@ -521,12 +534,12 @@
   Captain.prototype.stationView = function () {
     var E = BL.COMMAND.escort, w = this.escort, D = this.map().D, h = this.m.helm, K = BL.COMMAND;
     var st = this.stationAt(this.station), d = dist(this.pos, st), near = E.near * D;
-    var moving = w.s < w.L, vw = moving ? w.v : 0;
-    // Aim a few seconds ahead of the station (she's moving); close in, sail her heading.
-    var aim = moving ? along(st, w.hdg, vw * E.lead) : st, hdg = d > near * 0.6 ? bearing(this.pos, aim) : w.hdg;
+    var moving = w.s < w.L, vw = moving ? w.v : 0, sh = this.stationHdg();
+    // Aim a few seconds ahead of the station (she's moving); close in, sail the station's heading.
+    var aim = moving ? along(st, sh, vw * E.lead) : st, hdg = d > near * 0.6 ? bearing(this.pos, aim) : sh;
     // Speed: flat out to catch up from far off; near, her speed plus or minus as the station is ahead or behind.
     // (she's stopped, waiting to recover the gunboat: closing on it at all, from wherever it is)
-    var ahead = moving ? (st.x - this.pos.x) * Math.sin(w.hdg * RAD) + (st.y - this.pos.y) * Math.cos(w.hdg * RAD) : d;
+    var ahead = moving ? (st.x - this.pos.x) * Math.sin(sh * RAD) + (st.y - this.pos.y) * Math.cos(sh * RAD) : d;
     var want = d > 4 * near ? Infinity : Math.max(0, vw + clamp(ahead / near, -1, 1) * Math.max(vw, 2 * K.scale) * 0.6);
     var eng = "full", bestD = Infinity;
     if (want !== Infinity) ["stop", "deadSlow", "cruise", "standard", "full"].forEach(function (id) { var dd = Math.abs(h.gOf(id) * K.scale - want); if (dd < bestD) { bestD = dd; eng = id; } });
