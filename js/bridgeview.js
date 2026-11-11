@@ -129,7 +129,7 @@
       ctx.beginPath(); ctx.arc(c.x, c.y, cp.r * s, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.setLineDash([]);
       ctx.fillStyle = hit ? "rgba(61,255,122,.95)" : "rgba(150,230,255,.95)"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
       ctx.font = "700 " + (small ? 10 : 13) + "px ui-monospace, Menlo, Consolas, monospace"; ctx.fillText(hit ? "✓" : cp.hold ? "S" : String(cp.n), c.x, c.y);
-      if (!small) { ctx.font = "12px ui-monospace, Menlo, Consolas, monospace"; ctx.textBaseline = "top"; ctx.fillText(cp.hold ? "STATION · HOLD " + cp.hold + " S" : "CHECKPOINT " + cp.n, c.x, c.y + cp.r * s + 3); }
+      if (!small) { ctx.font = "12px ui-monospace, Menlo, Consolas, monospace"; ctx.textBaseline = "top"; ctx.fillText(cp.hold ? (hit ? "STATION · HELD" : "STATION · HOLD " + Math.max(0, Math.ceil(cp.hold - ((opts.cpHeld && opts.cpHeld[i]) || 0))) + " S") : "CHECKPOINT " + cp.n, c.x, c.y + cp.r * s + 3); }
     });
     ctx.font = (small ? 10 : 12) + "px ui-monospace, Menlo, Consolas, monospace";
     // The plotted legs: done ones dim, the rest bright; red through a field, amber through a cluster.

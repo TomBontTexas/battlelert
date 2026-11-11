@@ -1939,7 +1939,7 @@
     var fr = mapFrame(w, hh);
     // (labels: what the map writes, and the corner readout, so a squadron's target labels keep clear of it)
     var labels = [{ x0: 0, y0: 0, x1: big ? 380 : 270, y1: big ? 60 : 46 }];
-    BL.drawNavMap(ctx, w, hh, map, plot, { small: !big, frame: fr, pos: c.pos, hdg: sim.helm.compass(), leg: c.leg, info: c.info, steer: hv ? hv.hdg : null, cpHit: c.cur ? c.cur.cps : null, labels: labels });
+    BL.drawNavMap(ctx, w, hh, map, plot, { small: !big, frame: fr, pos: c.pos, hdg: sim.helm.compass(), leg: c.leg, info: c.info, steer: hv ? hv.hdg : null, cpHit: c.cur ? c.cur.cps : null, cpHeld: c.cur ? c.cur.held : null, labels: labels });
     if (!c.pos) return;
     // Escort: her ships (blue hulls on her heading: a carrier or capital ship long, merchants short,
     // a lost one dim), the wingmen on their stations, and our station (a ring).
