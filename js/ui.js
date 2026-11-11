@@ -1792,8 +1792,9 @@
       lines.forEach(function (l, i) { ctx.fillStyle = l[1]; ctx.fillText(l[0], best.x0 + 3, best.y0 + 2 + i * lh); });
       occ.push(best);
     }
+    var mk0 = sim.turret && sim.turret.marked(), mkW = mk0 ? mk0.wave : null;
     list.forEach(function (T) {
-      var at = plan ? T.rep : c.shownAt(T), p = fr.toPx(at), sel = !plan && (sqTgt === T.id || (sim.solo && c.selT === T.id)), s = big ? 7 : 5;     // (a lone ship's selected target: Captain.selectTarget)
+      var at = plan ? T.rep : c.shownAt(T), p = fr.toPx(at), sel = !plan && (sqTgt === T.id || (sim.solo && c.selT === T.id) || (T.wave && mkW === T.wave.id)), s = big ? 7 : 5;     // (a lone ship's selected target: Captain.selectTarget; a wave whose ship the guns have marked)
       ctx.font = "600 " + (big ? 11 : 10) + "px " + mono; ctx.textAlign = "left"; ctx.textBaseline = "middle";
       if (T.escaped) { place([[T.letter + (big ? " · got away" : ""), "rgba(154,166,178,.6)"]], p, s); return; }     // (a merchant off the map)
       if (T.dead) {
@@ -1878,8 +1879,10 @@
   // where they are round her: one glyph each, its name and strength in the big map. Each sits where
   // its ships hold (their home bearing and holding range, not the weave and dives of the tactical
   // map) and glides there (w.mapAt), so it doesn't jump about.
+  var waveMarks = [];     // (the wave marks last drawn on the strategic map: a tap on one marks it, mapUp)
   function drawWaves(ctx, fr, big, occ) {
     var c = sim.captain, tu = sim.turret, R = tu && tu.R, cmp = sim.helm.compass(), list = [], now = performance.now();
+    waveMarks = list;
     if (!tu || !tu.ring || !c.pos) return;
     sim.waves.forEach(function (w) {
       if (w.dead || w.target !== undefined || !w.ships) return;
@@ -1894,7 +1897,7 @@
       if (!m || now - m.t > 2000) m = w.mapAt = { x: gx, y: gy, t: now };
       else { var k = 1 - Math.exp(-(now - m.t) / 1500); m.x += (gx - m.x) * k; m.y += (gy - m.y) * k; m.t = now; }
       list.push({ id: "w" + w.id, kind: w.type, letter: "", name: w.name || w.type, hp: w.hp, hpMax: w.hpMax || 1, seen: true,
-        pos: { x: c.pos.x + m.x, y: c.pos.y + m.y }, hdg: cmp + live[0].home + 180, K: { range: 0, guns: [], speed: 0 } });
+        pos: { x: c.pos.x + m.x, y: c.pos.y + m.y }, hdg: cmp + live[0].home + 180, K: { range: 0, guns: [], speed: 0 }, wave: w });
     });
     if (list.length) drawTargets(ctx, fr, list, big, c, false, occ);
   }
@@ -2325,12 +2328,27 @@
       if (sim.solo) {
         var st0 = null, sd0 = 22;
         c.sqGroups().forEach(function (T) {
-          if (T.unknown && !T.seen && !T.last) return;
           var q = fr0.toPx(c.shownAt(T)), d = Math.hypot(q.x - p.at.x, q.y - p.at.y), L = T.lbl;
           if (L && p.at.x >= L.x0 && p.at.x <= L.x1 && p.at.y >= L.y0 && p.at.y <= L.y1) d = Math.min(d, 1);     // (on its label)
           if (d < sd0) { sd0 = d; st0 = T; }
         });
         if (st0) { c.selectTarget(st0.id); click(); return; }
+      }
+      // A wave fighting her (its mark on the map, drawWaves): a tap makes its biggest ship the gun
+      // crews' target (as a tap on it in the battle view does) and steers for it.
+      var wv = null, wd = 22;
+      waveMarks.forEach(function (W) {
+        var q = fr0.toPx(W.pos), d = Math.hypot(q.x - p.at.x, q.y - p.at.y), L = W.lbl;
+        if (L && p.at.x >= L.x0 && p.at.x <= L.x1 && p.at.y >= L.y0 && p.at.y <= L.y1) d = Math.min(d, 1);
+        if (d < wd) { wd = d; wv = W; }
+      });
+      if (wv && sim.turret) {
+        var tu = sim.turret, best = null;
+        tu.ships.forEach(function (s2) { if (s2.wave !== wv.wave.id || s2.dead || s2.state === "leave") return; if (!best || (s2.lockable && !best.lockable) || (!!s2.lockable === !!best.lockable && s2.w * s2.h > best.w * best.h)) best = s2; });
+        var was = tu.marked();
+        if (was && was.wave === wv.wave.id) { tu.mark = null; click(); return; }     // (again: cleared)
+        if (best) { tu.mark = best; tu.bats.forEach(function (b) { b.aiNext = 0; }); }
+        c.orderCourse(BL.navBearing(c.pos, wv.pos)); click(); return;
       }
       c.orderCourse(BL.navBearing(c.pos, t));
     }
