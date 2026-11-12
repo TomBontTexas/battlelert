@@ -66,7 +66,9 @@
     }
     // A station to hold (opts.hold s, BL.COMMAND.ops): one ring off the way, a checkpoint the plot
     // goes through, served once she's spent `hold` s inside it.
-    if (opts.hold) {
+    // (holdZone: the station is the warp zone itself, not on the plot (free); Screen the warp)
+    if (opts.hold && opts.holdZone) map.checkpoints.push({ x: jump.x, y: jump.y, r: map.jump.r, n: 1, hold: opts.hold, free: true, zone: true });
+    else if (opts.hold) {
       var HA = K.holdAt, hs = along(along(start, jb, r.range(HA.along) * D), jb + 90, (r.chance(0.5) ? 1 : -1) * r.range(HA.side) * D);
       map.checkpoints.push({ x: hs.x, y: hs.y, r: HA.r * D, n: 1, hold: opts.hold });
     }
@@ -188,6 +190,7 @@
     var offJump = !map.drop && (lastHdg === null || Math.abs(norm(lastHdg - map.jumpHdg)) > K.jumpTol);     // (the drop has no heading)
     // A scouting run: the checkpoints no leg passes through (a warning; each missed costs navigation).
     var cpMiss = (map.checkpoints || []).filter(function (c) {
+      if (c.free) return false;
       for (var j = 0; j < pts.length - 1; j++) if (segNear(pts[j], pts[j + 1], c).d < c.r) return false;
       return true;
     }).map(function (c) { return c.n; });
@@ -233,7 +236,7 @@
       return out;
     }
     var pts = [start], from = start;
-    (map.checkpoints || []).map(function (c) { return { x: c.x, y: c.y, cp: true }; }).concat([goal]).forEach(function (g) { pts = pts.concat(route(from, g).slice(1)); from = g; });
+    (map.checkpoints || []).filter(function (c) { return !c.free; }).map(function (c) { return { x: c.x, y: c.y, cp: true }; }).concat([goal]).forEach(function (g) { pts = pts.concat(route(from, g).slice(1)); from = g; });
     pts.push(jp);
     // A corner is dropped while the leg between its neighbours stays clear (no needless jogs); the
     // approach point only when the leg past it still runs along the jump heading; a checkpoint never.
@@ -279,7 +282,7 @@
       // hold; finding the siege line, one in every system that the pickets didn't report)
       var opK = m.opK;
       map = BL.makeNavMap(m.seed, i, { window: m.windowFor(i), dWindow: m.windowFor(i) - (opK.hold || 0) + m.windowCut(), cruiseG: h.gOf("cruise"), hasDrive: m.hasDrive, drop: !!m.sys("buster") && i === m.route.length - 1, mines: enc.sweep ? "sweep" : enc.mines ? "minefield" : null,
-        checkpoints: BL.COMMAND.checkpoints.classes.indexOf(m.data.classId) >= 0 && (!m.op || m.op === "scout"), hold: opK.hold || 0,
+        checkpoints: BL.COMMAND.checkpoints.classes.indexOf(m.data.classId) >= 0 && (!m.op || m.op === "scout"), hold: opK.shadow ? 0 : opK.hold || 0, holdZone: !!opK.holdZone,
         siege: !!opK.findSiege || ((id === "siege" || rep === "siege") && !m.escort && !m.onMap) });
       if (m.onMap) map.clusters = [];     // (a squadron's enemies are its map's targets: Captain.makeTargets; a lone ship's on a targets mission too)
       if (map.siege) { map.siege.real = id === "siege"; map.siege.rep = rep === "siege" && !opK.findSiege; }
@@ -732,6 +735,12 @@
     });
     // Every system's targets, made now from the seed (the plotting screen shows them).
     this.sqMaps = this.maps.map(function (map, i) { return self.makeTargets(map, i); });
+    // (Shadow, BL.COMMAND.ops shadow: the station is a ring round its group, moving with it, free of
+    // the plot; the time counts outside the group's gun range, `inner`)
+    if (m.opK.shadow) this.maps.forEach(function (map, i) {
+      var T = self.sqMaps[i].filter(function (x) { return x.shadowed; })[0], cs = self.cs();
+      if (T) map.checkpoints.push({ x: T.rep.x, y: T.rep.y, r: T.K.range * cs * m.opK.shadow, inner: T.K.range * cs, n: 1, hold: m.opK.hold, free: true, follow: T.id });
+    });
     this.preOrders = this.maps.map(function () { return {}; });       // (orders given on the plotting screen: ship number -> target id)
     return { flag: true, kind: "squadron", W: { name: "squadron", label: "SQUADRON" }, ships: [], wing: wing, spacing: 1, hull: 0, hullMax: 0, pos: null, hdg: 0,
       form: Q.start, target: null, attackReady: 0, attackUntil: 0, n: n, alert: null, fx: [] };
@@ -773,6 +782,20 @@
     if (B) {}
     else if (place === "strike") one("capital", [0.4, 0.7], [0.05, 0.2], { obj: true });
     else if (place === "duel") one("flagship", [0.4, 0.65], [0, 0.15], { obj: true });
+    else if (place === "fleet") { one("flagship", [0.3, 0.45], [0, 0.18], { obj: true }); one("flagship", [0.55, 0.75], [0, 0.18], { obj: true }); }
+    else if (place === "shadow") { var sT = one("frigate", [0.3, 0.55], [0.05, 0.2]); if (sT) { sT.shadowed = true; sT.name = "DesRon · SHADOW"; } }
+    else if (place === "outpost") {
+      // (an outpost of ours off the way, ringed by siege batteries: map.outpost, drawn blue)
+      for (var ot = 0; ot < 60 && !map.outpost; ot++) { var oc = way(r.range([0.4, 0.65]), r.range([0.1, 0.2]) * side()); if (ok(oc, 0.2)) map.outpost = oc; }
+      var oa = r.next() * 360, on = r.int([3, 4]);
+      if (map.outpost) for (var oq = 0; oq < on; oq++) add("siege", along(map.outpost, oa + oq * 360 / on, 0.07 * D), { obj: true });
+    } else if (place === "decoy") {
+      // (groups waiting for the fleet across the way: drawn off once they've fought her, lure)
+      for (var dn = r.int([4, 5]), dq = 0, dt0 = 0; dq < dn && dt0 < 300; dt0++) {
+        var dp = way(r.range([0.25, 0.85]), r.range([-0.3, 0.3])); if (!ok(dp, 0.14)) continue;
+        add(r.pick(["raiders", "interceptors", "hunters", "raiders"]), dp, { obj: true }).lure = true; dq++;
+      }
+    }
     else if (place === "bombard") one("bastion", [0.4, 0.6], [0.08, 0.2], { obj: true });
     else if (place === "hunt") {
       // (damaged ships, running from us: `need` of them must go)
@@ -1279,7 +1302,8 @@
     var n = this.m.stats.jumps.length;
     return (this.sqMaps || []).slice(0, Math.max(1, n)).filter(function (list) { return objDown(list) < (list.need === undefined ? 1 : list.need); }).length;
   };
-  function objDown(list) { return list.filter(function (T) { return T.obj && T.dead && !T.escaped; }).length; }
+  // (a decoy's group, lure: drawn off once it has fought her, sunk or not)
+  function objDown(list) { return list.filter(function (T) { return T.obj && ((T.dead && !T.escaped) || (T.lure && T.waves > 0)); }).length; }
   BL.objDown = objDown;
   // This system's objectives: destroyed, needed, in all.
   Captain.prototype.objView = function () {
@@ -1296,7 +1320,7 @@
   Captain.prototype.holdView = function () {
     var cur = this.cur, pos = this.pos; if (!cur || !pos || !cur.held) return null;
     var cps = this.map().checkpoints;
-    for (var i = 0; i < cps.length; i++) if (cps[i].hold && !cur.cps[i] && dist(pos, cps[i]) < cps[i].r * 2.5) return { c: cps[i], i: i, held: cur.held[i] };
+    for (var i = 0; i < cps.length; i++) if (cps[i].hold && !cps[i].free && !cur.cps[i] && dist(pos, cps[i]) < cps[i].r * 2.5) return { c: cps[i], i: i, held: cur.held[i] };
     return null;
   };
   // A picket watch (BL.COMMAND.ops hidden): sitting inside her station at slow or stopped, she isn't found.
@@ -1594,6 +1618,9 @@
     // (clearing the warp zone, BL.COMMAND.ops zone: no warp while a guard of it stands, unless her hull is nearly
     // gone or the window has been open `zoneWait` s; then she may warp on, the objective missed)
     if (!why && m.opK.zone && this.sqTargets && this.sqGroups().some(function (T) { return T.obj; }) && m.ship.hull > m.ship.hullMax * 0.2 && m.t < m.windowAt() + m.opK.zone) why = "Zone not clear";
+    // (Screen the warp: nor till the zone is held its time, on the same terms)
+    var zh = m.opK.holdZone && this.cur ? this.map().checkpoints.map(function (c) { return !!c.zone; }).indexOf(true) : -1;
+    if (!why && zh >= 0 && !this.cur.cps[zh] && m.ship.hull > m.ship.hullMax * 0.2 && m.t < m.windowAt() + m.opK.zone) why = "Hold the zone " + Math.ceil(this.map().checkpoints[zh].hold - this.cur.held[zh]) + "s";
     var wait = !this.jumpOrdered ? null : drive || (out && out.toUpperCase()) || (astern && "ASTERN OF THE CARRIER") || (!this.inZone(BL.COMMAND.zoneHold) ? "BACK TO THE ZONE" : !h.inJumpCorridor() ? steer.toUpperCase() : form);
     return { ready: !why, why: why, ordered: this.jumpOrdered, wait: wait };
   };
@@ -1722,7 +1749,7 @@
     while (this.leg < pts.length - 2) {
       var a = pts[this.leg], b = pts[this.leg + 1], n = segNear(a, b, this.pos);
       // (a waypoint on a checkpoint: she turns only once she's well inside it)
-      var cpw = map.checkpoints.filter(function (c) { return dist(c, b) < c.r * 0.5; })[0];
+      var cpw = map.checkpoints.filter(function (c) { return !c.free && dist(c, b) < c.r * 0.5; })[0];
       if (dist(this.pos, b) > (cpw ? cpw.r * 0.4 : K.capture * map.D) && n.u < 0.999) break;
       this.leg++;
     }
@@ -1740,7 +1767,10 @@
     var cur = this.cur, pos = this.pos;
     map.checkpoints.forEach(function (c, i) { if (!c.hold && !cur.cps[i] && dist(pos, c) < c.r) { cur.cps[i] = true; m.cue("tick"); } });
     // A station to hold: the time inside its ring counts; served once it reaches `hold` s.
-    map.checkpoints.forEach(function (c, i) { if (c.hold && !cur.cps[i] && dist(pos, c) < c.r && m.phase !== "done") { cur.held[i] += dt; if (cur.held[i] >= c.hold) { cur.cps[i] = true; m.cue("tick"); } } });
+    // (Shadow: the ring moves with its group, and the time counts only outside its gun range; not once it's sunk)
+    var self0 = this;
+    map.checkpoints.forEach(function (c) { if (c.follow === undefined) return; var T = self0.sqTargets && self0.sqTargets[c.follow]; if (!T || T.dead) { c.gone = true; return; } var a = self0.shownAt(T); c.x = a.x; c.y = a.y; });
+    map.checkpoints.forEach(function (c, i) { if (c.hold && !c.gone && !cur.cps[i] && dist(pos, c) < c.r && !(c.inner && dist(pos, c) < c.inner) && m.phase !== "done") { cur.held[i] += dt; if (cur.held[i] >= c.hold) { cur.cps[i] = true; m.cue("tick"); } } });
     // Finding the siege line (BL.COMMAND.ops findSiege): once its fire on her reaches `spot`, it's on the map.
     if (m.opK.findSiege && map.siege && !map.siege.known && BL.siegeFire(map, pos) >= m.opK.spot) { map.siege.known = true; cur.found = true; m.cue("tick"); }
     var zone = this.inZone();

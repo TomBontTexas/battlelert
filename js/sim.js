@@ -43,7 +43,8 @@
     this.op = opts.op && BL.COMMAND.ops[opts.op] ? opts.op : null;
     this.capPath = !!opts.captain; this.flagPath = !!opts.flag && !!opts.captain;     // (Mission.lethalK)
     var opK = this.opK = this.op ? BL.COMMAND.ops[this.op] : {};
-    if (opK.noBuster) this.data = Object.assign({}, this.data, { systems: this.data.systems.filter(function (s) { return s.id !== "buster"; }) });
+    // (a targets mission other than the drop: no planet buster either, so its targets are the objective; the dreadnought's Fleet action and siege)
+    if (opK.noBuster || (opK.map && opK.place !== "buster")) this.data = Object.assign({}, this.data, { systems: this.data.systems.filter(function (s) { return s.id !== "buster"; }) });
     this.solo = !!opK.map && !!opts.captain && !opts.flag;
     var onMap = this.onMap = this.solo || (!!opts.flag && !!opts.captain);
     this.shipName = opts.shipName || null;          // (the job's ship, "INS Fletcher"; none in a test)
@@ -104,7 +105,7 @@
     // Command (opts.captain): the player is the captain; an NPC pilot flies the helm; see command.js.
     // opts.escort: an escort mission (a gunboat squadron screens the carrier each sortie, a
     // destroyer escort squadron a convoy or capital ship each system; Captain, BL.COMMAND.escort).
-    this.escort = !!opts.escort || !!opK.escort; this.escortKind = typeof opK.escort === "string" ? opK.escort : opts.escortKind || null;     // (a story mission names the ward: carrier, convoy or capital)
+    this.escort = !!opts.escort || !!opK.escort; this.escortKind = opK.escortBy && opK.escortBy[this.data.classId] || (typeof opK.escort === "string" ? opK.escort : opts.escortKind || null);     // (a story mission names the ward: carrier, convoy or capital)
     // opts.flag: a squadron mission (the Squadron test): we're the flagship of a squadron (Captain, BL.COMMAND.squad).
     this.flag = !!opts.flag && !!opts.captain;
     this.captain = opts.captain && this.helm ? new BL.Captain(this) : null;

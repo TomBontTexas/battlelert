@@ -122,14 +122,21 @@
       ctx.lineTo(tip.x + px * hl * 0.6, tip.y + py * hl * 0.6); ctx.lineTo(tip.x - px * hl * 0.6, tip.y - py * hl * 0.6); ctx.closePath(); ctx.fill();
       if (!small) { ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("WARP " + BL.hdgText(map.jumpHdg), tip.x + ux * 28, tip.y + uy * 22); }
     }
+    // An outpost of ours (Relieve the outpost): a blue diamond.
+    if (map.outpost) {
+      var op0 = P(map.outpost), od = small ? 5 : 8;
+      ctx.fillStyle = "rgba(110,170,255,.9)"; ctx.beginPath(); ctx.moveTo(op0.x, op0.y - od); ctx.lineTo(op0.x + od, op0.y); ctx.lineTo(op0.x, op0.y + od); ctx.lineTo(op0.x - od, op0.y); ctx.closePath(); ctx.fill();
+      if (!small) { ctx.font = "600 11px ui-monospace, Menlo, Consolas, monospace"; ctx.textAlign = "center"; ctx.textBaseline = "top"; ctx.fillText("OUTPOST", op0.x, op0.y + od + 3); }
+    }
     // A scouting run's checkpoints: numbered cyan rings (green and ticked once flown through); a station to hold (BL.COMMAND.ops) the same, "S".
     (map.checkpoints || []).forEach(function (cp, i) {
       var c = P(cp), hit = opts.cpHit && opts.cpHit[i];
       ctx.strokeStyle = hit ? "rgba(61,255,122,.9)" : "rgba(110,220,255,.9)"; ctx.fillStyle = hit ? "rgba(61,255,122,.14)" : "rgba(110,220,255,.1)"; ctx.lineWidth = 1.5; ctx.setLineDash(hit ? [] : [4, 3]);
       ctx.beginPath(); ctx.arc(c.x, c.y, cp.r * s, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.setLineDash([]);
       ctx.fillStyle = hit ? "rgba(61,255,122,.95)" : "rgba(150,230,255,.95)"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      ctx.font = "700 " + (small ? 10 : 13) + "px ui-monospace, Menlo, Consolas, monospace"; ctx.fillText(hit ? "✓" : cp.hold ? "S" : String(cp.n), c.x, c.y);
-      if (!small) { ctx.font = "12px ui-monospace, Menlo, Consolas, monospace"; ctx.textBaseline = "top"; ctx.fillText(cp.hold ? (hit ? "STATION · HELD" : "STATION · HOLD " + Math.max(0, Math.ceil(cp.hold - ((opts.cpHeld && opts.cpHeld[i]) || 0))) + " S") : "CHECKPOINT " + cp.n, c.x, c.y + cp.r * s + 3); }
+      ctx.font = "700 " + (small ? 10 : 13) + "px ui-monospace, Menlo, Consolas, monospace"; if (!cp.free) ctx.fillText(hit ? "✓" : cp.hold ? "S" : String(cp.n), c.x, c.y);
+      var what = cp.follow !== undefined ? "SHADOW" : cp.zone ? "ZONE" : "STATION";     // (Shadow's ring round its group; Screen the warp's zone)
+      if (!small) { ctx.font = "12px ui-monospace, Menlo, Consolas, monospace"; ctx.textBaseline = "top"; ctx.fillText(cp.hold ? (hit ? what + " · HELD" : cp.gone ? what + " · LOST" : what + " · HOLD " + Math.max(0, Math.ceil(cp.hold - ((opts.cpHeld && opts.cpHeld[i]) || 0))) + " S") : "CHECKPOINT " + cp.n, c.x, c.y + cp.r * s + 3); }
     });
     ctx.font = (small ? 10 : 12) + "px ui-monospace, Menlo, Consolas, monospace";
     // The plotted legs: done ones dim, the rest bright; red through a field, amber through a cluster.

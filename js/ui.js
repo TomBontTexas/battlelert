@@ -1831,7 +1831,8 @@
       if (solid && T.K.speed) { var hp2 = fr.toPx(BL.alongMap(at, T.hdg, 0.05 * c.map().D)); ctx.strokeStyle = "#ff6b6b"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(hp2.x, hp2.y); ctx.stroke(); }
       if (sel) { ctx.strokeStyle = "#ffd666"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(p.x, p.y, s + 9, 0, Math.PI * 2); ctx.stroke(); }
       if (!T.letter && !big) return;     // (a wave in the battle view, drawWaves: no letter to show)
-      var lines = [[T.letter + (big ? (T.letter ? " · " : "") + T.name.toUpperCase() + (plan ? "" : " " + Math.round(100 * T.hp / T.hpMax) + "%") + (T.obj ? " · OBJECTIVE" : "") : ""), T.obj ? "#ffd666" : "#ffb3a8"]];
+      var drawn = T.lure && T.waves > 0;     // (a decoy's group that has fought her: drawn off)
+      var lines = [[T.letter + (big ? (T.letter ? " · " : "") + T.name.toUpperCase() + (plan ? "" : " " + Math.round(100 * T.hp / T.hpMax) + "%") + (drawn ? " · DRAWN OFF" : T.obj ? " · OBJECTIVE" : "") : ""), T.shadowed || T.obj ? "#ffd666" : "#ffb3a8"]];
       if (big && !solid && !plan) lines.push([T.last ? "last seen" : "reported", "#8899a8"]);
       place(lines, p, s + 4);
       if (!plan) T.lbl = occ[occ.length - 1];      // (its label: a tap on it picks the target too)
@@ -2044,8 +2045,8 @@
     var cps = c.cur && c.cur.cps.length && !sim.opK.hold ? " · CP " + c.cur.cps.filter(Boolean).length + "/" + c.cur.cps.length : "";     // a scouting run's checkpoints
     // (a mission type's goal, BL.COMMAND.ops: the objectives destroyed, the station held, the siege line found)
     var hi = sim.opK.hold && c.cur ? c.map().checkpoints.map(function (q) { return !!q.hold; }).indexOf(true) : -1;
-    if (sim.solo && c.sqTargets) { var ovb = c.objView(); cps += " · OBJ " + ovb.down + "/" + ovb.need; }
-    else if (hi >= 0) cps += " · STN " + (c.cur.cps[hi] ? "held" : Math.floor(c.cur.held[hi]) + "/" + sim.opK.hold + "s") + (c.hidden() ? " hidden" : "");
+    if (sim.solo && c.sqTargets && c.objView().need) { var ovb = c.objView(); cps += " · OBJ " + ovb.down + "/" + ovb.need; }
+    if (hi >= 0) cps += " · STN " + (c.cur.cps[hi] ? "held" : Math.floor(c.cur.held[hi]) + "/" + sim.opK.hold + "s") + (c.hidden() ? " hidden" : "");
     else if (sim.opK.findSiege && c.cur) cps += " · SIEGE " + (c.cur.found ? "found" : "not found");
     if (c.inRock || c.inMines) nav = "⚠ <b>" + (c.inRock ? "ASTEROIDS" : "MINEFIELD") + "</b>";
     else if (es && !es.flag) nav = (sv ? "<b>" + STATION_SHORT[c.station] + "</b> " + (sv.on ? "on" : "<b>off</b>") : "To the zone") + " · " + (WARD_SHORT[es.id] || "Ward") + " " + (es.W.afloat ? afloat + "/" + es.ships.length + " " : "") + "<b>" + Math.round(100 * es.hull / es.hullMax) + "%</b>";
@@ -2511,7 +2512,7 @@
   function upFirst(t) { return String(t).replace(/^./, function (x) { return x.toUpperCase(); }); }
   // Why an objective was missed: the squadron's or lone ship's targets, a station, a siege line.
   function missedText() {
-    var c = sim.captain, n = sim.onMap ? c.sqMissed() : c.opMissed(), sy = n === 1 ? " system." : " systems.";
+    var c = sim.captain, n = sim.onMap ? Math.max(c.sqMissed(), sim.opK.hold ? c.opMissed() : 0) : c.opMissed(), sy = n === 1 ? " system." : " systems.";
     return sim.flag ? "The squadron warped on leaving the objective standing in " + n + sy : sim.solo ? "You warped on short of the objective in " + n + sy
       : sim.opK.hold ? "The station wasn't held in " + n + sy : "The siege line wasn't found in " + n + sy;
   }
