@@ -116,7 +116,8 @@
   $("cap-pick").value = CAPTAIN_SHIPS.indexOf(settings.capPick) >= 0 ? settings.capPick : "destroyer";
   // A mission picker: the types this class flies (the one wanted if it's among them, else the first).
   function fillOps(sel, list, want) {
-    sel.innerHTML = list.map(function (id) { return '<option value="' + id + '">' + BL.COMMAND.ops[id].name + "</option>"; }).join("");
+    // (in alphabetical order; Nov 12, 2026, TexasBont)
+    sel.innerHTML = list.slice().sort(function (a, b) { return BL.COMMAND.ops[a].name.localeCompare(BL.COMMAND.ops[b].name); }).map(function (id) { return '<option value="' + id + '">' + BL.COMMAND.ops[id].name + "</option>"; }).join("");
     sel.value = list.indexOf(want) >= 0 ? want : list[0];
   }
   function capOps() { fillOps($("cap-op"), BL.COMMAND.opsBy.captain[$("cap-pick").value], settings.capOp); }
@@ -245,7 +246,7 @@
     // A squadron job: its captains from the captains pool (the Captains screen's picks, else the suggestion).
     var rsquad = null;
     if (j.flag && !j.test && career && BL.captains) { j.capsUsed = BL.captains.captainsOf(career, j, true); rsquad = BL.captains.forMission(career, j, j.capsUsed); }
-    sim = new BL.Mission({ seed: j.seed, crew: rcrew, squad: rsquad, classId: j.classId, tl: j.tl, shipName: j.test ? null : j.ship, gunner: guns, helm: !!j.helm, captain: !!j.captain, flag: !!j.flag, escort: !!j.escort, escortKind: j.escortKind || null, test: !!j.test, sweep: j.test && j.classId === "gunboat" && !!guns && !j.escort && (!j.op || j.op === "standard"), op: j.op || null,
+    sim = new BL.Mission({ seed: j.seed, crew: rcrew, squad: rsquad, classId: j.classId, tl: j.tl, shipName: j.test ? null : j.ship, gunner: guns, helm: !!j.helm, captain: !!j.captain, flag: !!j.flag, escort: !!j.escort, escortKind: j.escortKind || null, test: !!j.test, sweep: j.test && j.classId === "gunboat" && !!guns && !j.escort && !j.captain && (!j.op || j.op === "standard"),     // (not the captain's Gauntlet: Nov 12, 2026, TexasBont; his Minefield mission flies it) op: j.op || null,
       route: story ? story.systems : null, reports: story ? story.reports.map(storyText) : null,
       world: story ? ((story.briefing || "").match(/(industrial|military|transportation|reclamation) world/) || [])[1] : null });
     if (j.test) $("seed-input").value = routeNo(j.seed);

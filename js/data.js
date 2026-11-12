@@ -1124,13 +1124,19 @@
         detail: "An outpost of ours (the blue mark) lies off the way in each system, ringed by siege batteries (gold). Destroy every one of them before you warp on, or the mission fails. They never move and they cover each other: come in where the fewest of their guns bear." },
       decoy: { name: "Decoy", map: true, place: "decoy", need: 0.6, brief: "Draw the enemy off the fleet's course: get at least 3 in 5 of the gold groups in each system to come after you and fight, and survive.",
         detail: "Enemy groups (gold) lie across each system, waiting for the fleet coming through behind you. Show yourself: a group that sees you comes after you, and once it has fought you it's drawn off (DRAWN OFF on the map), whether or not you sink it. Draw at least 3 in 5 of them in each system before you warp on, or the mission fails. They're fast, and many at once can be too many: draw them off one or two at a time." },
+      // (the gunboat's own, Nov 12, 2026, TexasBont: the minefield and asteroids off its Gauntlet, each a mission of its own;
+      // thick: the mines or rocks x this, so the test bot wins about half)
+      minefield: { name: "Minefield", route: "sweep", rocks: "none", thick: 0.5, brief: "Every sortie crosses a minefield: shoot the mines in your path and get through to the recovery zone.",
+        detail: "No enemy ships: each sortie crosses one big minefield across the way. Plot through it (nothing goes round it); your gun crew shoots the mines in your path and the coxswain steers round what he can. Every mine that touches the shield hits. Get through to the carrier's recovery zone each time." },
+      belt: { name: "Asteroid belt", rocks: "belt", thick: 0.35, brief: "An asteroid belt lies across every system: get through it, and the enemy, to the recovery zone.",
+        detail: "One big asteroid belt lies across the way in each system, with the enemy reported for it on the far side or in it. Plot through the thinnest part (nothing goes round it): the rocks come at you, your gun crew breaks the ones on a collision course and the coxswain steers round what he can. Get through to the carrier's recovery zone each time." },
       fleet: { name: "Fleet action", map: true, place: "fleet", brief: "Two Azurian battleships in each system: sink both before you warp on.",
         detail: "Two Azurian battleships (gold) patrol each system, their heaviest guns on their broadsides. Sink both before you warp on, or the mission fails. Take them one at a time if you can: between the two, both broadsides bear on you." },
       lastStand: { name: "Last stand", escort: "fleet", force: 1.1, noBuster: true, brief: "The fleet is falling back, badly hurt: cover its retreat through every system.",
         detail: "The fleet is falling back, badly hurt: four or five ships, none of them at full hull, on the navigator's course. Keep station on it and cover the retreat against more of the enemy than usual. Scored by the ships brought through. Lose them all and the mission fails. You carry no planet buster." }
     },
     opsBy: {
-      captain: { gunboat: ["standard", "escort", "strike", "hunt", "sweep"], picket: ["scout", "watch", "findSiege", "shadow", "hunt"], destroyerEscort: ["standard", "escort", "rescue", "sweep", "watch"],
+      captain: { gunboat: ["standard", "escort", "strike", "hunt", "sweep", "minefield", "belt"], picket: ["scout", "watch", "findSiege", "shadow", "hunt"], destroyerEscort: ["standard", "escort", "rescue", "sweep", "watch"],
                  destroyer: ["standard", "raid", "clearZone", "strike", "screen"], lightCruiser: ["standard", "convoyLead", "blockade", "rescue", "depot"], cruiser: ["standard", "hold", "depot", "raid", "outpost"],
                  heavyCruiser: ["standard", "bombard", "busterEscort", "hold", "decoy"], battleship: ["standard", "siege", "duel", "bombard", "lastStand"], dreadnought: ["standard", "finale", "lastStand", "fleet", "siege"] },
       squadron: { gunboat: ["depot", "strike", "hunt"], picket: ["depot"], destroyerEscort: ["depot"], destroyer: ["depot", "raid", "clearZone"],

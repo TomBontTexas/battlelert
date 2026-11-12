@@ -70,6 +70,9 @@
     // (finding the siege line: one in every system; a mine sweep: mines in every one)
     if (opK.findSiege) this.route = this.route.map(function () { return "siege"; });
     if (opK.sweep) this.route = this.route.map(function () { return "sweep"; });
+    // (a mission type that flies one kind of system throughout: the gunboat's Minefield, the mine lane)
+    if (opK.route) this.route = this.route.map(function () { return opK.route; });
+    this.storyRoute = !!opts.route;      // (a story mission: its own systems, asteroid fields and all)
     this.intelKnown = {};                     // (systems where the report turned out wrong: Mission.shown)
     // The bridge's survey of each system (Mission.reported): its own random stream, so the
     // mission's is unchanged.

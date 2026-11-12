@@ -137,10 +137,20 @@
     // First the blockers, across the straight way to the approach point (so the course has to go
     // round), the first an asteroid field, then an enemy area;
     var nb = r.int(K.blockers);
-    place(map.rocks, 1, rock, start, app, [0.3, 0.7], [0, 0.03]);
+    // (an asteroid belt, opts.rocks "belt": one big field over the middle of the way, shaped as the
+    // minefield is; "none": no asteroid fields at all)
+    if (opts.rocks === "belt") {
+      var BF = K.minefield, bc = along(start, jb, (BF.along[0] + BF.along[1]) / 2 * D), bn = r.int(BF.lobes), bl = [];
+      for (var bt = 0; bl.length < bn && bt < 80; bt++) {
+        var br = r.range(BF.r) * D, bcc = along(along(start, jb, r.range(BF.along) * D), jb + 90, r.range([-BF.wide, BF.wide]) * D);
+        if (dist(bcc, start) > br + K.zone * D * 1.5 && dist(bcc, jump) > br + K.zone * D * 1.5) bl.push({ x: bcc.x, y: bcc.y, r: br });
+      }
+      if (bl.length) map.rocks.push({ x: bc.x, y: bc.y, r: Math.max.apply(null, bl.map(function (l) { return dist(l, bc) + l.r; })), lobes: bl, belt: true });
+    }
+    if (!opts.rocks) place(map.rocks, 1, rock, start, app, [0.3, 0.7], [0, 0.03]);
     if (nb > 1) place(map.clusters, 1, enemy, start, app, [0.25, 0.75], [0, 0.04]);
     // then the rest, a field and an enemy area in turn, while there's room.
-    var nr = r.int(K.rocks), ne = r.int(K.clusters);
+    var nr = opts.rocks ? 0 : r.int(K.rocks), ne = r.int(K.clusters);
     for (var turn = 0; turn < 12 && (map.rocks.length < nr || map.clusters.length < ne); turn++) {
       if (map.rocks.length < nr) place(map.rocks, 1, rock, start, jump, K.along, K.side);
       if (map.clusters.length < ne) place(map.clusters, 1, enemy, start, jump, K.along, K.side);
@@ -156,7 +166,8 @@
   // (the navigator's plot also keeps navR off a siege line, unless that ring holds the start,
   // the jump zone or its approach lane: siege)
   function obstacles(map, siege) {
-    var K = BL.COMMAND, m = K.margin * map.D, out = rockLobes(map).concat(enemyLobes(map)).map(function (o) { return { x: o.x, y: o.y, r: o.r + m }; });
+    // (an asteroid belt isn't one: the plot goes through it, as through a minefield)
+    var K = BL.COMMAND, m = K.margin * map.D, out = [].concat.apply([], map.rocks.filter(function (o) { return !o.belt; }).map(function (o) { return o.lobes; })).concat(enemyLobes(map)).map(function (o) { return { x: o.x, y: o.y, r: o.r + m }; });
     var s = BL.siegeSeen(map) && map.siege, R = s && K.siegeLine.navR * map.D;
     if (siege && s && dist(s, map.start) > R * 1.1 && dist(s, map.jump) > R + map.jump.r && segNear(map.approach, map.jump, s).d > R * 1.05) out.push({ x: s.x, y: s.y, r: R });
     return out;
@@ -283,7 +294,9 @@
       var opK = m.opK;
       map = BL.makeNavMap(m.seed, i, { window: m.windowFor(i), dWindow: m.windowFor(i) - (opK.hold || 0) + m.windowCut(), cruiseG: h.gOf("cruise"), hasDrive: m.hasDrive, drop: !!m.sys("buster") && i === m.route.length - 1, mines: enc.sweep ? "sweep" : enc.mines ? "minefield" : null,
         checkpoints: BL.COMMAND.checkpoints.classes.indexOf(m.data.classId) >= 0 && (!m.op || m.op === "scout"), hold: opK.shadow ? 0 : opK.hold || 0, holdZone: !!opK.holdZone,
-        siege: !!opK.findSiege || ((id === "siege" || rep === "siege") && !m.escort && !m.onMap) });
+        siege: !!opK.findSiege || ((id === "siege" || rep === "siege") && !m.escort && !m.onMap),
+        // (asteroids: the gunboat's Gauntlet has none, its Asteroid belt one big belt; Nov 12, 2026, TexasBont)
+        rocks: opK.rocks || (m.data.classId === "gunboat" && !m.escort && !m.storyRoute && (!m.op || m.op === "standard") ? "none" : null) });
       if (m.onMap) map.clusters = [];     // (a squadron's enemies are its map's targets: Captain.makeTargets; a lone ship's on a targets mission too)
       if (map.siege) { map.siege.real = id === "siege"; map.siege.rep = rep === "siege" && !opK.findSiege; }
       return map;
@@ -370,12 +383,13 @@
         if (lobes.some(function (l) { return dist(l, p) < l.r; })) objs.push(make(p));
       }
     }
+    // (a belt: BL.COMMAND.ops thick)
     map.rocks.forEach(function (o) {
-      scatter(o.lobes, thick(F.every, F.spread), function (p) { return { x: p.x, y: p.y, rock: true, mj: Math.round(r.range(F.mj)), crewHit: F.crewHit, size: 0.8 + r.next() * 0.6, spin: r.next() * 6 }; });
+      scatter(o.lobes, thick(F.every, F.spread, o.belt ? m.opK.thick || 1 : 1), function (p) { return { x: p.x, y: p.y, rock: true, mj: Math.round(r.range(F.mj)), crewHit: F.crewHit, size: 0.8 + r.next() * 0.6, spin: r.next() * 6 }; });
     });
     if (map.mines) {
       var H = enc.sweep || (enc.mines && enc.mines.helm), mj = enc.sweep ? enc.sweep.mj : enc.mines ? enc.mines.gunner.mj.map(function (x) { return x * enc.mines.helm.mj; }) : [90, 90];
-      if (H) scatter(map.mines.lobes, thick(H.every, H.spread, K.minefield.thick * (enc.sweep ? 1 : m.force("minefield"))), function (p) {
+      if (H) scatter(map.mines.lobes, thick(H.every, H.spread, K.minefield.thick * (enc.sweep ? 1 : m.force("minefield")) * (m.opK.thick || 1)), function (p) {
         return { x: p.x, y: p.y, rock: false, mj: Math.round(r.range(mj)), crewHit: H.crewHit || 1, size: 1, spin: r.next() * 6 };
       });
     }
