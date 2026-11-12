@@ -162,6 +162,16 @@
       if (tp.t1 - m.t < 1.2) { c.strokeStyle = Math.floor(t * 8) % 2 ? "rgba(255,90,70,0.9)" : "rgba(255,90,70,0.3)"; c.beginPath(); c.arc(tp.x1, tp.y1, 0.02, 0, Math.PI * 2); c.stroke(); }
     });
 
+    // A marked mine or rock (RingTurret.markAt): amber brackets round it.
+    var fmk = tu.markedField && tu.markedField();
+    if (fmk) {
+      var fb0 = 0.035, fk = 0.015;
+      c.strokeStyle = "rgba(255,214,102,0.95)"; c.lineWidth = 2.5 / S;
+      [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(function (q) {
+        var x = fmk.x + q[0] * fb0, y = fmk.y + q[1] * fb0;
+        c.beginPath(); c.moveTo(x - q[0] * fk, y); c.lineTo(x, y); c.lineTo(x, y - q[1] * fk); c.stroke();
+      });
+    }
     // The captain's designated target (RingTurret.markAt): steady amber brackets and TARGET.
     var mk = tu.marked && tu.marked();
     if (mk) {

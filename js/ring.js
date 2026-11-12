@@ -132,10 +132,29 @@
       var d = Math.hypot(s.x - x, s.y - y);
       if (d < Math.max(s.w, s.h) * 0.6 + 0.02 && d < bd) { bd = d; best = s; }
     });
-    if (!best) return undefined;
-    this.mark = this.mark === best ? null : best;
+    // (no ship there: a mine or rock in the field, Nov 12, 2026, TexasBont: "pick an asteroid or a
+    // mine and the guns target that"; the crews shoot it as soon as it's in a gun's reach)
+    if (!best) {
+      var fb = null, fd = 1e9;
+      this.torps.forEach(function (tp) {
+        if (!(tp.field || tp.anchored) || (tp.ev && tp.ev.done)) return;
+        var d = Math.hypot(tp.x - x, tp.y - y);
+        if (d < 0.05 && d < fd) { fd = d; fb = tp; }
+      });
+      if (!fb) return undefined;
+      this.fieldMark = this.fieldMark === fb ? null : fb; this.mark = null;
+      this.bats.forEach(function (b) { b.aiNext = 0; });
+      return this.fieldMark;
+    }
+    this.mark = this.mark === best ? null : best; this.fieldMark = null;
     this.bats.forEach(function (b) { b.aiNext = 0; });       // (the crews take it up at once)
     return this.mark;
+  };
+  // The mine or rock the captain marked, while it's still there.
+  RingTurret.prototype.markedField = function () {
+    var tp = this.fieldMark;
+    if (tp && ((tp.ev && tp.ev.done) || this.torps.indexOf(tp) < 0)) tp = this.fieldMark = null;
+    return tp;
   };
   RingTurret.prototype.marked = function () {
     var s = this.mark;
@@ -944,13 +963,16 @@
       hunt:   [[torps, 0.8], [ships, true], [ships, false, 0.35]],
       free:   [[torps, 1.6], [ships, false, 0.35]]
     }[order] || [[torps, 1.6], [ships, false, 0.35]];
+    // (a marked mine or rock in this gun's reach: before anything else)
+    var fm = this.markedField(), fmr = fm ? this.inReachOf(b, fm.x, fm.y) : null;
+    if (fmr !== null) { target = fm; rel = fmr; }
     for (var q = 0; q < plans.length && !target; q++) { best = 1e9; plans[q][0](plans[q][1], plans[q][2]); }
     if (cw) {
       // A person: sometimes after something else they can see; once on a target, they stay on
       // it a while (a new pick only when it's gone or out of reach, or now and then).
       // (the captain's designated target, once they're on it, they stay on: no straying from it)
       var keep = b.aiTarget && !b.aiTarget.dead && b.aiTarget.state !== "leave" && seen.some(function (x) { return x[0] === b.aiTarget; });
-      if (mk && target === mk) {}
+      if ((mk && target === mk) || (fm && target === fm)) {}
       else if (keep && r.chance(0.7)) { target = b.aiTarget; seen.forEach(function (x) { if (x[0] === target) rel = x[1]; }); }
       else if (seen.length && r.chance(lerp(C.wrong) * strain)) { var w = r.pick(seen); target = w[0]; rel = w[1]; }
       if (target !== b.aiTarget) b.aiOnAt = m.totalT;
