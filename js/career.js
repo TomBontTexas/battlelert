@@ -303,6 +303,9 @@
       if (cmd && commandDone(c, n)) return;
       var left = storyLeft(c, station, n);
       left.forEach(function (m, i) { out.push(makeJob(rng, station, n, i === 0 ? lowTL(n) : anyTL(rng, n), true, m)); });
+      // (command: beside the story, one job on every class offered flying one of its other mission
+      // types; Nov 12, 2026, TexasBont: the step-up class's too, not only the class you command)
+      if (cmd && left.length && n > q) out.push(makeJob(rng, station, n, anyTL(rng, n), true, null, true));
       if (!left.length && n > q && !storyComplete(c, station)) {
         out.push(makeJob(rng, station, n, lowTL(n)));
         out.push(makeJob(rng, station, n, anyTL(rng, n)));
@@ -329,6 +332,9 @@
       if (!built("captain", n) || !built("squadron", n) || commandDone(c, n)) continue;
       var m = storyLeft(c, "captain", n)[0];
       out.push(m ? makeJob(rng, "captain", n, anyTL(rng, n), false, m) : makeJob(rng, "captain", n, lowTL(n), false));
+      // (and one flying another of its mission types: the gunboat, picket and destroyer escort's
+      // missions stay in the career past those classes; Nov 12, 2026, TexasBont)
+      if (m) out.push(makeJob(rng, "captain", n, anyTL(rng, n), false, null, true));
     }
   }
   function needsSquadronWork(c, n) { return n < qualified(c, "captain") && built("captain", n) && built("squadron", n) && !commandDone(c, n); }
