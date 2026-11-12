@@ -210,7 +210,7 @@
     // (a squadron's map is BL.COMMAND.squad.map.window x bigger, and its window that much longer)
     // (a lone ship's targets map likewise; a station to hold: its hold time longer; a lone ship's
     // `cut`, BL.COMMAND.ops: that many s shorter, the map the same size)
-    return Math.round(w * ((enc && enc.windowScale) || 1) * (this.onMap ? BL.COMMAND.squad.map.window : 1)) + (this.opK.hold || 0) - this.windowCut();
+    return Math.round(w * ((enc && enc.windowScale) || 1) * (this.onMap ? BL.COMMAND.squad.map.window : 1)) + (this.opK.shadow ? 0 : this.opK.hold || 0) - this.windowCut();     // (Shadow: no extra time, Nov 12, 2026, TexasBont)
   };
   // The enemy's weapons on a mission type other than the class's usual one (BL.COMMAND.opsLethal;
   // Nov 12, 2026, TexasBont: "increase lethality by 10% on all new missions, they're too easy").
