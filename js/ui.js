@@ -246,7 +246,8 @@
     // A squadron job: its captains from the captains pool (the Captains screen's picks, else the suggestion).
     var rsquad = null;
     if (j.flag && !j.test && career && BL.captains) { j.capsUsed = BL.captains.captainsOf(career, j, true); rsquad = BL.captains.forMission(career, j, j.capsUsed); }
-    sim = new BL.Mission({ seed: j.seed, crew: rcrew, squad: rsquad, classId: j.classId, tl: j.tl, shipName: j.test ? null : j.ship, gunner: guns, helm: !!j.helm, captain: !!j.captain, flag: !!j.flag, escort: !!j.escort, escortKind: j.escortKind || null, test: !!j.test, sweep: j.test && j.classId === "gunboat" && !!guns && !j.escort && !j.captain && (!j.op || j.op === "standard"),     // (not the captain's Gauntlet: Nov 12, 2026, TexasBont; his Minefield mission flies it) op: j.op || null,
+    // (sweep: the gunboat tests' mine lane sortie; not the captain's Gauntlet, Nov 12, 2026, TexasBont: his Minefield mission flies it)
+    sim = new BL.Mission({ seed: j.seed, crew: rcrew, squad: rsquad, classId: j.classId, tl: j.tl, shipName: j.test ? null : j.ship, gunner: guns, helm: !!j.helm, captain: !!j.captain, flag: !!j.flag, escort: !!j.escort, escortKind: j.escortKind || null, test: !!j.test, sweep: j.test && j.classId === "gunboat" && !!guns && !j.escort && !j.captain && (!j.op || j.op === "standard"), op: j.op || null,
       route: story ? story.systems : null, reports: story ? story.reports.map(storyText) : null,
       world: story ? ((story.briefing || "").match(/(industrial|military|transportation|reclamation) world/) || [])[1] : null });
     if (j.test) $("seed-input").value = routeNo(j.seed);
