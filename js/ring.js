@@ -478,7 +478,7 @@
     if (this.mineDue < 1) return;
     this.mineDue -= 1;
     var x = R.cx + (r.next() * 2 - 1) * H.spread * R.rx, y = v >= 0 ? -0.3 : 1.3;      // (out of sight on a tall view)
-    var e = { id: m.nextId++, type: "mine", at: Infinity, mj: Math.round(r.range(mj)), announced: true, visible: true };
+    var e = { id: m.nextId++, type: "mine", at: Infinity, mj: Math.round(r.range(mj) * m.lethalK()), announced: true, visible: true };
     m.events.push(e);
     var tp = { id: this.nextId++, ev: e, mine: true, field: true, crewHit: H.crewHit && H.crewHit * Math.min(1, 3 / this.bats.length), x0: x, y0: y, x1: x, y1: y, hitB: 0, t0: m.t, t1: m.t + 99, x: x, y: y, spin: r.next() * 6 };
     e.torp = tp; this.torps.push(tp);
@@ -534,7 +534,7 @@
       if (d > F.near || !live) { if (o.tp) self.dropFieldObj(o); return; }
       var x = R.cx + Math.sin(b) * d, y = R.cy - Math.cos(b) * d, tp = o.tp, e;
       if (!tp) {
-        e = { id: m.nextId++, type: "mine", rock: o.rock, at: Infinity, mj: o.mj, announced: true, visible: true };
+        e = { id: m.nextId++, type: "mine", rock: o.rock, at: Infinity, mj: o.rock ? o.mj : Math.round(o.mj * m.lethalK()), announced: true, visible: true };
         m.events.push(e);
         tp = o.tp = { id: self.nextId++, ev: e, mine: true, anchored: true, rock: o.rock, obj: o, crewHit: o.crewHit * Math.min(1, 3 / self.bats.length),
           x0: x, y0: y, x1: x, y1: y, hitB: 0, t0: m.t, t1: m.t + 99, x: x, y: y, spin: o.spin, size: o.size };

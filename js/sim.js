@@ -41,6 +41,7 @@
     // The mission type (BL.COMMAND.ops; null: the class's usual mission). opK: its settings.
     // (onMap: the enemy is the map's targets, a squadron's or a lone ship's: Captain.makeSquad)
     this.op = opts.op && BL.COMMAND.ops[opts.op] ? opts.op : null;
+    this.capPath = !!opts.captain; this.flagPath = !!opts.flag && !!opts.captain;     // (Mission.lethalK)
     var opK = this.opK = this.op ? BL.COMMAND.ops[this.op] : {};
     if (opK.noBuster) this.data = Object.assign({}, this.data, { systems: this.data.systems.filter(function (s) { return s.id !== "buster"; }) });
     this.solo = !!opK.map && !!opts.captain && !opts.flag;
@@ -206,6 +207,13 @@
     // (a lone ship's targets map likewise; a station to hold: its hold time longer; a lone ship's
     // `cut`, BL.COMMAND.ops: that many s shorter, the map the same size)
     return Math.round(w * ((enc && enc.windowScale) || 1) * (this.onMap ? BL.COMMAND.squad.map.window : 1)) + (this.opK.hold || 0) - this.windowCut();
+  };
+  // The enemy's weapons on a mission type other than the class's usual one (BL.COMMAND.opsLethal;
+  // Nov 12, 2026, TexasBont: "increase lethality by 10% on all new missions, they're too easy").
+  Mission.prototype.lethalK = function () {
+    if (this._lethalK !== undefined) return this._lethalK;
+    var by = this.capPath ? BL.COMMAND.opsBy[this.flagPath ? "squadron" : "captain"][this.data.classId] : null;
+    return (this._lethalK = this.op && by && by[0] !== this.op && this.op !== "escort" ? BL.COMMAND.opsLethal || 1 : 1);
   };
   Mission.prototype.windowCut = function () { return this.solo ? this.opK.cut || 0 : 0; };
 
@@ -470,7 +478,7 @@
   Mission.prototype.spawnWave = function (enc, typeId, line) {
     var r = this.rng, w = enc.wave, t = this.t;
     // The enemy's own tech level (not ours): toughness and weapons x its factor.
-    var tl = r.pick(enc.tl || [5, 6]), f = BL.enemyTlFactor(tl), hp = Math.round(w.hp * f);
+    var tl = r.pick(enc.tl || [5, 6]), f0 = BL.enemyTlFactor(tl), hp = Math.round(w.hp * f0), f = f0 * this.lethalK();     // (f: its weapons; its toughness f0)
     var wave = { id: this.nextId++, type: typeId || this.route[this.jumpIndex], name: enc.enemy, hp: hp, hpMax: hp, spawn: t, lastAt: 0, dead: false, tl: tl, factor: f };
     function torp(size) { var T = BL.TORPEDOES[size] || BL.TORPEDOES.torpedo; return { torpSize: size, mj: Math.round(T.mj * f), travel: T.travel, warn: T.warn }; }
     var n = r.int(w.salvos), at = t + r.range(w.approach);

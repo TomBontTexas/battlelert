@@ -1108,7 +1108,7 @@
       // on top of its wave's torpedoes in the battle view.
       if (fight && victim && t >= (T.fireAt || 0)) {
         T.fireAt = t + Q.tick;
-        var ng = self.enemyGunsOn(T, victim.pos), mj = ng * M.enemyDps * self.sqK()[1] * Q.tick * Math.sqrt(Math.max(0, T.hp / T.hpMax));
+        var ng = self.enemyGunsOn(T, victim.pos), mj = ng * M.enemyDps * self.sqK()[1] * self.m.lethalK() * Q.tick * Math.sqrt(Math.max(0, T.hp / T.hpMax));
         if (ng) {
           if (victim.g) {
             if (t - (victim.g.hitAt === undefined ? -99 : victim.g.hitAt) > Q.radio.fresh) self.sqSay("sqUnderFire", victim.g, { L: T.letter, what: self.sqWhat(T) });
@@ -1316,7 +1316,7 @@
         o.dead = true; if (o.tp && tu) tu.dropFieldObj(o);
         self.stats.wardMines = (self.stats.wardMines || 0) + 1;
         self.m.cue("hullHit");
-        self.wardHit({ mj: o.mj * mk, wardShip: i });
+        self.wardHit({ mj: o.mj * mk * self.m.lethalK(), wardShip: i });
       });
     });
   };

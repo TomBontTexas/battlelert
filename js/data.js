@@ -1071,6 +1071,9 @@
        cut: a lone ship's window that many s shorter, the map the same size (Nov 10, 2026, TexasBont:
        bombard flown a minute early every time). force: x the enemy's numbers. noBuster: she flies without the planet buster. brief: one line
        (the briefing, How to play); detail: what it asks and how to go about it (the plotting screen). */
+    // opsLethal: the enemy's weapons (torpedoes, guns, drive strikes, mines) x this on every type
+    // but a class's usual one and the old escort mission (Nov 12, 2026, TexasBont: the new missions were too easy).
+    opsLethal: 1.1,
     ops: {
       standard: { name: "Standard run", brief: "Get through every system and warp on.",
         detail: "Come out of warp space, cross the system and reach the warp zone by the window, on the warp heading, with the drive charged, then warp on. Plot round the enemy areas (red): flying into one brings a swarm out. Asteroid fields cost time and rocks. The enemy reported for the system attacks on the way. On a gunboat, each sortie ends at the carrier's recovery zone instead of a warp." },
