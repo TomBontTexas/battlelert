@@ -1057,7 +1057,7 @@
                     classK: { gunboat: [0.2, 0.36], picket: [0.24, 0.54], destroyerEscort: [0.41, 0.61], destroyer: [0.83, 0.83], lightCruiser: [1.28, 1.09],
                               cruiser: [2.3, 1.73], heavyCruiser: [2.8, 2.2], battleship: [2.65, 3], dreadnought: [1.2, 3] } } },
     /* Mission types (Nov 9, 2026, TexasBont: "I like them all ... these new ones are going to give us
-       extra options"; in the Starforce Academy for now, the career's jobs unchanged). opsBy: the types
+       extra options"; in the Starforce Academy, and since Nov 12, 2026 the captain path's career jobs, career.js makeJob). opsBy: the types
        each class flies, on the bridge (captain) and as a squadron; the first is the class's usual one.
        A type is one of:
        - targets on the map (map: its `place`), as a squadron fights them: a lone ship's have

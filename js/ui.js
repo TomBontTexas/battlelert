@@ -3393,6 +3393,7 @@
     return '<div class="offer' + (up ? " stepup" : "") + '"><div class="offer-head"><h3>' + shipHtml(j.classId, j.ship, j.hull) + " (TL" + j.tl + ")" + tag + "</h3>" +
       '<button class="primary" data-i="' + i + '">Accept</button></div>' + pick +
       (j.escort ? '<div class="offer-story">Escort mission: your ' + cls.name.toLowerCase() + " is one of a squadron screening " + (j.classId === "gunboat" ? "the carrier" : j.escortKind === "convoy" ? "a convoy" : j.escortKind === "capital" ? "a capital ship" : "a convoy or a capital ship") + ".</div>" : "") +
+      (j.op && j.op !== "escort" && BL.COMMAND.ops[j.op] ? '<div class="offer-story"><b>' + esc(BL.COMMAND.ops[j.op].name) + "</b>: " + esc(BL.COMMAND.ops[j.op].brief) + "</div>" : "") +
       (j.story ? '<div class="offer-story"><b>' + esc(j.title) + "</b> · " + cls.name + " chapter: " + esc(j.chapter) + "</div>" : "") +
       (j.flag ? '<div class="offer-story">Squadron of ' + (1 + (j.wingShips || []).length) + " " + cls.name.toLowerCase() + cap(j.classId, "s: you command it from the flagship; your flag captain runs her.") + "</div>" : "") +
       (j.by ? '<div class="offer-story">Offered by ' + esc(j.by.name) + ", who values " + j.by.says + ".</div>" : "") +

@@ -15,7 +15,7 @@
   var STATION_NAME = { engineer: "Engineer", gunner: "Gunner", pilot: "Pilot", captain: "Command", squadron: "Squadron", admiral: "Admiral" };
   var PLAYABLE = { engineer: true, gunner: true, pilot: true, captain: true, squadron: true }; // stations built so far
   // Command jobs on the gunboat and destroyer escort: this share are escort missions.
-  var ESCORT_SHARE = 1 / 3, ESCORT_CLASSES = { gunboat: true, destroyerEscort: true };
+  // (escort jobs: one of the class's mission types, makeJob)
   var GUNNER_CLASSES = 9;                          // the gunner station is built up to this class
   // Is this class built for this station? (The engine room runs on every built class; the helm
   // flies every class in BL.HELM.classes.)
@@ -245,18 +245,22 @@
      ({ name, who, label, skill }); the listing shows whichever are there. To come: engineer
      jobs name the gunner and pilot, gunner jobs the pilot, pilot jobs the engineer and gunner,
      each picked from the job seed so the mission gets the same people. */
-  function makeJob(rng, station, n, tl, serious, story) {
+  function makeJob(rng, station, n, tl, serious, story, other) {
     var cls = BL.classByN(n);
     var job = { id: "j" + Math.floor(rng.next() * 1e9).toString(36), station: station, classId: cls.id, n: n, tl: tl,
       ship: BL.shipName(rng, cls.id, tl), seed: 1 + Math.floor(rng.next() * 999999), serious: serious !== false };
     job.hull = BL.hullNumber(cls.id, job.ship);
     if (station === "gunner") { job.weapons = (BL.GUNNERY.loadout[cls.id] || ["pulse"]).slice(); if (BL.pickEngineer) job.engineer = BL.pickEngineer(job.seed, cls.id); }
     if (station === "pilot") { job.helm = true; if (BL.pickEngineer) job.engineer = BL.pickEngineer(job.seed, cls.id); }
-    // A command job: the bridge (the crew are the ones the mission rolls from its seed); on the
-    // gunboat and destroyer escort, now and then an escort mission.
+    // A command job: the bridge (the crew are the ones the mission rolls from its seed). Its
+    // mission is one of the class's types (BL.COMMAND.opsBy.captain), any one alike: the usual
+    // one, an escort (gunboat, destroyer escort) or a Starforce Academy type (Nov 12, 2026,
+    // TexasBont: "integrate all these into the captain career path"). op: null for the usual one.
     if (station === "captain") {
       job.helm = true; job.captain = true;
-      job.escort = !!ESCORT_CLASSES[cls.id] && rng.chance(ESCORT_SHARE);
+      // (other: one of the types besides the usual one)
+      var ops = (BL.COMMAND.opsBy.captain[cls.id] || ["standard"]), pool = other && ops.length > 1 ? ops.slice(1) : ops, op = pool[Math.floor(rng.next() * pool.length)];
+      job.escort = op === "escort"; job.op = op === ops[0] ? null : op;
       if (BL.pickEngineer) job.engineer = BL.pickEngineer(job.seed, cls.id);
       if (BL.pickPilot) job.pilot = BL.pickPilot(job.seed, cls.id);
     }
@@ -272,7 +276,7 @@
     if (story) {
       job.story = story.id; job.title = story.title; job.chapter = story.chapter;
       // (a Captain story mission says whether it's an escort, and of what: carrier, convoy or capital ship)
-      if (station === "captain") { job.escort = !!story.escort; job.escortKind = story.escort || null; }
+      if (station === "captain") { job.escort = !!story.escort; job.escortKind = story.escort || null; job.op = null; }
     }
     return job;
   }
@@ -310,6 +314,10 @@
       out.push(makeJob(rng, station, q, lowTL(q)));
       for (var i = rng.int([1, 2]); i > 0; i--) out.push(makeJob(rng, station, q, anyTL(rng, q)));
     }
+    // Command: beside the story, one job on the class you command flying one of its other mission
+    // types (an escort or a Starforce Academy type; Nov 12, 2026, TexasBont), unless its squadron is open.
+    if (cmd && q >= 1 && built(station, q) && !commandDone(c, q) && !out.some(function (j) { return j.n === q && !j.story; }))
+      out.push(makeJob(rng, station, q, anyTL(rng, q), true, null, true));
     if (cmd) squadronWork(c, rng, out);
     return out;
   }
