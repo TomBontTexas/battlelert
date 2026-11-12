@@ -1075,7 +1075,7 @@
     // but a class's usual one and the old escort mission (Nov 12, 2026, TexasBont: the new missions were too easy; 1.2 the same day, "another 10%").
     opsLethal: 1.2,
     ops: {
-      standard: { name: "Standard run", brief: "Get through every system and warp on.",
+      standard: { name: "Gauntlet", brief: "Run the gauntlet: get through every system and warp on.",
         detail: "Come out of warp space, cross the system and reach the warp zone by the window, on the warp heading, with the drive charged, then warp on. Plot round the enemy areas (red): flying into one brings a swarm out. Asteroid fields cost time and rocks. The enemy reported for the system attacks on the way. On a gunboat, each sortie ends at the carrier's recovery zone instead of a warp." },
       scout: { name: "Scouting run", brief: "Fly through each system's checkpoints in order, then warp on.",
         detail: "Fly through each system's checkpoints (the numbered cyan rings) in order on your way to the warp zone; the course must pass through every one. Each checkpoint missed costs navigation. The navigator's plot goes through them all and leaves time for the turns." },
