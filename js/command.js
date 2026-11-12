@@ -1785,6 +1785,9 @@
     var self0 = this;
     map.checkpoints.forEach(function (c) { if (c.follow === undefined) return; var T = self0.sqTargets && self0.sqTargets[c.follow]; if (!T || T.dead) { c.gone = true; return; } var a = self0.shownAt(T); c.x = a.x; c.y = a.y; });
     map.checkpoints.forEach(function (c, i) { if (c.hold && !c.gone && !cur.cps[i] && dist(pos, c) < c.r && !(c.inner && dist(pos, c) < c.inner) && m.phase !== "done") { cur.held[i] += dt; if (cur.held[i] >= c.hold) { cur.cps[i] = true; m.cue("tick"); } } });
+    // (Shadow: inside its group's gun range before the time is served, she's spotted and the mission
+    // fails; Nov 12, 2026, TexasBont)
+    if (m.phase !== "done") map.checkpoints.forEach(function (c, i) { if (c.follow !== undefined && !c.gone && !cur.cps[i] && m.phase !== "done" && dist(pos, c) < c.inner) { cur.spotted = true; m.finish("objectiveMissed"); } });
     // Finding the siege line (BL.COMMAND.ops findSiege): once its fire on her reaches `spot`, it's on the map.
     if (m.opK.findSiege && map.siege && !map.siege.known && BL.siegeFire(map, pos) >= m.opK.spot) { map.siege.known = true; cur.found = true; m.cue("tick"); }
     var zone = this.inZone();

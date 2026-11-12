@@ -2515,6 +2515,7 @@
   // Why an objective was missed: the squadron's or lone ship's targets, a station, a siege line.
   function missedText() {
     var c = sim.captain, n = sim.onMap ? Math.max(c.sqMissed(), sim.opK.hold ? c.opMissed() : 0) : c.opMissed(), sy = n === 1 ? " system." : " systems.";
+    if (sim.opK.shadow && c.stats.systems.some(function (s) { return s && s.spotted; })) return "You came within gun range of the group you were shadowing: it spotted you.";
     return sim.flag ? "The squadron warped on leaving the objective standing in " + n + sy : sim.solo ? "You warped on short of the objective in " + n + sy
       : sim.opK.hold ? "The station wasn't held in " + n + sy : "The siege line wasn't found in " + n + sy;
   }
